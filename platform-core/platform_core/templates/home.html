@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Trade Management</title>
+  <link rel="stylesheet" href="/static/platform.css" />
+</head>
+<body>
+
+  <!-- ─── Header ──────────────────────────────────────────────── -->
+  <header>
+    <span class="logo">AI <span>Trade</span> Management</span>
+    <span class="version">v{{ version }}</span>
+  </header>
+
+  <!-- ─── Sidebar ─────────────────────────────────────────────── -->
+  <nav>
+    <span class="nav-section-label">モジュール</span>
+
+    {% for m in modules %}
+    <button
+      class="module-btn{% if loop.first %} active{% endif %}"
+      data-key="{{ m.key }}"
+      data-iframe-url="{{ m.iframe_url }}"
+      title="{{ m.description }}"
+    >
+      <span class="icon">{{ m.icon }}</span>
+      <span class="label">{{ m.name }}</span>
+      <span class="status-dot" title="ステータス確認中…"></span>
+    </button>
+    {% endfor %}
+  </nav>
+
+  <!-- ─── Main content ─────────────────────────────────────────── -->
+  <main>
+    <!-- ウェルカム画面 (iframe が空のとき表示) -->
+    <div id="welcome" style="display: none;">
+      <h2>モジュールを選択してください</h2>
+      <p>左のサイドバーからモジュールを選択すると、ここに表示されます。</p>
+    </div>
+
+    {% if modules %}
+    <!-- 初期表示: 先頭モジュール -->
+    <iframe
+      id="module-frame"
+      src="{{ modules[0].iframe_url }}"
+      allowfullscreen
+    ></iframe>
+    {% else %}
+    <!-- モジュール未登録 -->
+    <div id="welcome">
+      <h2>モジュールが登録されていません</h2>
+      <p>各モジュールを起動すると自動的に登録されます。</p>
+    </div>
+    <iframe id="module-frame" style="display: none;"></iframe>
+    {% endif %}
+  </main>
+
+  <script src="/static/platform.js"></script>
+</body>
+</html>

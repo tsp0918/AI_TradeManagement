@@ -1,22 +1,31 @@
 """platform-core FastAPI アプリケーション。
 
 エンドポイント:
+- /                 → /ui へリダイレクト
+- /ui               ポータルホーム画面 (Jinja2)
+- /ui/health/{key}  モジュールヘルスチェックプロキシ
 - /auth/*           認証 (ローカルJWT / Google SSO / Microsoft SSO)
 - /admin/*          管理 (tenants / users / modules)
 - /internal/*       内部 API (モジュール自動登録・モジュール間通信)
 - /health           ヘルスチェック
 """
 
+import pathlib
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from platform_core.auth.router import router as auth_router
 from platform_core.config import settings
 from platform_core.middleware.audit import AuditMiddleware
 from platform_core.routers import admin_router
 from platform_core.routers.internal import router as internal_router
+from platform_core.routers.ui import router as ui_router
+
+_STATIC_DIR = pathlib.Path(__file__).parent / "static"
 
 
 @asynccontextmanager
@@ -43,10 +52,18 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(AuditMiddleware, module_key="platform-core")
 
+    # 静的ファイル (CSS / JS)
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
     # ルーター登録
+    app.include_router(ui_router)
     app.include_router(auth_router)
     app.include_router(admin_router, prefix="/admin")
     app.include_router(internal_router)
+
+    @app.get("/", include_in_schema=False)
+    async def root():
+        return RedirectResponse(url="/ui")
 
     @app.get("/health", tags=["system"])
     async def health():
