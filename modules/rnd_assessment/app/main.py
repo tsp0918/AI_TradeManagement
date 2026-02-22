@@ -1,23 +1,37 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
+
+from platform_core.module_sdk import ModuleInfo, build_lifespan
 
 from app.core.logging import setup_logging
 from app.api.v1.api import api_router
 from app.ui.router import router as ui_router
+
+MODULE = ModuleInfo(
+    key="rnd_assessment",
+    name="R&Dリスク評価",
+    base_url=os.environ.get("MODULE_RND_ASSESSMENT_URL", "http://localhost:8003"),
+    description="R&Dプロジェクトの知財オープン/クローズ戦略と安全保障貿易管理の統合リスク評価",
+    capabilities=["rnd_case_create", "risk_assess", "ip_review"],
+    data_contracts={
+        "input":  ["RdCase"],
+        "output": ["Assessment", "IpReview"],
+    },
+)
 
 
 def create_app() -> FastAPI:
     setup_logging()
 
     app = FastAPI(
-        title="R&D Risk App (PoC)",
+        title="R&D Risk App",
         version="0.1.0",
+        lifespan=build_lifespan(MODULE),
     )
 
-    # API (JSON)
     app.include_router(api_router, prefix="/api/v1")
-
-    # UI (Jinja2 GUI)
     app.include_router(ui_router)
 
     @app.get("/", include_in_schema=False)

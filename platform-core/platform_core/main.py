@@ -1,11 +1,10 @@
 """platform-core FastAPI アプリケーション。
 
-管理者向けの以下のエンドポイントを提供する:
-- /auth/*        認証 (ローカルJWT / Google SSO / Microsoft SSO)
-- /admin/tenants テナント管理
-- /admin/users   ユーザー管理
-- /admin/modules モジュールレジストリ管理
-- /health        ヘルスチェック
+エンドポイント:
+- /auth/*           認証 (ローカルJWT / Google SSO / Microsoft SSO)
+- /admin/*          管理 (tenants / users / modules)
+- /internal/*       内部 API (モジュール自動登録・モジュール間通信)
+- /health           ヘルスチェック
 """
 
 from contextlib import asynccontextmanager
@@ -16,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from platform_core.auth.router import router as auth_router
 from platform_core.config import settings
 from platform_core.routers import admin_router
+from platform_core.routers.internal import router as internal_router
 
 
 @asynccontextmanager
@@ -44,6 +44,7 @@ def create_app() -> FastAPI:
     # ルーター登録
     app.include_router(auth_router)
     app.include_router(admin_router, prefix="/admin")
+    app.include_router(internal_router)
 
     @app.get("/health", tags=["system"])
     async def health():
