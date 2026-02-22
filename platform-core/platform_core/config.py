@@ -1,10 +1,19 @@
+from pathlib import Path
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# monorepo の場合、.env はリポジトリルートに置く
+# このファイルの位置: platform-core/platform_core/config.py
+# リポジトリルート:  ../../
+_HERE = Path(__file__).resolve().parent
+_REPO_ROOT = _HERE.parent.parent  # AI_TradeManagement/
+_ENV_FILE = _REPO_ROOT / ".env"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         extra="ignore",
     )
