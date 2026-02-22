@@ -20,7 +20,7 @@ dependencies = [
     "pydantic-settings>=2.0",
     "python-dotenv>=1.0",
     # Utilities
-    "pydantic>=2.0",
+    "pydantic[email]>=2.0",       # [email] で EmailStr に必要な email-validator を含む
     "python-multipart>=0.0.9",
     "psycopg2-binary>=2.9.11",
 ]
