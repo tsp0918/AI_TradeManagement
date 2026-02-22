@@ -27,7 +27,8 @@ if config.config_file_name is not None:
     except Exception:
         pass
 
-from app.db.models import Base  # noqa: E402
+from app.db.base import Base  # noqa: E402
+import app.db.models  # noqa: F401, E402 — 全モデルを Base に登録
 
 target_metadata = Base.metadata
 
@@ -46,6 +47,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         compare_type=True,
         dialect_opts={"paramstyle": "named"},
+        version_table="alembic_version_validation",
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -60,6 +62,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
+            version_table="alembic_version_validation",
         )
         with context.begin_transaction():
             context.run_migrations()

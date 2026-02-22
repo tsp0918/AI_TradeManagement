@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from platform_core.module_sdk import ModuleInfo, build_lifespan, health_router
+from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan, health_router
 
 from .db import Base, engine, get_db
 from .models import DapApp, DapPage, DapTarget, DapRule, DapIntervention, DapRelease, DapEvent
@@ -56,6 +56,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(AuditMiddleware, module_key="dap")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 
-from platform_core.module_sdk import ModuleInfo, build_lifespan, health_router
+from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan, health_router
 
 from app.config import settings
 from app.database import init_db, close_db
@@ -30,6 +30,7 @@ app = FastAPI(
     lifespan=build_lifespan(MODULE, on_startup=init_db, on_shutdown=close_db),
 )
 
+app.add_middleware(AuditMiddleware, module_key="patent_search")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 app.include_router(health_router)

@@ -1,4 +1,4 @@
-"""ai_classification Alembic env - monorepo対応版。"""
+"""screening Alembic env - monorepo対応版。"""
 
 import os
 import sys
@@ -25,16 +25,16 @@ if config.config_file_name is not None:
     except Exception:
         pass
 
-from app.models import Base  # noqa: E402
-import app.models  # noqa: F401, E402
+from app.db.base import ScreeningBase  # noqa: E402
+import app.models  # noqa: F401, E402 — 全モデルを ScreeningBase に登録
 
-target_metadata = Base.metadata
+target_metadata = ScreeningBase.metadata
 
 
 def get_url() -> str:
     return os.environ.get(
-        "CLASSIFICATION_DATABASE_URL",
-        os.environ.get("DATABASE_URL", "sqlite:///./app.db"),
+        "SCREENING_DATABASE_URL",
+        os.environ.get("DATABASE_URL", "sqlite:///./screening.db"),
     )
 
 
@@ -45,7 +45,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         compare_type=True,
         dialect_opts={"paramstyle": "named"},
-        version_table="alembic_version_classification",
+        version_table="alembic_version_screening",
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -60,7 +60,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
-            version_table="alembic_version_classification",
+            version_table="alembic_version_screening",
         )
         with context.begin_transaction():
             context.run_migrations()

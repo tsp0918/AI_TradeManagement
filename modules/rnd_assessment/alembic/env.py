@@ -46,6 +46,7 @@ def run_migrations_offline() -> None:
         compare_type=True,
         dialect_opts={"paramstyle": "named"},
         render_as_batch=True,
+        version_table="alembic_version_rnd",
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -61,6 +62,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             compare_type=True,
             render_as_batch=True,
+            version_table="alembic_version_rnd",
         )
         with context.begin_transaction():
             context.run_migrations()

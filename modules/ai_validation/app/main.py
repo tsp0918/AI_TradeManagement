@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
-from platform_core.module_sdk import ModuleInfo, build_lifespan, health_router
+from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan, health_router
 
 from app.routers.decision import router as decision_router
 from app.routers.ui import router as ui_router
@@ -35,6 +35,7 @@ app = FastAPI(
     lifespan=build_lifespan(MODULE),
 )
 
+app.add_middleware(AuditMiddleware, module_key="ai_validation")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 app.state.templates = templates
