@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}R&D リスク評価{% endblock %}</title>
+  <style>
+    /* ===== RESET ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ===== VARIABLES ===== */
+    :root {
+      --bg:        #f5f4fb;
+      --surface:   #ffffff;
+      --border:    #e4e1f3;
+      --bd-focus:  #6366f1;
+
+      --primary:   #6366f1;
+      --primary-lt:#ede9fe;
+      --primary-dk:#4f46e5;
+
+      --text-h:    #1e1b4b;
+      --text:      #3d3a5c;
+      --muted:     #9491b4;
+
+      --use-bg:    #eff6ff;
+      --use-bd:    #bfdbfe;
+      --use-acc:   #2563eb;
+      --eu-bg:     #f0fdf4;
+      --eu-bd:     #bbf7d0;
+      --eu-acc:    #059669;
+      --dis-bg:    #fffbeb;
+      --dis-bd:    #fde68a;
+      --dis-acc:   #d97706;
+
+      --success:   #059669;
+      --warn:      #d97706;
+      --danger:    #dc2626;
+
+      --shadow:    0 1px 3px rgba(99,102,241,.08), 0 4px 14px rgba(99,102,241,.06);
+      --r:         14px;
+      --r-sm:      9px;
+    }
+
+    /* ===== BASE ===== */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont,
+        "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+        "Yu Gothic", YuGothic, Meiryo, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      min-height: 100vh;
+    }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ===== HEADER ===== */
+    .site-header {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 6px rgba(99,102,241,.07);
+      padding: 0 28px; height: 54px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .site-logo {
+      font-size: 1rem; font-weight: 800; color: var(--primary);
+      letter-spacing: -.3px; display: flex; align-items: center; gap: 7px;
+    }
+    .site-logo span { font-size: 1.25rem; }
+    .site-tagline { font-size: .75rem; color: var(--muted); }
+
+    /* ===== MAIN ===== */
+    .main { max-width: 1100px; margin: 0 auto; padding: 36px 24px 80px; }
+
+    /* ===== PAGE HEADER ===== */
+    .page-hd { margin-bottom: 28px; }
+    .page-hd h1 { font-size: 1.55rem; font-weight: 800; color: var(--text-h); letter-spacing: -.4px; }
+    .page-hd .sub { margin-top: 6px; font-size: .87rem; color: var(--muted); }
+    .breadcrumb { font-size: .78rem; color: var(--muted); margin-bottom: 8px; }
+    .breadcrumb a { color: var(--primary); }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: var(--surface); border-radius: var(--r);
+      box-shadow: var(--shadow); padding: 24px; margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: .95rem; font-weight: 700; color: var(--text-h);
+      margin-bottom: 18px; display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ===== SECTION PANELS ===== */
+    .panel { border-radius: var(--r); padding: 22px 24px; margin-bottom: 20px; }
+    .panel.use  { background: var(--use-bg); border: 1.5px solid var(--use-bd); }
+    .panel.eu   { background: var(--eu-bg);  border: 1.5px solid var(--eu-bd); }
+    .panel.dis  { background: var(--dis-bg); border: 1.5px solid var(--dis-bd); }
+    .panel.meta { background: #f5f3ff; border: 1.5px solid #ddd6fe; }
+
+    .panel-hd { margin-bottom: 18px; }
+    .panel-hd h2 { font-size: 1.05rem; font-weight: 700; color: var(--text-h); margin-top: 8px; }
+    .panel-hd p  { font-size: .8rem; color: var(--muted); margin-top: 3px; line-height: 1.55; }
+
+    /* ===== BADGES ===== */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 11px; border-radius: 999px;
+      font-size: .75rem; font-weight: 700;
+    }
+    .badge-use     { background: var(--use-bg); color: var(--use-acc); border: 1px solid var(--use-bd); }
+    .badge-eu      { background: var(--eu-bg);  color: var(--eu-acc);  border: 1px solid var(--eu-bd); }
+    .badge-dis     { background: var(--dis-bg); color: var(--dis-acc); border: 1px solid var(--dis-bd); }
+    .badge-meta    { background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; }
+    .badge-primary { background: var(--primary-lt); color: var(--primary-dk); border: 1px solid #c4b5fd; }
+
+    /* ===== FORMS ===== */
+    .field { margin-bottom: 15px; }
+    .field label {
+      display: block; font-size: .8rem; font-weight: 700;
+      color: var(--text); margin-bottom: 5px;
+    }
+    .field label .opt { font-weight: 400; color: var(--muted); margin-left: 4px; font-size: .74rem; }
+    .field .hint { font-size: .73rem; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+    input[type="text"], input[type="number"], textarea, select {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid var(--border); border-radius: var(--r-sm);
+      background: var(--surface); color: var(--text);
+      font-size: .88rem; font-family: inherit;
+      transition: border-color .15s, box-shadow .15s;
+      appearance: none; -webkit-appearance: none;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none; border-color: var(--bd-focus);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.13);
+    }
+    textarea { min-height: 80px; resize: vertical; line-height: 1.6; }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%239491b4' d='M5 7L0 2h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 11px center; padding-right: 30px;
+    }
+
+    /* Grid helpers */
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+    /* Toggle checkboxes */
+    .toggles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .toggle {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 14px 6px 10px; border: 1.5px solid var(--border);
+      border-radius: 999px; background: var(--surface);
+      cursor: pointer; font-size: .82rem; color: var(--text);
+      transition: border-color .15s, background .15s, color .15s; user-select: none;
+    }
+    .toggle:has(input:checked) {
+      border-color: var(--primary); background: var(--primary-lt); color: var(--primary-dk);
+    }
+    .toggle input[type="checkbox"] {
+      width: 15px; height: 15px; accent-color: var(--primary);
+      flex-shrink: 0; cursor: pointer;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 20px; border-radius: var(--r-sm); border: none;
+      font-size: .88rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; text-decoration: none;
+      transition: background .15s, transform .1s; white-space: nowrap;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(99,102,241,.3); }
+    .btn-primary:hover { background: var(--primary-dk); }
+    .btn-ghost { background: var(--surface); color: var(--text); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-sm { padding: 6px 14px; font-size: .8rem; }
+    .btn-success { background: #d1fae5; color: var(--success); border: 1.5px solid #a7f3d0; }
+    .btn-warn { background: #fef3c7; color: var(--warn); border: 1.5px solid var(--dis-bd); }
+
+    /* ===== KV LIST ===== */
+    .kv { display: grid; grid-template-columns: 140px 1fr; gap: 5px 12px; align-items: baseline; }
+    .kv .k { font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .kv .v { font-size: .88rem; color: var(--text); }
+
+    /* ===== SCORE ===== */
+    .score-wrap { display: flex; align-items: center; gap: 22px; }
+    .score-orb {
+      width: 82px; height: 82px; border-radius: 50%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-size: 1.65rem; font-weight: 800; color: #fff; flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(0,0,0,.18);
+    }
+    .score-orb .lv { font-size: .56rem; font-weight: 600; opacity: .85; margin-top: -3px; text-transform: uppercase; letter-spacing: .5px; }
+    .score-bars { flex: 1; }
+    .score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .score-row:last-child { margin-bottom: 0; }
+    .score-lbl { font-size: .71rem; font-weight: 600; color: var(--muted); width: 96px; flex-shrink: 0; }
+    .score-track { flex: 1; height: 5px; background: #ebe8f8; border-radius: 999px; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 999px; transition: width .7s cubic-bezier(.4,0,.2,1); }
+    .score-num { font-size: .78rem; font-weight: 700; width: 26px; text-align: right; color: var(--text); }
+
+    .rl-low      { background: var(--success); }
+    .rl-medium   { background: var(--warn); }
+    .rl-high     { background: var(--danger); }
+    .rl-critical { background: #7c3aed; }
+
+    /* ===== STATUS CHIP ===== */
+    .chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 11px; border-radius: 999px; font-size: .77rem; font-weight: 700;
+    }
+    .chip-draft           { background: #f1f0f8; color: #6b7280; }
+    .chip-under_review    { background: #fef3c7; color: #92400e; }
+    .chip-approved        { background: #d1fae5; color: #065f46; }
+    .chip-closed_as_secret{ background: #fce7f3; color: #9d174d; }
+    .chip-rejected        { background: #fee2e2; color: #991b1b; }
+    .chip-deferred        { background: #ede9fe; color: #5b21b6; }
+
+    /* ===== MISC ===== */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    code {
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      background: #ede9fe; padding: 1px 6px; border-radius: 4px;
+      font-size: .82em; color: var(--primary-dk);
+    }
+    pre {
+      background: #f7f6fb; border: 1px solid var(--border);
+      border-radius: var(--r-sm); padding: 14px 16px;
+      overflow: auto; font-size: .8rem; line-height: 1.7;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .txt-muted { color: var(--muted); font-size: .83rem; }
+    .txt-h { color: var(--text-h); }
+
+    .flex { display: flex; }
+    .flex-wrap { flex-wrap: wrap; }
+    .items-center { align-items: center; }
+    .gap-2 { gap: 8px; }
+    .gap-3 { gap: 12px; }
+    .gap-4 { gap: 16px; }
+    .ml-auto { margin-left: auto; }
+    .mt-2 { margin-top: 8px; }
+    .mt-3 { margin-top: 12px; }
+    .mt-4 { margin-top: 16px; }
+    .mt-6 { margin-top: 24px; }
+    .mb-2 { margin-bottom: 8px; }
+    .mb-4 { margin-bottom: 16px; }
+    .pb-sm { padding-bottom: 48px; }
+
+    /* ===== DIFF TABLE ===== */
+    .diff-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    .diff-table th {
+      text-align: left; padding: 8px 12px;
+      font-size: .72rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .4px;
+      border-bottom: 2px solid var(--border);
+    }
+    .diff-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .diff-table tbody tr:last-child td { border-bottom: none; }
+    .diff-table td:first-child {
+      font-family: "SF Mono", monospace; font-size: .78rem;
+      font-weight: 600; color: var(--text-h); width: 200px;
+    }
+    .diff-old { background: #fff1f2; color: #be123c; border-radius: 4px; padding: 1px 6px; display: inline-block; }
+    .diff-new { background: #f0fdf4; color: #15803d; border-radius: 4px; padding: 1px 6px; display: inline-block; }
+
+    .delta-up   { color: var(--danger); font-weight: 800; }
+    .delta-down { color: var(--success); font-weight: 800; }
+    .delta-zero { color: var(--muted); }
+
+    /* ===== EVIDENCE ===== */
+    .evidence-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .evidence-item:last-child { border-bottom: none; }
+    .evidence-icon {
+      width: 38px; height: 38px; border-radius: var(--r-sm);
+      background: var(--primary-lt);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.15rem; flex-shrink: 0;
+    }
+    .evidence-name { font-size: .88rem; font-weight: 600; color: var(--text-h); }
+    .evidence-meta { font-size: .74rem; color: var(--muted); margin-top: 2px; }
+
+    /* ===== UPLOAD ZONE ===== */
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: var(--r);
+      padding: 20px 16px; text-align: center;
+      color: var(--muted); font-size: .84rem; transition: border-color .15s;
+    }
+    .upload-zone:hover { border-color: var(--primary); }
+
+    @media (max-width: 680px) {
+      .g2, .g3 { grid-template-columns: 1fr; }
+      .score-wrap { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <a href="/ui/" class="site-logo">
+      <span>⚗️</span> R&amp;D リスク評価
+    </a>
+    <span class="site-tagline">研究開発リスク評価システム（PoC）</span>
+  </header>
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="section">
+  <div class="container">
+
+    <h1 class="title is-4">
+      BOM CSV Upload (Product: {{ product.code }} - {{ product.name }})
+    </h1>
+
+    <div class="box">
+      <form action="/products/{{ product.id }}/bom" method="post" enctype="multipart/form-data">
+
+        <div class="field">
+          <label class="label">Upload CSV File</label>
+          <div class="control">
+            <input class="input" type="file" name="file" accept=".csv" required>
+          </div>
+        </div>
+
+        <div class="field is-grouped">
+          <div class="control">
+            <button class="button is-link">Upload</button>
+          </div>
+          <div class="control">
+            <a class="button is-light" href="/products/{{ product.id }}/edit">Back</a>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <h2 class="title is-6">BOM CSV format example</h2>
+    <pre class="box" style="background:#f6f8fa; font-size: 0.85rem;">
+product_id	component_code	component_name	ratio	kind	description	amount	note
+1	RM-001	Ethylene Glycol	0.60	material		Main solvent
+1	RM-002	Sodium Hydroxide	0.15	material		pH control
+1	RM-003	Water	0.25	material		Diluent
+1				overhead	Labor cost	1200	Cleanroom staffing
+1				overhead	Equipment depreciation	800	Exposure system depreciation
+    </pre>
+
+  </div>
+</section>
+
+{% endblock %}

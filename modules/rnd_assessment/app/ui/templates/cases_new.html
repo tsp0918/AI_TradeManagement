@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}ケース作成 — R&D リスク評価{% endblock %}
+
+{% block content %}
+<div class="page-hd">
+  <h1>新しい研究開発ケースを作成</h1>
+  <p class="sub">プロジェクト情報を入力して、リスク評価フローを開始します。</p>
+</div>
+
+<div class="card" style="max-width: 640px;">
+  <div class="card-title">📁 ケース基本情報</div>
+
+  <form method="post" action="/ui/cases/new">
+
+    <div class="g2">
+      <div class="field">
+        <label>テナント ID</label>
+        <input type="text" name="tenant_id" value="tenant-demo" required
+               placeholder="例: tenant-demo" />
+        <p class="hint">組織・部門を識別するIDです</p>
+      </div>
+      <div class="field">
+        <label>外部プロジェクト ID <span class="opt">任意</span></label>
+        <input type="text" name="external_project_id"
+               placeholder="例: PRJ-2026-001" />
+        <p class="hint">社内プロジェクト番号など</p>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>ケースタイトル</label>
+      <input type="text" name="title" required
+             placeholder="例: KrF フォトレジスト試作評価 — ArF リソグラフィ適用検討" />
+    </div>
+
+    <div class="field">
+      <label>説明 <span class="opt">任意</span></label>
+      <textarea name="description" rows="4"
+                placeholder="研究の背景、目的、対象技術の概要など…"></textarea>
+    </div>
+
+    <div class="field">
+      <label>入力者 ID <span class="opt">任意</span></label>
+      <input type="text" name="created_by_user_id" value="rd_user"
+             placeholder="rd_user" />
+    </div>
+
+    <div class="mt-4">
+      <button type="submit" class="btn btn-primary">
+        ケースを作成して入力へ →
+      </button>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

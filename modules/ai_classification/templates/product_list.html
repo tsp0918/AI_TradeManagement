@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}品目一覧{% endblock %}
+
+{% block content %}
+<a class="button is-small is-info" href="/products/import">CSVインポート</a>
+
+<div class="level">
+  <div class="level-left">
+    <h2 class="subtitle">品目一覧</h2>
+  </div>
+  <div class="level-right">
+    <a class="button is-primary" href="/products/new">＋ 新規品目</a>
+    <a class="button is-link" href="/products/import" style="margin-left:0.5rem;">
+      CSVインポート
+    </a>
+  </div>
+</div>
+
+<table class="table is-fullwidth is-striped is-hoverable">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>品目コード</th>
+      <th>品目名</th>
+      <th>HSコード</th>
+      <th>ECCN</th>
+      <th>毒物</th>
+      <th>劇物</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in products %}
+    <tr>
+      <td>
+        <a href="/products/{{ p.id }}/edit">
+          {{ p.id }}
+        </a>
+      </td>
+      <td>{{ p.code }}</td>
+      <td>{{ p.name }}</td>
+      <td>{{ p.hs_code or "" }}</td>
+      <td>{{ p.eccn or "" }}</td>
+      <td>{{ "◯" if p.is_poison else "" }}</td>
+      <td>{{ "◯" if p.is_deleterious else "" }}</td>
+      <td>
+        <a class="button is-small is-info" href="/products/{{ p.id }}/edit">編集</a>
+        <a class="button is-small is-warning" href="/products/{{ p.id }}/sds">SDS</a>
+        <form
+          action="/products/{{ p.id }}/delete"
+          method="post"
+          style="display:inline"
+          onsubmit="return confirm('本当に削除しますか？');"
+        >
+          <button class="button is-small is-danger" type="submit">削除</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if not products %}
+<p>登録されている品目はありません。</p>
+{% endif %}
+{% endblock %}

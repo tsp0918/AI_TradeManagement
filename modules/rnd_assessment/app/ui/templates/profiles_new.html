@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block title %}プロファイル入力 v{{ next_version }} — {{ case.title }}{% endblock %}
+
+{% block content %}
+<div class="page-hd">
+  <div class="breadcrumb">
+    <a href="/ui/">トップ</a> › ケース › {{ case.title }}
+  </div>
+  <h1>
+    プロファイル入力
+    <span style="color:var(--muted); font-weight:400; font-size:1.1rem">v{{ next_version }}</span>
+  </h1>
+  <p class="sub">研究内容・需要者・開示戦略の 3 セクションを入力してリスク評価を実行します。</p>
+</div>
+
+<form method="post" action="/ui/cases/{{ case.case_id }}/profiles/new">
+
+  <!-- ===================== Use Requirements ===================== -->
+  <div class="panel use">
+    <div class="panel-hd">
+      <span class="badge badge-use">🔬 Use Requirements</span>
+      <h2>R&amp;D 用途要件</h2>
+      <p>製品・プロセスの用途と技術区分を入力します。デュアルユースリスクを自動判定します。</p>
+    </div>
+
+    <div class="g2">
+      <div class="field">
+        <label>プロセス</label>
+        <input type="text" name="use_process" value="KrF lithography"
+               placeholder="例: KrF lithography, ArF immersion" />
+      </div>
+      <div class="field">
+        <label>製品カテゴリ</label>
+        <input type="text" name="use_product_category" value="photoresist"
+               placeholder="例: photoresist, slurry, gas" />
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="field">
+        <label>技術ノード（nm）</label>
+        <input type="number" name="use_tech_node_nm" value="14" placeholder="14" />
+        <p class="hint">目標または対象ノードサイズ</p>
+      </div>
+      <div class="field">
+        <label>アプリケーション</label>
+        <input type="text" name="use_application" value="logic"
+               placeholder="例: logic, memory, CIS" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>R&amp;D フェーズ</label>
+      <select name="use_rd_phase">
+        <option value="R&D_only">研究段階のみ（R&D only）</option>
+        <option value="pilot">パイロット量産（pilot）</option>
+        <option value="mass_production">量産（mass production）</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>用途説明</label>
+      <textarea name="use_usage_description" rows="3"
+                placeholder="例: KrF 露光の試作評価用途として社内ラボにて使用">KrF露光の試作評価用途</textarea>
+    </div>
+
+    <div class="field">
+      <label>リスクフラグ</label>
+      <div class="toggles">
+        <label class="toggle">
+          <input type="checkbox" name="use_dual_use_potential" checked />
+          デュアルユース可能性あり
+        </label>
+        <label class="toggle">
+          <input type="checkbox" name="use_military_end_use_possible" />
+          軍事転用の可能性あり
+        </label>
+        <label class="toggle">
+          <input type="checkbox" name="use_surveillance_end_use_possible" />
+          監視目的への転用可能性あり
+        </label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>タグ <span class="opt">カンマ区切り・任意</span></label>
+      <input type="text" name="use_tags" value="KrF,PoC"
+             placeholder="例: KrF, PoC, 試作" />
+    </div>
+  </div>
+
+  <!-- ===================== End User Requirements ===================== -->
+  <div class="panel eu">
+    <div class="panel-hd">
+      <span class="badge badge-eu">👥 End User Requirements</span>
+      <h2>需要者要件</h2>
+      <p>最終需要者（顧客・共同研究先）の属性と再移転リスクを入力します。</p>
+    </div>
+
+    <div class="g2">
+      <div class="field">
+        <label>需要者名</label>
+        <input type="text" name="end_user_name" value="Japan Semiconductor Co."
+               placeholder="例: Japan Semiconductor Co." />
+      </div>
+      <div class="field">
+        <label>需要者国コード（ISO 3166-1）</label>
+        <input type="text" name="end_user_country" value="JP"
+               placeholder="JP / US / KR …" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>需要者種別</label>
+      <select name="end_user_type">
+        <option value="manufacturer" selected>製造業者（manufacturer）</option>
+        <option value="university">大学・研究機関（university）</option>
+        <option value="reseller">再販業者（reseller）</option>
+        <option value="unknown">不明（unknown）</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>使用予定国 <span class="opt">カンマ区切り</span></label>
+      <input type="text" name="intended_countries" value="JP"
+             placeholder="例: JP, US" />
+    </div>
+
+    <div class="g2">
+      <div class="field">
+        <label>再移転の可能性</label>
+        <select name="retransfer_possible">
+          <option value="">不明</option>
+          <option value="true">あり（true）</option>
+          <option value="false">なし（false）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>再移転に関する補足 <span class="opt">任意</span></label>
+        <input type="text" name="retransfer_notes"
+               placeholder="例: NDA 締結済み" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>リスクフラグ</label>
+      <div class="toggles">
+        <label class="toggle">
+          <input type="checkbox" name="restricted_party_screened" checked />
+          制限当事者スクリーニング済み
+        </label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>スクリーニング参照番号 <span class="opt">任意</span></label>
+      <input type="text" name="screening_reference" value="RPS-CHK-0001"
+             placeholder="例: RPS-CHK-0001" />
+    </div>
+
+    <div class="field">
+      <label>需要者備考 <span class="opt">任意</span></label>
+      <textarea name="end_user_notes" rows="2"
+                placeholder="例: 民生用途前提。政府案件への転用なし確認済み">民生用途前提</textarea>
+    </div>
+
+    <div class="field">
+      <label>タグ <span class="opt">カンマ区切り・任意</span></label>
+      <input type="text" name="end_user_tags"
+             placeholder="例: 民生, スクリーニング済み" />
+    </div>
+  </div>
+
+  <!-- ===================== Disclosure Strategy ===================== -->
+  <div class="panel dis">
+    <div class="panel-hd">
+      <span class="badge badge-dis">📋 Disclosure Strategy</span>
+      <h2>開示戦略（フォトレジスト）</h2>
+      <p>知財法務と安保貿易管理が同じページで判断できるよう、再現性・逆解析・戦略重要性を入力します。</p>
+    </div>
+
+    <div class="g3">
+      <div class="field">
+        <label>レジスト種別</label>
+        <input type="text" name="dis_resist_type" value="KrF"
+               placeholder="KrF / ArF / EUV …" />
+      </div>
+      <div class="field">
+        <label>ターゲットノード（nm）</label>
+        <input type="number" name="dis_target_node_nm" value="14" placeholder="14" />
+      </div>
+      <div class="field">
+        <label>アプリケーション</label>
+        <input type="text" name="dis_application" value="logic"
+               placeholder="logic / memory / CIS" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>新規性の源泉 <span class="opt">カンマ区切り</span></label>
+      <input type="text" name="dis_novelty_source"
+             value="composition_ratio,formulation_process"
+             placeholder="polymer_design, pag_design, quencher_design, composition_ratio …" />
+      <p class="hint">
+        選択肢: polymer_design / pag_design / quencher_design / composition_ratio /
+        synthesis_process / purification_process / formulation_process /
+        processing_conditions / patterning_performance / other
+      </p>
+    </div>
+
+    <div class="g3">
+      <div class="field">
+        <label>再現性リスク</label>
+        <select name="dis_reproducibility_risk">
+          <option value="">不明</option>
+          <option value="low">低（low）</option>
+          <option value="medium" selected>中（medium）</option>
+          <option value="high">高（high）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>逆解析リスク</label>
+        <select name="dis_reverse_engineering_risk">
+          <option value="">不明</option>
+          <option value="low">低（low）</option>
+          <option value="medium" selected>中（medium）</option>
+          <option value="high">高（high）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>戦略的重要度</label>
+        <select name="dis_strategic_importance">
+          <option value="">不明</option>
+          <option value="low">低（low）</option>
+          <option value="medium" selected>中（medium）</option>
+          <option value="high">高（high）</option>
+          <option value="critical">最重要（critical）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>リスクフラグ</label>
+      <div class="toggles">
+        <label class="toggle">
+          <input type="checkbox" name="dis_requires_process_knowhow" checked />
+          プロセスノウハウ必須
+        </label>
+        <label class="toggle">
+          <input type="checkbox" name="dis_export_control_sensitivity" />
+          輸出規制の対象感度あり
+        </label>
+        <label class="toggle">
+          <input type="checkbox" name="dis_military_dual_use_potential" />
+          軍事転用の可能性あり
+        </label>
+      </div>
+    </div>
+
+    <div class="g3">
+      <div class="field">
+        <label>特許出願</label>
+        <div class="toggles">
+          <label class="toggle">
+            <input type="checkbox" name="dis_planned_patent_filing" checked />
+            出願予定あり
+          </label>
+        </div>
+        <div class="field mt-3" style="margin-bottom:0">
+          <label>出願予定地域 <span class="opt">カンマ区切り</span></label>
+          <input type="text" name="dis_planned_filing_region" value="JP,US"
+                 placeholder="JP, US, EP" />
+        </div>
+      </div>
+      <div class="field">
+        <label>開示・共同研究</label>
+        <div class="toggles" style="flex-direction:column; gap:6px;">
+          <label class="toggle">
+            <input type="checkbox" name="dis_publication_intent" />
+            論文公開の予定あり
+          </label>
+          <label class="toggle">
+            <input type="checkbox" name="dis_external_collaboration" />
+            外部共同研究あり
+          </label>
+        </div>
+        <div class="field mt-3" style="margin-bottom:0">
+          <label>共同研究国 <span class="opt">カンマ区切り</span></label>
+          <input type="text" name="dis_partner_countries" placeholder="JP, US, KR" />
+        </div>
+      </div>
+      <div class="field">
+        <label>NDA</label>
+        <div class="toggles">
+          <label class="toggle">
+            <input type="checkbox" name="dis_nda_in_place" />
+            NDA 締結済み
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>備考 <span class="opt">任意</span></label>
+      <textarea name="dis_notes" rows="3"
+                placeholder="開示予定の範囲、秘匿したいノウハウ、競合懸念など"></textarea>
+    </div>
+  </div>
+
+  <!-- ===================== Meta ===================== -->
+  <div class="panel meta" style="margin-bottom: 32px;">
+    <span class="badge badge-meta">⚙️ メタ情報</span>
+    <div class="field mt-3" style="max-width: 360px; margin-bottom:0;">
+      <label>入力者 ID <span class="opt">任意</span></label>
+      <input type="text" name="created_by_user_id" value="takehiro" />
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3 pb-sm">
+    <button type="submit" class="btn btn-primary">
+      プロファイルを保存して評価へ →
+    </button>
+    <span class="txt-muted">保存後、リスクスコアが自動計算されます</span>
+  </div>
+
+</form>
+{% endblock %}

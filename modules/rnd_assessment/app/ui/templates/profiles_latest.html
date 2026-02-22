@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}最新プロファイル — {{ case.title }}{% endblock %}
+
+{% block content %}
+
+{# ---------- ヘルパーマクロ ---------- #}
+{% set rl = scored_now.risk_level %}
+{% set rl_label = {
+  "low":      "低リスク",
+  "medium":   "中リスク",
+  "high":     "高リスク",
+  "critical": "要注意"
+} %}
+{% set status_label = {
+  "draft":            "下書き",
+  "under_review":     "審査中",
+  "approved":         "承認（特許）",
+  "closed_as_secret": "秘匿（営業秘密）",
+  "rejected":         "却下",
+  "deferred":         "保留"
+} %}
+
+<!-- ページヘッダー -->
+<div class="page-hd">
+  <div class="breadcrumb">
+    <a href="/ui/">トップ</a> › ケース › {{ case.title }}
+  </div>
+  <div class="flex items-center gap-3 flex-wrap">
+    <h1>最新プロファイル</h1>
+    {% if can_compare %}
+      <a href="/ui/cases/{{ case.case_id }}/profiles/compare" class="btn btn-ghost btn-sm">
+        🔀 バージョン比較
+      </a>
+    {% endif %}
+    <a href="/ui/cases/{{ case.case_id }}/profiles/new" class="btn btn-ghost btn-sm ml-auto">
+      ＋ 新バージョンを作成
+    </a>
+  </div>
+</div>
+
+<!-- プロファイル基本情報 -->
+<div class="card">
+  <div class="card-title">📄 プロファイル情報</div>
+  <div class="kv">
+    <span class="k">バージョン</span>
+    <span class="v"><strong>v{{ profile.version_no }}</strong></span>
+    <span class="k">プロファイル ID</span>
+    <span class="v"><code>{{ profile.profile_id }}</code></span>
+    <span class="k">フィンガープリント</span>
+    <span class="v"><code style="font-size:.74em;">{{ profile.input_fingerprint }}</code></span>
+    <span class="k">入力者</span>
+    <span class="v">{{ profile.created_by_user_id or "—" }}</span>
+    <span class="k">作成日時</span>
+    <span class="v">{{ profile.created_at }}</span>
+  </div>
+</div>
+
+<!-- リスク評価 -->
+<div class="card">
+  <div class="card-title">📊 リスクスコア</div>
+
+  <div class="g2" style="gap: 28px;">
+    <!-- スコア表示 -->
+    <div>
+      <div class="score-wrap">
+        <div class="score-orb rl-{{ rl }}">
+          {{ scored_now.overall_score }}
+          <span class="lv">{{ rl_label.get(rl, rl) }}</span>
+        </div>
+        <div class="score-bars">
+          <div class="score-row">
+            <span class="score-lbl">技術リスク</span>
+            <div class="score-track">
+              <div class="score-fill rl-{{ rl }}" data-pct="{{ scored_now.tech_risk_score }}"></div>
+            </div>
+            <span class="score-num">{{ scored_now.tech_risk_score }}</span>
+          </div>
+          <div class="score-row">
+            <span class="score-lbl">用途リスク</span>
+            <div class="score-track">
+              <div class="score-fill rl-{{ rl }}" data-pct="{{ scored_now.use_risk_score }}"></div>
+            </div>
+            <span class="score-num">{{ scored_now.use_risk_score }}</span>
+          </div>
+          <div class="score-row">
+            <span class="score-lbl">需要者リスク</span>
+            <div class="score-track">
+              <div class="score-fill rl-{{ rl }}" data-pct="{{ scored_now.end_user_risk_score }}"></div>
+            </div>
+            <span class="score-num">{{ scored_now.end_user_risk_score }}</span>
+          </div>
+          <div class="score-row">
+            <span class="score-lbl">法規制リスク</span>
+            <div class="score-track">
+              <div class="score-fill rl-{{ rl }}" data-pct="{{ scored_now.regulatory_risk_score }}"></div>
+            </div>
+            <span class="score-num">{{ scored_now.regulatory_risk_score }}</span>
+          </div>
+        </div>
+        <script>
+          document.querySelectorAll('.score-fill[data-pct]').forEach(function(el) {
+            el.style.width = el.dataset.pct + '%';
+          });
+        </script>
+      </div>
+
+      <div class="mt-3" style="font-size:.83rem; color: var(--muted);">
+        推奨対応：<strong style="color: var(--text);">{{ scored_now.recommendation }}</strong>
+      </div>
+      <p class="txt-muted mt-2" style="font-size:.72rem;">
+        ※ 最新プロファイルをその場で再スコアした値です。「評価を実行」するとスナップショットが DB に保存されます。
+      </p>
+    </div>
+
+    <!-- 評価スナップショット -->
+    <div>
+      {% if assessment %}
+        <div class="kv">
+          <span class="k">評価 ID</span>
+          <span class="v"><code style="font-size:.74em;">{{ assessment.assessment_id }}</code></span>
+          <span class="k">実行日時</span>
+          <span class="v">{{ assessment.performed_at }}</span>
+          <span class="k">実行者</span>
+          <span class="v">{{ assessment.performed_by_user_id }}</span>
+        </div>
+      {% else %}
+        <p class="txt-muted">まだ評価が実行されていません。</p>
+      {% endif %}
+
+      <form method="post" action="/ui/cases/{{ case.case_id }}/assessments/run"
+            class="mt-4">
+        <button type="submit" class="btn btn-primary">▶ 評価を実行</button>
+      </form>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- 説明可能性パネル -->
+  <h3 style="font-size:.9rem; font-weight:700; color:var(--text-h); margin-bottom:14px;">
+    🔍 判断根拠（Explainability）
+  </h3>
+  {% set dis_result = assessment.input_snapshot.disclosure_result if assessment and assessment.input_snapshot else scored_now.disclosure_result %}
+  {% set sec_result = assessment.input_snapshot.security_result   if assessment and assessment.input_snapshot else scored_now.security_result %}
+  <div class="g2" style="gap:16px;">
+    <div>
+      <p style="font-size:.78rem; font-weight:700; color:var(--dis-acc); margin-bottom:8px;">
+        📋 開示戦略スコア
+      </p>
+      <pre>{{ dis_result | tojson(indent=2) }}</pre>
+    </div>
+    <div>
+      <p style="font-size:.78rem; font-weight:700; color:var(--use-acc); margin-bottom:8px;">
+        🛡 セキュリティポスチャ
+      </p>
+      <pre>{{ sec_result | tojson(indent=2) }}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- プロファイル本文 -->
+<div class="card">
+  <div class="card-title">📝 プロファイル本文（自動生成テキスト）</div>
+
+  <div>
+    <p class="mb-2" style="font-size:.8rem; font-weight:700; color: var(--use-acc);">
+      🔬 R&amp;D 用途要件
+    </p>
+    <pre>{{ profile.use_requirements_raw }}</pre>
+  </div>
+
+  <div class="mt-4">
+    <p class="mb-2" style="font-size:.8rem; font-weight:700; color: var(--eu-acc);">
+      👥 需要者要件
+    </p>
+    <pre>{{ profile.end_user_requirements_raw }}</pre>
+  </div>
+
+  <div class="mt-4">
+    <p class="mb-2" style="font-size:.8rem; font-weight:700; color: var(--dis-acc);">
+      📋 開示戦略
+    </p>
+    <pre>{{ profile.disclosure_requirements_raw }}</pre>
+  </div>
+</div>
+
+<!-- IP レビュー -->
+<div class="card">
+  <div class="card-title">⚖️ 知財評価（IP Review）</div>
+
+  <!-- 現在のステータス -->
+  {% set cur = ip_review.status if ip_review else "draft" %}
+  <div class="flex items-center gap-3 mb-4 flex-wrap">
+    <span>現在のステータス：</span>
+    <span class="chip chip-{{ cur }}">{{ status_label.get(cur, cur) }}</span>
+    {% if ip_review and ip_review.finalized_at %}
+      <span class="chip" style="background:#f0fdf4; color:#065f46;">
+        ✓ 確定済み {{ ip_review.finalized_at }}
+      </span>
+    {% endif %}
+  </div>
+
+  <p class="txt-muted mb-4" style="font-size:.78rem;">
+    流れ：R&amp;D 入力 → 知財部門がステータス・コメント・エビデンスを添付 → 確定で証跡化。<br>
+    PoC ではファイルはサーバーローカル保存（app/ui/uploads）、DB にメタ情報を記録します。
+  </p>
+
+  <form method="post" action="/ui/cases/{{ case.case_id }}/ip-review/update">
+    <div class="g2">
+      <div class="field">
+        <label>ステータス</label>
+        <select name="status" required>
+          <option value="draft"            {% if cur=="draft"            %}selected{% endif %}>下書き（draft）</option>
+          <option value="under_review"     {% if cur=="under_review"     %}selected{% endif %}>審査中（under_review）</option>
+          <option value="approved"         {% if cur=="approved"         %}selected{% endif %}>承認・特許出願（approved）</option>
+          <option value="closed_as_secret" {% if cur=="closed_as_secret" %}selected{% endif %}>秘匿・営業秘密（closed_as_secret）</option>
+          <option value="rejected"         {% if cur=="rejected"         %}selected{% endif %}>却下（rejected）</option>
+          <option value="deferred"         {% if cur=="deferred"         %}selected{% endif %}>保留（deferred）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>担当者 ID <span class="opt">任意</span></label>
+        <input type="text" name="reviewer_user_id"
+               value="{{ ip_review.reviewer_user_id if ip_review else '' }}"
+               placeholder="ip_legal_user" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>コメント・判断理由 <span class="opt">任意</span></label>
+      <textarea name="reviewer_comment" rows="4"
+                placeholder="判断理由、先行技術、開示範囲、秘匿理由など">{{ ip_review.reviewer_comment if ip_review else '' }}</textarea>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <label class="toggle">
+        <input type="checkbox" name="finalize" />
+        この内容で確定する（finalized_at をセット）
+      </label>
+      <button type="submit" class="btn btn-primary btn-sm">更新</button>
+    </div>
+  </form>
+
+  <hr class="divider" />
+
+  <!-- エビデンスアップロード -->
+  <h3 style="font-size:.88rem; font-weight:700; color:var(--text-h); margin-bottom:12px;">
+    📎 エビデンス添付
+  </h3>
+  <form method="post"
+        action="/ui/cases/{{ case.case_id }}/ip-review/evidence/upload"
+        enctype="multipart/form-data">
+    <div class="upload-zone">
+      <p style="font-size:1.3rem; margin-bottom:6px;">📁</p>
+      <p style="font-weight:600; margin-bottom:4px;">ファイルを選択してアップロード</p>
+      <input type="file" name="file" required
+             style="width:auto; border:none; background:none; padding:6px 0;" />
+      <p class="txt-muted mt-2" style="font-size:.72rem;">
+        対応形式: PDF / TXT / MD / PNG / JPG / XLSX / CSV
+      </p>
+    </div>
+    <div class="field mt-3">
+      <label>メモ <span class="opt">任意</span></label>
+      <input type="text" name="note"
+             placeholder="例: 先行特許 JP2020-xxxxx、調査メモ、依拠資料 など" />
+    </div>
+    <button type="submit" class="btn btn-ghost btn-sm">アップロード</button>
+  </form>
+
+  <!-- エビデンス一覧 -->
+  {% if evidences and evidences|length > 0 %}
+    <hr class="divider" />
+    <h4 style="font-size:.83rem; font-weight:700; color:var(--muted); margin-bottom:10px;">
+      添付ファイル（{{ evidences|length }} 件）
+    </h4>
+    {% for e in evidences %}
+      <div class="evidence-item">
+        <div class="evidence-icon">📄</div>
+        <div style="flex:1; min-width:0;">
+          <a class="evidence-name" href="/ui/ip-review/evidence/{{ e.stored_filename }}">
+            {{ e.original_filename }}
+          </a>
+          <p class="evidence-meta">
+            {{ e.content_type }} ·
+            {{ (e.size_bytes / 1024) | round(1) }} KB ·
+            {{ e.created_at }}
+          </p>
+          {% if e.note %}
+            <p class="txt-muted" style="font-size:.75rem; margin-top:2px;">
+              メモ: {{ e.note }}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="txt-muted mt-3" style="font-size:.82rem;">まだエビデンスが添付されていません。</p>
+  {% endif %}
+</div>
+
+{% endblock %}

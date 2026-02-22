@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="section">
+  <div class="container">
+
+    <div class="level">
+      <div class="level-left">
+        <div class="level-item">
+          <h1 class="title is-4">
+            BOM変更履歴: {{ product.code }} - {{ product.name }}
+          </h1>
+        </div>
+      </div>
+      <div class="level-right">
+        <div class="level-item">
+          <a class="button is-light" href="/products/{{ product.id }}/edit">
+            品目詳細に戻る
+          </a>
+        </div>
+      </div>
+    </div>
+
+    {% if histories and histories|length > 0 %}
+    <div class="box">
+      <table class="table is-fullwidth is-striped is-hoverable is-narrow">
+        <thead>
+          <tr>
+            <th>Version</th>
+            <th>登録日時</th>
+            <th class="has-text-right">原料比率合計 [%]</th>
+            <th class="has-text-right">合計コスト</th>
+            <th>メモ</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in histories %}
+          <tr>
+            <td>v{{ h.version }}</td>
+            <td>{{ h.created_at }}</td>
+            <td class="has-text-right">
+              {{ "%.2f"|format(h.total_ratio * 100) }}
+            </td>
+            <td class="has-text-right">
+              {{ "%.2f"|format(h.total_cost) }}
+            </td>
+            <td>{{ h.note or "-" }}</td>
+            <td class="has-text-right">
+              <a class="button is-small is-link is-light"
+                 href="/products/{{ product.id }}/bom/history/{{ h.id }}">
+                詳細
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <p>この品目には、まだBOM履歴が登録されていません。</p>
+    {% endif %}
+
+  </div>
+</section>
+
+{% endblock %}

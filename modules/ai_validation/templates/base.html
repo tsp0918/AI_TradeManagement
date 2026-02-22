@@ -1,0 +1,27 @@
+<!-- templates/base.html -->
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}AI Validation{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-title">AI Validation</div>
+        <div class="brand-sub">取引審査 / 用途要件→特許→マトリクス→2リスト</div>
+      </div>
+      <nav class="nav">
+        <a class="nav-link" href="/ui/transactions">取引一覧</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

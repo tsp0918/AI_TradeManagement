@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}SDSアップロード{% endblock %}
+
+{% block content %}
+<h2 class="subtitle">
+  SDSアップロード（{{ product.code }} / {{ product.name }}）
+</h2>
+
+<div class="buttons">
+  <a class="button is-link is-light" href="/products/{{ product.id }}/edit">
+    この品目の詳細を編集する
+  </a>
+  <a class="button is-light" href="/products">
+    一覧に戻る
+  </a>
+</div>
+
+{% if message %}
+<div class="notification is-primary">
+  {{ message }}
+</div>
+{% endif %}
+
+{% if error %}
+<div class="notification is-danger">
+  {{ error }}
+</div>
+{% endif %}
+
+<div class="box">
+  <h3 class="title is-6">SDSアップロード</h3>
+  <div class="content">
+    <p>
+      この品目に紐づく SDS（PDF）をアップロードすると、OpenAIで解析し、
+      GHSおよび主要法令フラグを自動判定します。
+    </p>
+  </div>
+
+  <form action="/products/{{ product.id }}/sds" method="post" enctype="multipart/form-data">
+    <div class="field">
+      <div class="file has-name is-fullwidth">
+        <label class="file-label">
+          <input class="file-input" type="file" name="file" accept=".pdf">
+          <span class="file-cta">
+            <span class="file-label">SDS PDFを選択…</span>
+          </span>
+          <span class="file-name">
+            選択されたSDSファイル名がここに表示されます
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="field is-grouped">
+      <div class="control">
+        <button class="button is-primary" type="submit">
+          アップロード &amp; 解析
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<hr>
+
+<div class="columns">
+  <!-- 左：規制情報のサマリ -->
+  <div class="column is-half">
+    <div class="box">
+      <h3 class="title is-6">現在の規制情報（抜粋）</h3>
+      <ul>
+        <li>毒物: {{ "該当" if product.is_poison else "非該当 / 不明" }}</li>
+        <li>劇物: {{ "該当" if product.is_deleterious else "非該当 / 不明" }}</li>
+        <li>化審法: {{ "該当" if product.is_kashinho else "不明 / 非該当" }}</li>
+        <li>　└ 第一種: {{ "該当" if product.is_kashinho_class_I else "非該当 / 不明" }}</li>
+        <li>　└ 第二種: {{ "該当" if product.is_kashinho_class_II else "非該当 / 不明" }}</li>
+        <li>労働安全衛生法: {{ "該当" if product.is_roudou_anzen_eisei else "不明 / 非該当" }}</li>
+        <li>PRTR法: {{ "該当" if product.is_prtr else "不明 / 非該当" }}</li>
+        <li>消防法: {{ "該当" if product.is_shoubouho else "不明 / 非該当" }}</li>
+        <li>高圧ガス保安法: {{ "該当" if product.is_high_pressure_gas else "不明 / 非該当" }}</li>
+      </ul>
+    </div>
+
+    {% if product.sds_file_path %}
+    <div class="box">
+      <h3 class="title is-6">登録済みSDS</h3>
+      <p>保存先: <code>{{ product.sds_file_path }}</code></p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 右：GHS概要とAI JSON -->
+  <div class="column is-half">
+    {% if product.ghs_signal_word or product.ghs_pictograms
+           or product.ghs_h_statements or product.ghs_p_statements %}
+    <div class="box">
+      <h3 class="title is-6">GHS概要</h3>
+      <ul>
+        <li>Signal word: {{ product.ghs_signal_word or "（未設定）" }}</li>
+        <li>Pictograms:
+          {% if product.ghs_pictograms %}
+            {% set codes = product.ghs_pictograms.split(",") %}
+            {% for code in codes %}
+              {% set c = code.strip() %}
+              {% if c %}
+              <span class="tag is-info is-light" style="margin-bottom: 0.25rem;">
+                {{ c }}
+              </span>
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            なし
+          {% endif %}
+        </li>
+      </ul>
+      {% if product.ghs_h_statements %}
+      <p class="is-size-7">
+        <strong>H文:</strong> {{ product.ghs_h_statements }}
+      </p>
+      {% endif %}
+      {% if product.ghs_p_statements %}
+      <p class="is-size-7">
+        <strong>P文:</strong> {{ product.ghs_p_statements }}
+      </p>
+      {% endif %}
+      {% if product.ghs_classes %}
+      <p class="is-size-7">
+        <strong>GHS区分:</strong> {{ product.ghs_classes }}
+      </p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if product.regulation_ai_raw %}
+    <div class="box">
+      <h3 class="title is-6">AI解析結果（JSONプレビュー）</h3>
+      <details>
+        <summary>クリックして展開</summary>
+        <pre style="max-height: 250px; overflow:auto; font-size: 0.75rem; margin-top: 0.75rem;">
+{{ product.regulation_ai_raw }}
+        </pre>
+      </details>
+      <p class="help">
+        ※ フル編集は「この品目の詳細を編集する」から可能です。
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

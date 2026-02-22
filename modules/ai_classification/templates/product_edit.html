@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1 class="title is-4">品目詳細 / 編集 (ID: {{ product.id }})</h1>
+  
+    <div class="mb-4">
+      <a href="/products" class="button is-light">
+        品目一覧に戻る
+      </a>
+    </div>
+
+    <div class="box">
+      <form method="post" action="/products/{{ product.id }}/edit">
+        <div class="columns">
+          <div class="column is-half">
+            <div class="field">
+              <label class="label">品目コード</label>
+              <div class="control">
+                <input class="input" type="text" name="code" value="{{ product.code }}">
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">品目名</label>
+              <div class="control">
+                <input class="input" type="text" name="name" value="{{ product.name }}">
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">説明</label>
+              <div class="control">
+                <textarea class="textarea" name="description" rows="3">{{ product.description or "" }}</textarea>
+              </div>
+            </div>
+
+            <div class="field is-horizontal">
+              <div class="field-body">
+                <div class="field">
+                  <label class="label">HSコード</label>
+                  <div class="control">
+                    <input class="input" type="text" name="hs_code" value="{{ product.hs_code or '' }}">
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">ECCN</label>
+                  <div class="control">
+                    <input class="input" type="text" name="eccn" value="{{ product.eccn or '' }}">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field is-horizontal">
+              <div class="field-body">
+                <div class="field">
+                  <label class="label">品目クラス</label>
+                  <div class="control">
+                    <input class="input" type="text" name="item_class" placeholder="Finished Goods / Raw Material など" value="{{ product.item_class or '' }}">
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">標準価格</label>
+                  <div class="control has-icons-right">
+                    <input class="input" type="number" step="0.01" name="std_price" value="{{ product.std_price if product.std_price is not none else '' }}">
+                    <span class="icon is-small is-right">¥</span>
+                  </div>
+                  <p class="help">BOMアップロード時に自動計算されますが、手入力も可能です。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="column is-half">
+            <h2 class="subtitle is-6">GHS / 国内規制フラグ</h2>
+
+            <div class="field">
+              <label class="label">GHS シグナルワード</label>
+              <div class="control">
+                <input class="input" type="text" name="ghs_signal_word" value="{{ product.ghs_signal_word or '' }}">
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">GHS 絵表示 (カンマ区切り)</label>
+              <div class="control">
+                <input class="input" type="text" name="ghs_pictograms" value="{{ product.ghs_pictograms or '' }}">
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">H ステートメント</label>
+              <div class="control">
+                <textarea class="textarea" name="ghs_h_statements" rows="2">{{ product.ghs_h_statements or "" }}</textarea>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">P ステートメント</label>
+              <div class="control">
+                <textarea class="textarea" name="ghs_p_statements" rows="2">{{ product.ghs_p_statements or "" }}</textarea>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">GHS 分類クラス</label>
+              <div class="control">
+                <textarea class="textarea" name="ghs_classes" rows="2">{{ product.ghs_classes or "" }}</textarea>
+              </div>
+            </div>
+
+            <div class="field is-grouped is-grouped-multiline">
+              <div class="control">
+                <label class="checkbox">
+                  <input type="checkbox" name="is_poison" {% if product.is_poison %}checked{% endif %}>
+                  毒物
+                </label>
+              </div>
+              <div class="control">
+                <label class="checkbox">
+                  <input type="checkbox" name="is_deleterious" {% if product.is_deleterious %}checked{% endif %}>
+                  劇物
+                </label>
+              </div>
+              <div class="control">
+                <label class="checkbox">
+                  <input type="checkbox" name="is_kashinho" {% if product.is_kashinho %}checked{% endif %}>
+                  火薬類
+                </label>
+              </div>
+              <div class="control">
+                <label class="checkbox">
+                  <input type="checkbox" name="is_kashinho_class_I" {% if product.is_kashinho_class_I %}checked{% endif %}>
+                  火薬類Ⅰ種
+                </label>
+              </div>
+              <div class="control">
+                <label class="checkbox">
+                  <input type="checkbox" name="is_kashinho_class_II" {% if product.is_kashinho_class_II %}checked{% endif %}>
+                  火薬類Ⅱ種
+                </label>
+              </div>
+              <div class="control">
+                <label class="checkbox">
+                  <input type="checkbox" name="is_roudou_anzen_eisei" {% if product.is_roudou_anzen_eisei %}checked{% endif %}>
+                  労安法
+                </label>
+              </div>
+              <div class="control">
+                <label class="checkbox">
+                  <input type="checkbox" name="is_prtr" {% if product.is_prtr %}checked{% endif %}>
+                  PRTR
+                </label>
+              </div>
+              <div class="control">
+                <label class="checkbox">
+                  <input type="checkbox" name="is_shoubouho" {% if product.is_shoubouho %}checked{% endif %}>
+                  消防法
+                </label>
+              </div>
+              <div class="control">
+                <label class="checkbox">
+                  <input type="checkbox" name="is_high_pressure_gas" {% if product.is_high_pressure_gas %}checked{% endif %}>
+                  高圧ガス
+                </label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">AI規制解析 生JSON（任意）</label>
+              <div class="control">
+                <textarea class="textarea" name="regulation_ai_raw" rows="4" placeholder="SDS解析の生JSONを保存">{{ product.regulation_ai_raw or "" }}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field is-grouped">
+          <div class="control">
+            <button class="button is-primary" type="submit">保存</button>
+          </div>
+          <div class="control">
+            <a class="button is-light" href="/products">一覧に戻る</a>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- 該非判定 UI -->
+    <div class="box">
+      <h2 class="subtitle is-5">輸出管理 該非判定</h2>
+
+      <div class="columns">
+        <div class="column is-half">
+          <p class="mb-2">
+            <strong>現在のステータス:</strong>
+            {% if product.export_control_status == "controlled" %}
+              <span class="tag is-danger">該当（要専門家レビュー）</span>
+            {% elif product.export_control_status == "needs_attention" %}
+              <span class="tag is-warning">要注意（該非要確認）</span>
+            {% elif product.export_control_status == "to_be_checked" %}
+              <span class="tag is-link is-light">要確認（情報不足）</span>
+            {% elif product.export_control_status == "non_controlled" %}
+              <span class="tag is-success is-light">非該当と推定</span>
+            {% else %}
+              <span class="tag is-light">未評価</span>
+            {% endif %}
+          </p>
+
+          {% if product.export_control_checked_at %}
+            <p class="is-size-7 has-text-grey">
+              最終更新日時: {{ product.export_control_checked_at }}
+            </p>
+          {% endif %}
+
+          {% if product.export_control_reason %}
+            <div class="content mt-3">
+              <p class="is-size-7"><strong>判定理由（メモ）:</strong></p>
+              <pre style="white-space: pre-wrap; font-size: 0.8rem;">{{ product.export_control_reason }}</pre>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="column is-half">
+          <div class="buttons">
+            <form method="post" action="/products/{{ product.id }}/export/evaluate">
+              <button class="button is-info is-light" type="submit">
+                自動判定（ルールベース）
+              </button>
+            </form>
+          </div>
+
+          <form method="post" action="/products/{{ product.id }}/export/manual">
+            <div class="field">
+              <label class="label">ステータスを手動で更新</label>
+              <div class="control">
+                <div class="select">
+                  <select name="status">
+                    <option value="not_evaluated" {% if product.export_control_status == "not_evaluated" %}selected{% endif %}>未評価</option>
+                    <option value="non_controlled" {% if product.export_control_status == "non_controlled" %}selected{% endif %}>非該当と推定</option>
+                    <option value="needs_attention" {% if product.export_control_status == "needs_attention" %}selected{% endif %}>要注意（該非要確認）</option>
+                    <option value="to_be_checked" {% if product.export_control_status == "to_be_checked" %}selected{% endif %}>要確認（情報不足）</option>
+                    <option value="controlled" {% if product.export_control_status == "controlled" %}selected{% endif %}>該当（要専門家レビュー）</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">理由・コメント</label>
+              <div class="control">
+                <textarea class="textarea" name="reason" rows="3" placeholder="規制条文、根拠、確認内容などを記録">{{ product.export_control_reason or "" }}</textarea>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="control">
+                <button class="button is-warning is-light" type="submit">
+                  手動で更新
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ===== 外部AI判定 ===== -->
+      <hr>
+
+      <h3 class="subtitle is-6">外部AI判定（Webhook連携）</h3>
+
+      <div class="columns">
+        <div class="column is-half">
+          <p class="mb-2">
+            <strong>外部AIステータス:</strong>
+            {% if product.external_eval_status == "controlled" %}
+              <span class="tag is-danger">controlled</span>
+            {% elif product.external_eval_status == "non_controlled" %}
+              <span class="tag is-success is-light">non_controlled</span>
+            {% elif product.external_eval_status == "needs_review" %}
+              <span class="tag is-warning">needs_review</span>
+            {% elif product.external_eval_status == "running" %}
+              <span class="tag is-link is-light">running</span>
+            {% elif product.external_eval_status == "queued" %}
+              <span class="tag is-light">queued</span>
+            {% elif product.external_eval_status == "error" %}
+              <span class="tag is-danger is-light">error</span>
+            {% else %}
+              <span class="tag is-light">未受信</span>
+            {% endif %}
+          </p>
+
+          {% if product.external_eval_requested_at %}
+            <p class="is-size-7 has-text-grey">
+              依頼日時: {{ product.external_eval_requested_at }}
+            </p>
+          {% endif %}
+          {% if product.external_eval_received_at %}
+            <p class="is-size-7 has-text-grey">
+              受信日時(Webhook): {{ product.external_eval_received_at }}
+            </p>
+          {% endif %}
+
+          {% if product.external_eval_reason %}
+            <div class="content mt-3">
+              <p class="is-size-7"><strong>理由・コメント（外部AI）:</strong></p>
+              <pre style="white-space: pre-wrap; font-size: 0.8rem;">{{ product.external_eval_reason }}</pre>
+            </div>
+          {% endif %}
+
+          <!-- ★追加：根拠と次アクション（外部AI payload 要約） -->
+          {% if external_ai_summary %}
+            <div class="content mt-3">
+
+              {% if external_ai_summary.top %}
+                <p class="is-size-7"><strong>根拠（上位ヒット）:</strong></p>
+
+                <div class="box" style="padding: 0.75rem;">
+                  <p class="is-size-7">
+                    <strong>rule_item_no:</strong> {{ external_ai_summary.top.rule_item_no or "-" }}<br>
+                    <strong>title:</strong> {{ external_ai_summary.top.rule_title or "-" }}<br>
+                    <strong>score:</strong>
+                    {% if external_ai_summary.top.match_score is not none %}
+                      {{ "%.3f"|format(external_ai_summary.top.match_score) }}
+                    {% else %}
+                      -
+                    {% endif %}
+                    <br>
+                    <strong>decision:</strong> {{ external_ai_summary.top.decision or "-" }}
+                  </p>
+
+                  {% if external_ai_summary.top.usage_text %}
+                    <p class="is-size-7 mt-2">
+                      <strong>対象用途:</strong><br>
+                      {{ external_ai_summary.top.usage_text }}
+                    </p>
+                  {% endif %}
+
+                  {% if external_ai_summary.top.matched_tokens and external_ai_summary.top.matched_tokens|length > 0 %}
+                    <p class="is-size-7 mt-2">
+                      <strong>一致トークン:</strong>
+                      {{ external_ai_summary.top.matched_tokens|join(", ") }}
+                    </p>
+                  {% endif %}
+                </div>
+              {% endif %}
+
+              {% if external_ai_summary.followup_questions and external_ai_summary.followup_questions|length > 0 %}
+                <p class="is-size-7"><strong>次に確認したいこと（AIの質問）:</strong></p>
+                <ul class="is-size-7">
+                  {% for q in external_ai_summary.followup_questions %}
+                    <li>{{ q }}</li>
+                  {% endfor %}
+                </ul>
+              {% elif not external_ai_summary.top %}
+                <p class="is-size-7 has-text-grey">
+                  ※ まだ根拠（マトリクス突合ヒット）がありません。用途や成分などの追加情報が必要です。
+                </p>
+              {% endif %}
+
+            </div>
+          {% endif %}
+          <!-- ★ここまで -->
+
+          <!-- ★ここまで -->
+        </div>
+
+        <div class="column is-half">
+          <div class="buttons">
+            <form method="post" action="/products/{{ product.id }}/external/request">
+              <button class="button is-info is-light" type="submit">
+                外部AIへ判定依頼
+              </button>
+            </form>
+
+            <!-- 更新ボタン（ページリロード） -->
+            <button class="button is-light" type="button" onclick="location.reload();">
+              最新結果を更新
+            </button>
+          </div>
+
+          <form method="post" action="/products/{{ product.id }}/external/manual">
+            <div class="field">
+              <label class="label">外部AIステータスを手動で更新</label>
+              <div class="control">
+                <div class="select">
+                  <select name="status">
+                    <option value="" {% if not product.external_eval_status %}selected{% endif %}>（未設定）</option>
+                    <option value="queued" {% if product.external_eval_status == "queued" %}selected{% endif %}>queued</option>
+                    <option value="running" {% if product.external_eval_status == "running" %}selected{% endif %}>running</option>
+                    <option value="controlled" {% if product.external_eval_status == "controlled" %}selected{% endif %}>controlled</option>
+                    <option value="non_controlled" {% if product.external_eval_status == "non_controlled" %}selected{% endif %}>non_controlled</option>
+                    <option value="needs_review" {% if product.external_eval_status == "needs_review" %}selected{% endif %}>needs_review</option>
+                    <option value="error" {% if product.external_eval_status == "error" %}selected{% endif %}>error</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">理由・コメント（外部AIのreason想定）</label>
+              <div class="control">
+                <textarea class="textarea" name="reason" rows="3" placeholder="外部AIが返す reason / 手動メモ">{{ product.external_eval_reason or "" }}</textarea>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">外部判定結果（JSON）</label>
+              <div class="control">
+                <textarea class="textarea" name="payload" rows="6" placeholder="Webhookの payload（JSON全文）を保存 / 必要に応じて手動編集">{{ product.external_eval_payload or "" }}</textarea>
+              </div>
+              <p class="help">DBには文字列として保存します（JSONでなくても保存可）。</p>
+            </div>
+
+            <div class="field">
+              <div class="control">
+                <button class="button is-warning is-light" type="submit">
+                  外部AI結果を手動保存
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <!-- ===== /外部AI判定 ===== -->
+    </div>
+
+    <!-- BOM 構成表示 -->
+    <div class="box">
+      <div class="level">
+        <div class="level-left">
+          <h2 class="subtitle is-5">BOM構成 / 原価内訳</h2>
+        </div>
+        <div class="level-right">
+          <a class="button is-small is-link is-light" href="/products/{{ product.id }}/bom">BOM CSV アップロード</a>
+          <a class="button is-small is-light ml-2" href="/products/{{ product.id }}/bom/history">BOM 履歴</a>
+        </div>
+      </div>
+
+      {% if bom_components %}
+        <table class="table is-fullwidth is-striped is-hoverable">
+          <thead>
+            <tr>
+              <th>種別</th>
+              <th>コード</th>
+              <th>名称</th>
+              <th>クラス</th>
+              <th class="has-text-right">構成比 (%)</th>
+              <th class="has-text-right">単価</th>
+              <th class="has-text-right">金額</th>
+              <th>メモ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in bom_components %}
+              <tr>
+                <td>
+                  {% if c.kind == "material" %}
+                    <span class="tag is-info is-light">Material</span>
+                  {% else %}
+                    <span class="tag is-dark is-light">Overhead</span>
+                  {% endif %}
+                </td>
+                <td>{{ c.code }}</td>
+                <td>{{ c.name }}</td>
+                <td>{{ c.item_class }}</td>
+                <td class="has-text-right">
+                  {% if c.ratio is not none %}
+                    {{ "%.2f"|format(c.ratio * 100) }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="has-text-right">
+                  {% if c.std_price is not none %}
+                    {{ "%.2f"|format(c.std_price) }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="has-text-right">
+                  {% if c.cost is not none %}
+                    {{ "%.2f"|format(c.cost) }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>{{ c.note }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th colspan="4" class="has-text-right">合計</th>
+              <th class="has-text-right">{{ "%.2f"|format(bom_total_ratio * 100) }} %</th>
+              <th></th>
+              <th class="has-text-right">{{ "%.2f"|format(bom_total_cost) }}</th>
+              <th></th>
+            </tr>
+          </tfoot>
+        </table>
+        <p class="is-size-7 has-text-grey">
+          ※ 構成比は 0〜100% 表記。標準価格は Material + Overhead の合計コストです。
+        </p>
+      {% else %}
+        <p class="has-text-grey">BOMが登録されていません。Finished Goods の場合はBOM CSVをアップロードしてください。</p>
+      {% endif %}
+    </div>
+
+    <!-- SDS 関連リンク -->
+    <div class="box">
+      <h2 class="subtitle is-5">SDS / 規制情報</h2>
+      <div class="field is-grouped">
+        <div class="control">
+          <a class="button is-small is-link is-light" href="/products/{{ product.id }}/sds">
+            SDS PDF アップロード &amp; AI解析
+          </a>
+        </div>
+        {% if product.sds_file_path %}
+          <div class="control">
+            <span class="tag is-success is-light">SDS 登録済み</span>
+          </div>
+        {% endif %}
+      </div>
+      <p class="is-size-7 has-text-grey">
+        将来的にここから GPT による自動該非判定も呼び出せるように拡張できます。
+      </p>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

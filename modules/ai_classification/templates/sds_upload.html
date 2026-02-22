@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>SDSアップロード</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>SDSアップロード: {{ product.code }} - {{ product.name }}</h1>
+
+    <p>
+        品目ID: {{ product.id }}<br>
+        現在のSDSファイル: 
+        {% if product.sds_file_path %}
+            {{ product.sds_file_path }}
+        {% else %}
+            (未登録)
+        {% endif %}
+    </p>
+
+    <form action="/products/{{ product.id }}/sds"
+          method="post"
+          enctype="multipart/form-data">
+        <div>
+            <label for="file">SDS PDFファイルを選択:</label>
+            <input type="file" id="file" name="file" accept=".pdf" required>
+        </div>
+        <div style="margin-top: 10px;">
+            <button type="submit">アップロード &amp; AI解析</button>
+        </div>
+    </form>
+
+    <p style="margin-top: 20px;">
+        <a href="/products/{{ product.id }}/edit">← 品目詳細へ戻る</a>
+    </p>
+</body>
+</html>

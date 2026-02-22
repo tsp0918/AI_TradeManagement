@@ -5,11 +5,27 @@ description = "AI特許検索モジュール (Google Patents BigQuery + LLM)"
 requires-python = ">=3.11"
 dependencies = [
     "platform-core",
+    # Web
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    # DB (SQLite + async)
     "sqlalchemy[asyncio]>=2.0",
-    "google-cloud-bigquery>=3.0",
-    "aiosqlite>=0.20",
+    "aiosqlite>=0.19",
+    # BigQuery
+    "google-cloud-bigquery>=3.17",
+    "google-auth>=2.27",
+    # LLM
+    "ollama>=0.1",
+    "httpx>=0.27",
+    # Data
+    "pandas>=2.2",
+    "python-dateutil>=2.8",
+    # Utils
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "python-dotenv>=1.0",
 ]
 
 [build-system]
@@ -18,3 +34,6 @@ build-backend = "hatchling.build"
 
 [tool.uv.sources]
 platform-core = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

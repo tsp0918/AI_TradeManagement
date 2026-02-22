@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}品目編集{% endblock %}
+
+{% block content %}
+<h2 class="subtitle">品目編集（ID: {{ product.id }}）</h2>
+
+<div class="buttons">
+  <a class="button is-light" href="/products">一覧に戻る</a>
+  <a class="button is-link is-light" href="/products/{{ product.id }}/sds">
+    SDSアップロード / AI解析
+  </a>
+</div>
+
+<div class="box">
+  <form action="/products/new" method="post">
+    <div class="columns">
+      <div class="column is-half">
+        <h3 class="title is-6">基本情報</h3>
+
+        <div class="field">
+          <label class="label">品目コード</label>
+          <div class="control">
+            <input class="input" type="text" name="code" value="{{ product.code }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">品目名</label>
+          <div class="control">
+            <input class="input" type="text" name="name" value="{{ product.name }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">品目クラス</label>
+          <div class="control">
+            <input class="input" type="text" name="item_class" value="{{ product.item_class or '' }}" placeholder="Finished Goods / Raw Material など">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">標準価格</label>
+          <div class="control">
+            <input class="input" type="number" step="0.01" name="std_price" value="{{ product.std_price if product.std_price is not none else '' }}">
+          </div>
+          <p class="help">※ 通貨単位は任意（将来拡張）</p>
+        </div>
+
+        <div class="field">
+          <label class="label">HSコード</label>
+          <div class="control">
+            <input class="input" type="text" name="hs_code" value="{{ product.hs_code or '' }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">CAS番号</label>
+          <div class="control">
+            <input class="input" type="text" name="cas_number" value="{{ product.cas_number or '' }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">分子式 / 組成式</label>
+          <div class="control">
+            <input class="input" type="text" name="molecular_formula" value="{{ product.molecular_formula or '' }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">SDSファイルパス</label>
+          <div class="control">
+            <input class="input" type="text" name="sds_file_path" value="{{ product.sds_file_path or '' }}" readonly>
+          </div>
+          <p class="help">※ アップロード画面から自動設定されます</p>
+        </div>
+      </div>
+
+      <div class="column is-half">
+        <h3 class="title is-6">GHS / 規制情報</h3>
+
+        <div class="field">
+          <label class="label">GHS Signal word</label>
+          <div class="control">
+            <input class="input" type="text" name="ghs_signal_word" value="{{ product.ghs_signal_word or '' }}" placeholder="Danger / Warning など">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">GHS pictograms</label>
+          <div class="control">
+            <input class="input" type="text" name="ghs_pictograms" value="{{ product.ghs_pictograms or '' }}" placeholder="GHS02,GHS07 など">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">H文</label>
+          <div class="control">
+            <textarea class="textarea" name="ghs_h_statements" rows="2">{{ product.ghs_h_statements or '' }}</textarea>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">P文</label>
+          <div class="control">
+            <textarea class="textarea" name="ghs_p_statements" rows="2">{{ product.ghs_p_statements or '' }}</textarea>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">GHS区分 (classes)</label>
+          <div class="control">
+            <input class="input" type="text" name="ghs_classes" value="{{ product.ghs_classes or '' }}" placeholder="Flam. Liq. 2; Eye Irrit. 2A など">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">毒物・劇物</label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="is_poison" value="1" {% if product.is_poison %}checked{% endif %}>
+              毒物
+            </label>
+            <label class="checkbox" style="margin-left: 1rem;">
+              <input type="checkbox" name="is_deleterious" value="1" {% if product.is_deleterious %}checked{% endif %}>
+              劇物
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">化審法</label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="is_kashinho" value="1" {% if product.is_kashinho %}checked{% endif %}>
+              化審法 対象
+            </label>
+          </div>
+          <div class="control" style="margin-top: 0.25rem;">
+            <label class="checkbox">
+              <input type="checkbox" name="is_kashinho_class_I" value="1" {% if product.is_kashinho_class_I %}checked{% endif %}>
+              第一種
+            </label>
+            <label class="checkbox" style="margin-left: 1rem;">
+              <input type="checkbox" name="is_kashinho_class_II" value="1" {% if product.is_kashinho_class_II %}checked{% endif %}>
+              第二種
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">その他法規制フラグ</label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="is_roudou_anzen_eisei" value="1" {% if product.is_roudou_anzen_eisei %}checked{% endif %}>
+              労働安全衛生法
+            </label>
+          </div>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="is_prtr" value="1" {% if product.is_prtr %}checked{% endif %}>
+              PRTR法
+            </label>
+          </div>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="is_shoubouho" value="1" {% if product.is_shoubouho %}checked{% endif %}>
+              消防法
+            </label>
+          </div>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="is_high_pressure_gas" value="1" {% if product.is_high_pressure_gas %}checked{% endif %}>
+              高圧ガス保安法
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label">AI解析生データ (regulation_ai_raw)</label>
+      <div class="control">
+        <textarea class="textarea" name="regulation_ai_raw" rows="4">{{ product.regulation_ai_raw or '' }}</textarea>
+      </div>
+      <p class="help">※ SDS解析のJSONそのもの。必要に応じて確認・コピー用。</p>
+    </div>
+
+    <div class="field is-grouped">
+      <div class="control">
+        <button class="button is-primary" type="submit">保存</button>
+      </div>
+      <div class="control">
+        <a class="button is-light" href="/products">キャンセル</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<hr>
+
+<h3 class="title is-6">BOM構成情報</h3>
+
+{% if bom_components and bom_components|length > 0 %}
+<div class="box">
+  <table class="table is-fullwidth is-striped is-narrow">
+    <thead>
+      <tr>
+        <th>構成品目コード</th>
+        <th>構成品目名</th>
+        <th>品目クラス</th>
+        <th>構成比率</th>
+        <th>メモ</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in bom_components %}
+      <tr>
+        <td>
+          {% if c.id %}
+          <a href="/products/{{ c.id }}/edit">{{ c.code }}</a>
+          {% else %}
+          {{ c.code }}
+          {% endif %}
+        </td>
+        <td>{{ c.name }}</td>
+        <td>{{ c.item_class or "" }}</td>
+        <td>
+          {% if c.ratio is not none %}
+            {{ '%.4f'|format(c.ratio) }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>{{ c.note or "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="help">
+    ※ 構成内容の編集は現在 CSV インポートから行います（画面編集は今後拡張予定）。
+  </p>
+</div>
+{% else %}
+<p>この品目には、登録済みのBOM構成情報はありません。</p>
+{% endif %}
+
+{% endblock %}

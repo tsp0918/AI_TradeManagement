@@ -1,0 +1,201 @@
+/* static/style.css */
+:root{
+  --bg:#f6f7fb;
+  --card:#ffffff;
+  --text:#111827;
+  --muted:#6b7280;
+  --line:#e5e7eb;
+  --primary:#2563eb;
+  --primary-weak:#dbeafe;
+  --shadow: 0 8px 24px rgba(17,24,39,.08);
+}
+
+*{ box-sizing:border-box; }
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.container{
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 0 16px 60px;
+}
+
+.topbar{
+  position: sticky;
+  top:0;
+  z-index:10;
+  background: rgba(246,247,251,.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-inner{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.brand-title{ font-weight:900; letter-spacing:.2px; }
+.brand-sub{ font-size:.85rem; color: var(--muted); margin-top:2px; }
+.nav-link{ text-decoration:none; color: var(--text); font-weight:700; }
+
+h1{ margin:0 0 6px; font-size: 1.35rem; }
+h2{ margin:0 0 12px; font-size: 1.05rem; }
+h3{ margin:0 0 10px; font-size: .98rem; }
+
+.muted{ color: var(--muted); }
+.small{ font-size: .88rem; }
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+
+.card{
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 860px){
+  .grid{ grid-template-columns: 1fr; }
+}
+
+.head-row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.actions{
+  display:flex;
+  gap: 10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:10px 14px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:#fff;
+  color: var(--text);
+  text-decoration:none;
+  font-weight:700;
+  font-size:.92rem;
+  cursor:pointer;
+  transition: .12s ease;
+}
+.btn:hover{ transform: translateY(-1px); box-shadow: 0 6px 14px rgba(17,24,39,.08); }
+
+.btn-primary{
+  border-color: transparent;
+  background: var(--primary);
+  color:#fff;
+}
+.btn-primary:hover{ box-shadow: 0 10px 22px rgba(37,99,235,.25); }
+.btn-soft{
+  background: var(--primary-weak);
+  border-color: #bfdbfe;
+  color:#1e40af;
+}
+
+.kv{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+.kv .k{ font-size: .78rem; color: var(--muted); margin-bottom:4px; }
+.kv .v{ font-size: .95rem; word-break: break-word; }
+
+.table{
+  width:100%;
+  border-collapse: collapse;
+}
+.table th, .table td{
+  border-bottom: 1px solid var(--line);
+  padding: 10px 8px;
+  text-align:left;
+  vertical-align: top;
+}
+.table th{ font-size:.85rem; color:#374151; }
+
+.alert{
+  border:1px solid var(--line);
+  background:#fff;
+  border-radius: 14px;
+  padding: 12px;
+  margin: 10px 0;
+}
+.alert-warn{
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+.alert-title{ font-weight:900; margin-bottom:6px; }
+.alert-body{ color:#92400e; }
+
+.split{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 980px){
+  .split{ grid-template-columns: 1fr; }
+}
+
+.list{ display:flex; flex-direction:column; gap: 10px; margin-top: 10px; }
+.list-item{
+  border:1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  background:#fff;
+}
+.row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.strong{ font-weight: 900; }
+.chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 10px;
+  border-radius: 999px;
+  background:#f3f4f6;
+  border:1px solid #e5e7eb;
+  font-size:.78rem;
+  color:#374151;
+}
+
+.subgrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+@media (max-width: 980px){
+  .subgrid{ grid-template-columns: 1fr; }
+}
+
+.bul{
+  margin: 6px 0 0;
+  padding-left: 16px;
+}
+.bul li{ margin: 6px 0; }

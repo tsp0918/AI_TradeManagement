@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}お気に入り - Patent Search{% endblock %}
+
+{% block content %}
+<div class="favorites-page">
+    <div class="page-header">
+        <h1>お気に入り特許</h1>
+        <div class="export-buttons">
+            <a href="/api/export/favorites/csv" class="btn btn-secondary">CSV出力</a>
+            <a href="/api/export/favorites/json" class="btn btn-secondary">JSON出力</a>
+        </div>
+    </div>
+
+    {% if favorites %}
+        <div class="favorites-count">
+            {{ favorites|length }}件の特許が保存されています
+        </div>
+
+        <div class="favorites-grid">
+            {% for patent in favorites %}
+            <div class="favorite-card">
+                <div class="favorite-header">
+                    <h3>
+                        <a href="{{ patent.url }}" target="_blank" class="patent-title">
+                            {{ patent.title }}
+                        </a>
+                    </h3>
+                    <span class="patent-number">{{ patent.publication_number }}</span>
+                </div>
+
+                <div class="patent-meta">
+                    {% if patent.publication_date %}
+                    <span class="meta-item">
+                        <strong>公開日:</strong> {{ patent.publication_date }}
+                    </span>
+                    {% endif %}
+
+                    <span class="meta-item">
+                        <strong>追加日:</strong> {{ patent.added_at[:10] }}
+                    </span>
+                </div>
+
+                <div class="patent-abstract">
+                    <strong>要約:</strong> {{ patent.abstract[:300] if patent.abstract else 'アブストラクトなし' }}
+                    {% if patent.abstract and patent.abstract|length > 300 %}...{% endif %}
+                </div>
+
+                {% if patent.description %}
+                <div class="patent-description">
+                    <strong>詳細:</strong> {{ patent.description[:300] }}{% if patent.description|length > 300 %}...{% endif %}
+                </div>
+                {% endif %}
+
+                {% if patent.inventors %}
+                <div class="patent-inventors">
+                    <strong>発明者:</strong> {{ patent.inventors | join(', ') }}
+                </div>
+                {% endif %}
+
+                {% if patent.assignees %}
+                <div class="patent-assignees">
+                    <strong>出願人:</strong> {{ patent.assignees | join(', ') }}
+                </div>
+                {% endif %}
+
+                {% if patent.notes %}
+                <div class="patent-notes">
+                    <strong>メモ:</strong> {{ patent.notes }}
+                </div>
+                {% endif %}
+
+                <div class="favorite-actions">
+                    <a href="/patent/{{ patent.publication_number }}" class="btn btn-small btn-primary">
+                        詳細・用途抽出
+                    </a>
+                    <button
+                        onclick="editNotes({{ patent.id }}, '{{ patent.notes or '' }}')"
+                        class="btn btn-small"
+                    >
+                        メモ編集
+                    </button>
+                    <button
+                        onclick="deleteFavorite({{ patent.id }})"
+                        class="btn btn-small btn-danger"
+                    >
+                        削除
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-favorites">
+            <p>お気に入りの特許はまだありません</p>
+            <a href="/home" class="btn btn-primary">特許を検索する</a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+async function editNotes(favoriteId, currentNotes) {
+    const newNotes = prompt('メモを入力してください:', currentNotes);
+
+    if (newNotes === null) return; // Cancelled
+
+    try {
+        const response = await fetch(`/api/favorites/${favoriteId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ notes: newNotes })
+        });
+
+        if (response.ok) {
+            alert('メモを更新しました');
+            location.reload();
+        } else {
+            alert('更新に失敗しました');
+        }
+    } catch (error) {
+        console.error('Error updating notes:', error);
+        alert('エラーが発生しました');
+    }
+}
+
+async function deleteFavorite(favoriteId) {
+    if (!confirm('このお気に入りを削除しますか?')) return;
+
+    try {
+        const response = await fetch(`/api/favorites/${favoriteId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            alert('削除しました');
+            location.reload();
+        } else {
+            alert('削除に失敗しました');
+        }
+    } catch (error) {
+        console.error('Error deleting favorite:', error);
+        alert('エラーが発生しました');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Patent Search Application{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="/home">特許検索アプリ</a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/home">検索</a></li>
+                <li><a href="/favorites">お気に入り</a></li>
+                <li><a href="/history">履歴</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Patent Search Application | Powered by Google Patents & Ollama</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', path='/js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

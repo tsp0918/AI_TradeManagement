@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="shell">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">DAP</div>
+      <div class="brandText">
+        <div class="brandTitle">Coach Admin</div>
+        <div class="brandSub">"頼れる先輩" を設計する</div>
+      </div>
+    </div>
+
+    <div class="sideSection">
+      <label class="sideLabel" for="appSelect">アプリ</label>
+      <select id="appSelect" class="select"></select>
+    </div>
+
+    <div class="publishBlock">
+      <div id="versionBadge" class="versionBadge noPub">未配信</div>
+      <button id="btnPublish" class="btnPublish">Publish</button>
+    </div>
+
+    <div class="hint">
+      <div class="hintTitle">Recorder</div>
+      <div class="hintText">
+        対象アプリで<br>
+        <b>Shift + Alt + R</b> → ON/OFF
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+
+    <div class="tabBar">
+      <button class="tabBtn isActive" data-tab="tab-scenarios">シナリオ</button>
+      <button class="tabBtn" data-tab="tab-analytics">分析</button>
+      <button class="tabBtn" data-tab="tab-recorder">レコーダー</button>
+    </div>
+
+    <!-- ===== SCENARIOS TAB ===== -->
+    <section id="tab-scenarios" class="tab isActive">
+      <div class="scenarioToolbar">
+        <button id="btnAddPage" class="btnGhost btnSm">＋ ページを追加</button>
+      </div>
+      <div id="pagesContainer"></div>
+    </section>
+
+    <!-- ===== ANALYTICS TAB ===== -->
+    <section id="tab-analytics" class="tab">
+      <div class="analyticsCard">
+        <div class="analyticsHeader">
+          <div class="analyticsTitle">Telemetry（直近200件）</div>
+          <button id="btnLoadAnalytics" class="btnGhost btnSm">再読み込み</button>
+        </div>
+        <div class="tableWrap">
+          <table class="dataTable">
+            <thead>
+              <tr>
+                <th>時刻</th>
+                <th>イベント</th>
+                <th>ページ</th>
+                <th>配信ID</th>
+                <th>ユーザー</th>
+              </tr>
+            </thead>
+            <tbody id="analyticsBody">
+              <tr><td colspan="5" class="analyticsEmpty">読み込み中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== RECORDER TAB ===== -->
+    <section id="tab-recorder" class="tab">
+      <div class="recorderCard">
+        <div class="recorderTitle">Recorder — 要素をクリックして登録</div>
+        <ol class="stepList">
+          <li>Chrome拡張を読み込み（<b>dap-extension</b>）</li>
+          <li>R&amp;D審査アプリ（<b>localhost:8000</b>）を開く</li>
+          <li><span class="kbdHint">Shift + Alt + R</span> を押して Recorder を <b>ON</b></li>
+          <li>登録したい要素をクリック → target_key を入力</li>
+          <li>シナリオタブのターゲット一覧に反映 → <b>Publish</b></li>
+        </ol>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div id="toast" class="toast" aria-live="polite"></div>
+
+<!-- ===== ADD PAGE DIALOG ===== -->
+<dialog id="addPageDialog" class="dialog">
+  <div class="dialogContent">
+    <div class="dialogTitle">ページを追加</div>
+    <label class="formLabel" for="dlgPageName">ページ名</label>
+    <input id="dlgPageName" class="input" placeholder="例: R&D審査フォーム">
+    <label class="formLabel" for="dlgPageKey">page_key（英数字・アンダースコア）</label>
+    <input id="dlgPageKey" class="input" placeholder="例: rd_case_form">
+    <label class="formLabel" for="dlgPageRegex">URL パターン（正規表現）</label>
+    <input id="dlgPageRegex" class="input" placeholder="例: .*(localhost|127\.0\.0\.1):8000/.*">
+    <div class="dialogActions">
+      <button id="dlgPageCancel" class="btnGhost">キャンセル</button>
+      <button id="dlgPageSave" class="btnPrimary">追加</button>
+    </div>
+  </div>
+</dialog>
+
+{% endblock %}

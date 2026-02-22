@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}特許詳細 - {{ publication_number }}{% endblock %}
+
+{% block content %}
+<div class="patent-detail-page">
+    {% if favorite %}
+        <div class="detail-header">
+            <h1>{{ favorite.title }}</h1>
+            <span class="publication-number">{{ favorite.publication_number }}</span>
+        </div>
+
+        <div class="detail-meta">
+            {% if favorite.filing_date %}
+            <div class="meta-item">
+                <strong>出願日:</strong> {{ favorite.filing_date }}
+            </div>
+            {% endif %}
+
+            {% if favorite.publication_date %}
+            <div class="meta-item">
+                <strong>公開日:</strong> {{ favorite.publication_date }}
+            </div>
+            {% endif %}
+
+            <div class="meta-item">
+                <strong>URL:</strong>
+                <a href="{{ favorite.url }}" target="_blank">Google Patentsで開く</a>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h2>アブストラクト</h2>
+            <p class="abstract-text">{{ favorite.abstract or 'アブストラクトなし' }}</p>
+        </div>
+
+        {% if favorite.inventors %}
+        <div class="detail-section">
+            <h2>発明者</h2>
+            <p>{{ (favorite.inventors | string).strip('[]"').replace('", "', ', ') }}</p>
+        </div>
+        {% endif %}
+
+        {% if favorite.applicants %}
+        <div class="detail-section">
+            <h2>出願人</h2>
+            <p>{{ (favorite.applicants | string).strip('[]"').replace('", "', ', ') }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Use Cases Section -->
+        <div class="detail-section use-cases-section">
+            <div class="section-header">
+                <h2>用途・応用例</h2>
+                <button
+                    id="extractUseCasesBtn"
+                    onclick="extractUseCases()"
+                    class="btn btn-primary"
+                >
+                    AI分析で用途を抽出
+                </button>
+            </div>
+
+            <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+                <div class="spinner"></div>
+                <p>AIが特許の用途を分析中...</p>
+            </div>
+
+            <div id="useCasesContainer" class="use-cases-container">
+                {% if use_cases %}
+                    {% for use_case in use_cases %}
+                    <div class="use-case-card">
+                        <div class="use-case-content">
+                            {{ use_case.use_case_text }}
+                        </div>
+                        <div class="use-case-meta">
+                            <span class="model-badge">{{ use_case.extraction_model }}</span>
+                            <span class="date">{{ use_case.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            <button
+                                onclick="deleteUseCase({{ use_case.id }})"
+                                class="btn btn-small btn-danger"
+                            >
+                                削除
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-use-cases">まだ用途は抽出されていません。上のボタンをクリックしてAI分析を実行してください。</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if favorite.notes %}
+        <div class="detail-section">
+            <h2>メモ</h2>
+            <p class="notes-text">{{ favorite.notes }}</p>
+        </div>
+        {% endif %}
+
+    {% else %}
+        <div class="not-in-favorites">
+            <h1>特許 {{ publication_number }}</h1>
+            <p>この特許はまだお気に入りに追加されていません。</p>
+            <p>用途抽出機能を使用するには、まず特許をお気に入りに追加してください。</p>
+            <a href="/home" class="btn btn-primary">検索ページに戻る</a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+const favoriteId = {{ favorite.id if favorite else 'null' }};
+
+async function extractUseCases() {
+    if (!favoriteId) {
+        alert('お気に入りに追加されていません');
+        return;
+    }
+
+    const btn = document.getElementById('extractUseCasesBtn');
+    const loading = document.getElementById('loadingIndicator');
+    const container = document.getElementById('useCasesContainer');
+
+    // Show loading indicator
+    btn.disabled = true;
+    loading.style.display = 'block';
+
+    try {
+        const response = await fetch(`/api/use-cases/extract/${favoriteId}`, {
+            method: 'POST'
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+
+            // Clear existing content
+            container.innerHTML = '';
+
+            // Display use cases
+            if (data.use_cases && data.use_cases.length > 0) {
+                data.use_cases.forEach(useCase => {
+                    const card = document.createElement('div');
+                    card.className = 'use-case-card';
+                    card.innerHTML = `
+                        <div class="use-case-content">${escapeHtml(useCase.text)}</div>
+                        <div class="use-case-meta">
+                            <span class="model-badge">${useCase.model}</span>
+                            <span class="date">${new Date(useCase.created_at).toLocaleString('ja-JP')}</span>
+                            <button onclick="deleteUseCase(${useCase.id})" class="btn btn-small btn-danger">削除</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+
+                alert('用途の抽出が完了しました');
+            } else {
+                container.innerHTML = '<p class="no-use-cases">用途を抽出できませんでした</p>';
+            }
+        } else {
+            const error = await response.json();
+            alert('抽出に失敗しました: ' + error.detail);
+        }
+    } catch (error) {
+        console.error('Error extracting use cases:', error);
+        alert('エラーが発生しました。Ollamaが起動しているか確認してください。');
+    } finally {
+        btn.disabled = false;
+        loading.style.display = 'none';
+    }
+}
+
+async function deleteUseCase(useCaseId) {
+    if (!confirm('この用途を削除しますか?')) return;
+
+    try {
+        const response = await fetch(`/api/use-cases/${useCaseId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            alert('削除しました');
+            location.reload();
+        } else {
+            alert('削除に失敗しました');
+        }
+    } catch (error) {
+        console.error('Error deleting use case:', error);
+        alert('エラーが発生しました');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

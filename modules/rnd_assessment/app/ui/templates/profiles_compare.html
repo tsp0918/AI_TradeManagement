@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}バージョン比較 — {{ case.title }}{% endblock %}
+
+{% block content %}
+
+<!-- ページヘッダー -->
+<div class="page-hd">
+  <div class="breadcrumb">
+    <a href="/ui/">トップ</a> ›
+    ケース › {{ case.title }} ›
+    <a href="/ui/cases/{{ case.case_id }}/profiles/latest">最新プロファイル</a>
+  </div>
+  <h1>バージョン比較</h1>
+  <p class="sub">2 つのプロファイルバージョン間の差分とスコア変化を確認します。</p>
+</div>
+
+<!-- バージョン選択 -->
+<div class="card" style="max-width: 560px;">
+  <div class="card-title">🔀 比較バージョンを選択</div>
+  <form method="get" action="/ui/cases/{{ case.case_id }}/profiles/compare"
+        class="flex items-center gap-3 flex-wrap">
+    <div class="field" style="margin:0; flex:1; min-width:140px;">
+      <label>比較元（古い方）</label>
+      <select name="from_version">
+        {% for p in profiles %}
+          <option value="{{ p.version_no }}"
+            {% if p.version_no == from_version %}selected{% endif %}>
+            v{{ p.version_no }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <span style="margin-top:18px; color:var(--muted);">→</span>
+    <div class="field" style="margin:0; flex:1; min-width:140px;">
+      <label>比較先（新しい方）</label>
+      <select name="to_version">
+        {% for p in profiles %}
+          <option value="{{ p.version_no }}"
+            {% if p.version_no == to_version %}selected{% endif %}>
+            v{{ p.version_no }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-ghost btn-sm" style="margin-top:18px;">適用</button>
+  </form>
+</div>
+
+<!-- スコア比較 -->
+<div class="card">
+  <div class="card-title">📊 スコア比較</div>
+
+  <div class="g2" style="gap:24px;">
+    <!-- from -->
+    <div style="padding: 16px; background: var(--bg); border-radius: var(--r-sm);">
+      <p style="font-size:.75rem; font-weight:700; color:var(--muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:.4px;">
+        v{{ from_version }}（比較元）
+      </p>
+      {% set rl_f = score_from.risk_level %}
+      <div class="flex items-center gap-3">
+        <div class="score-orb rl-{{ rl_f }}" style="width:60px; height:60px; font-size:1.3rem;">
+          {{ score_from.overall_score }}
+        </div>
+        <div>
+          <p style="font-size:.83rem; font-weight:700;">{{ score_from.risk_level }}</p>
+          <p class="txt-muted" style="font-size:.75rem;">{{ score_from.recommendation }}</p>
+        </div>
+      </div>
+      <div class="kv mt-3">
+        <span class="k">技術</span>    <span class="v">{{ score_from.tech_risk_score }}</span>
+        <span class="k">用途</span>    <span class="v">{{ score_from.use_risk_score }}</span>
+        <span class="k">需要者</span>  <span class="v">{{ score_from.end_user_risk_score }}</span>
+        <span class="k">法規制</span>  <span class="v">{{ score_from.regulatory_risk_score }}</span>
+      </div>
+    </div>
+
+    <!-- to -->
+    <div style="padding: 16px; background: var(--bg); border-radius: var(--r-sm);">
+      <p style="font-size:.75rem; font-weight:700; color:var(--muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:.4px;">
+        v{{ to_version }}（比較先）
+      </p>
+      {% set rl_t = score_to.risk_level %}
+      <div class="flex items-center gap-3">
+        <div class="score-orb rl-{{ rl_t }}" style="width:60px; height:60px; font-size:1.3rem;">
+          {{ score_to.overall_score }}
+        </div>
+        <div>
+          <p style="font-size:.83rem; font-weight:700;">{{ score_to.risk_level }}</p>
+          <p class="txt-muted" style="font-size:.75rem;">{{ score_to.recommendation }}</p>
+        </div>
+      </div>
+      <div class="kv mt-3">
+        <span class="k">技術</span>    <span class="v">{{ score_to.tech_risk_score }}</span>
+        <span class="k">用途</span>    <span class="v">{{ score_to.use_risk_score }}</span>
+        <span class="k">需要者</span>  <span class="v">{{ score_to.end_user_risk_score }}</span>
+        <span class="k">法規制</span>  <span class="v">{{ score_to.regulatory_risk_score }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- スコア変化サマリー -->
+  <hr class="divider" />
+  <p style="font-size:.8rem; font-weight:700; color:var(--text-h); margin-bottom:12px;">スコア変化（v{{ from_version }} → v{{ to_version }}）</p>
+  <div class="flex gap-3 flex-wrap">
+    {% set delta_items = [
+      ("総合", delta.overall),
+      ("技術", delta.tech),
+      ("用途", delta.use),
+      ("需要者", delta.end_user),
+      ("法規制", delta.regulatory)
+    ] %}
+    {% for label, d in delta_items %}
+      <div style="text-align:center; padding: 10px 16px; background: var(--bg); border-radius: var(--r-sm); min-width:80px;">
+        <p class="txt-muted" style="font-size:.7rem; margin-bottom:4px;">{{ label }}</p>
+        <p class="
+          {% if d > 0 %}delta-up{% elif d < 0 %}delta-down{% else %}delta-zero{% endif %}"
+          style="font-size:1.2rem;">
+          {% if d > 0 %}+{% endif %}{{ d }}
+        </p>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Use Requirements の差分 -->
+<div class="card">
+  <div class="card-title">
+    <span class="badge badge-use">🔬 Use Requirements</span>
+    R&amp;D 用途要件の差分
+  </div>
+  {% if use_rows %}
+    <table class="diff-table">
+      <thead>
+        <tr>
+          <th>フィールド</th>
+          <th>v{{ from_version }}（変更前）</th>
+          <th>v{{ to_version }}（変更後）</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in use_rows %}
+          <tr>
+            <td>{{ row.field }}</td>
+            <td><span class="diff-old">{{ row.old }}</span></td>
+            <td><span class="diff-new">{{ row.new }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="txt-muted" style="font-size:.84rem;">このセクションに差分はありません。</p>
+  {% endif %}
+</div>
+
+<!-- End User Requirements の差分 -->
+<div class="card">
+  <div class="card-title">
+    <span class="badge badge-eu">👥 End User Requirements</span>
+    需要者要件の差分
+  </div>
+  {% if end_rows %}
+    <table class="diff-table">
+      <thead>
+        <tr>
+          <th>フィールド</th>
+          <th>v{{ from_version }}（変更前）</th>
+          <th>v{{ to_version }}（変更後）</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in end_rows %}
+          <tr>
+            <td>{{ row.field }}</td>
+            <td><span class="diff-old">{{ row.old }}</span></td>
+            <td><span class="diff-new">{{ row.new }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="txt-muted" style="font-size:.84rem;">このセクションに差分はありません。</p>
+  {% endif %}
+</div>
+
+<!-- Disclosure Strategy の差分 -->
+<div class="card">
+  <div class="card-title">
+    <span class="badge badge-dis">📋 Disclosure Strategy</span>
+    開示戦略の差分
+  </div>
+  {% if dis_rows %}
+    <table class="diff-table">
+      <thead>
+        <tr>
+          <th>フィールド</th>
+          <th>v{{ from_version }}（変更前）</th>
+          <th>v{{ to_version }}（変更後）</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in dis_rows %}
+          <tr>
+            <td>{{ row.field }}</td>
+            <td><span class="diff-old">{{ row.old }}</span></td>
+            <td><span class="diff-new">{{ row.new }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="txt-muted" style="font-size:.84rem;">このセクションに差分はありません。</p>
+  {% endif %}
+</div>
+
+{% endblock %}

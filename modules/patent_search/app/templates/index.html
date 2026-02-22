@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}特許検索 - Patent Search{% endblock %}
+
+{% block content %}
+<div class="search-page">
+    <div class="search-header">
+        <h1>特許検索</h1>
+        <p>Google Patentsデータベースから特許を検索します</p>
+    </div>
+
+    <div class="search-form-container">
+        <form action="/search" method="get" class="search-form">
+            <div class="form-group">
+                <label for="keywords">キーワード</label>
+                <input
+                    type="text"
+                    id="keywords"
+                    name="keywords"
+                    placeholder="検索キーワードを入力..."
+                    required
+                    class="form-input"
+                >
+            </div>
+
+            <details class="filters-section">
+                <summary>詳細フィルター</summary>
+
+                <div class="filters-grid">
+                    <div class="form-group">
+                        <label for="date_from">公開日（開始）</label>
+                        <input
+                            type="date"
+                            id="date_from"
+                            name="date_from"
+                            class="form-input"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="date_to">公開日（終了）</label>
+                        <input
+                            type="date"
+                            id="date_to"
+                            name="date_to"
+                            class="form-input"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="inventor">発明者</label>
+                        <input
+                            type="text"
+                            id="inventor"
+                            name="inventor"
+                            placeholder="発明者名"
+                            class="form-input"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="applicant">出願人</label>
+                        <input
+                            type="text"
+                            id="applicant"
+                            name="applicant"
+                            placeholder="出願人/権利者名"
+                            class="form-input"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="country">国コード</label>
+                        <select id="country" name="country" class="form-input">
+                            <option value="">すべて</option>
+                            <option value="US">米国（US）</option>
+                            <option value="JP">日本（JP）</option>
+                            <option value="EP">欧州（EP）</option>
+                            <option value="CN">中国（CN）</option>
+                            <option value="KR">韓国（KR）</option>
+                            <option value="WO">PCT（WO）</option>
+                        </select>
+                    </div>
+                </div>
+            </details>
+
+            <button type="submit" class="btn btn-primary">検索</button>
+        </form>
+    </div>
+
+    {% if recent_searches %}
+    <div class="recent-searches">
+        <h3>最近の検索</h3>
+        <ul class="search-history-list">
+            {% for search in recent_searches %}
+            <li>
+                <a href="/search?keywords={{ search.query }}">
+                    <span class="search-query">{{ search.query }}</span>
+                    <span class="search-meta">
+                        {{ search.result_count }}件 •
+                        {{ search.created_at.strftime('%Y-%m-%d %H:%M') }}
+                    </span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

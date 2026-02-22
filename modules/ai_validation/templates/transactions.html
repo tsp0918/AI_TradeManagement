@@ -1,0 +1,39 @@
+<!-- templates/transactions.html -->
+{% extends "base.html" %}
+{% block title %}取引一覧 - AI Validation{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>取引一覧</h1>
+  <div class="muted">DB内の transactions を表示します</div>
+</div>
+
+<div class="card">
+  {% if txs %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>case_no</th>
+          <th>メモ</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in txs %}
+          <tr>
+            <td class="mono">{{ tx.id }}</td>
+            <td>{{ tx.case_no or "-" }}</td>
+            <td class="muted">{{ (tx.note or "-") }}</td>
+            <td style="text-align:right">
+              <a class="btn" href="/ui/transactions/{{ tx.id }}">詳細</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="muted">transactions が空です。seed_data.py を確認してください。</div>
+  {% endif %}
+</div>
+{% endblock %}

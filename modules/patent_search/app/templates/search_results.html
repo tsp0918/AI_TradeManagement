@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}検索結果 - Patent Search{% endblock %}
+
+{% block content %}
+<h1>検索結果</h1>
+<p>検索キーワード: "{{ keywords }}"</p>
+
+{% if error %}
+  <div class="alert alert-error">
+    <p>エラー: {{ error }}</p>
+    <p>BigQueryの接続設定を確認してください。</p>
+  </div>
+
+{% elif results %}
+  <p>{{ results.count }}件の特許が見つかりました</p>
+
+  <div class="actions">
+    <button onclick="exportResults('csv')">CSV出力</button>
+    <button onclick="exportResults('json')">JSON出力</button>
+  </div>
+
+  <table id="patentTable" class="patent-table">
+    <thead>
+      <tr>
+        <th>Source</th>
+        <th>Publication</th>
+        <th>Title</th>
+        <th>Assignee</th>
+        <th>Date</th>
+        <th>Country</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for patent in results.results %}
+      <tr class="patent-row" data-index="{{ loop.index0 }}">
+        <td>
+          <span class="badge {{ (patent.source or 'google_patents') }}">
+            {{ "Google" if (patent.source or 'google_patents') == "google_patents" else (patent.source or "") }}
+          </span>
+        </td>
+        <td>{{ patent.publication_number }}</td>
+        <td>{{ patent.title }}</td>
+        <td>{{ (patent.assignees | join(', ')) if patent.assignees else "" }}</td>
+        <td>{{ patent.publication_date or "" }}</td>
+        <td>{{ patent.country_code or "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- 検索結果をJSへ -->
+  <script>
+    window.__SEARCH_RESULTS__ = {{ results.results | tojson }};
+  </script>
+
+  <!-- モーダル -->
+  <div id="modalOverlay" class="modal-overlay hidden" style="display:none"></div>
+
+  <div id="patentModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="display:none">
+    <div class="modal-header">
+      <div>
+        <div id="modalTitle" class="modal-title">Patent Detail</div>
+        <div id="modalSub" class="modal-sub"></div>
+      </div>
+      <button id="modalClose" class="modal-close">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="tech">Technical field</button>
+        <button class="tab-btn" data-tab="bg">Background</button>
+        <button class="tab-btn" data-tab="emb">Embodiments</button>
+        <button class="tab-btn" data-tab="other">Other</button>
+      </div>
+
+      <div id="tab-tech" class="tab-panel active"><pre id="secTech"></pre></div>
+      <div id="tab-bg" class="tab-panel"><pre id="secBg"></pre></div>
+      <div id="tab-emb" class="tab-panel"><pre id="secEmb"></pre></div>
+      <div id="tab-other" class="tab-panel"><pre id="secOther"></pre></div>
+    </div>
+
+    <div class="modal-footer">
+      <a id="modalLink" href="#" target="_blank" rel="noopener">Open source</a>
+    </div>
+  </div>
+
+{% else %}
+  <p>検索キーワードを入力して検索を開始してください。</p>
+  <a href="/home">検索ページに戻る</a>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <link rel="stylesheet" href="/static/css/modal.css">
+  <script src="/static/js/search_modal.js"></script>
+  <script>
+  async function exportResults(format) {
+    const results = window.__SEARCH_RESULTS__ || [];
+    if (!results.length) { alert('エクスポートするデータがありません'); return; }
+    const resp = await fetch('/api/export/results/' + format, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(results)
+    });
+    if (!resp.ok) { alert('エクスポートに失敗しました'); return; }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'search_results.' + format;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+  </script>
+{% endblock %}

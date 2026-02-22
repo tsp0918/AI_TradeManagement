@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="section">
+  <div class="container">
+    <h1 class="title">新規品目登録</h1>
+
+    <form action="/products/new" method="post">
+      <!-- Code -->
+      <div class="field">
+        <label class="label">品目コード (code)</label>
+        <div class="control">
+          <input class="input" type="text" name="code" required placeholder="例: RM-001">
+        </div>
+      </div>
+
+      <!-- Name -->
+      <div class="field">
+        <label class="label">品目名 (name)</label>
+        <div class="control">
+          <input class="input" type="text" name="name" required placeholder="例: Ethylene Glycol">
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="field">
+        <label class="label">説明 (description)</label>
+        <div class="control">
+          <textarea class="textarea" name="description" rows="3" placeholder="用途や簡単な説明"></textarea>
+        </div>
+      </div>
+
+      <div class="field is-grouped">
+        <div class="control">
+          <button class="button is-primary" type="submit">登録</button>
+        </div>
+        <div class="control">
+          <a class="button is-light" href="/products">キャンセル</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+
+{% endblock %}

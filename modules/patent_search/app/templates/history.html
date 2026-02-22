@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}検索履歴 - Patent Search{% endblock %}
+
+{% block content %}
+<div class="history-page">
+    <div class="page-header">
+        <h1>検索履歴</h1>
+        {% if history %}
+        <button onclick="clearAllHistory()" class="btn btn-danger">
+            すべて削除
+        </button>
+        {% endif %}
+    </div>
+
+    {% if history %}
+        <div class="history-count">
+            {{ history|length }}件の検索履歴
+        </div>
+
+        <div class="history-list">
+            {% for item in history %}
+            <div class="history-item">
+                <div class="history-content">
+                    <a href="/search?keywords={{ item.query }}" class="history-query">
+                        {{ item.query }}
+                    </a>
+                    <div class="history-meta">
+                        <span class="result-count">{{ item.result_count }}件</span>
+                        <span class="search-date">{{ item.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                    </div>
+                    {% if item.filters %}
+                    <div class="history-filters">
+                        フィルター適用済み
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="history-actions">
+                    <button
+                        onclick="deleteHistory({{ item.id }})"
+                        class="btn btn-small btn-danger"
+                    >
+                        削除
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-history">
+            <p>検索履歴はまだありません</p>
+            <a href="/home" class="btn btn-primary">検索を開始する</a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+async function deleteHistory(historyId) {
+    if (!confirm('この履歴を削除しますか?')) return;
+
+    try {
+        const response = await fetch(`/api/search/history/${historyId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('削除に失敗しました');
+        }
+    } catch (error) {
+        console.error('Error deleting history:', error);
+        alert('エラーが発生しました');
+    }
+}
+
+async function clearAllHistory() {
+    if (!confirm('すべての検索履歴を削除しますか？この操作は取り消せません。')) return;
+
+    try {
+        const response = await fetch('/api/search/history', {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            alert('すべての履歴を削除しました');
+            location.reload();
+        } else {
+            alert('削除に失敗しました');
+        }
+    } catch (error) {
+        console.error('Error clearing history:', error);
+        alert('エラーが発生しました');
+    }
+}
+</script>
+{% endblock %}

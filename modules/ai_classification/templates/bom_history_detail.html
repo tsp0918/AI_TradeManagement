@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="section">
+  <div class="container">
+
+    <div class="level">
+      <div class="level-left">
+        <div class="level-item">
+          <h1 class="title is-4">
+            BOM履歴詳細: {{ product.code }} - {{ product.name }} (v{{ history.version }})
+          </h1>
+        </div>
+      </div>
+      <div class="level-right">
+        <div class="level-item">
+          <a class="button is-light" href="/products/{{ product.id }}/bom/history">
+            履歴一覧に戻る
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="box">
+      <p>
+        登録日時: {{ history.created_at }}<br>
+        メモ: {{ history.note or "-" }}
+      </p>
+    </div>
+
+    {% if bom_components and bom_components|length > 0 %}
+    <div class="box">
+      <table class="table is-fullwidth is-striped is-hoverable is-narrow">
+        <thead>
+          <tr>
+            <th>種別</th>
+            <th>構成品目コード</th>
+            <th>名称 / 説明</th>
+            <th>品目クラス</th>
+            <th class="has-text-right">構成比率 [%]</th>
+            <th class="has-text-right">原料標準価格 / 金額</th>
+            <th class="has-text-right">配分コスト</th>
+            <th>メモ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in bom_components %}
+          <tr>
+            <td>
+              {% if c.kind == "material" %}
+                原料
+              {% elif c.kind == "overhead" %}
+                管理費
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if c.id and c.code %}
+                <a href="/products/{{ c.id }}/edit">{{ c.code }}</a>
+              {% else %}
+                {{ c.code or "" }}
+              {% endif %}
+            </td>
+            <td>{{ c.name }}</td>
+            <td>{{ c.item_class or "-" }}</td>
+            <td class="has-text-right">
+              {% if c.ratio is not none %}
+                {{ "%.2f"|format(c.ratio * 100) }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td class="has-text-right">
+              {% if c.kind == "material" %}
+                {{ "%.2f"|format(c.std_price) }}
+              {% elif c.kind == "overhead" %}
+                {{ "%.2f"|format(c.cost) }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td class="has-text-right">
+              {{ "%.2f"|format(c.cost) }}
+            </td>
+            <td>{{ c.note or "-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="4" class="has-text-right">合計</th>
+            <th class="has-text-right">
+              {{ "%.2f"|format(bom_total_ratio * 100) }} %
+            </th>
+            <th></th>
+            <th class="has-text-right">
+              {{ "%.2f"|format(bom_total_cost) }}
+            </th>
+            <th></th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+      <p>この履歴にはBOM構成情報がありません。</p>
+    {% endif %}
+
+  </div>
+</section>
+
+{% endblock %}
