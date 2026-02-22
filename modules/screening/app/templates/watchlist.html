@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}ウォッチリスト - スクリーニング{% endblock %}
+{% block nav_watchlist %} active{% endblock %}
+
+{% block content %}
+<div class="page-hd">
+  <h1>ウォッチリスト</h1>
+  <p>照合対象となる懸念エンティティのリストです。</p>
+</div>
+
+<div class="card">
+  <div class="flex items-center gap-3 mb-4">
+    <input type="search" id="search-input" placeholder="エンティティ名で絞り込み…"
+      style="max-width:340px;" oninput="filterRows()" />
+    <span class="muted ml-auto" id="count-label"></span>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>エンティティ名</th>
+        <th>リスト</th>
+        <th>国</th>
+        <th>リスクレベル</th>
+        <th>ステータス</th>
+      </tr>
+    </thead>
+    <tbody id="wl-tbody">
+      <tr><td colspan="5" style="text-align:center;padding:24px;">
+        <div class="empty-state"><div class="icon">⏳</div><p>読み込み中…</p></div>
+      </td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+let allRows = [];
+
+const riskBadge = {
+  high:   "badge-match",
+  medium: "badge-possible",
+  low:    "badge-clear",
+};
+
+async function load() {
+  try {
+    const res  = await fetch("/api/watchlist?limit=500");
+    const data = await res.json();
+    allRows = Array.isArray(data) ? data : (data.items || []);
+    render(allRows);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function render(rows) {
+  const tbody = document.getElementById("wl-tbody");
+  document.getElementById("count-label").textContent = `${rows.length} 件`;
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5">
+      <div class="empty-state"><div class="icon">🛡️</div>
+      <p>ウォッチリストにエントリがありません。</p></div>
+    </td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td><strong>${r.entity_name}</strong></td>
+    <td>${r.list_source}</td>
+    <td>${r.country || "—"}</td>
+    <td><span class="badge ${riskBadge[r.risk_level] || 'badge-pending'}">${r.risk_level}</span></td>
+    <td>${r.is_active ? '<span class="badge badge-clear">有効</span>' : '<span class="badge badge-pending">無効</span>'}</td>
+  </tr>`).join("");
+}
+
+function filterRows() {
+  const q = document.getElementById("search-input").value.toLowerCase();
+  render(q ? allRows.filter(r => r.entity_name.toLowerCase().includes(q)) : allRows);
+}
+
+load();
+</script>
+{% endblock %}

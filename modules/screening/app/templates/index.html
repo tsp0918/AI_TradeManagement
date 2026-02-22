@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}スクリーニング{% endblock %}
+{% block nav_screen %} active{% endblock %}
+
+{% block content %}
+<div class="page-hd">
+  <h1>懸念取引先スクリーニング</h1>
+  <p>企業名・住所を入力して BIS Entity List / OFAC SDN 等と照合します。</p>
+</div>
+
+<div class="card">
+  <div class="card-title">スクリーニング実行</div>
+  <form id="screen-form">
+    <div class="input-row">
+      <div class="field">
+        <label for="query-name">企業名 / 氏名 <span style="color:#ef4444">*</span></label>
+        <input type="text" id="query-name" name="query_name"
+          placeholder="例: Acme Corporation" required />
+      </div>
+      <div class="field" style="max-width:180px;">
+        <label for="query-country">国コード</label>
+        <input type="text" id="query-country" name="query_country"
+          placeholder="例: CN, RU, IR" maxlength="10" />
+      </div>
+    </div>
+    <div class="field">
+      <label for="query-address">住所（任意）</label>
+      <input type="text" id="query-address" name="query_address"
+        placeholder="例: 123 Main St, Beijing" />
+    </div>
+    <button type="submit" class="btn btn-primary">🔍 スクリーニング実行</button>
+  </form>
+</div>
+
+<!-- 結果表示エリア -->
+<div id="result-area" style="display:none;">
+  <div class="card">
+    <div class="card-title">スクリーニング結果</div>
+    <div id="result-content"></div>
+  </div>
+</div>
+
+<script>
+document.getElementById("screen-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector("button[type=submit]");
+  btn.disabled = true;
+  btn.textContent = "⏳ 照合中…";
+
+  const payload = {
+    query_name:    document.getElementById("query-name").value.trim(),
+    query_country: document.getElementById("query-country").value.trim() || null,
+    query_address: document.getElementById("query-address").value.trim() || null,
+  };
+
+  try {
+    const res  = await fetch("/api/screen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+
+    const statusMap = {
+      clear:          { label: "クリア",           cls: "badge-clear",    icon: "✅" },
+      match:          { label: "一致",             cls: "badge-match",    icon: "🚨" },
+      possible_match: { label: "要確認",           cls: "badge-possible", icon: "⚠️" },
+    };
+    const s = statusMap[data.result_status] || { label: data.result_status, cls: "badge-pending", icon: "?" };
+
+    const score = data.max_score != null ? Math.round(data.max_score * 100) : 0;
+    let matchHtml = "";
+    if (data.matches && data.matches.length) {
+      matchHtml = `<div style="margin-top:14px;">
+        <p style="font-size:.85rem;font-weight:700;margin-bottom:8px;">マッチ候補</p>
+        <table class="table">
+          <thead><tr><th>エンティティ名</th><th>リスト</th><th>スコア</th><th>リスク</th></tr></thead>
+          <tbody>
+            ${data.matches.map(m => `<tr>
+              <td>${m.entity_name}</td>
+              <td>${m.list_source}</td>
+              <td>
+                <div class="score-bar" style="width:80px;">
+                  <div class="score-fill" style="width:${Math.round(m.score*100)}%"></div>
+                </div>
+                <small class="muted">${(m.score*100).toFixed(1)}%</small>
+              </td>
+              <td><span class="badge badge-${m.risk_level==='high'?'match':m.risk_level==='medium'?'possible':'clear'}">${m.risk_level}</span></td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>`;
+    }
+
+    document.getElementById("result-content").innerHTML = `
+      <div class="flex items-center gap-3" style="margin-bottom:14px;">
+        <span style="font-size:24px;">${s.icon}</span>
+        <div>
+          <span class="badge ${s.cls}" style="font-size:.9rem;padding:5px 14px;">${s.label}</span>
+          <p class="muted" style="margin-top:4px;">スコア: ${score}%</p>
+        </div>
+      </div>
+      ${matchHtml || '<p class="muted">マッチする候補は見つかりませんでした。</p>'}
+    `;
+    document.getElementById("result-area").style.display = "";
+  } catch (err) {
+    alert("エラーが発生しました: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🔍 スクリーニング実行";
+  }
+});
+</script>
+{% endblock %}

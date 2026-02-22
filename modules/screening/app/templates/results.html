@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}結果履歴 - スクリーニング{% endblock %}
+{% block nav_results %} active{% endblock %}
+
+{% block content %}
+<div class="page-hd">
+  <h1>スクリーニング結果履歴</h1>
+  <p>過去に実行したスクリーニングの結果一覧です。</p>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>照合対象</th>
+        <th>国コード</th>
+        <th>ステータス</th>
+        <th>スコア</th>
+        <th>実施日時</th>
+      </tr>
+    </thead>
+    <tbody id="results-tbody">
+      <tr><td colspan="5" style="text-align:center;padding:24px;">
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <p>データを読み込み中…</p>
+        </div>
+      </td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const statusMap = {
+  clear:          { label: "クリア",   cls: "badge-clear" },
+  match:          { label: "一致",     cls: "badge-match" },
+  possible_match: { label: "要確認",   cls: "badge-possible" },
+};
+
+async function load() {
+  try {
+    const res  = await fetch("/api/results?limit=100");
+    const data = await res.json();
+    const items = Array.isArray(data) ? data : (data.items || []);
+    const tbody = document.getElementById("results-tbody");
+
+    if (!items.length) {
+      tbody.innerHTML = `<tr><td colspan="5">
+        <div class="empty-state"><div class="icon">🛡️</div>
+        <p>まだスクリーニング結果がありません。</p></div>
+      </td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = items.map(r => {
+      const s     = statusMap[r.result_status] || { label: r.result_status, cls: "badge-pending" };
+      const score = r.max_score != null ? `${Math.round(r.max_score*100)}%` : "—";
+      const dt    = new Date(r.screened_at).toLocaleString("ja-JP");
+      return `<tr>
+        <td><strong>${r.query_name}</strong></td>
+        <td>${r.query_country || "—"}</td>
+        <td><span class="badge ${s.cls}">${s.label}</span></td>
+        <td>${score}</td>
+        <td class="muted">${dt}</td>
+      </tr>`;
+    }).join("");
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+load();
+</script>
+{% endblock %}

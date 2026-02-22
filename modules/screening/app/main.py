@@ -2,6 +2,9 @@
 
 エンドポイント:
   GET  /health                  ヘルスチェック
+  GET  /ui/screen               スクリーニング実行画面 (HTML)
+  GET  /ui/results              結果履歴画面 (HTML)
+  GET  /ui/watchlist            ウォッチリスト画面 (HTML)
   POST /api/screen              企業名スクリーニング
   GET  /api/results             スクリーニング結果一覧
   GET  /api/results/{id}        スクリーニング結果詳細
@@ -12,13 +15,19 @@
 """
 
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan, health_router
 
+_STATIC_DIR = Path(__file__).parent / "static"
+
 from app.routers.screening import router as screening_router
+from app.routers.ui import router as ui_router
 
 MODULE = ModuleInfo(
     key="screening",
@@ -50,8 +59,15 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(AuditMiddleware, module_key="screening")
 
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
     app.include_router(health_router)
+    app.include_router(ui_router)
     app.include_router(screening_router)
+
+    @app.get("/", include_in_schema=False)
+    async def root():
+        return RedirectResponse(url="/ui/screen")
 
     return app
 

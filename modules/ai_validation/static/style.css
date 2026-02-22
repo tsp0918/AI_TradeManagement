@@ -1,13 +1,19 @@
 /* static/style.css */
 :root{
-  --bg:#f6f7fb;
+  --bg:#FFF8F3;
   --card:#ffffff;
-  --text:#111827;
-  --muted:#6b7280;
-  --line:#e5e7eb;
-  --primary:#2563eb;
-  --primary-weak:#dbeafe;
-  --shadow: 0 8px 24px rgba(17,24,39,.08);
+  --text:#1a0f08;
+  --muted:#7a6050;
+  --line:#f0d8c0;
+  --primary:#E8833A;
+  --primary-weak:#FFE6CE;
+  --shadow: 0 8px 24px rgba(100,40,10,.08);
+
+  /* module header */
+  --brand:        #FFE6CE;
+  --brand-dark:   #E8833A;
+  --brand-text:   #5A3010;
+  --header-h:     48px;
 }
 
 *{ box-sizing:border-box; }
@@ -24,26 +30,56 @@ body{
   padding: 0 16px 60px;
 }
 
-.topbar{
+/* ─── Module Header (水平トップナビ) ─── */
+.module-header {
   position: sticky;
-  top:0;
-  z-index:10;
-  background: rgba(246,247,251,.85);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--line);
+  top: 0;
+  z-index: 100;
+  height: var(--header-h);
+  background: var(--brand);
+  border-bottom: 1.5px solid #f0c9a0;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 20px;
 }
-.topbar-inner{
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 14px 16px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
+.module-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
-.brand-title{ font-weight:900; letter-spacing:.2px; }
-.brand-sub{ font-size:.85rem; color: var(--muted); margin-top:2px; }
-.nav-link{ text-decoration:none; color: var(--text); font-weight:700; }
+.module-brand-icon { font-size: 18px; }
+.module-brand-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--brand-text);
+  letter-spacing: -.2px;
+}
+.module-nav {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.module-nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 13px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6B3A1A;
+  text-decoration: none;
+  transition: background .15s, color .15s;
+}
+.module-nav-link:hover { background: rgba(0,0,0,.08); }
+.module-nav-link.active {
+  background: var(--brand-dark);
+  color: #fff;
+}
+
+/* Legacy aliases (keep backward compat) */
+.topbar { display: none; }
 
 h1{ margin:0 0 6px; font-size: 1.35rem; }
 h2{ margin:0 0 12px; font-size: 1.05rem; }

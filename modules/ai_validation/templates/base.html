@@ -4,20 +4,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{% block title %}AI Validation{% endblock %}</title>
+  <title>{% block title %}AI該非判定{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="brand">
-        <div class="brand-title">AI Validation</div>
-        <div class="brand-sub">取引審査 / 用途要件→特許→マトリクス→2リスト</div>
-      </div>
-      <nav class="nav">
-        <a class="nav-link" href="/ui/transactions">取引一覧</a>
-      </nav>
+  <header class="module-header">
+    <div class="module-brand">
+      <span class="module-brand-icon">🔐</span>
+      <span class="module-brand-name">AI該非判定</span>
     </div>
+    <nav class="module-nav">
+      <a class="module-nav-link{% block nav_transactions %} {% endblock %}" href="/ui/transactions">取引一覧</a>
+      <a class="module-nav-link{% block nav_new %} {% endblock %}" href="/ui/transactions/new">新規審査</a>
+    </nav>
   </header>
 
   <main class="container">

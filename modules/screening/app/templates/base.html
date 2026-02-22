@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}懸念取引先スクリーニング{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="module-header">
+    <div class="module-brand">
+      <span class="module-brand-icon">🛡️</span>
+      <span class="module-brand-name">スクリーニング</span>
+    </div>
+    <nav class="module-nav">
+      <a class="module-nav-link{% block nav_screen %} {% endblock %}" href="/ui/screen">スクリーニング</a>
+      <a class="module-nav-link{% block nav_results %} {% endblock %}" href="/ui/results">結果履歴</a>
+      <a class="module-nav-link{% block nav_watchlist %} {% endblock %}" href="/ui/watchlist">ウォッチリスト</a>
+    </nav>
+  </header>
+
+  <div class="page-wrap">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

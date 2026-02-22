@@ -4,17 +4,168 @@
   <meta charset="UTF-8" />
   <title>{% block title %}品目管理{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
-  >
+  <style>
+    /* ─── Brand colors ─── */
+    :root {
+      --brand:       #FFE6CE;
+      --brand-dark:  #E8833A;
+      --brand-text:  #5A3010;
+      --bg:          #FFF8F3;
+      --surface:     #ffffff;
+      --border:      #f0d8c0;
+      --text:        #1a0f08;
+      --muted:       #7a6050;
+      --primary:     #E8833A;
+      --primary-lt:  #FFE6CE;
+      --shadow:      0 2px 12px rgba(100,40,10,.08);
+      --radius:      10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans",
+        "Yu Gothic", Meiryo, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ─── Module Header (水平トップナビ) ─── */
+    .module-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 48px;
+      background: var(--brand);
+      border-bottom: 1.5px solid #f0c9a0;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 0 20px;
+    }
+    .module-brand {
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    }
+    .module-brand-icon { font-size: 18px; }
+    .module-brand-name {
+      font-size: 14px; font-weight: 800;
+      color: var(--brand-text); letter-spacing: -.2px;
+    }
+    .module-nav { display: flex; gap: 4px; align-items: center; }
+    .module-nav-link {
+      display: inline-flex; align-items: center;
+      padding: 5px 13px; border-radius: 7px;
+      font-size: 13px; font-weight: 600;
+      color: #6B3A1A; text-decoration: none;
+      transition: background .15s, color .15s;
+    }
+    .module-nav-link:hover { background: rgba(0,0,0,.08); }
+    .module-nav-link.active { background: var(--brand-dark); color: #fff; }
+
+    /* ─── Content wrapper ─── */
+    .page-wrap {
+      max-width: 1140px;
+      margin: 28px auto;
+      padding: 0 20px 60px;
+    }
+
+    /* ─── Card ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+
+    /* ─── Buttons ─── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 8px;
+      font-size: .88rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; text-decoration: none;
+      border: 1.5px solid var(--border); background: var(--surface); color: var(--text);
+      transition: background .15s, border-color .15s;
+    }
+    .btn:hover { border-color: var(--primary); }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #d4692a; border-color: #d4692a; }
+    .btn-sm { padding: 5px 12px; font-size: .8rem; }
+
+    /* ─── Table ─── */
+    .table { width: 100%; border-collapse: collapse; }
+    .table th, .table td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px; text-align: left; vertical-align: top;
+    }
+    .table th { font-size: .82rem; color: var(--muted); font-weight: 700; }
+
+    /* ─── Form ─── */
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: .8rem; font-weight: 700; color: var(--text); margin-bottom: 5px; }
+    .field .hint { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+    input[type="text"], input[type="number"], input[type="email"], textarea, select {
+      width: 100%; padding: 8px 12px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      background: var(--surface); color: var(--text);
+      font-size: .88rem; font-family: inherit;
+      transition: border-color .15s;
+      appearance: none;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(232,131,58,.15);
+    }
+    textarea { min-height: 80px; resize: vertical; }
+
+    /* ─── Chip / Badge ─── */
+    .chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: .76rem; font-weight: 700;
+      background: var(--primary-lt); color: var(--brand-text);
+      border: 1px solid #f0c9a0;
+    }
+
+    /* ─── Page header ─── */
+    .page-hd { margin-bottom: 24px; }
+    .page-hd h1 { font-size: 1.4rem; font-weight: 800; color: var(--text); }
+    .page-hd p  { color: var(--muted); font-size: .88rem; margin-top: 5px; }
+
+    /* ─── Misc ─── */
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .muted { color: var(--muted); font-size: .85rem; }
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .gap-2 { gap: 8px; }
+    .gap-3 { gap: 12px; }
+    .ml-auto { margin-left: auto; }
+    .mt-4 { margin-top: 16px; }
+    .mb-4 { margin-bottom: 16px; }
+    @media (max-width: 680px) { .g2, .g3 { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
-<section class="section">
-  <div class="container">
-    <h1 class="title">品目管理UI（SDS連携対応）</h1>
+  <header class="module-header">
+    <div class="module-brand">
+      <span class="module-brand-icon">📦</span>
+      <span class="module-brand-name">品目管理</span>
+    </div>
+    <nav class="module-nav">
+      <a class="module-nav-link{% block nav_list %} {% endblock %}" href="/products">品目一覧</a>
+      <a class="module-nav-link{% block nav_new %} {% endblock %}" href="/products/new">新規品目</a>
+      <a class="module-nav-link{% block nav_sds %} {% endblock %}" href="/sds/upload">SDSアップロード</a>
+    </nav>
+  </header>
+
+  <div class="page-wrap">
     {% block content %}{% endblock %}
   </div>
-</section>
 </body>
 </html>

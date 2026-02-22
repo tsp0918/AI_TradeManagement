@@ -10,7 +10,7 @@
 
   <!-- ─── Header ──────────────────────────────────────────────── -->
   <header>
-    <span class="logo">AI <span>Trade</span> Management</span>
+    <span class="logo">AI <em>Trade</em> Management</span>
     <span class="version">v{{ version }}</span>
   </header>
 
@@ -19,37 +19,61 @@
     <span class="nav-section-label">モジュール</span>
 
     {% for m in modules %}
-    <button
-      class="module-btn{% if loop.first %} active{% endif %}"
-      data-key="{{ m.key }}"
-      data-iframe-url="{{ m.iframe_url }}"
-      title="{{ m.description }}"
+    <div
+      class="module-card{% if loop.first %} active{% endif %}"
+      id="card-{{ m.key }}"
     >
-      <span class="icon">{{ m.icon }}</span>
-      <span class="label">{{ m.name }}</span>
-      <span class="status-dot" title="ステータス確認中…"></span>
-    </button>
+      <!-- クリック可能なモジュール名行 -->
+      <button
+        class="module-main-btn"
+        data-key="{{ m.key }}"
+        data-iframe-url="{{ m.iframe_url }}"
+        title="{{ m.description }}"
+      >
+        <span class="module-icon">{{ m.icon }}</span>
+        <span class="module-label">{{ m.name }}</span>
+        <span class="status-dot" id="dot-{{ m.key }}" title="確認中…"></span>
+      </button>
+
+      <!-- 起動/停止コントロール (platform-core 自身は除く) -->
+      {% if m.key != "platform-core" %}
+      <div class="module-actions" id="actions-{{ m.key }}">
+        <button
+          class="btn-launch"
+          id="btn-launch-{{ m.key }}"
+          onclick="launchModule('{{ m.key }}', this)"
+          title="{{ m.name }} を起動"
+        >▶ 起動</button>
+        <button
+          class="btn-stop"
+          id="btn-stop-{{ m.key }}"
+          onclick="stopModule('{{ m.key }}')"
+          title="{{ m.name }} を停止"
+          style="display:none;"
+        >⏹</button>
+      </div>
+      {% endif %}
+    </div>
     {% endfor %}
   </nav>
 
   <!-- ─── Main content ─────────────────────────────────────────── -->
   <main>
-    <!-- ウェルカム画面 (iframe が空のとき表示) -->
     <div id="welcome" style="display: none;">
+      <div class="welcome-icon">🏭</div>
       <h2>モジュールを選択してください</h2>
       <p>左のサイドバーからモジュールを選択すると、ここに表示されます。</p>
     </div>
 
     {% if modules %}
-    <!-- 初期表示: 先頭モジュール -->
     <iframe
       id="module-frame"
       src="{{ modules[0].iframe_url }}"
       allowfullscreen
     ></iframe>
     {% else %}
-    <!-- モジュール未登録 -->
     <div id="welcome">
+      <div class="welcome-icon">🏭</div>
       <h2>モジュールが登録されていません</h2>
       <p>各モジュールを起動すると自動的に登録されます。</p>
     </div>
