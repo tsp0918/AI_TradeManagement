@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from platform_core.auth.router import router as auth_router
 from platform_core.config import settings
+from platform_core.middleware.audit import AuditMiddleware
 from platform_core.routers import admin_router
 from platform_core.routers.internal import router as internal_router
 
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(AuditMiddleware, module_key="platform-core")
 
     # ルーター登録
     app.include_router(auth_router)
