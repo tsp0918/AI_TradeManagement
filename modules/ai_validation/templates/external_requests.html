@@ -1,0 +1,68 @@
+<!-- templates/external_requests.html -->
+{% extends "base.html" %}
+{% block title %}外部リクエスト一覧 - AI該非判定{% endblock %}
+{% block nav_external %} active{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>外部リクエスト一覧</h1>
+  <div class="muted">品目管理などから送信された判定依頼（ExternalEvalRequest）を表示します</div>
+</div>
+
+<div class="card">
+  {% if reqs %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>request_id</th>
+          <th>product_id</th>
+          <th>status</th>
+          <th>transaction</th>
+          <th>reason（抜粋）</th>
+          <th>受信日時</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reqs %}
+          <tr>
+            <td class="mono">{{ r.id }}</td>
+            <td class="mono">{{ r.product_id }}</td>
+            <td>
+              {% if r.status == "completed" %}
+                <span class="chip chip-ok">{{ r.status }}</span>
+              {% elif r.status == "error" %}
+                <span class="chip chip-warn">{{ r.status }}</span>
+              {% elif r.status == "running" %}
+                <span class="chip chip-info">{{ r.status }}</span>
+              {% else %}
+                <span class="chip">{{ r.status }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if r.transaction_id %}
+                <a class="btn btn-soft" href="/ui/transactions/{{ r.transaction_id }}">
+                  TX #{{ r.transaction_id }}（2リスト表示）
+                </a>
+              {% else %}
+                <span class="muted small">未作成</span>
+              {% endif %}
+            </td>
+            <td class="muted small" style="max-width:260px; word-break:break-all;">
+              {{ (r.reason or "")[:120] }}{% if r.reason and r.reason|length > 120 %}…{% endif %}
+            </td>
+            <td class="muted small">{{ r.created_at or "-" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="muted">外部リクエストがありません。</div>
+  {% endif %}
+</div>
+
+<style>
+.chip-ok   { background: #dcfce7; color: #166534; }
+.chip-warn { background: #fee2e2; color: #991b1b; }
+.chip-info { background: #dbeafe; color: #1e40af; }
+</style>
+{% endblock %}

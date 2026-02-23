@@ -16,6 +16,7 @@ from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan
 from app.routers.decision import router as decision_router
 from app.routers.ui import router as ui_router
 from app.routers.integration_export_control import router as integration_router
+from app.routers.admin import router as admin_router
 
 MODULE = ModuleInfo(
     key="ai_validation",
@@ -44,3 +45,4 @@ app.include_router(health_router)
 app.include_router(ui_router)
 app.include_router(decision_router)
 app.include_router(integration_router)
+app.include_router(admin_router)

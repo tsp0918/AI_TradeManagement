@@ -23,10 +23,15 @@
         {% for tx in txs %}
           <tr>
             <td class="mono">{{ tx.id }}</td>
-            <td>{{ tx.case_no or "-" }}</td>
+            <td>
+              {{ tx.case_no or "-" }}
+              {% if tx.case_no and tx.case_no.startswith("UI-") %}
+                <span class="chip chip-ext" style="margin-left:6px;">外部</span>
+              {% endif %}
+            </td>
             <td class="muted">{{ (tx.note or "-") }}</td>
             <td style="text-align:right">
-              <a class="btn" href="/ui/transactions/{{ tx.id }}">詳細</a>
+              <a class="btn" href="/ui/transactions/{{ tx.id }}">詳細・2リスト</a>
             </td>
           </tr>
         {% endfor %}
@@ -36,4 +41,8 @@
     <div class="muted">transactions が空です。seed_data.py を確認してください。</div>
   {% endif %}
 </div>
+
+<style>
+.chip-ext { background: #ede9fe; color: #5b21b6; font-size: 0.72rem; }
+</style>
 {% endblock %}
