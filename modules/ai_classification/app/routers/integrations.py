@@ -122,13 +122,39 @@ async def request_export_control(product_id: int, db: Session = Depends(get_db))
             "detail": "External app not reachable. Please start external app or fix EXTERNAL_APP_BASE_URL.",
         }
 
+    except httpx.HTTPStatusError as e:
+        # 外部アプリが非2xxを返した場合（テーブル未作成など）
+        status_code = e.response.status_code
+        try:
+            body_text = e.response.text[:500]
+        except Exception:
+            body_text = "(unable to read response body)"
+        reason = f"External app returned HTTP {status_code}: {body_text}"
+        product.external_eval_requested_at = datetime.utcnow()
+        product.external_eval_status = "error"
+        product.external_eval_reason = reason
+        product.external_eval_payload = _wrap_payload(None, None)
+        db.commit()
+        return {
+            "ok": False,
+            "sent": True,
+            "status": "error",
+            "detail": f"External app returned HTTP {status_code}",
+            "external_error": body_text,
+        }
+
     except httpx.HTTPError as e:
         product.external_eval_requested_at = datetime.utcnow()
         product.external_eval_status = "error"
-        product.external_eval_reason = f"External app HTTP error: {type(e).__name__}"
+        product.external_eval_reason = f"External app HTTP error: {type(e).__name__}: {e}"
         product.external_eval_payload = _wrap_payload(None, None)
         db.commit()
-        raise HTTPException(status_code=502, detail="External app returned an error")
+        return {
+            "ok": False,
+            "sent": False,
+            "status": "error",
+            "detail": f"External app HTTP error: {type(e).__name__}",
+        }
 
 
 @router.post("/export-control/webhook")
