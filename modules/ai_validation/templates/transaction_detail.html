@@ -81,11 +81,15 @@
           <div class="strong" style="font-size:.9rem; line-height:1.3">
             {% if row.item_ids and row.item_ids|length > 0 %}
               {{ row.item_ids | join(" / ") }}
+            {% elif row.item_label %}
+              {{ row.item_label }}
             {% else %}
               rule_id={{ row.rule_id }}
             {% endif %}
           </div>
-          <div class="muted small" style="margin-top:2px">{{ row.regime }}</div>
+          <div class="muted small" style="margin-top:2px">
+            {{ row.regime }}{% if row.list_name %} — {{ row.list_name }}{% endif %}
+          </div>
         </td>
         <td>
           <span class="chip {% if row.best_decision == 'hit' %}chip-hit{% elif row.best_decision == 'maybe' %}chip-maybe{% endif %}">
@@ -202,9 +206,10 @@
         <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor" style="border-color:#fde68a; background:#fffbeb">
           <div class="row" style="align-items:flex-start; gap:8px">
             <div class="strong" style="flex:1">
-              {{ item.regime }}
-              {% if item.item_ids and item.item_ids|length > 0 %}/ {{ item.item_ids | join(" / ") }}
-              {% else %}/ rule_id={{ item.rule_id }}{% endif %}
+              {% if item.item_ids and item.item_ids|length > 0 %}{{ item.item_ids | join(" / ") }}
+              {% elif item.item_label %}{{ item.item_label }}
+              {% else %}rule_id={{ item.rule_id }}{% endif %}
+              <div class="muted small" style="margin-top:1px; font-weight:400">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
             </div>
             <span class="chip {% if item.best_decision == 'hit' %}chip-hit{% elif item.best_decision == 'maybe' %}chip-maybe{% endif %}">{{ item.best_decision or "?" }}</span>
             <span class="chip">{{ "%.4f"|format(item.max_score or 0) }}</span>
@@ -260,9 +265,10 @@
         <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor">
           <div class="row" style="align-items:flex-start; gap:8px">
             <div class="strong" style="flex:1">
-              {{ item.regime }}
-              {% if item.item_ids and item.item_ids|length > 0 %}/ {{ item.item_ids | join(" / ") }}
-              {% else %}/ rule_id={{ item.rule_id }}{% endif %}
+              {% if item.item_ids and item.item_ids|length > 0 %}{{ item.item_ids | join(" / ") }}
+              {% elif item.item_label %}{{ item.item_label }}
+              {% else %}rule_id={{ item.rule_id }}{% endif %}
+              <div class="muted small" style="margin-top:1px; font-weight:400">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
             </div>
             <span class="chip {% if item.best_decision == 'hit' %}chip-hit{% elif item.best_decision == 'maybe' %}chip-maybe{% endif %}">{{ item.best_decision or "?" }}</span>
             <span class="chip">{{ "%.4f"|format(item.max_score or 0) }}</span>
@@ -317,8 +323,10 @@
         <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor" style="opacity:.85">
           <div class="row" style="align-items:flex-start">
             <div class="strong">
-              {{ item.regime }} / rule_id={{ item.rule_id }}
-              {% if item.item_ids and item.item_ids|length > 0 %}/ {{ item.item_ids | join(" / ") }}{% endif %}
+              {% if item.item_ids and item.item_ids|length > 0 %}{{ item.item_ids | join(" / ") }}
+              {% elif item.item_label %}{{ item.item_label }}
+              {% else %}rule_id={{ item.rule_id }}{% endif %}
+              <div class="muted small" style="margin-top:1px; font-weight:400">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
             </div>
             <span class="chip">{{ "%.4f"|format(item.max_score or 0) }}</span>
           </div>

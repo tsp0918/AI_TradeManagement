@@ -186,6 +186,7 @@ def compute_two_lists(db: Session, transaction_id: int, run_id: Optional[int] = 
                 # --- compact UI fields ---
                 "item_ids": _extract_item_ids(getattr(rule, "item_no", None)),
                 "item_label": _compact_item_label(rule),
+                "list_name": getattr(rule, "list_name", None),
                 "rule_summary": (getattr(rule, "requirement_text", "") or "").strip()[:160],
 
                 "title": getattr(rule, "title", None),
