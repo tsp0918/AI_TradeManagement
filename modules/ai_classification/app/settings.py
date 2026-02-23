@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # 外部アプリが結果を返すWebhook URL（あなたのUI側）
     # 外部アプリに「ここにPOSTしてね」と渡す用途
-    PUBLIC_WEBHOOK_URL: str = "http://localhost:8000/integrations/export-control/webhook"
+    PUBLIC_WEBHOOK_URL: str = "http://localhost:8002/integrations/export-control/webhook"
 
 
 settings = Settings()

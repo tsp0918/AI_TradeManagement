@@ -1,14 +1,17 @@
 # app/routers/ui.py
+import csv
+import io
+from datetime import datetime
 from typing import Optional, Dict, Any
 
-from fastapi import APIRouter, Depends, Request, HTTPException, Query
+from fastapi import APIRouter, Depends, Request, HTTPException, Query, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.db.deps import get_db
 
-from app.db.models.transaction import Transaction
+from app.db.models.transaction import Transaction, TransactionItem, UsageRequirement
 from app.db.models.ai_run import AiRun, RunType
 from app.db.models.integration import ExternalEvalRequest
 from app.services.pipeline.orchestrator import run_until_matrix_match
@@ -30,6 +33,159 @@ def transactions_page(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "transactions.html",
         {"request": request, "txs": txs},
+    )
+
+
+def _make_case_no_manual() -> str:
+    return f"MANUAL-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}"
+
+
+def _create_transaction_manual(
+    db: Session,
+    title: str,
+    product_code: str,
+    description: str,
+    spec_text: str,
+    case_no: Optional[str] = None,
+) -> Transaction:
+    tx = Transaction(
+        case_no=case_no or _make_case_no_manual(),
+        title=title.strip() or product_code.strip() or "新規審査",
+        status="draft",
+    )
+    db.add(tx)
+    db.flush()
+
+    if product_code.strip() or spec_text.strip():
+        item = TransactionItem(
+            transaction_id=tx.id,
+            item_name=title.strip() or product_code.strip(),
+            item_model=product_code.strip(),
+            spec_text=spec_text.strip() or None,
+            attachments_meta={"files": []},
+        )
+        db.add(item)
+        db.flush()
+        item_id = item.id
+    else:
+        item_id = None
+
+    usage_text = description.strip() or title.strip() or product_code.strip() or "N/A"
+    u = UsageRequirement(
+        transaction_id=tx.id,
+        transaction_item_id=item_id,
+        source="core",
+        text=usage_text,
+        risk_tags=[],
+        created_by="user",
+    )
+    db.add(u)
+    db.flush()
+
+    return tx
+
+
+@router.get("/ui/transactions/new", response_class=HTMLResponse)
+def transaction_new_form(request: Request):
+    templates = request.app.state.templates
+    return templates.TemplateResponse(
+        "transaction_new.html",
+        {"request": request, "error": None},
+    )
+
+
+@router.post("/ui/transactions/new", response_class=HTMLResponse)
+def transaction_new_submit(
+    request: Request,
+    db: Session = Depends(get_db),
+    title: str = Form(""),
+    product_code: str = Form(""),
+    description: str = Form(""),
+    spec_text: str = Form(""),
+    case_no: str = Form(""),
+):
+    """手動入力で新規審査を作成（AIパイプラインは実行しない）。"""
+    templates = request.app.state.templates
+    if not title.strip() and not product_code.strip() and not description.strip():
+        return templates.TemplateResponse(
+            "transaction_new.html",
+            {"request": request, "error": "品名・品番・用途のいずれかを入力してください。"},
+        )
+    try:
+        tx = _create_transaction_manual(
+            db=db,
+            title=title,
+            product_code=product_code,
+            description=description,
+            spec_text=spec_text,
+            case_no=case_no.strip() or None,
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        return templates.TemplateResponse(
+            "transaction_new.html",
+            {"request": request, "error": f"登録エラー: {e}"},
+        )
+    return RedirectResponse(url=f"/ui/transactions/{tx.id}", status_code=303)
+
+
+@router.post("/ui/transactions/csv-import", response_class=HTMLResponse)
+async def transaction_csv_import(
+    request: Request,
+    db: Session = Depends(get_db),
+    file: UploadFile = File(...),
+):
+    """CSVファイルから複数の審査を一括登録（AIパイプラインは実行しない）。"""
+    templates = request.app.state.templates
+
+    raw = await file.read()
+    try:
+        text_content = raw.decode("utf-8-sig")  # BOM付きUTF-8も対応
+    except UnicodeDecodeError:
+        text_content = raw.decode("shift_jis", errors="replace")
+
+    reader = csv.DictReader(io.StringIO(text_content))
+    created_ids = []
+    errors = []
+
+    for i, row in enumerate(reader, start=2):  # 2行目から（1行目はヘッダー）
+        title = (row.get("title") or row.get("品名") or "").strip()
+        product_code = (row.get("product_code") or row.get("品番") or "").strip()
+        description = (row.get("description") or row.get("用途") or "").strip()
+        spec_text = (row.get("spec_text") or row.get("仕様") or "").strip()
+        case_no = (row.get("case_no") or "").strip()
+
+        if not title and not product_code and not description:
+            errors.append(f"行 {i}: 品名・品番・用途がすべて空です。スキップしました。")
+            continue
+
+        try:
+            tx = _create_transaction_manual(
+                db=db,
+                title=title,
+                product_code=product_code,
+                description=description,
+                spec_text=spec_text,
+                case_no=case_no or None,
+            )
+            db.commit()
+            created_ids.append(tx.id)
+        except Exception as e:
+            db.rollback()
+            errors.append(f"行 {i}: 登録エラー: {e}")
+
+    return templates.TemplateResponse(
+        "transaction_new.html",
+        {
+            "request": request,
+            "csv_result": {
+                "created": len(created_ids),
+                "ids": created_ids[:20],
+                "errors": errors,
+            },
+            "error": None,
+        },
     )
 
 

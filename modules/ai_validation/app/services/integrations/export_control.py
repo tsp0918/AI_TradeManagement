@@ -108,6 +108,19 @@ def create_transaction_from_payload(db: Session, payload: Dict[str, Any]) -> int
     db.flush()
 
     usage_text = (payload.get("description") or "").strip()
+
+    # description が空の場合、bom_json のコンポーネント名を活用
+    if not usage_text:
+        bom = _json_loads_safe(payload.get("bom_json"), default=[])
+        if isinstance(bom, list):
+            comp_names = [
+                comp.get("component_name", "")
+                for comp in bom
+                if isinstance(comp, dict) and comp.get("component_name")
+            ]
+            if comp_names:
+                usage_text = "、".join(comp_names)
+
     if not usage_text:
         usage_text = f"{payload.get('name')} / {payload.get('code')}"
 

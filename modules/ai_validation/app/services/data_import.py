@@ -46,6 +46,35 @@ def _normalize_root(data: Any) -> Any:
     return data
 
 
+def _get_ref_str(v: Any, prefer: str = "norm") -> str:
+    """plain文字列または {"raw":..., "norm":..., "id":...} オブジェクトから文字列を取り出す。"""
+    if not v:
+        return ""
+    if isinstance(v, str):
+        return v.strip()
+    if isinstance(v, dict):
+        return _s(v.get(prefer) or v.get("raw") or v.get("id") or "")
+    return str(v).strip()
+
+
+def _get_ref_id(v: Any) -> str:
+    """ref オブジェクトの id フィールドを取り出す。"""
+    if isinstance(v, dict):
+        return _s(v.get("id") or "")
+    if isinstance(v, str):
+        return v.strip()
+    return ""
+
+
+def _get_substance_text(s: Any) -> str:
+    """物質エントリ（文字列または {"raw":..., "text":...} オブジェクト）からテキストを取り出す。"""
+    if isinstance(s, str):
+        return s.strip()
+    if isinstance(s, dict):
+        return _s(s.get("text") or s.get("raw") or "")
+    return ""
+
+
 # ---------------------------------------------------------------------------
 # MatrixRule インポート
 # ---------------------------------------------------------------------------
@@ -191,8 +220,107 @@ def _coerce_rule(r: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _iter_rules_from_sheets(data: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
+    """sheets 形式 {"sheets": {"シート名": {"export_items": [...]}}} を処理する。"""
+    sheets = data.get("sheets", {})
+    for sheet_name, sheet_data in sheets.items():
+        if not isinstance(sheet_data, dict):
+            continue
+        if sheet_data.get("error"):
+            continue  # header_not_found などエラーシートはスキップ
+
+        for ex in (sheet_data.get("export_items") or []):
+            if not isinstance(ex, dict):
+                continue
+
+            export_order_ref = ex.get("export_order_ref")
+            export_ref_id = _get_ref_id(export_order_ref)
+            export_ref_str = _get_ref_str(export_order_ref)
+            export_order_item = _s(ex.get("export_order_item"))
+            cargo_rules = ex.get("cargo_rules") or []
+
+            if not cargo_rules:
+                item_no = _first_nonempty(export_ref_id, export_ref_str,
+                                          export_order_item[:120] if export_order_item else "")
+                if item_no:
+                    yield {
+                        "regime": "JP_FX",
+                        "list_name": sheet_name or None,
+                        "item_no": item_no,
+                        "title": export_order_item or item_no,
+                        "requirement_text": export_order_item or item_no,
+                        "usage_criteria_text": None,
+                        "tech_criteria_text": None,
+                        "notes": None,
+                        "version": None,
+                        "effective_date": None,
+                    }
+                continue
+
+            for cr in cargo_rules:
+                if not isinstance(cr, dict):
+                    continue
+
+                meti_order_ref = cr.get("meti_order_ref")
+                meti_ref_id = _get_ref_id(meti_order_ref)
+                meti_ref_str = _get_ref_str(meti_order_ref)
+                meti_order_text = _s(cr.get("meti_order_text") or cr.get("definition"))
+                term = _s(cr.get("term"))
+                term_meaning = _s(cr.get("term_meaning"))
+                notes_excl = _s(cr.get("notes_or_exclusions"))
+                eccn = _s(cr.get("eccn"))
+                substances = cr.get("substances") or []
+
+                # item_no: ID を優先して "EL-3-1 / METI-2-1-1" 形式で構築
+                parts: List[str] = []
+                if export_ref_id:
+                    parts.append(export_ref_id)
+                if meti_ref_id:
+                    parts.append(meti_ref_id)
+                item_no = " / ".join(parts) if parts else _first_nonempty(
+                    export_ref_str, meti_ref_str,
+                    export_order_item[:80] if export_order_item else "")
+                if not item_no:
+                    continue
+
+                title = _first_nonempty(export_order_item, term, export_ref_str, meti_ref_str, item_no)
+                requirement_text = _first_nonempty(meti_order_text, export_order_item, term, title, "N/A")
+
+                usage_criteria_text: Optional[str] = None
+                if term or term_meaning:
+                    usage_criteria_text = "\n".join([x for x in [term, term_meaning] if x]).strip() or None
+
+                tech_lines: List[str] = []
+                if eccn:
+                    tech_lines.append(f"ECCN: {eccn}")
+                if isinstance(substances, list) and substances:
+                    sub_texts = [_get_substance_text(s) for s in substances if _get_substance_text(s)]
+                    if sub_texts:
+                        tech_lines.append("Substances:")
+                        tech_lines.extend([f"- {st}" for st in sub_texts])
+                tech_criteria_text = "\n".join(tech_lines).strip() or None
+
+                yield {
+                    "regime": "JP_FX",
+                    "list_name": sheet_name or None,
+                    "item_no": item_no,
+                    "title": title,
+                    "requirement_text": requirement_text,
+                    "usage_criteria_text": usage_criteria_text,
+                    "tech_criteria_text": tech_criteria_text,
+                    "notes": notes_excl or None,
+                    "version": None,
+                    "effective_date": None,
+                }
+
+
 def _detect_and_iter_rules(data: Any) -> Iterable[Dict[str, Any]]:
     root = _normalize_root(data)
+    # sheets 形式（実際の matrix.json）を最初に判定
+    if isinstance(root, dict) and isinstance(root.get("sheets"), dict):
+        yield from _iter_rules_from_sheets(root)
+        return
+    # FX-Matrix 形式（単一シート、export_items がルートにある）
     if isinstance(root, dict) and isinstance(root.get("export_items"), list):
         yield from _iter_rules_from_fx_matrix(data)
         return
@@ -288,7 +416,8 @@ def import_patents_from_data(db: Session, items: List[Dict[str, Any]]) -> Dict[s
         assignee = (it.get("assignee") or it.get("applicant") or "").strip()
         abstract = (it.get("abstract") or "").strip()
         fulltext = (it.get("fulltext") or "").strip()
-        ipc_raw = _to_ipc_raw(it.get("ipc_codes"))
+        # ipc_codes（list形式）または ipc_codes_raw（セミコロン区切り文字列）に対応
+        ipc_raw = _to_ipc_raw(it.get("ipc_codes")) or _s(it.get("ipc_codes_raw")) or None
 
         obj = db.query(Patent).filter(Patent.publication_number == pub).first()
 
@@ -321,7 +450,7 @@ def import_patents_from_data(db: Session, items: List[Dict[str, Any]]) -> Dict[s
             inserted += 1
 
         for uc in (it.get("usecases") or []):
-            txt = (uc.get("text") or "").strip()
+            txt = (uc.get("text") or uc.get("usecase_text") or "").strip()
             if not txt:
                 continue
             pu_kwargs: Dict[str, Any] = dict(

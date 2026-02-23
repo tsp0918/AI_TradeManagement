@@ -1,0 +1,167 @@
+<!-- templates/transaction_new.html -->
+{% extends "base.html" %}
+{% block title %}新規審査登録 - AI該非判定{% endblock %}
+{% block nav_new %} active{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>新規審査登録</h1>
+  <div class="muted">品目情報を入力して審査を登録します。AI判定はこの画面では実行されません。</div>
+</div>
+
+{% if error %}
+<div class="alert alert-warn" style="margin-bottom: 16px;">
+  <div class="alert-title">入力エラー</div>
+  <div class="alert-body">{{ error }}</div>
+</div>
+{% endif %}
+
+{% if csv_result %}
+<div class="alert {% if csv_result.errors %}alert-warn{% else %}alert-ok{% endif %}" style="margin-bottom: 16px;">
+  <div class="alert-title">CSVインポート完了</div>
+  <div class="alert-body">
+    {{ csv_result.created }} 件登録しました。
+    {% if csv_result.ids %}
+      (ID: {{ csv_result.ids | join(', ') }}{% if csv_result.created > 20 %}…{% endif %})
+    {% endif %}
+    {% if csv_result.errors %}
+      <ul style="margin-top:8px;">
+        {% for e in csv_result.errors %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- タブ切り替え -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab(event, 'tab-manual')">手動入力</button>
+  <button class="tab-btn" onclick="switchTab(event, 'tab-csv')">CSVインポート</button>
+</div>
+
+<!-- 手動入力フォーム -->
+<div id="tab-manual" class="tab-panel">
+  <div class="card">
+    <form method="post" action="/ui/transactions/new">
+      <div class="form-grid">
+
+        <div class="form-row">
+          <label class="label-sm">品名 <span class="required">*</span></label>
+          <input class="input" type="text" name="title" placeholder="例: TSP2110 テスト品目" required>
+          <div class="hint">表示用のタイトル。自動的に審査 ID が付与されます。</div>
+        </div>
+
+        <div class="form-row">
+          <label class="label-sm">品番</label>
+          <input class="input" type="text" name="product_code" placeholder="例: ts0002">
+        </div>
+
+        <div class="form-row">
+          <label class="label-sm">用途・説明 <span class="required">*</span></label>
+          <textarea class="textarea" name="description" rows="4"
+            placeholder="例: エチレングリコール、水酸化ナトリウムを主原料とした冷却液。産業用熱交換器向け。"></textarea>
+          <div class="hint">この内容が AI 判定の照合テキストに使用されます。できるだけ具体的に記入してください。</div>
+        </div>
+
+        <div class="form-row">
+          <label class="label-sm">仕様テキスト（任意）</label>
+          <textarea class="textarea" name="spec_text" rows="3"
+            placeholder="HS コード、ECCN、BOM など追加情報があれば記入"></textarea>
+        </div>
+
+        <div class="form-row">
+          <label class="label-sm">案件番号（任意）</label>
+          <input class="input" type="text" name="case_no" placeholder="空白の場合は自動生成">
+          <div class="hint">省略すると MANUAL-YYYYmmddHHMMSS 形式で自動生成されます。</div>
+        </div>
+
+      </div>
+
+      <div style="margin-top: 20px; display:flex; gap:10px; align-items:center;">
+        <button class="btn btn-primary" type="submit">審査を登録</button>
+        <a class="btn" href="/ui/transactions">キャンセル</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- CSV インポートフォーム -->
+<div id="tab-csv" class="tab-panel" style="display:none;">
+  <div class="card">
+    <h2 style="font-size:1rem; margin-bottom:12px;">CSVファイルから一括登録</h2>
+
+    <div class="muted small" style="margin-bottom: 16px; line-height:1.7;">
+      CSV の1行目はヘッダー行（列名）として扱います。以下の列名に対応しています（日本語列名も可）：<br>
+      <code>title（品名）</code>&nbsp;
+      <code>product_code（品番）</code>&nbsp;
+      <code>description（用途）</code>&nbsp;
+      <code>spec_text（仕様）</code>&nbsp;
+      <code>case_no</code><br>
+      文字コード: UTF-8 または UTF-8 BOM付き、Shift_JIS
+    </div>
+
+    <!-- CSVサンプルダウンロード -->
+    <div style="margin-bottom: 16px;">
+      <a class="btn btn-soft" href="#" onclick="downloadCsvTemplate(); return false;">
+        CSVテンプレートをダウンロード
+      </a>
+    </div>
+
+    <form method="post" action="/ui/transactions/csv-import" enctype="multipart/form-data">
+      <div class="form-row">
+        <label class="label-sm">CSVファイル</label>
+        <input type="file" name="file" accept=".csv,text/csv" required style="display:block; margin-top:4px;">
+      </div>
+      <div style="margin-top:16px;">
+        <button class="btn btn-primary" type="submit">インポート実行</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+.required { color: #dc2626; }
+.tab-bar { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 2px solid #e5e7eb; }
+.tab-btn {
+  padding: 8px 18px; border: none; background: transparent; cursor: pointer;
+  font-size: 0.9rem; color: var(--text-secondary, #555); border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+.tab-btn.active { color: var(--brand, #2563eb); border-bottom-color: var(--brand, #2563eb); font-weight: 600; }
+.tab-panel {}
+.form-grid { display: flex; flex-direction: column; gap: 16px; max-width: 600px; }
+.form-row { display: flex; flex-direction: column; gap: 4px; }
+.label-sm { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary, #555); }
+.input, .textarea {
+  border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px;
+  font-size: 0.9rem; font-family: inherit; width: 100%; box-sizing: border-box;
+}
+.textarea { resize: vertical; }
+.input:focus, .textarea:focus { outline: 2px solid var(--brand, #2563eb); border-color: transparent; }
+.hint { font-size: 0.78rem; color: #6b7280; }
+.alert-ok { background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 10px 14px; color: #166534; }
+.alert-warn { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; padding: 10px 14px; color: #991b1b; }
+.alert-title { font-weight: 600; margin-bottom: 4px; }
+.alert-body { font-size: 0.9rem; }
+code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-size: 0.8rem; }
+</style>
+
+<script>
+function switchTab(event, tabId) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).style.display = 'block';
+  event.target.classList.add('active');
+}
+
+function downloadCsvTemplate() {
+  const header = 'title,product_code,description,spec_text,case_no';
+  const example = '品目名サンプル,ts0001,エチレングリコールを主原料とした冷却液。産業用熱交換器向け。,HS: 2905.31,,';
+  const blob = new Blob(['\uFEFF' + header + '\n' + example + '\n'], {type: 'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'transaction_import_template.csv';
+  a.click();
+}
+</script>
+{% endblock %}
