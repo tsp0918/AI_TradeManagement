@@ -23,6 +23,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 def _safe_resolve_upload_path(filename: str) -> str:
+    """ファイル名を検証して uploads/ 配下の絶対パスを返す。"""
     if not filename or "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="不正なファイル名です。")
     base = os.path.abspath(UPLOAD_DIR)
@@ -30,6 +31,14 @@ def _safe_resolve_upload_path(filename: str) -> str:
     if not path.startswith(base + os.sep):
         raise HTTPException(status_code=400, detail="uploads配下以外は参照できません。")
     return path
+
+
+def _list_existing_pdfs() -> list[str]:
+    try:
+        pdfs = [fn for fn in os.listdir(UPLOAD_DIR) if fn.lower().endswith(".pdf")]
+        return sorted(pdfs)
+    except Exception:
+        return []
 
 
 def apply_ai_regulation_mapping(product: Product, mapping: dict) -> None:
@@ -58,37 +67,44 @@ def apply_ai_regulation_mapping(product: Product, mapping: dict) -> None:
                 setattr(product, field, v)
 
     if mapping.get("ghs_h_statements") is not None:
-        product.ghs_h_statements = "\n".join(mapping["ghs_h_statements"]) if isinstance(mapping["ghs_h_statements"], list) else str(mapping["ghs_h_statements"])
+        stmts = mapping["ghs_h_statements"]
+        product.ghs_h_statements = "\n".join(stmts) if isinstance(stmts, list) else str(stmts)
     if mapping.get("ghs_p_statements") is not None:
-        product.ghs_p_statements = "\n".join(mapping["ghs_p_statements"]) if isinstance(mapping["ghs_p_statements"], list) else str(mapping["ghs_p_statements"])
+        stmts = mapping["ghs_p_statements"]
+        product.ghs_p_statements = "\n".join(stmts) if isinstance(stmts, list) else str(stmts)
     if mapping.get("ghs_classes") is not None:
-        product.ghs_classes = ", ".join(mapping["ghs_classes"]) if isinstance(mapping["ghs_classes"], list) else str(mapping["ghs_classes"])
+        classes = mapping["ghs_classes"]
+        product.ghs_classes = ", ".join(classes) if isinstance(classes, list) else str(classes)
 
 
 @router.get("/{product_id}/sds", response_class=HTMLResponse)
-def sds_upload_form(product_id: int, request: Request, db: Session = Depends(get_db)):
+def sds_upload_form(
+    product_id: int,
+    request: Request,
+    success: int = 0,
+    db: Session = Depends(get_db),
+):
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    existing_pdfs = []
-    try:
-        for fn in os.listdir(UPLOAD_DIR):
-            if fn.lower().endswith(".pdf"):
-                existing_pdfs.append(fn)
-        existing_pdfs.sort()
-    except Exception:
-        existing_pdfs = []
+    message = "SDS解析が完了しました。規制情報が更新されました。" if success else None
 
     return templates.TemplateResponse(
         "product_sds_upload.html",
-        {"request": request, "product": product, "existing_pdfs": existing_pdfs},
+        {
+            "request": request,
+            "product": product,
+            "existing_pdfs": _list_existing_pdfs(),
+            "message": message,
+        },
     )
 
 
-@router.post("/{product_id}/sds")
+@router.post("/{product_id}/sds", response_class=HTMLResponse)
 async def sds_upload(
     product_id: int,
+    request: Request,
     file: UploadFile | None = File(None),
     existing_filename: str = Form(""),
     db: Session = Depends(get_db),
@@ -97,52 +113,80 @@ async def sds_upload(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # 1) ファイル決定
-    if file is not None:
-        filename = f"product_{product_id}_{file.filename}"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        with open(filepath, "wb") as f:
-            f.write(await file.read())
+    def _render(error: str | None = None, message: str | None = None):
+        return templates.TemplateResponse(
+            "product_sds_upload.html",
+            {
+                "request": request,
+                "product": product,
+                "existing_pdfs": _list_existing_pdfs(),
+                "error": error,
+                "message": message,
+            },
+        )
+
+    # 1. ファイル決定
+    if file is not None and file.filename:
+        safe_fn = os.path.basename(file.filename)
+        if not safe_fn:
+            return _render(error="ファイル名が不正です。")
+        dest_name = f"product_{product_id}_{safe_fn}"
+        try:
+            filepath = _safe_resolve_upload_path(dest_name)
+        except HTTPException as e:
+            return _render(error=e.detail)
+        with open(filepath, "wb") as fp:
+            fp.write(await file.read())
         product.sds_file_path = filepath
 
     elif existing_filename.strip():
-        filepath = _safe_resolve_upload_path(existing_filename.strip())
+        try:
+            filepath = _safe_resolve_upload_path(existing_filename.strip())
+        except HTTPException as e:
+            return _render(error=e.detail)
         if not os.path.exists(filepath):
-            raise HTTPException(status_code=400, detail="選択したPDFが uploads に存在しません。")
+            return _render(error="選択したPDFが uploads に存在しません。")
         product.sds_file_path = filepath
 
     else:
-        raise HTTPException(status_code=400, detail="PDFをアップロードするか、既存PDFを選択してください。")
+        return _render(error="PDFをアップロードするか、既存PDFを選択してください。")
 
-    # 2) テキスト抽出
+    # 2. テキスト抽出
     try:
         reader = PdfReader(product.sds_file_path)
         sds_text = "\n".join([(p.extract_text() or "") for p in reader.pages])
     except Exception as e:
         product.regulation_ai_raw = f"SDS text extract error: {repr(e)}"
         db.commit()
-        return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
+        return _render(error=f"PDF読み込みエラー: {repr(e)}")
 
     if not (sds_text or "").strip():
-        product.regulation_ai_raw = (
+        msg = (
             "SDSテキストが抽出できませんでした。"
             "（画像PDF/スキャンPDFの可能性。OCRかテキスト版SDSが必要です）"
         )
+        product.regulation_ai_raw = msg
         db.commit()
-        return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
+        return _render(error=msg)
 
-    # 3) 解析（rule優先、必要なら短文でOllama）
-    ollama = OllamaClient()
-    result = await analyze_sds_to_mapping(sds_text, ollama)
+    # 3. AI解析（ルール優先、必要時 Ollama）
+    try:
+        ollama = OllamaClient()
+        result = await analyze_sds_to_mapping(sds_text, ollama)
+    except Exception as e:
+        product.regulation_ai_raw = f"AI解析エラー: {repr(e)}"
+        db.commit()
+        return _render(error=f"AI解析に失敗しました: {repr(e)}")
 
     mapping = result.get("mapping") or {}
     raw = result.get("raw") or ""
-
-    # raw（診断情報）を必ず残す
     product.regulation_ai_raw = raw if raw else json.dumps(mapping, ensure_ascii=False)
 
     if mapping:
         apply_ai_regulation_mapping(product, mapping)
 
     db.commit()
-    return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
+    return RedirectResponse(
+        url=f"/products/{product_id}/sds?success=1",
+        status_code=303,
+    )
