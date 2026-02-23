@@ -10,6 +10,7 @@ from app.db.deps import get_db
 
 from app.db.models.transaction import Transaction
 from app.db.models.ai_run import AiRun, RunType
+from app.db.models.integration import ExternalEvalRequest
 from app.services.pipeline.orchestrator import run_until_matrix_match
 from app.services.two_list import compute_two_lists
 
@@ -60,12 +61,15 @@ def transaction_detail_page(
         .first()
     )
 
-    # 2リスト結果（任意：run_id指定があれば先に見せる）
+    # 2リスト結果: run_id が指定されていない場合も latest_matrix_match があれば自動計算
     two_lists: Optional[Dict[str, Any]] = None
     two_lists_error: Optional[str] = None
-    if run_id is not None:
+    effective_run_id = run_id if run_id is not None else (
+        latest_matrix_match.id if latest_matrix_match else None
+    )
+    if effective_run_id is not None:
         try:
-            two_lists = compute_two_lists(db=db, transaction_id=transaction_id, run_id=run_id)
+            two_lists = compute_two_lists(db=db, transaction_id=transaction_id, run_id=effective_run_id)
         except Exception as e:
             two_lists_error = str(e)
 
@@ -80,6 +84,21 @@ def transaction_detail_page(
             "two_lists": two_lists,
             "two_lists_error": two_lists_error,
         },
+    )
+
+
+@router.get("/ui/external-requests", response_class=HTMLResponse)
+def external_requests_page(request: Request, db: Session = Depends(get_db)):
+    reqs = (
+        db.query(ExternalEvalRequest)
+        .order_by(desc(ExternalEvalRequest.id))
+        .limit(100)
+        .all()
+    )
+    templates = request.app.state.templates
+    return templates.TemplateResponse(
+        "external_requests.html",
+        {"request": request, "reqs": reqs},
     )
 
 

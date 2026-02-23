@@ -1,0 +1,88 @@
+<!-- templates/admin_import.html -->
+{% extends "base.html" %}
+{% block title %}管理 - データインポート{% endblock %}
+{% block nav_admin %} active{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>管理 - データインポート</h1>
+  <div class="muted">matrix.json / patents.json を DB に投入します</div>
+</div>
+
+<!-- matrix.json インポート -->
+<div class="card" style="margin-bottom: 20px;">
+  <h2>matrix.json インポート（外為法マトリクス）</h2>
+  <div class="muted small" style="margin-bottom: 12px;">
+    MatrixRule テーブルへ upsert（キー: regime + item_no + version）<br>
+    対応形式: FX-Matrix 形式（export_items 配列）または Normalized 形式（rules / items 配列 もしくは list 直）
+  </div>
+
+  {% if matrix_message %}
+  <div class="alert alert-ok" style="margin-bottom: 12px;">{{ matrix_message }}</div>
+  {% endif %}
+  {% if matrix_error %}
+  <div class="alert alert-warn" style="margin-bottom: 12px;">
+    <div class="alert-title">エラー</div>
+    <div class="alert-body">{{ matrix_error }}</div>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/ui/admin/import/matrix" enctype="multipart/form-data">
+    <div style="display:flex; flex-direction:column; gap:10px; max-width:480px;">
+      <div>
+        <label class="label-sm">JSON ファイル</label>
+        <input type="file" name="file" accept=".json" required style="display:block; margin-top:4px;">
+      </div>
+      <div>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" name="purge" value="true">
+          <span class="small">既存の MatrixRule を全削除してから投入（purge）</span>
+        </label>
+        <div class="muted small" style="margin-top:2px; margin-left:22px;">※ チェックすると既存データが消えます。注意してください。</div>
+      </div>
+      <div>
+        <button class="btn btn-primary" type="submit">インポート実行</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- patents.json インポート -->
+<div class="card">
+  <h2>patents.json インポート（特許用途データ）</h2>
+  <div class="muted small" style="margin-bottom: 12px;">
+    Patent + PatentUsecase テーブルへ upsert（キー: publication_number）<br>
+    対応形式: list 直 <code>[{...}, ...]</code> または <code>{"items": [...]}</code>
+  </div>
+
+  {% if patents_message %}
+  <div class="alert alert-ok" style="margin-bottom: 12px;">{{ patents_message }}</div>
+  {% endif %}
+  {% if patents_error %}
+  <div class="alert alert-warn" style="margin-bottom: 12px;">
+    <div class="alert-title">エラー</div>
+    <div class="alert-body">{{ patents_error }}</div>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/ui/admin/import/patents" enctype="multipart/form-data">
+    <div style="display:flex; flex-direction:column; gap:10px; max-width:480px;">
+      <div>
+        <label class="label-sm">JSON ファイル</label>
+        <input type="file" name="file" accept=".json" required style="display:block; margin-top:4px;">
+      </div>
+      <div>
+        <button class="btn btn-primary" type="submit">インポート実行</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<style>
+.label-sm { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary, #555); }
+.alert-ok {
+  background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px;
+  padding: 10px 14px; color: #166534; font-size: 0.9rem;
+}
+</style>
+{% endblock %}
