@@ -23,7 +23,6 @@
       class="module-card{% if loop.first %} active{% endif %}"
       id="card-{{ m.key }}"
     >
-      <!-- クリック可能なモジュール名行 -->
       <button
         class="module-main-btn"
         data-key="{{ m.key }}"
@@ -34,25 +33,6 @@
         <span class="module-label">{{ m.name }}</span>
         <span class="status-dot" id="dot-{{ m.key }}" title="確認中…"></span>
       </button>
-
-      <!-- 起動/停止コントロール (platform-core 自身は除く) -->
-      {% if m.key != "platform-core" %}
-      <div class="module-actions" id="actions-{{ m.key }}">
-        <button
-          class="btn-launch"
-          id="btn-launch-{{ m.key }}"
-          onclick="launchModule('{{ m.key }}', this)"
-          title="{{ m.name }} を起動"
-        >▶ 起動</button>
-        <button
-          class="btn-stop"
-          id="btn-stop-{{ m.key }}"
-          onclick="stopModule('{{ m.key }}')"
-          title="{{ m.name }} を停止"
-          style="display:none;"
-        >⏹</button>
-      </div>
-      {% endif %}
     </div>
     {% endfor %}
   </nav>

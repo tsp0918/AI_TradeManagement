@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>プラットフォーム管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+JP:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cream-50:  #FDFBF8;
+      --cream-100: #F7F3EE;
+      --cream-200: #EDE6DC;
+      --cream-300: #DDD3C5;
+      --cream-400: #C4B5A2;
+      --cream-500: #9C8A78;
+      --cream-700: #5A4A3A;
+      --cream-900: #2C1E12;
+      --accent:       #8C6A50;
+      --accent-light: #C4A088;
+      --status-online:  #6BA88A;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont,
+        "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+      background: var(--cream-50);
+      color: var(--cream-700);
+      padding: 36px 44px;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--cream-900);
+      margin-bottom: 4px;
+      font-family: 'Noto Sans JP', sans-serif;
+      letter-spacing: 0.01em;
+    }
+    .subtitle {
+      color: var(--cream-500);
+      margin-bottom: 32px;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+    .section-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--cream-400);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--cream-200);
+    }
+    /* ── Stats row ── */
+    .stats-row {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      flex: 1;
+      background: #fff;
+      border: 1px solid var(--cream-200);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+    }
+    .stat-card .stat-num {
+      font-family: 'Inter', sans-serif;
+      font-size: 28px;
+      font-weight: 300;
+      color: var(--cream-900);
+      line-height: 1;
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+    .stat-card .stat-label {
+      font-size: 11px;
+      color: var(--cream-500);
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+    /* ── Module table ── */
+    .card {
+      background: #fff;
+      border: 1px solid var(--cream-200);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      margin-bottom: 28px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--cream-100);
+      color: var(--cream-500);
+      font-weight: 500;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+    th:first-child { border-radius: 6px 0 0 6px; }
+    th:last-child  { border-radius: 0 6px 6px 0; }
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--cream-100);
+      color: var(--cream-700);
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--cream-50); }
+    code {
+      font-family: 'Inter', monospace;
+      font-size: 12px;
+      background: var(--cream-100);
+      padding: 1px 6px;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+    .badge-active   { background: #E6F4EE; color: #3A7A5A; }
+    .badge-inactive { background: #F5E6E6; color: #8A3A3A; }
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--cream-400);
+    }
+    .empty-state .icon { font-size: 32px; margin-bottom: 12px; opacity: 0.6; }
+    /* ── Quick links ── */
+    .links-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 10px;
+    }
+    .link-card {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 14px 16px;
+      background: #fff;
+      border: 1px solid var(--cream-200);
+      border-radius: var(--radius);
+      text-decoration: none;
+      color: var(--cream-700);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .link-card:hover {
+      border-color: var(--accent-light);
+      box-shadow: 0 2px 8px rgba(140,106,80,0.08);
+    }
+    .link-card .lc-title {
+      font-weight: 500;
+      font-size: 13px;
+      color: var(--accent);
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+    .link-card .lc-desc {
+      font-size: 11px;
+      color: var(--cream-400);
+      font-family: 'Inter', monospace;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>⚙️ プラットフォーム管理</h1>
+  <p class="subtitle">AI Trade Management v{{ version }} — テナント・ユーザー・モジュールレジストリ管理</p>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num">{{ registered_modules | length }}</div>
+      <div class="stat-label">登録済みモジュール</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="active-count">—</div>
+      <div class="stat-label">稼働中モジュール</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">v{{ version }}</div>
+      <div class="stat-label">プラットフォームバージョン</div>
+    </div>
+  </div>
+
+  <!-- Registered modules -->
+  <div class="card">
+    <div class="section-title">登録済みモジュール</div>
+    {% if registered_modules %}
+    <table>
+      <thead>
+        <tr>
+          <th>モジュールキー</th>
+          <th>名前</th>
+          <th>ベース URL</th>
+          <th>ステータス</th>
+          <th>登録日時</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in registered_modules %}
+        <tr>
+          <td><code>{{ m.key }}</code></td>
+          <td>{{ m.name }}</td>
+          <td><a href="{{ m.base_url }}" target="_blank" style="color:var(--accent);font-family:'Inter',monospace;font-size:12px;">{{ m.base_url }}</a></td>
+          <td>
+            {% if m.is_active %}
+            <span class="badge badge-active">有効</span>
+            {% else %}
+            <span class="badge badge-inactive">無効</span>
+            {% endif %}
+          </td>
+          <td style="color:#9C7060;font-size:12px;">{{ m.registered_at.strftime('%Y-%m-%d %H:%M') if m.registered_at else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">📭</div>
+      <p>まだモジュールが登録されていません。<br>各モジュールを起動すると自動的に登録されます。</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- API quick links -->
+  <div class="section-title">管理 API</div>
+  <div class="links-grid">
+    <a class="link-card" href="/admin/modules" target="_blank">
+      <span class="lc-title">📦 モジュール一覧</span>
+      <span class="lc-desc">GET /admin/modules</span>
+    </a>
+    <a class="link-card" href="/admin/tenants" target="_blank">
+      <span class="lc-title">🏢 テナント一覧</span>
+      <span class="lc-desc">GET /admin/tenants</span>
+    </a>
+    <a class="link-card" href="/admin/users" target="_blank">
+      <span class="lc-title">👤 ユーザー一覧</span>
+      <span class="lc-desc">GET /admin/users</span>
+    </a>
+    <a class="link-card" href="/docs" target="_blank">
+      <span class="lc-title">📖 API ドキュメント</span>
+      <span class="lc-desc">Swagger UI</span>
+    </a>
+    <a class="link-card" href="/health" target="_blank">
+      <span class="lc-title">❤️ ヘルスチェック</span>
+      <span class="lc-desc">GET /health</span>
+    </a>
+  </div>
+
+  <script>
+    // 稼働中モジュール数をヘルスチェックで集計
+    (async function() {
+      const keys = {{ registered_modules | map(attribute='key') | list | tojson }};
+      if (!keys.length) {
+        document.getElementById('active-count').textContent = '0';
+        return;
+      }
+      const results = await Promise.allSettled(
+        keys.map(k => fetch(`/ui/health/${k}`, { signal: AbortSignal.timeout(4000) })
+          .then(r => r.json()))
+      );
+      const online = results.filter(r => r.status === 'fulfilled' && r.value.status === 'online').length;
+      document.getElementById('active-count').textContent = online;
+    })();
+  </script>
+</body>
+</html>

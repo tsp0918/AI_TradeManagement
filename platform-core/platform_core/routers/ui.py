@@ -2,6 +2,7 @@
 
 エンドポイント:
 - GET  /ui                      ホーム画面 (Jinja2)
+- GET  /ui/platform             プラットフォーム管理ダッシュボード (HTML)
 - GET  /ui/health/{module_key}  モジュールヘルスチェックプロキシ
 - POST /ui/launch/{module_key}  モジュール起動 (uvicorn サブプロセス)
 - POST /ui/stop/{module_key}    モジュール停止
@@ -10,9 +11,13 @@
 import asyncio
 import os
 import pathlib as _pathlib
+import shutil as _shutil
+import socket
 import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
+
+_shutil_which = _shutil.which
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -31,25 +36,84 @@ templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 # ── アイコン定義 ───────────────────────────────────────────────
 _MODULE_ICONS: dict[str, str] = {
-    "platform-core":   "⚙️",
-    "ai_validation":   "🔐",
+    "platform-core":     "⚙️",
+    "ai_validation":     "🔐",
     "ai_classification": "📦",
-    "rnd_assessment":  "🔬",
-    "patent_search":   "📋",
-    "dap":             "🔗",
-    "screening":       "🛡️",
+    "rnd_assessment":    "🔬",
+    "patent_search":     "📋",
+    "dap":               "🔗",
+    "screening":         "🛡️",
 }
 
 # platform-core 自身の固定エントリ
 _PLATFORM_ENTRY = {
-    "key":              "platform-core",
-    "name":             "プラットフォーム管理",
-    "description":      "テナント・ユーザー・モジュール管理",
-    "base_url":         "",
-    "iframe_url":       "/admin",
-    "icon":             _MODULE_ICONS["platform-core"],
+    "key":               "platform-core",
+    "name":              "プラットフォーム管理",
+    "description":       "テナント・ユーザー・モジュール管理",
+    "base_url":          "",
+    "iframe_url":        "/ui/platform",
+    "icon":              _MODULE_ICONS["platform-core"],
     "health_check_path": "/health",
 }
+
+# ── 既知モジュール (DB 未登録時のフォールバック) ──────────────────
+# モジュールが起動・登録済みの場合は DB 値が優先される。
+_KNOWN_MODULES: list[dict] = [
+    {
+        "key":               "ai_validation",
+        "name":              "AI該非判定",
+        "description":       "外為法に基づく輸出管理の該非判定を AI で支援する",
+        "base_url":          "http://localhost:8001",
+        "iframe_url":        "http://localhost:8001",
+        "icon":              _MODULE_ICONS["ai_validation"],
+        "health_check_path": "/health",
+    },
+    {
+        "key":               "ai_classification",
+        "name":              "品目管理",
+        "description":       "取り扱い品目の法規制情報管理・SDS解析・該非判定連携",
+        "base_url":          "http://localhost:8002",
+        "iframe_url":        "http://localhost:8002",
+        "icon":              _MODULE_ICONS["ai_classification"],
+        "health_check_path": "/health",
+    },
+    {
+        "key":               "rnd_assessment",
+        "name":              "R&Dリスク評価",
+        "description":       "R&Dプロジェクトの知財戦略と安全保障貿易管理の統合リスク評価",
+        "base_url":          "http://localhost:8003",
+        "iframe_url":        "http://localhost:8003",
+        "icon":              _MODULE_ICONS["rnd_assessment"],
+        "health_check_path": "/health",
+    },
+    {
+        "key":               "patent_search",
+        "name":              "AI特許検索",
+        "description":       "Google Patents BigQuery を用いた特許検索と LLM による用途要件抽出",
+        "base_url":          "http://localhost:8004",
+        "iframe_url":        "http://localhost:8004",
+        "icon":              _MODULE_ICONS["patent_search"],
+        "health_check_path": "/health",
+    },
+    {
+        "key":               "screening",
+        "name":              "懸念取引先スクリーニング",
+        "description":       "BIS Entity List / OFAC SDN 等を用いた懸念取引先スクリーニング",
+        "base_url":          "http://localhost:8005",
+        "iframe_url":        "http://localhost:8005",
+        "icon":              _MODULE_ICONS["screening"],
+        "health_check_path": "/health",
+    },
+    {
+        "key":               "dap",
+        "name":              "DAP / AIオーケストレーター",
+        "description":       "クロスモジュール AI エージェント・各画面コーチング・入力補助",
+        "base_url":          "http://localhost:8010",
+        "iframe_url":        "http://localhost:8010",
+        "icon":              _MODULE_ICONS["dap"],
+        "health_check_path": "/health",
+    },
+]
 
 
 def _build_module_entry(m: ModuleRegistry) -> dict:
@@ -62,6 +126,14 @@ def _build_module_entry(m: ModuleRegistry) -> dict:
         "icon":             _MODULE_ICONS.get(m.key, "📌"),
         "health_check_path": m.health_check_path,
     }
+
+
+_KNOWN_INDEX: dict[str, dict] = {m["key"]: m for m in _KNOWN_MODULES}
+
+
+def _known_info(key: str) -> dict | None:
+    """DB 未登録モジュールのフォールバック情報を返す。"""
+    return _KNOWN_INDEX.get(key)
 
 
 # ── サブプロセス管理 ────────────────────────────────────────────
@@ -77,22 +149,116 @@ def _module_port(base_url: str) -> int | None:
     return urlparse(base_url).port
 
 
+def _port_in_use(port: int) -> bool:
+    """指定ポートが既に使用中かどうかを確認する。"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.3)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+def _start_module_subprocess(key: str, config: dict) -> None:
+    """単一モジュールをサブプロセスで起動する。
+    既にプロセスが生きているか、ポートが使用中の場合はスキップする。
+    """
+    # すでに管理中のプロセスが生きている場合はスキップ
+    proc = _PROCESSES.get(key)
+    if proc and proc.poll() is None:
+        return
+
+    port = _module_port(config["base_url"])
+    if not port:
+        return
+
+    # ホットリロード等で前のプロセスがポートを保持している場合はスキップ
+    if _port_in_use(port):
+        return
+
+    root       = _project_root()
+    module_dir = root / "modules" / key
+    uvicorn    = root / ".venv" / "bin" / "uvicorn"
+
+    if not module_dir.is_dir() or not uvicorn.exists():
+        return
+
+    env = os.environ.copy()
+    platform_core_dir = root / "platform-core"
+    env["PYTHONPATH"] = f"{module_dir}{os.pathsep}{platform_core_dir}"
+
+    proc = subprocess.Popen(
+        [str(uvicorn), "app.main:app", "--host", "0.0.0.0", "--port", str(port)],
+        cwd=str(module_dir),
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    _PROCESSES[key] = proc
+
+
+def _start_ollama() -> None:
+    """Ollama サーバーを起動する (既に起動中 / 未インストールの場合はスキップ)。"""
+    if _port_in_use(11434):
+        return  # 既に起動中
+    ollama_bin = _shutil_which("ollama")
+    if not ollama_bin:
+        return  # Ollama が未インストール
+    proc = subprocess.Popen(
+        [ollama_bin, "serve"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    _PROCESSES["__ollama__"] = proc
+
+
+def start_all_modules() -> None:
+    """Ollama + 全既知モジュールをサブプロセスで並行起動する (fire-and-forget)。"""
+    _start_ollama()
+    for config in _KNOWN_MODULES:
+        _start_module_subprocess(config["key"], config)
+
+
+def stop_all_modules() -> None:
+    """全モジュール・Ollama サブプロセスを終了する (platform-core 終了時)。"""
+    for proc in _PROCESSES.values():
+        if proc.poll() is None:
+            proc.terminate()
+    _PROCESSES.clear()
+
+
 # ── ルーター ────────────────────────────────────────────────────
 
 @router.get("", response_class=HTMLResponse, include_in_schema=False)
 async def home(request: Request, db: AsyncSession = Depends(get_db)):
     """ポータルホーム画面。"""
+    # 既知モジュールをベースにした順序付き辞書
+    known: dict[str, dict] = {m["key"]: m for m in _KNOWN_MODULES}
+
+    # DB 登録済みモジュールで上書き (base_url が環境変数で変わる場合に対応)
     result = await db.execute(
         select(ModuleRegistry)
         .where(ModuleRegistry.is_active == True)  # noqa: E712
         .order_by(ModuleRegistry.registered_at)
     )
-    db_modules = [_build_module_entry(m) for m in result.scalars().all()]
-    modules = [_PLATFORM_ENTRY] + db_modules
+    for m in result.scalars().all():
+        known[m.key] = _build_module_entry(m)
+
+    modules = [_PLATFORM_ENTRY] + list(known.values())
 
     return templates.TemplateResponse(
         "home.html",
         {"request": request, "modules": modules, "version": "0.1.0"},
+    )
+
+
+@router.get("/platform", response_class=HTMLResponse, include_in_schema=False)
+async def platform_dashboard(request: Request, db: AsyncSession = Depends(get_db)):
+    """プラットフォーム管理ダッシュボード画面。"""
+    result = await db.execute(
+        select(ModuleRegistry).order_by(ModuleRegistry.registered_at)
+    )
+    registered = result.scalars().all()
+    return templates.TemplateResponse(
+        "platform_dashboard.html",
+        {"request": request, "registered_modules": registered, "version": "0.1.0"},
     )
 
 
@@ -102,14 +268,22 @@ async def module_health(module_key: str, db: AsyncSession = Depends(get_db)):
     if module_key == "platform-core":
         return {"status": "online"}
 
+    # DB 優先、未登録の場合は既知モジュール設定で代替
     result = await db.execute(
         select(ModuleRegistry).where(ModuleRegistry.key == module_key)
     )
     module = result.scalar_one_or_none()
-    if module is None:
-        return {"status": "unknown"}
+    if module is not None:
+        base_url          = module.base_url
+        health_check_path = module.health_check_path
+    else:
+        known = _known_info(module_key)
+        if known is None:
+            return {"status": "unknown"}
+        base_url          = known["base_url"]
+        health_check_path = known["health_check_path"]
 
-    health_url = module.base_url.rstrip("/") + module.health_check_path
+    health_url = base_url.rstrip("/") + health_check_path
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             resp = await client.get(health_url)
@@ -128,14 +302,22 @@ async def launch_module(module_key: str, db: AsyncSession = Depends(get_db)):
     if proc and proc.poll() is None:
         return {"status": "already_running", "pid": proc.pid}
 
+    # DB 優先、未登録の場合は既知モジュール設定で代替
     result = await db.execute(
         select(ModuleRegistry).where(ModuleRegistry.key == module_key)
     )
     module = result.scalar_one_or_none()
-    if module is None:
-        raise HTTPException(status_code=404, detail=f"Module '{module_key}' not found")
+    if module is not None:
+        base_url          = module.base_url
+        health_check_path = module.health_check_path
+    else:
+        known = _known_info(module_key)
+        if known is None:
+            raise HTTPException(status_code=404, detail=f"Module '{module_key}' not found")
+        base_url          = known["base_url"]
+        health_check_path = known["health_check_path"]
 
-    port = _module_port(module.base_url)
+    port = _module_port(base_url)
     if not port:
         raise HTTPException(status_code=400, detail="Cannot determine port from base_url")
 
@@ -161,7 +343,7 @@ async def launch_module(module_key: str, db: AsyncSession = Depends(get_db)):
     _PROCESSES[module_key] = proc
 
     # ヘルスチェックで起動完了を待つ (最大 10 秒)
-    health_url = module.base_url.rstrip("/") + module.health_check_path
+    health_url = base_url.rstrip("/") + health_check_path
     for _ in range(20):
         await asyncio.sleep(0.5)
         if proc.poll() is not None:

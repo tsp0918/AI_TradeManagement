@@ -20,7 +20,7 @@ MODULE = ModuleInfo(
         "input":  ["SearchQuery"],
         "output": ["Patent", "UseCase"],
     },
-    health_check_path="/api/health",
+    health_check_path="/health",
 )
 
 app = FastAPI(

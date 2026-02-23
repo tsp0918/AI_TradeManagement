@@ -24,15 +24,18 @@ from platform_core.middleware.audit import AuditMiddleware
 from platform_core.routers import admin_router
 from platform_core.routers.internal import router as internal_router
 from platform_core.routers.ui import router as ui_router
+from platform_core.routers.ui import start_all_modules, stop_all_modules
 
 _STATIC_DIR = pathlib.Path(__file__).parent / "static"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 起動時処理
+    # 全モジュールを並行起動 (fire-and-forget)
+    start_all_modules()
     yield
-    # 終了時処理
+    # 終了時: 全モジュールサブプロセスを停止
+    stop_all_modules()
 
 
 def create_app() -> FastAPI:
