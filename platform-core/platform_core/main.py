@@ -6,6 +6,7 @@
 - /ui/health/{key}  モジュールヘルスチェックプロキシ
 - /auth/*           認証 (ローカルJWT / Google SSO / Microsoft SSO)
 - /admin/*          管理 (tenants / users / modules)
+- /api/projects/*   案件管理 (Project / PatentLink)
 - /internal/*       内部 API (モジュール自動登録・モジュール間通信)
 - /health           ヘルスチェック
 """
@@ -23,6 +24,7 @@ from platform_core.config import settings
 from platform_core.middleware.audit import AuditMiddleware
 from platform_core.routers import admin_router
 from platform_core.routers.internal import router as internal_router
+from platform_core.routers.projects import router as projects_router
 from platform_core.routers.ui import router as ui_router
 from platform_core.routers.ui import start_all_modules, stop_all_modules
 
@@ -62,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(ui_router)
     app.include_router(auth_router)
     app.include_router(admin_router, prefix="/admin")
+    app.include_router(projects_router, prefix="/api/projects", tags=["projects"])
     app.include_router(internal_router)
 
     @app.get("/", include_in_schema=False)
