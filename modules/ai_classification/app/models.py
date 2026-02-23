@@ -54,6 +54,9 @@ class Product(Base):
     export_control_reason = Column(Text, nullable=True)
     export_control_checked_at = Column(DateTime, nullable=True)
 
+    # 外部AI判定用の用途概要（手動入力・外部判定リクエストに含める）
+    usage_summary = Column(Text, nullable=True)
+
     # ★追加：外部アプリ判定の結果を格納する列（GETで返す）
     external_eval_status = Column(String(50), nullable=True)          # e.g. controlled / non_controlled / needs_review
     external_eval_reason = Column(Text, nullable=True)               # human-readable reason

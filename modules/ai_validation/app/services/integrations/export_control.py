@@ -66,6 +66,10 @@ def _build_spec_text(payload: Dict[str, Any]) -> str:
     if payload.get("eccn"):
         parts.append(f"eccn: {payload.get('eccn')}")
 
+    usage_summary = (payload.get("usage_summary") or "").strip()
+    if usage_summary:
+        parts.append("usage_summary:\n" + usage_summary)
+
     desc = (payload.get("description") or "").strip()
     if desc:
         parts.append("description:\n" + desc)
@@ -107,9 +111,12 @@ def create_transaction_from_payload(db: Session, payload: Dict[str, Any]) -> int
     db.add(item)
     db.flush()
 
-    usage_text = (payload.get("description") or "").strip()
+    # usage_summary を最優先。なければ description を使用
+    usage_text = (payload.get("usage_summary") or "").strip()
+    if not usage_text:
+        usage_text = (payload.get("description") or "").strip()
 
-    # description が空の場合、bom_json のコンポーネント名を活用
+    # それも空の場合、bom_json のコンポーネント名を活用
     if not usage_text:
         bom = _json_loads_safe(payload.get("bom_json"), default=[])
         if isinstance(bom, list):

@@ -217,6 +217,20 @@ def transaction_detail_page(
         .first()
     )
 
+    # 品目・用途要件（取引情報表示用）
+    items = (
+        db.query(TransactionItem)
+        .filter(TransactionItem.transaction_id == transaction_id)
+        .order_by(TransactionItem.id)
+        .all()
+    )
+    usages = (
+        db.query(UsageRequirement)
+        .filter(UsageRequirement.transaction_id == transaction_id)
+        .order_by(UsageRequirement.id)
+        .all()
+    )
+
     # 2リスト結果: run_id が指定されていない場合も latest_matrix_match があれば自動計算
     two_lists: Optional[Dict[str, Any]] = None
     two_lists_error: Optional[str] = None
@@ -235,6 +249,8 @@ def transaction_detail_page(
         {
             "request": request,
             "tx": tx,
+            "items": items,
+            "usages": usages,
             "runs": runs,
             "latest_matrix_match": latest_matrix_match,
             "two_lists": two_lists,

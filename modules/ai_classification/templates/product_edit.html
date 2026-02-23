@@ -367,6 +367,24 @@
         </div>
 
         <div class="column is-half">
+
+          <!-- ★用途概要（外部AI判定用）入力欄 -->
+          <form method="post" action="/products/{{ product.id }}/usage-summary" style="margin-bottom: 16px;">
+            <div class="field">
+              <label class="label">用途概要（外部AI判定用）</label>
+              <div class="control">
+                <textarea class="textarea" name="usage_summary" rows="4"
+                  placeholder="例: エチレングリコールと水酸化ナトリウムを主原料とした冷却液。半導体製造工程の熱交換器向けに使用。">{{ product.usage_summary or "" }}</textarea>
+              </div>
+              <p class="help">この内容が外部AI判定リクエストに含まれ、2リスト解析の照合テキストとして使用されます。具体的に記入してください。</p>
+            </div>
+            <div class="field">
+              <div class="control">
+                <button class="button is-primary is-light" type="submit">用途概要を保存</button>
+              </div>
+            </div>
+          </form>
+
           <div class="buttons">
             <form method="post" action="/products/{{ product.id }}/external/request">
               <button class="button is-info is-light" type="submit">

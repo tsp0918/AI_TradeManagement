@@ -244,6 +244,7 @@ def compute_two_lists(db: Session, transaction_id: int, run_id: Optional[int] = 
 
     intersection: List[Dict[str, Any]] = []
     expanded_only: List[Dict[str, Any]] = []
+    core_only: List[Dict[str, Any]] = []
 
     for item in grouped.values():
         has_core = len(item["hits"]["core"]) > 0
@@ -252,6 +253,8 @@ def compute_two_lists(db: Session, transaction_id: int, run_id: Optional[int] = 
             intersection.append(item)
         elif (not has_core) and has_exp:
             expanded_only.append(item)
+        elif has_core and (not has_exp):
+            core_only.append(item)
 
     def sort_key(x: Dict[str, Any]):
         score = x["max_score"]
@@ -261,6 +264,7 @@ def compute_two_lists(db: Session, transaction_id: int, run_id: Optional[int] = 
 
     intersection.sort(key=sort_key)
     expanded_only.sort(key=sort_key)
+    core_only.sort(key=sort_key)
 
     return {
         "transaction_id": transaction_id,
@@ -268,8 +272,10 @@ def compute_two_lists(db: Session, transaction_id: int, run_id: Optional[int] = 
         "counts": {
             "intersection": len(intersection),
             "expanded_only": len(expanded_only),
+            "core_only": len(core_only),
             "total_unique_items": len(grouped),
         },
         "intersection": intersection,
         "expanded_only": expanded_only,
+        "core_only": core_only,
     }

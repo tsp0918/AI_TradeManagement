@@ -438,12 +438,13 @@ async def request_external_ai(product_id: int, db: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # AI側仕様に合わせたペイロード（description重視）
+    # AI側仕様に合わせたペイロード（usage_summary優先、なければdescription）
     payload = {
         "product_id": product.id,
         "code": product.code,
         "name": product.name,
         "description": product.description or "",
+        "usage_summary": product.usage_summary or "",
         "callback_webhook": settings.PUBLIC_WEBHOOK_URL,  # UI側Webhook
         # 任意（将来拡張）
         "hs_code": product.hs_code,
@@ -512,6 +513,25 @@ def update_external_ai_manual(
     product.external_eval_received_at = datetime.utcnow()
 
     db.commit()
+    return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
+
+
+@router.post("/products/{product_id}/usage-summary")
+def save_usage_summary(
+    product_id: int,
+    usage_summary: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """
+    用途概要（外部AI判定用テキスト）を保存する。
+    """
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    product.usage_summary = usage_summary.strip() or None
+    db.commit()
+
     return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
 
 

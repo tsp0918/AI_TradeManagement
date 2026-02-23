@@ -1,6 +1,6 @@
 <!-- templates/transaction_detail.html -->
 {% extends "base.html" %}
-{% block title %}取引詳細 - {{ tx.case_no or ("ID " ~ tx.id) }}{% endblock %}
+{% block title %}取引詳細 - {{ tx.title or tx.case_no or ("ID " ~ tx.id) }}{% endblock %}
 
 {% block content %}
 <div class="head-row">
@@ -17,13 +17,47 @@
   </div>
 </div>
 
+<!-- ===== 取引情報 ===== -->
 <div class="grid">
   <div class="card">
     <h2>取引情報</h2>
     <div class="kv">
-      <div><div class="k">case_no</div><div class="v">{{ tx.case_no or "-" }}</div></div>
-      <div><div class="k">note</div><div class="v">{{ tx.note or "-" }}</div></div>
+      <div><div class="k">case_no</div><div class="v mono">{{ tx.case_no or "-" }}</div></div>
+      {% if tx.title %}
+      <div><div class="k">タイトル</div><div class="v">{{ tx.title }}</div></div>
+      {% endif %}
+      <div><div class="k">ステータス</div><div class="v">{{ tx.status or "-" }}</div></div>
+      {% if tx.note %}
+      <div><div class="k">note</div><div class="v">{{ tx.note }}</div></div>
+      {% endif %}
     </div>
+
+    {% if items %}
+    <div style="margin-top:12px;">
+      <div class="label-sm" style="margin-bottom:6px;">品目</div>
+      {% for it in items %}
+      <div style="background:#f8f9fa; border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:0.88rem;">
+        <span class="strong">{{ it.item_name or "-" }}</span>
+        {% if it.item_model %}<span class="muted"> ({{ it.item_model }})</span>{% endif %}
+        {% if it.spec_text %}
+        <div class="muted small" style="margin-top:4px; white-space:pre-wrap;">{{ it.spec_text[:300] }}{% if it.spec_text|length > 300 %}…{% endif %}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if usages %}
+    <div style="margin-top:12px;">
+      <div class="label-sm" style="margin-bottom:6px;">用途要件（照合テキスト）</div>
+      {% for u in usages %}
+      <div style="background:#eff6ff; border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:0.88rem;">
+        <span class="chip">{{ u.source or "core" }}</span>
+        <span style="margin-left:6px;">{{ u.text or "-" }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
 
   <div class="card">
@@ -42,6 +76,7 @@
   </div>
 </div>
 
+<!-- ===== 2リスト判定結果 ===== -->
 <div class="card" style="margin-top:14px;">
   <h2>2リスト判定結果</h2>
 
@@ -53,16 +88,95 @@
   {% endif %}
 
   {% if two_lists %}
-    <div class="muted small">
+    <div class="muted small" style="margin-bottom:12px;">
       run_id: <span class="mono">{{ two_lists.run_id }}</span> /
-      intersection: <b>{{ two_lists.counts.intersection }}</b> /
+      照合候補: <b>{{ two_lists.counts.core_only or 0 }}</b> /
+      両リスト合致: <b>{{ two_lists.counts.intersection }}</b> /
       expanded_only: <b>{{ two_lists.counts.expanded_only }}</b> /
-      total_unique_items: {{ two_lists.counts.total_unique_items }}
+      total: {{ two_lists.counts.total_unique_items }}
     </div>
 
-    <div class="split" style="margin-top:12px;">
+    <!-- ===== A) 照合候補品目（core_only）===== -->
+    {% if two_lists.core_only and two_lists.core_only|length > 0 %}
+    <div style="margin-bottom:20px;">
+      <h3 style="color:#1d4ed8; border-bottom:2px solid #dbeafe; padding-bottom:6px;">
+        A) マトリクス照合候補品目（{{ two_lists.counts.core_only or 0 }} 件）
+      </h3>
+      <div class="muted small" style="margin-bottom:10px;">
+        用途テキストと外為法マトリクスの照合結果です。スコアが高いほど関連性が高い可能性があります。
+      </div>
+      <div class="list">
+        {% for item in two_lists.core_only %}
+          <div class="list-item">
+            <div class="row" style="align-items:flex-start; gap:8px;">
+              <div class="strong" style="flex:1;">
+                {{ item.regime }}
+                {% if item.item_ids and item.item_ids|length > 0 %}
+                  / {{ item.item_ids | join(" / ") }}
+                {% else %}
+                  / rule_id={{ item.rule_id }}
+                {% endif %}
+              </div>
+              <div class="chip {% if item.best_decision == 'hit' %}chip-hit{% elif item.best_decision == 'maybe' %}chip-maybe{% endif %}">
+                {{ item.best_decision or "?" }}
+              </div>
+              <div class="chip">score: {{ "%.4f"|format(item.max_score or 0) }}</div>
+            </div>
+
+            {% if item.title %}
+              <div style="font-size:0.88rem; margin-top:4px; color:#374151;">{{ item.title }}</div>
+            {% endif %}
+
+            {% if item.rule_summary %}
+              <div class="muted small" style="margin-top:6px; white-space:pre-wrap;">{{ item.rule_summary }}</div>
+            {% endif %}
+
+            {% if item.hits.core %}
+              <div style="margin-top:8px;">
+                {% for h in item.hits.core %}
+                  <div style="font-size:0.82rem; margin-bottom:4px;">
+                    {% if h.matched_compact and h.matched_compact|length > 0 %}
+                      <span class="muted">一致語:</span>
+                      {% for t in h.matched_compact %}
+                        <span class="chip chip-token">{{ t }}</span>
+                      {% endfor %}
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <details style="margin-top:8px;">
+              <summary class="muted small" style="cursor:pointer;">詳細を表示</summary>
+              <ul class="bul" style="margin-top:6px;">
+                {% for h in item.hits.core %}
+                  <li style="margin-bottom:10px; font-size:0.85rem;">
+                    <span class="chip">{{ h.match_type }}</span>
+                    <span class="chip"><b>{{ h.decision }}</b></span>
+                    <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
+                    <div class="muted small">用途: {{ h.usage_text or "-" }}</div>
+                    {% if h.evidence %}
+                      <details style="margin-top:4px;">
+                        <summary class="muted small">evidence JSON</summary>
+                        <pre style="white-space:pre-wrap; margin-top:6px; font-size:0.78rem;">{{ h.evidence | tojson(indent=2) }}</pre>
+                      </details>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </details>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+      <div class="muted" style="margin-bottom:16px;">照合候補品目はありません。用途テキストを具体的に入力して再実行してください。</div>
+    {% endif %}
+
+    <!-- ===== B) intersection（core & expanded両方）===== -->
+    <div class="split" style="margin-top:16px;">
       <div>
-        <h3>A) intersection（core & expanded）</h3>
+        <h3>B) 両リスト合致（core &amp; expanded）</h3>
 
         {% if two_lists.intersection and two_lists.intersection|length > 0 %}
           <div class="list">
@@ -95,18 +209,10 @@
                             <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>
                           {% endif %}
                           <div class="muted small">{{ h.usage_text or "-" }}</div>
-
-                          {% if h.evidence %}
-                            <details style="margin-top:6px;">
-                              <summary class="muted small">evidence（整形表示）</summary>
-                              <pre style="white-space:pre-wrap; margin-top:8px;">{{ h.evidence | tojson(indent=2) }}</pre>
-                            </details>
-                          {% endif %}
                         </li>
                       {% endfor %}
                     </ul>
                   </div>
-
                   <div>
                     <div class="muted small">expanded hits</div>
                     <ul class="bul">
@@ -119,13 +225,6 @@
                             <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>
                           {% endif %}
                           <div class="muted small">{{ h.usage_text or "-" }}</div>
-
-                          {% if h.evidence %}
-                            <details style="margin-top:6px;">
-                              <summary class="muted small">evidence（整形表示）</summary>
-                              <pre style="white-space:pre-wrap; margin-top:8px;">{{ h.evidence | tojson(indent=2) }}</pre>
-                            </details>
-                          {% endif %}
                         </li>
                       {% endfor %}
                     </ul>
@@ -136,12 +235,12 @@
             {% endfor %}
           </div>
         {% else %}
-          <div class="muted">intersection はありません。</div>
+          <div class="muted">両リスト合致はありません。</div>
         {% endif %}
       </div>
 
       <div>
-        <h3>B) expanded_only（expandedのみ）</h3>
+        <h3>C) expanded_only（expandedのみ）</h3>
 
         {% if two_lists.expanded_only and two_lists.expanded_only|length > 0 %}
           <div class="list">
@@ -172,13 +271,6 @@
                         <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>
                       {% endif %}
                       <div class="muted small">{{ h.usage_text or "-" }}</div>
-
-                      {% if h.evidence %}
-                        <details style="margin-top:6px;">
-                          <summary class="muted small">evidence（整形表示）</summary>
-                          <pre style="white-space:pre-wrap; margin-top:8px;">{{ h.evidence | tojson(indent=2) }}</pre>
-                        </details>
-                      {% endif %}
                     </li>
                   {% endfor %}
                 </ul>
@@ -198,6 +290,7 @@
   {% endif %}
 </div>
 
+<!-- ===== 実行履歴 ===== -->
 <div class="card" style="margin-top:14px;">
   <h2>実行履歴（ai_runs）</h2>
   {% if runs %}
@@ -235,5 +328,12 @@
     <div class="muted">実行履歴がありません。</div>
   {% endif %}
 </div>
+
+<style>
+.chip-hit { background: #dcfce7; color: #166534; }
+.chip-maybe { background: #fef9c3; color: #854d0e; }
+.chip-token { background: #e0f2fe; color: #075985; font-size:0.78rem; }
+.label-sm { font-size: 0.82rem; font-weight: 600; color: #6b7280; }
+</style>
 
 {% endblock %}
