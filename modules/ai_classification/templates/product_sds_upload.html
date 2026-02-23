@@ -17,45 +17,77 @@
 </div>
 
 {% if message %}
-<div class="notification is-primary">
-  {{ message }}
+<div class="notification is-success is-light">
+  <button class="delete" onclick="this.parentElement.remove()"></button>
+  ✅ {{ message }}
 </div>
 {% endif %}
 
 {% if error %}
-<div class="notification is-danger">
-  {{ error }}
+<div class="notification is-danger is-light">
+  <button class="delete" onclick="this.parentElement.remove()"></button>
+  ❌ {{ error }}
 </div>
 {% endif %}
 
 <div class="box">
-  <h3 class="title is-6">SDSアップロード</h3>
+  <h3 class="title is-6">SDSアップロード &amp; 解析</h3>
   <div class="content">
     <p>
-      この品目に紐づく SDS（PDF）をアップロードすると、OpenAIで解析し、
-      GHSおよび主要法令フラグを自動判定します。
+      この品目に紐づく SDS（PDF）をアップロードすると、ルールベース解析および
+      ローカルAI（Ollama）でGHSおよび主要法令フラグを自動判定します。<br>
+      <span class="has-text-grey is-size-7">※ テキスト埋め込みのPDFが対象です。スキャンPDF（画像のみ）は解析できません。</span>
     </p>
   </div>
 
-  <form action="/products/{{ product.id }}/sds" method="post" enctype="multipart/form-data">
+  <!-- 新規ファイルアップロード -->
+  <form id="sds-form" action="/products/{{ product.id }}/sds" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="existing_filename" value="">
+
     <div class="field">
+      <label class="label">新しいSDS PDFをアップロード</label>
       <div class="file has-name is-fullwidth">
         <label class="file-label">
-          <input class="file-input" type="file" name="file" accept=".pdf">
+          <input class="file-input" type="file" name="file" accept=".pdf" id="sds-file-input">
           <span class="file-cta">
+            <span class="file-icon">
+              <i>📄</i>
+            </span>
             <span class="file-label">SDS PDFを選択…</span>
           </span>
-          <span class="file-name">
-            選択されたSDSファイル名がここに表示されます
+          <span class="file-name" id="sds-file-name">
+            （ファイルを選択してください）
           </span>
         </label>
       </div>
     </div>
 
+    {% if existing_pdfs %}
+    <div class="field">
+      <label class="label">または既存のアップロード済みPDFを再解析</label>
+      <div class="control">
+        <div class="select is-fullwidth">
+          <select id="existing-select" onchange="selectExisting(this.value)">
+            <option value="">-- 既存ファイルを選択 --</option>
+            {% for pdf_fn in existing_pdfs %}
+            <option value="{{ pdf_fn }}"
+              {% if product.sds_file_path and pdf_fn in product.sds_file_path %}selected{% endif %}>
+              {{ pdf_fn }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <p class="help">ファイルを選択すると「新規アップロード」のクリアと既存ファイルの使用になります。</p>
+    </div>
+    {% endif %}
+
     <div class="field is-grouped">
       <div class="control">
-        <button class="button is-primary" type="submit">
-          アップロード &amp; 解析
+        <button class="button is-primary" type="submit" id="submit-btn"
+                onclick="showLoading()">
+          <span id="btn-label">アップロード &amp; 解析</span>
+          <span id="btn-loading" style="display:none;">解析中…（数十秒かかる場合があります）</span>
         </button>
       </div>
     </div>
@@ -148,5 +180,47 @@
     {% endif %}
   </div>
 </div>
+
+<script>
+  // 選択ファイル名を表示
+  document.getElementById("sds-file-input").addEventListener("change", function () {
+    const nameSpan = document.getElementById("sds-file-name");
+    const existingSel = document.getElementById("existing-select");
+    if (this.files && this.files.length > 0) {
+      nameSpan.textContent = this.files[0].name;
+      // 新規選択時は既存選択をリセット
+      if (existingSel) {
+        existingSel.value = "";
+        document.querySelector("input[name='existing_filename']").value = "";
+      }
+    } else {
+      nameSpan.textContent = "（ファイルを選択してください）";
+    }
+  });
+
+  // 既存PDF選択時は新規ファイル入力をクリア
+  function selectExisting(val) {
+    document.querySelector("input[name='existing_filename']").value = val;
+    if (val) {
+      const fileInput = document.getElementById("sds-file-input");
+      fileInput.value = "";
+      document.getElementById("sds-file-name").textContent = "（ファイルを選択してください）";
+    }
+  }
+
+  // 送信中ローディング表示
+  function showLoading() {
+    const btn = document.getElementById("submit-btn");
+    const label = document.getElementById("btn-label");
+    const loading = document.getElementById("btn-loading");
+    // 少し遅らせてフォームバリデーションが先に走るようにする
+    setTimeout(function () {
+      label.style.display = "none";
+      loading.style.display = "inline";
+      btn.disabled = true;
+      btn.classList.add("is-loading");
+    }, 100);
+  }
+</script>
 
 {% endblock %}
