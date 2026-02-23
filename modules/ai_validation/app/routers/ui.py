@@ -243,6 +243,36 @@ def transaction_detail_page(
         except Exception as e:
             two_lists_error = str(e)
 
+    # ハイライトテーブル用: 全マッチをカテゴリ付きでスコア降順ソート
+    highlight_rows = []
+    overall_risk = "none"
+    overall_label = "未実行"
+    if two_lists:
+        for it in two_lists.get("intersection", []):
+            highlight_rows.append({**it, "category": "intersection"})
+        for it in two_lists.get("core_only", []):
+            highlight_rows.append({**it, "category": "core_only"})
+        for it in two_lists.get("expanded_only", []):
+            highlight_rows.append({**it, "category": "expanded_only"})
+        _cat_order = {"intersection": 0, "core_only": 1, "expanded_only": 2}
+        highlight_rows.sort(
+            key=lambda x: (_cat_order.get(x.get("category", ""), 99), -float(x.get("max_score") or 0))
+        )
+
+        c = two_lists.get("counts", {})
+        if c.get("intersection", 0) > 0:
+            overall_risk = "danger"
+            overall_label = f"要注意: 両リスト合致 {c['intersection']} 件"
+        elif c.get("core_only", 0) > 0:
+            overall_risk = "warn"
+            overall_label = f"照合候補あり: {c.get('core_only', 0)} 件"
+        elif c.get("expanded_only", 0) > 0:
+            overall_risk = "info"
+            overall_label = f"参考情報: {c['expanded_only']} 件"
+        else:
+            overall_risk = "safe"
+            overall_label = "ヒットなし"
+
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "transaction_detail.html",
@@ -255,6 +285,9 @@ def transaction_detail_page(
             "latest_matrix_match": latest_matrix_match,
             "two_lists": two_lists,
             "two_lists_error": two_lists_error,
+            "highlight_rows": highlight_rows,
+            "overall_risk": overall_risk,
+            "overall_label": overall_label,
         },
     )
 

@@ -3,44 +3,165 @@
 {% block title %}取引詳細 - {{ tx.title or tx.case_no or ("ID " ~ tx.id) }}{% endblock %}
 
 {% block content %}
-<div class="head-row">
-  <div>
-    <h1>取引詳細</h1>
-    <div class="muted">transaction_id: <span class="mono">{{ tx.id }}</span> {% if tx.case_no %}/ case_no: {{ tx.case_no }}{% endif %}</div>
-  </div>
 
-  <div class="actions">
-    <a class="btn" href="/ui/transactions">← 取引一覧</a>
+<!-- ===== Section 1: ステータスバナー ===== -->
+<div class="status-banner status-banner-{{ overall_risk }}">
+  <div class="status-left">
+    <span class="status-icon">
+      {%- if overall_risk == "danger" -%}⚠
+      {%- elif overall_risk == "warn" -%}⚡
+      {%- elif overall_risk == "safe" -%}✓
+      {%- else -%}–{%- endif -%}
+    </span>
+    <span class="status-label">{{ overall_label }}</span>
+    {% if two_lists %}
+    <span class="status-sub">
+      両リスト合致 <b>{{ two_lists.counts.intersection }}</b> /
+      照合候補 <b>{{ two_lists.counts.core_only or 0 }}</b> /
+      参考 <b>{{ two_lists.counts.expanded_only }}</b>
+    </span>
+    {% endif %}
+  </div>
+  <div class="status-right">
+    {% if latest_matrix_match and latest_matrix_match.started_at %}
+    <span class="muted small">最終実行: {{ latest_matrix_match.started_at.strftime('%Y-%m-%d %H:%M') }}</span>
+    {% endif %}
+    <a class="btn" href="/ui/transactions">← 一覧</a>
     <form method="post" action="/ui/transactions/{{ tx.id }}/run?threshold=0.75" style="margin:0">
-      <button class="btn btn-primary" type="submit">AI解析を実行（①〜④）</button>
+      <button class="btn btn-primary" type="submit">AI解析を実行</button>
     </form>
   </div>
 </div>
 
-<!-- ===== 取引情報 ===== -->
-<div class="grid">
-  <div class="card">
-    <h2>取引情報</h2>
+<!-- ページ見出し -->
+<div class="page-title-row">
+  <h1>{{ tx.title or tx.case_no or ("取引 #" ~ tx.id) }}</h1>
+  <div class="muted small">ID: {{ tx.id }}{% if tx.case_no %} / case_no: {{ tx.case_no }}{% endif %} / {{ tx.status or "-" }}</div>
+</div>
+
+<!-- ===== Section 2: 判定ハイライトテーブル ===== -->
+{% if highlight_rows %}
+<div class="card highlight-card">
+  <div class="highlight-header">
+    <h2 style="margin:0">判定ハイライト</h2>
+    <span class="muted small">{{ highlight_rows|length }} 件 — 行クリックで詳細へ</span>
+  </div>
+  <!-- 区分凡例 -->
+  <div class="legend-row">
+    <div class="legend-item"><span class="badge badge-intersection">★ 両方一致</span><span class="legend-desc">申告用途・特許展開用途の<b>両方</b>で規制項目にヒット（最も確度が高い）</span></div>
+    <div class="legend-item"><span class="badge badge-core">直接一致</span><span class="legend-desc">申告用途テキストが規制項目に<b>直接</b>ヒット</span></div>
+    <div class="legend-item"><span class="badge badge-expanded">特許示唆</span><span class="legend-desc">関連特許から展開した用途でのみヒット（参考情報・確定ではない）</span></div>
+  </div>
+  <div class="highlight-scroll">
+  <table class="table highlight-table">
+    <thead>
+      <tr>
+        <th style="width:106px">区分</th>
+        <th style="width:130px">判定項番</th>
+        <th style="width:72px">リスク</th>
+        <th style="width:58px;text-align:right">スコア</th>
+        <th>根拠説明</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in highlight_rows %}
+      <tr class="hrow hrow-{{ row.category }}"
+          onclick="document.getElementById('detail-rule-{{ row.rule_id }}').scrollIntoView({behavior:'smooth', block:'start'}); document.getElementById('sec-detail').open = true;"
+          title="クリックで2リスト詳細へ">
+        <td>
+          {% if row.category == "intersection" %}
+            <span class="badge badge-intersection">★ 両方一致</span>
+          {% elif row.category == "core_only" %}
+            <span class="badge badge-core">直接一致</span>
+          {% else %}
+            <span class="badge badge-expanded">特許示唆</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="strong" style="font-size:.9rem; line-height:1.3">
+            {% if row.item_ids and row.item_ids|length > 0 %}
+              {{ row.item_ids | join(" / ") }}
+            {% else %}
+              rule_id={{ row.rule_id }}
+            {% endif %}
+          </div>
+          <div class="muted small" style="margin-top:2px">{{ row.regime }}</div>
+        </td>
+        <td>
+          <span class="chip {% if row.best_decision == 'hit' %}chip-hit{% elif row.best_decision == 'maybe' %}chip-maybe{% endif %}">
+            {{ row.best_decision or "?" }}
+          </span>
+        </td>
+        <td class="mono" style="text-align:right; font-size:.87rem">
+          {{ "%.3f"|format(row.max_score or 0) }}
+        </td>
+        <td>
+          {% if row.title %}
+          <div style="font-size:.88rem; font-weight:600; margin-bottom:4px; color:#374151">{{ row.title }}</div>
+          {% elif row.rule_summary %}
+          <div style="font-size:.88rem; margin-bottom:4px; color:#374151">{{ row.rule_summary[:60] }}{% if row.rule_summary|length > 60 %}…{% endif %}</div>
+          {% endif %}
+          {%- set primary_hits = (row.hits.core or []) if (row.hits.core or []) else (row.hits.expanded or []) -%}
+          {% for h in primary_hits[:1] %}
+            {% if h.matched_compact %}
+            <div style="margin-top:2px">
+              <span class="muted" style="font-size:.78rem">一致語: </span>
+              {% for t in h.matched_compact[:5] %}
+                <span class="chip chip-token">{{ t }}</span>
+              {% endfor %}
+            </div>
+            {% elif h.usage_text %}
+            <div class="muted small" style="margin-top:2px">{{ h.usage_text[:80] }}{% if h.usage_text|length > 80 %}…{% endif %}</div>
+            {% endif %}
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>{# .highlight-scroll #}
+</div>
+
+{% elif two_lists and two_lists.counts.total_unique_items == 0 %}
+<div class="card" style="padding:16px; color:var(--muted); font-size:.92rem">
+  マトリクス照合なし。用途テキストを具体的に入力して再実行してください。
+</div>
+{% elif not two_lists and not two_lists_error %}
+<div class="card" style="padding:16px; color:var(--muted); font-size:.92rem">
+  「AI解析を実行」ボタンを押すと、①〜④ のパイプラインが実行され判定ハイライトが表示されます。
+</div>
+{% endif %}
+
+{% if two_lists_error and not two_lists %}
+<div class="alert alert-warn" style="margin-top:8px">
+  <div class="alert-title">2リスト計算エラー</div>
+  <div class="alert-body">{{ two_lists_error }}</div>
+</div>
+{% endif %}
+
+<!-- ===== Section 3: 取引情報（折りたたみ） ===== -->
+<details class="card detail-section">
+  <summary class="detail-summary">
+    <span>取引情報</span>
+    <span class="muted small">{{ tx.case_no or "" }}{% if tx.title %} — {{ tx.title[:40] }}{% endif %}</span>
+  </summary>
+  <div style="margin-top:12px">
     <div class="kv">
       <div><div class="k">case_no</div><div class="v mono">{{ tx.case_no or "-" }}</div></div>
-      {% if tx.title %}
-      <div><div class="k">タイトル</div><div class="v">{{ tx.title }}</div></div>
-      {% endif %}
+      {% if tx.title %}<div><div class="k">タイトル</div><div class="v">{{ tx.title }}</div></div>{% endif %}
       <div><div class="k">ステータス</div><div class="v">{{ tx.status or "-" }}</div></div>
-      {% if tx.note %}
-      <div><div class="k">note</div><div class="v">{{ tx.note }}</div></div>
-      {% endif %}
+      {% if tx.note %}<div><div class="k">note</div><div class="v">{{ tx.note }}</div></div>{% endif %}
     </div>
 
     {% if items %}
-    <div style="margin-top:12px;">
-      <div class="label-sm" style="margin-bottom:6px;">品目</div>
+    <div style="margin-top:12px">
+      <div class="label-sm" style="margin-bottom:6px">品目</div>
       {% for it in items %}
-      <div style="background:#f8f9fa; border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:0.88rem;">
+      <div style="background:#f8f9fa; border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:.88rem">
         <span class="strong">{{ it.item_name or "-" }}</span>
         {% if it.item_model %}<span class="muted"> ({{ it.item_model }})</span>{% endif %}
         {% if it.spec_text %}
-        <div class="muted small" style="margin-top:4px; white-space:pre-wrap;">{{ it.spec_text[:300] }}{% if it.spec_text|length > 300 %}…{% endif %}</div>
+        <div class="muted small" style="margin-top:4px; white-space:pre-wrap">{{ it.spec_text[:300] }}{% if it.spec_text|length > 300 %}…{% endif %}</div>
         {% endif %}
       </div>
       {% endfor %}
@@ -48,252 +169,194 @@
     {% endif %}
 
     {% if usages %}
-    <div style="margin-top:12px;">
-      <div class="label-sm" style="margin-bottom:6px;">用途要件（照合テキスト）</div>
+    <div style="margin-top:12px">
+      <div class="label-sm" style="margin-bottom:6px">用途要件（照合テキスト）</div>
       {% for u in usages %}
-      <div style="background:#eff6ff; border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:0.88rem;">
+      <div style="background:#eff6ff; border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:.88rem">
         <span class="chip">{{ u.source or "core" }}</span>
-        <span style="margin-left:6px;">{{ u.text or "-" }}</span>
+        <span style="margin-left:6px">{{ u.text or "-" }}</span>
       </div>
       {% endfor %}
     </div>
     {% endif %}
   </div>
+</details>
 
-  <div class="card">
-    <h2>最新 matrix_match</h2>
-    {% if latest_matrix_match %}
-      <div class="kv">
-        <div><div class="k">run_id</div><div class="v mono">{{ latest_matrix_match.id }}</div></div>
-        <div><div class="k">status</div><div class="v">{{ latest_matrix_match.status }}</div></div>
-      </div>
-      <div style="margin-top:10px;">
-        <a class="btn btn-soft" href="/ui/transactions/{{ tx.id }}?run_id={{ latest_matrix_match.id }}">このrunで2リスト表示</a>
-      </div>
-    {% else %}
-      <div class="muted">まだ matrix_match run がありません。</div>
-    {% endif %}
-  </div>
-</div>
+<!-- ===== Section 4: 2リスト詳細（折りたたみ、アンカー付き） ===== -->
+{% if two_lists %}
+<details id="sec-detail" class="card detail-section" {% if two_lists.counts.total_unique_items > 0 %}open{% endif %}>
+  <summary class="detail-summary">
+    <span>2リスト詳細</span>
+    <span class="muted small">run_id: {{ two_lists.run_id }} / {{ two_lists.counts.total_unique_items }} 件</span>
+  </summary>
+  <div style="margin-top:14px">
 
-<!-- ===== 2リスト判定結果 ===== -->
-<div class="card" style="margin-top:14px;">
-  <h2>2リスト判定結果</h2>
-
-  {% if two_lists_error %}
-    <div class="alert alert-warn">
-      <div class="alert-title">エラー</div>
-      <div class="alert-body">{{ two_lists_error }}</div>
-    </div>
-  {% endif %}
-
-  {% if two_lists %}
-    <div class="muted small" style="margin-bottom:12px;">
-      run_id: <span class="mono">{{ two_lists.run_id }}</span> /
-      照合候補: <b>{{ two_lists.counts.core_only or 0 }}</b> /
-      両リスト合致: <b>{{ two_lists.counts.intersection }}</b> /
-      expanded_only: <b>{{ two_lists.counts.expanded_only }}</b> /
-      total: {{ two_lists.counts.total_unique_items }}
-    </div>
-
-    <!-- ===== A) 照合候補品目（core_only）===== -->
-    {% if two_lists.core_only and two_lists.core_only|length > 0 %}
-    <div style="margin-bottom:20px;">
-      <h3 style="color:#1d4ed8; border-bottom:2px solid #dbeafe; padding-bottom:6px;">
-        A) マトリクス照合候補品目（{{ two_lists.counts.core_only or 0 }} 件）
-      </h3>
-      <div class="muted small" style="margin-bottom:10px;">
-        用途テキストと外為法マトリクスの照合結果です。スコアが高いほど関連性が高い可能性があります。
-      </div>
-      <div class="list">
-        {% for item in two_lists.core_only %}
-          <div class="list-item">
-            <div class="row" style="align-items:flex-start; gap:8px;">
-              <div class="strong" style="flex:1;">
-                {{ item.regime }}
-                {% if item.item_ids and item.item_ids|length > 0 %}
-                  / {{ item.item_ids | join(" / ") }}
-                {% else %}
-                  / rule_id={{ item.rule_id }}
-                {% endif %}
-              </div>
-              <div class="chip {% if item.best_decision == 'hit' %}chip-hit{% elif item.best_decision == 'maybe' %}chip-maybe{% endif %}">
-                {{ item.best_decision or "?" }}
-              </div>
-              <div class="chip">score: {{ "%.4f"|format(item.max_score or 0) }}</div>
+    <!-- 1) 両方一致（intersection） -->
+    {% if two_lists.intersection and two_lists.intersection|length > 0 %}
+    <details open>
+      <summary class="subsection-summary" style="color:#b45309">
+        <span class="badge badge-intersection" style="margin-right:6px">★ 両方一致</span>（{{ two_lists.counts.intersection }} 件）
+      </summary>
+      <div class="list" style="margin-top:8px">
+        {% for item in two_lists.intersection %}
+        <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor" style="border-color:#fde68a; background:#fffbeb">
+          <div class="row" style="align-items:flex-start; gap:8px">
+            <div class="strong" style="flex:1">
+              {{ item.regime }}
+              {% if item.item_ids and item.item_ids|length > 0 %}/ {{ item.item_ids | join(" / ") }}
+              {% else %}/ rule_id={{ item.rule_id }}{% endif %}
             </div>
-
-            {% if item.title %}
-              <div style="font-size:0.88rem; margin-top:4px; color:#374151;">{{ item.title }}</div>
-            {% endif %}
-
-            {% if item.rule_summary %}
-              <div class="muted small" style="margin-top:6px; white-space:pre-wrap;">{{ item.rule_summary }}</div>
-            {% endif %}
-
-            {% if item.hits.core %}
-              <div style="margin-top:8px;">
+            <span class="chip {% if item.best_decision == 'hit' %}chip-hit{% elif item.best_decision == 'maybe' %}chip-maybe{% endif %}">{{ item.best_decision or "?" }}</span>
+            <span class="chip">{{ "%.4f"|format(item.max_score or 0) }}</span>
+          </div>
+          {% if item.title %}<div style="font-size:.88rem; margin-top:4px; color:#374151">{{ item.title }}</div>{% endif %}
+          {% if item.rule_summary %}<div class="muted small" style="margin-top:6px">{{ item.rule_summary }}</div>{% endif %}
+          <div class="subgrid" style="margin-top:10px">
+            <div>
+              <div class="muted small">申告用途ヒット（直接）</div>
+              <ul class="bul">
                 {% for h in item.hits.core %}
-                  <div style="font-size:0.82rem; margin-bottom:4px;">
-                    {% if h.matched_compact and h.matched_compact|length > 0 %}
-                      <span class="muted">一致語:</span>
-                      {% for t in h.matched_compact %}
-                        <span class="chip chip-token">{{ t }}</span>
-                      {% endfor %}
-                    {% endif %}
-                  </div>
-                {% endfor %}
-              </div>
-            {% endif %}
-
-            <details style="margin-top:8px;">
-              <summary class="muted small" style="cursor:pointer;">詳細を表示</summary>
-              <ul class="bul" style="margin-top:6px;">
-                {% for h in item.hits.core %}
-                  <li style="margin-bottom:10px; font-size:0.85rem;">
-                    <span class="chip">{{ h.match_type }}</span>
-                    <span class="chip"><b>{{ h.decision }}</b></span>
-                    <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
-                    <div class="muted small">用途: {{ h.usage_text or "-" }}</div>
-                    {% if h.evidence %}
-                      <details style="margin-top:4px;">
-                        <summary class="muted small">evidence JSON</summary>
-                        <pre style="white-space:pre-wrap; margin-top:6px; font-size:0.78rem;">{{ h.evidence | tojson(indent=2) }}</pre>
-                      </details>
-                    {% endif %}
-                  </li>
+                <li style="margin-bottom:10px">
+                  <span class="chip">{{ h.match_type }}</span>
+                  <span class="chip"><b>{{ h.decision }}</b></span>
+                  <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
+                  {% if h.matched_compact and h.matched_compact|length > 0 %}
+                  <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>{% endif %}
+                  <div class="muted small">{{ h.usage_text or "-" }}</div>
+                </li>
                 {% endfor %}
               </ul>
-            </details>
+            </div>
+            <div>
+              <div class="muted small">特許展開用途ヒット</div>
+              <ul class="bul">
+                {% for h in item.hits.expanded %}
+                <li style="margin-bottom:10px">
+                  <span class="chip">{{ h.match_type }}</span>
+                  <span class="chip"><b>{{ h.decision }}</b></span>
+                  <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
+                  {% if h.matched_compact and h.matched_compact|length > 0 %}
+                  <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>{% endif %}
+                  <div class="muted small">{{ h.usage_text or "-" }}</div>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
           </div>
+        </div>
         {% endfor %}
       </div>
-    </div>
-    {% else %}
-      <div class="muted" style="margin-bottom:16px;">照合候補品目はありません。用途テキストを具体的に入力して再実行してください。</div>
+    </details>
     {% endif %}
 
-    <!-- ===== B) intersection（core & expanded両方）===== -->
-    <div class="split" style="margin-top:16px;">
-      <div>
-        <h3>B) 両リスト合致（core &amp; expanded）</h3>
-
-        {% if two_lists.intersection and two_lists.intersection|length > 0 %}
-          <div class="list">
-            {% for item in two_lists.intersection %}
-              <div class="list-item">
-                <div class="row" style="align-items:flex-start;">
-                  <div class="strong">
-                    {{ item.regime }} / rule_id={{ item.rule_id }}
-                    {% if item.item_ids and item.item_ids|length > 0 %}
-                      / {{ item.item_ids | join(" / ") }}
-                    {% endif %}
-                  </div>
-                  <div class="chip">max_score: {{ "%.4f"|format(item.max_score or 0) }}</div>
-                </div>
-
-                {% if item.rule_summary %}
-                  <div class="muted small" style="margin-top:6px;">{{ item.rule_summary }}</div>
-                {% endif %}
-
-                <div class="subgrid" style="margin-top:10px;">
-                  <div>
-                    <div class="muted small">core hits</div>
-                    <ul class="bul">
-                      {% for h in item.hits.core %}
-                        <li style="margin-bottom:10px;">
-                          <span class="chip">{{ h.match_type }}</span>
-                          <span class="chip"><b>{{ h.decision }}</b></span>
-                          <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
-                          {% if h.matched_compact and h.matched_compact|length > 0 %}
-                            <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>
-                          {% endif %}
-                          <div class="muted small">{{ h.usage_text or "-" }}</div>
-                        </li>
-                      {% endfor %}
-                    </ul>
-                  </div>
-                  <div>
-                    <div class="muted small">expanded hits</div>
-                    <ul class="bul">
-                      {% for h in item.hits.expanded %}
-                        <li style="margin-bottom:10px;">
-                          <span class="chip">{{ h.match_type }}</span>
-                          <span class="chip"><b>{{ h.decision }}</b></span>
-                          <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
-                          {% if h.matched_compact and h.matched_compact|length > 0 %}
-                            <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>
-                          {% endif %}
-                          <div class="muted small">{{ h.usage_text or "-" }}</div>
-                        </li>
-                      {% endfor %}
-                    </ul>
-                  </div>
-                </div>
-
-              </div>
+    <!-- 2) 直接一致（core_only） -->
+    {% if two_lists.core_only and two_lists.core_only|length > 0 %}
+    <details open style="margin-top:14px">
+      <summary class="subsection-summary" style="color:#1d4ed8">
+        <span class="badge badge-core" style="margin-right:6px">直接一致</span>（{{ two_lists.counts.core_only or 0 }} 件）
+      </summary>
+      <div class="list" style="margin-top:8px">
+        {% for item in two_lists.core_only %}
+        <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor">
+          <div class="row" style="align-items:flex-start; gap:8px">
+            <div class="strong" style="flex:1">
+              {{ item.regime }}
+              {% if item.item_ids and item.item_ids|length > 0 %}/ {{ item.item_ids | join(" / ") }}
+              {% else %}/ rule_id={{ item.rule_id }}{% endif %}
+            </div>
+            <span class="chip {% if item.best_decision == 'hit' %}chip-hit{% elif item.best_decision == 'maybe' %}chip-maybe{% endif %}">{{ item.best_decision or "?" }}</span>
+            <span class="chip">{{ "%.4f"|format(item.max_score or 0) }}</span>
+          </div>
+          {% if item.title %}<div style="font-size:.88rem; margin-top:4px; color:#374151">{{ item.title }}</div>{% endif %}
+          {% if item.rule_summary %}<div class="muted small" style="margin-top:6px; white-space:pre-wrap">{{ item.rule_summary }}</div>{% endif %}
+          {% if item.hits.core %}
+          <div style="margin-top:8px">
+            {% for h in item.hits.core %}
+            <div style="font-size:.82rem; margin-bottom:4px">
+              {% if h.matched_compact %}
+                <span class="muted">一致語:</span>
+                {% for t in h.matched_compact %}<span class="chip chip-token">{{ t }}</span>{% endfor %}
+              {% endif %}
+            </div>
             {% endfor %}
           </div>
-        {% else %}
-          <div class="muted">両リスト合致はありません。</div>
-        {% endif %}
-      </div>
-
-      <div>
-        <h3>C) expanded_only（expandedのみ）</h3>
-
-        {% if two_lists.expanded_only and two_lists.expanded_only|length > 0 %}
-          <div class="list">
-            {% for item in two_lists.expanded_only %}
-              <div class="list-item">
-                <div class="row" style="align-items:flex-start;">
-                  <div class="strong">
-                    {{ item.regime }} / rule_id={{ item.rule_id }}
-                    {% if item.item_ids and item.item_ids|length > 0 %}
-                      / {{ item.item_ids | join(" / ") }}
-                    {% endif %}
-                  </div>
-                  <div class="chip">max_score: {{ "%.4f"|format(item.max_score or 0) }}</div>
-                </div>
-
-                {% if item.rule_summary %}
-                  <div class="muted small" style="margin-top:6px;">{{ item.rule_summary }}</div>
+          {% endif %}
+          <details style="margin-top:8px">
+            <summary class="muted small" style="cursor:pointer">詳細を表示</summary>
+            <ul class="bul" style="margin-top:6px">
+              {% for h in item.hits.core %}
+              <li style="margin-bottom:10px; font-size:.85rem">
+                <span class="chip">{{ h.match_type }}</span>
+                <span class="chip"><b>{{ h.decision }}</b></span>
+                <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
+                <div class="muted small">用途: {{ h.usage_text or "-" }}</div>
+                {% if h.evidence %}
+                <details style="margin-top:4px">
+                  <summary class="muted small">evidence JSON</summary>
+                  <pre style="white-space:pre-wrap; margin-top:6px; font-size:.78rem">{{ h.evidence | tojson(indent=2) }}</pre>
+                </details>
                 {% endif %}
-
-                <div class="muted small" style="margin-top:10px;">expanded hits</div>
-                <ul class="bul">
-                  {% for h in item.hits.expanded %}
-                    <li style="margin-bottom:10px;">
-                      <span class="chip">{{ h.match_type }}</span>
-                      <span class="chip"><b>{{ h.decision }}</b></span>
-                      <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
-                      {% if h.matched_compact and h.matched_compact|length > 0 %}
-                        <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>
-                      {% endif %}
-                      <div class="muted small">{{ h.usage_text or "-" }}</div>
-                    </li>
-                  {% endfor %}
-                </ul>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="muted">expanded_only はありません。</div>
-        {% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+          </details>
+        </div>
+        {% endfor %}
       </div>
-    </div>
+    </details>
+    {% endif %}
 
-  {% else %}
-    <div class="muted">
-      右上の「AI解析を実行（①〜④）」を押した後、最新 run_id で「2リスト表示」してください。
-    </div>
-  {% endif %}
-</div>
+    <!-- 3) 特許示唆（expanded_only） -->
+    {% if two_lists.expanded_only and two_lists.expanded_only|length > 0 %}
+    <details style="margin-top:14px">
+      <summary class="subsection-summary" style="color:var(--muted)">
+        <span class="badge badge-expanded" style="margin-right:6px">特許示唆</span>（{{ two_lists.counts.expanded_only }} 件）
+      </summary>
+      <div class="list" style="margin-top:8px">
+        {% for item in two_lists.expanded_only %}
+        <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor" style="opacity:.85">
+          <div class="row" style="align-items:flex-start">
+            <div class="strong">
+              {{ item.regime }} / rule_id={{ item.rule_id }}
+              {% if item.item_ids and item.item_ids|length > 0 %}/ {{ item.item_ids | join(" / ") }}{% endif %}
+            </div>
+            <span class="chip">{{ "%.4f"|format(item.max_score or 0) }}</span>
+          </div>
+          {% if item.rule_summary %}<div class="muted small" style="margin-top:6px">{{ item.rule_summary }}</div>{% endif %}
+          <ul class="bul">
+            {% for h in item.hits.expanded %}
+            <li style="margin-bottom:10px">
+              <span class="chip">{{ h.match_type }}</span>
+              <span class="chip"><b>{{ h.decision }}</b></span>
+              <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
+              {% if h.matched_compact and h.matched_compact|length > 0 %}
+              <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>{% endif %}
+              <div class="muted small">{{ h.usage_text or "-" }}</div>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
 
-<!-- ===== 実行履歴 ===== -->
-<div class="card" style="margin-top:14px;">
-  <h2>実行履歴（ai_runs）</h2>
-  {% if runs %}
+    {% if two_lists.counts.total_unique_items == 0 %}
+    <div class="muted" style="padding:10px 0">マトリクス照合なし。</div>
+    {% endif %}
+
+  </div>
+</details>
+{% endif %}
+
+<!-- ===== Section 5: 実行履歴（折りたたみ） ===== -->
+<details class="card detail-section">
+  <summary class="detail-summary">
+    <span>実行履歴（ai_runs）</span>
+    <span class="muted small">{{ runs|length }} 件</span>
+  </summary>
+  <div style="margin-top:12px">
+    {% if runs %}
     <table class="table">
       <thead>
         <tr>
@@ -307,33 +370,159 @@
       </thead>
       <tbody>
         {% for r in runs %}
-          <tr>
-            <td class="mono">{{ r.id }}</td>
-            <td>{{ r.run_type }}</td>
-            <td>{{ r.status }}</td>
-            <td class="muted">{{ r.started_at or "" }}</td>
-            <td class="muted">{{ r.finished_at or "" }}</td>
-            <td style="text-align:right">
-              {% if r.run_type == "matrix_match" %}
-                <a class="btn btn-soft" href="/ui/transactions/{{ tx.id }}?run_id={{ r.id }}">2リスト</a>
-              {% else %}
-                <span class="muted small">-</span>
-              {% endif %}
-            </td>
-          </tr>
+        <tr>
+          <td class="mono">{{ r.id }}</td>
+          <td>{{ r.run_type }}</td>
+          <td>{{ r.status }}</td>
+          <td class="muted">{{ r.started_at or "" }}</td>
+          <td class="muted">{{ r.finished_at or "" }}</td>
+          <td style="text-align:right">
+            {% if r.run_type == "matrix_match" %}
+            <a class="btn btn-soft" href="/ui/transactions/{{ tx.id }}?run_id={{ r.id }}">2リスト</a>
+            {% else %}
+            <span class="muted small">-</span>
+            {% endif %}
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
-  {% else %}
+    {% else %}
     <div class="muted">実行履歴がありません。</div>
-  {% endif %}
-</div>
+    {% endif %}
+  </div>
+</details>
 
 <style>
-.chip-hit { background: #dcfce7; color: #166534; }
-.chip-maybe { background: #fef9c3; color: #854d0e; }
-.chip-token { background: #e0f2fe; color: #075985; font-size:0.78rem; }
-.label-sm { font-size: 0.82rem; font-weight: 600; color: #6b7280; }
+/* ─── ステータスバナー ─── */
+.status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  margin-bottom: 12px;
+  border: 1.5px solid transparent;
+}
+.status-left  { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.status-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.status-icon  { font-size:1.2rem; }
+.status-label { font-weight:800; font-size:1rem; }
+.status-sub   { font-size:.85rem; opacity:.8; }
+.status-banner-none   { background:#f3f4f6; border-color:#e5e7eb; color:#374151; }
+.status-banner-safe   { background:#dcfce7; border-color:#86efac; color:#166534; }
+.status-banner-info   { background:#eff6ff; border-color:#bfdbfe; color:#1e40af; }
+.status-banner-warn   { background:#fffbeb; border-color:#fde68a; color:#854d0e; }
+.status-banner-danger { background:#fff1f2; border-color:#fecdd3; color:#be123c; }
+
+/* ─── ページ見出し ─── */
+.page-title-row { margin-bottom:12px; }
+.page-title-row h1 { margin:0 0 2px; }
+
+/* ─── ハイライトテーブル ─── */
+.highlight-card { margin-bottom:14px; }
+.highlight-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+/* 凡例行 */
+.legend-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--line);
+  margin-bottom: 10px;
+  font-size: .78rem;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend-desc {
+  color: #9ca3af;
+}
+/* スクロールラッパー */
+.highlight-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.highlight-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+.highlight-table thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+  border-bottom: 2px solid var(--line);
+}
+.highlight-table td { vertical-align: middle; padding: 10px 8px; }
+.hrow { cursor: pointer; transition: background .12s; }
+.hrow:hover { background: #f0f4ff !important; }
+.hrow-intersection { background:#fffbeb; }
+.hrow-expanded { opacity:.84; }
+
+/* ─── アンカー余白（ハイライトされたアイテムが上に隠れないよう） ─── */
+.detail-anchor { scroll-margin-top: 80px; }
+
+/* ─── バッジ ─── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: .73rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.badge-intersection { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+.badge-core         { background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe; }
+.badge-expanded     { background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb; }
+
+/* ─── チップ拡張 ─── */
+.chip-hit   { background:#dcfce7; color:#166534; }
+.chip-maybe { background:#fef9c3; color:#854d0e; }
+.chip-token { background:#e0f2fe; color:#075985; font-size:.78rem; }
+
+/* ─── details/summary ─── */
+.detail-section { margin-top:14px; }
+.detail-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: .95rem;
+  padding: 4px 0;
+  gap: 8px;
+  list-style: none;
+}
+.detail-summary::-webkit-details-marker { display:none; }
+.detail-summary::before {
+  content: "▶";
+  font-size: .68rem;
+  color: var(--muted);
+  margin-right: 6px;
+  transition: transform .15s;
+}
+details[open] > .detail-summary::before { transform: rotate(90deg); }
+
+.subsection-summary {
+  font-weight: 700;
+  font-size: .93rem;
+  padding: 6px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.subsection-summary::-webkit-details-marker { display:none; }
+
+.label-sm { font-size:.82rem; font-weight:600; color:#6b7280; }
 </style>
 
 {% endblock %}
