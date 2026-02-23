@@ -122,6 +122,12 @@ nav::-webkit-scrollbar-thumb { background: var(--cream-300); border-radius: 2px;
   text-transform: uppercase;
   color: var(--cream-400);
   padding: 20px 16px 8px;
+  display: block;
+}
+
+.nav-divider {
+  margin: 12px 16px 4px;
+  border-top: 1px solid var(--cream-200);
 }
 
 /* ─── Module card ────────────────────────── */

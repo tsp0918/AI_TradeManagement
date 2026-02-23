@@ -16,9 +16,17 @@
 
   <!-- ─── Sidebar ─────────────────────────────────────────────── -->
   <nav>
-    <span class="nav-section-label">モジュール</span>
-
+    {% set ns = namespace(section="") %}
     {% for m in modules %}
+    {% set sec = m.nav_section if m.nav_section is defined else "process" %}
+    {% if sec != ns.section %}
+      {% set ns.section = sec %}
+      {% if sec == "process" %}
+      <span class="nav-section-label">輸出管理フロー</span>
+      {% else %}
+      <div class="nav-divider"></div>
+      {% endif %}
+    {% endif %}
     <div
       class="module-card{% if loop.first %} active{% endif %}"
       id="card-{{ m.key }}"

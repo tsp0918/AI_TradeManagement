@@ -54,28 +54,22 @@ _PLATFORM_ENTRY = {
     "iframe_url":        "/ui/platform",
     "icon":              _MODULE_ICONS["platform-core"],
     "health_check_path": "/health",
+    "nav_section":       "admin",
 }
 
 # ── 既知モジュール (DB 未登録時のフォールバック) ──────────────────
 # モジュールが起動・登録済みの場合は DB 値が優先される。
+# 順序 = 輸出管理フロー（業務プロセス順）→ DAP → platform-core
 _KNOWN_MODULES: list[dict] = [
     {
-        "key":               "ai_validation",
-        "name":              "AI該非判定",
-        "description":       "外為法に基づく輸出管理の該非判定を AI で支援する",
-        "base_url":          "http://localhost:8001",
-        "iframe_url":        "http://localhost:8001",
-        "icon":              _MODULE_ICONS["ai_validation"],
+        "key":               "patent_search",
+        "name":              "AI特許検索",
+        "description":       "Google Patents BigQuery を用いた特許検索と LLM による用途要件抽出",
+        "base_url":          "http://localhost:8004",
+        "iframe_url":        "http://localhost:8004",
+        "icon":              _MODULE_ICONS["patent_search"],
         "health_check_path": "/health",
-    },
-    {
-        "key":               "ai_classification",
-        "name":              "品目管理",
-        "description":       "取り扱い品目の法規制情報管理・SDS解析・該非判定連携",
-        "base_url":          "http://localhost:8002",
-        "iframe_url":        "http://localhost:8002",
-        "icon":              _MODULE_ICONS["ai_classification"],
-        "health_check_path": "/health",
+        "nav_section":       "process",
     },
     {
         "key":               "rnd_assessment",
@@ -85,15 +79,17 @@ _KNOWN_MODULES: list[dict] = [
         "iframe_url":        "http://localhost:8003",
         "icon":              _MODULE_ICONS["rnd_assessment"],
         "health_check_path": "/health",
+        "nav_section":       "process",
     },
     {
-        "key":               "patent_search",
-        "name":              "AI特許検索",
-        "description":       "Google Patents BigQuery を用いた特許検索と LLM による用途要件抽出",
-        "base_url":          "http://localhost:8004",
-        "iframe_url":        "http://localhost:8004",
-        "icon":              _MODULE_ICONS["patent_search"],
+        "key":               "ai_classification",
+        "name":              "品目管理",
+        "description":       "取り扱い品目の法規制情報管理・SDS解析・該非判定連携",
+        "base_url":          "http://localhost:8002",
+        "iframe_url":        "http://localhost:8002",
+        "icon":              _MODULE_ICONS["ai_classification"],
         "health_check_path": "/health",
+        "nav_section":       "process",
     },
     {
         "key":               "screening",
@@ -103,6 +99,17 @@ _KNOWN_MODULES: list[dict] = [
         "iframe_url":        "http://localhost:8005",
         "icon":              _MODULE_ICONS["screening"],
         "health_check_path": "/health",
+        "nav_section":       "process",
+    },
+    {
+        "key":               "ai_validation",
+        "name":              "AI該非判定",
+        "description":       "外為法に基づく輸出管理の該非判定を AI で支援する",
+        "base_url":          "http://localhost:8001",
+        "iframe_url":        "http://localhost:8001",
+        "icon":              _MODULE_ICONS["ai_validation"],
+        "health_check_path": "/health",
+        "nav_section":       "process",
     },
     {
         "key":               "dap",
@@ -112,11 +119,13 @@ _KNOWN_MODULES: list[dict] = [
         "iframe_url":        "http://localhost:8010",
         "icon":              _MODULE_ICONS["dap"],
         "health_check_path": "/health",
+        "nav_section":       "tools",
     },
 ]
 
 
 def _build_module_entry(m: ModuleRegistry) -> dict:
+    known = _KNOWN_INDEX.get(m.key, {})
     return {
         "key":              m.key,
         "name":             m.name,
@@ -125,6 +134,7 @@ def _build_module_entry(m: ModuleRegistry) -> dict:
         "iframe_url":       m.base_url,
         "icon":             _MODULE_ICONS.get(m.key, "📌"),
         "health_check_path": m.health_check_path,
+        "nav_section":      known.get("nav_section", "process"),
     }
 
 
@@ -241,7 +251,7 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
     for m in result.scalars().all():
         known[m.key] = _build_module_entry(m)
 
-    modules = [_PLATFORM_ENTRY] + list(known.values())
+    modules = list(known.values()) + [_PLATFORM_ENTRY]
 
     return templates.TemplateResponse(
         "home.html",
