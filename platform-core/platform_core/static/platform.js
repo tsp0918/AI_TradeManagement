@@ -18,6 +18,7 @@
    * @param {HTMLElement} dotEl
    */
   async function checkHealth(key, dotEl) {
+    const startingEl = document.getElementById(`starting-${key}`);
     try {
       const res = await fetch(`/ui/health/${key}`, {
         signal: AbortSignal.timeout(5000),
@@ -26,10 +27,12 @@
       const data = await res.json();
       const online = data.status === "online";
       dotEl.className = "status-dot " + (online ? "online" : "offline");
-      dotEl.title = online ? "稼働中" : "停止中";
+      dotEl.title = online ? "稼働中" : "起動中…";
+      if (startingEl) startingEl.classList.toggle("visible", !online);
     } catch {
       dotEl.className = "status-dot offline";
-      dotEl.title = "停止中";
+      dotEl.title = "起動中…";
+      if (startingEl) startingEl.classList.add("visible");
     }
   }
 
@@ -46,6 +49,7 @@
 
   const frame   = document.getElementById("module-frame");
   const welcome = document.getElementById("welcome");
+  const loading = document.getElementById("iframe-loading");
 
   /**
    * 指定キーのモジュールを選択して iframe に表示する。
@@ -62,6 +66,8 @@
       if (iframeUrl) {
         welcome.style.display = "none";
         frame.style.display   = "block";
+        // ローディングオーバーレイを表示
+        if (loading) loading.classList.add("visible");
         frame.src = iframeUrl;
       } else {
         frame.style.display   = "none";
@@ -75,6 +81,13 @@
   // ── 初期化 ────────────────────────────────────────────────────
 
   document.addEventListener("DOMContentLoaded", function () {
+    // iframe ロード完了でオーバーレイを非表示
+    if (frame && loading) {
+      frame.addEventListener("load", function () {
+        loading.classList.remove("visible");
+      });
+    }
+
     // サイドバーのモジュール名ボタンにクリックイベントを設定
     document.querySelectorAll(".module-main-btn[data-key]").forEach((btn) => {
       btn.addEventListener("click", function () {

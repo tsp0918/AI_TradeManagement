@@ -33,6 +33,7 @@
         <span class="module-label">{{ m.name }}</span>
         <span class="status-dot" id="dot-{{ m.key }}" title="確認中…"></span>
       </button>
+      <div class="module-starting" id="starting-{{ m.key }}">起動中…</div>
     </div>
     {% endfor %}
   </nav>
@@ -43,6 +44,11 @@
       <div class="welcome-icon">🏭</div>
       <h2>モジュールを選択してください</h2>
       <p>左のサイドバーからモジュールを選択すると、ここに表示されます。</p>
+    </div>
+
+    <div id="iframe-loading">
+      <div class="spinner"></div>
+      <span class="loading-text">モジュールを読み込み中…</span>
     </div>
 
     {% if modules %}
