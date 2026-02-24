@@ -303,58 +303,198 @@
 <!-- ── AI 該非判定 ──────────────────── -->
 <div class="card mt-6">
   <div class="card-title">🔐 AI該非判定</div>
+
   {% if profile.ai_validation_transaction_id %}
-    {# 判定済み #}
+    {# ── 判定済みバナー ── #}
     {% set av_risk = profile.ai_validation_risk %}
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
-      {% if av_risk == "danger" %}
-        <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
-                     background:#fef2f2; color:#991b1b; border-radius:20px;
-                     font-size:.9rem; font-weight:700;">⚠ 要注意（両リスト合致あり）</span>
-      {% elif av_risk == "warn" %}
-        <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
-                     background:#fffbeb; color:#92400e; border-radius:20px;
-                     font-size:.9rem; font-weight:700;">📋 照合候補あり（直接一致）</span>
-      {% elif av_risk == "info" %}
-        <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
-                     background:#eff6ff; color:#1d4ed8; border-radius:20px;
-                     font-size:.9rem; font-weight:700;">ℹ 参考情報あり（特許示唆）</span>
-      {% else %}
-        <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
-                     background:#f0fdf4; color:#166534; border-radius:20px;
-                     font-size:.9rem; font-weight:700;">✓ ヒットなし（問題なし）</span>
+    {% if av_risk == "danger" %}
+      {% set _bg="#fff1f2" %}{%set _border="#fecdd3" %}{%set _col="#be123c" %}{%set _icon="⚠" %}{%set _label="要注意 — 両リスト合致あり" %}
+    {% elif av_risk == "warn" %}
+      {% set _bg="#fffbeb" %}{%set _border="#fde68a" %}{%set _col="#854d0e" %}{%set _icon="⚡" %}{%set _label="照合候補あり — 直接一致" %}
+    {% elif av_risk == "info" %}
+      {% set _bg="#eff6ff" %}{%set _border="#bfdbfe" %}{%set _col="#1e40af" %}{%set _icon="ℹ" %}{%set _label="参考情報あり — 特許示唆" %}
+    {% else %}
+      {% set _bg="#dcfce7" %}{%set _border="#86efac" %}{%set _col="#166534" %}{%set _icon="✓" %}{%set _label="ヒットなし — 問題なし" %}
+    {% endif %}
+
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;
+                gap:10px; padding:12px 18px; border-radius:12px; margin-bottom:14px;
+                background:{{ _bg }}; border:1.5px solid {{ _border }}; color:{{ _col }};">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <span style="font-size:1.2rem;">{{ _icon }}</span>
+        <span style="font-weight:800; font-size:1rem;">{{ _label }}</span>
+        {% if av_two_lists %}
+          {% set cnts = av_two_lists.get("counts", {}) %}
+          <span style="font-size:.85rem; opacity:.85;">
+            両方一致 <b>{{ cnts.get("intersection", 0) }}</b> /
+            直接一致 <b>{{ cnts.get("core_only", 0) }}</b> /
+            特許示唆 <b>{{ cnts.get("expanded_only", 0) }}</b>
+          </span>
+        {% endif %}
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        {% if profile.ai_validation_run_at %}
+          <span style="font-size:.78rem; opacity:.75;">最終実行: {{ profile.ai_validation_run_at.strftime('%Y-%m-%d %H:%M') }}</span>
+        {% endif %}
+        <a href="http://localhost:8001/ui/transactions/{{ profile.ai_validation_transaction_id }}"
+           target="_blank"
+           style="padding:5px 12px; border-radius:8px; background:rgba(0,0,0,.08);
+                  color:inherit; text-decoration:none; font-size:.82rem; font-weight:600;">
+          詳細を見る →
+        </a>
+      </div>
+    </div>
+
+    {# ── ハイライトミニテーブル（上位5件） ── #}
+    {% if av_two_lists %}
+      {% set all_hits = (av_two_lists.get("intersection", []) | map(attribute=None) | list
+                         if false else []) %}
+      {# 表示順: intersection → core_only → expanded_only #}
+      {% set rows_i = av_two_lists.get("intersection", []) %}
+      {% set rows_c = av_two_lists.get("core_only",    []) %}
+      {% set rows_e = av_two_lists.get("expanded_only",[]) %}
+      {% set combined = rows_i[:3] + rows_c[:2] + rows_e[:1] %}
+      {% if combined %}
+      <div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:14px;">
+        <!-- 凡例 -->
+        <div style="display:flex; gap:12px; padding:6px 12px; background:var(--bg);
+                    font-size:.75rem; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+          <span style="display:inline-flex; align-items:center; gap:4px;">
+            <span style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;
+                         padding:1px 7px; border-radius:999px; font-size:.7rem; font-weight:700;">★ 両方一致</span>
+            <span style="color:var(--muted);">最も高リスク</span>
+          </span>
+          <span style="display:inline-flex; align-items:center; gap:4px;">
+            <span style="background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe;
+                         padding:1px 7px; border-radius:999px; font-size:.7rem; font-weight:700;">直接一致</span>
+            <span style="color:var(--muted);">申告用途が直接ヒット</span>
+          </span>
+          <span style="display:inline-flex; align-items:center; gap:4px;">
+            <span style="background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb;
+                         padding:1px 7px; border-radius:999px; font-size:.7rem; font-weight:700;">特許示唆</span>
+            <span style="color:var(--muted);">参考情報</span>
+          </span>
+        </div>
+        <table style="width:100%; border-collapse:collapse; font-size:.84rem;">
+          <thead>
+            <tr style="background:var(--bg);">
+              <th style="padding:8px 10px; text-align:left; font-size:.72rem; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border); width:110px;">区分</th>
+              <th style="padding:8px 10px; text-align:left; font-size:.72rem; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border);">判定項番</th>
+              <th style="padding:8px 10px; text-align:center; font-size:.72rem; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border); width:70px;">リスク</th>
+              <th style="padding:8px 10px; text-align:right; font-size:.72rem; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border); width:70px;">スコア</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in rows_i[:3] %}
+            <tr style="background:#fffbeb;">
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border);">
+                <span style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;
+                             padding:2px 8px; border-radius:999px; font-size:.7rem; font-weight:700;">★ 両方一致</span>
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border);">
+                <div style="font-weight:600; font-size:.85rem;">
+                  {% if item.item_ids %}{{ item.item_ids | join(" / ") }}
+                  {% elif item.item_label %}{{ item.item_label }}
+                  {% else %}rule={{ item.rule_id }}{% endif %}
+                </div>
+                <div style="font-size:.72rem; color:var(--muted); margin-top:2px;">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:center;">
+                <span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:999px; font-size:.75rem; font-weight:600;">{{ item.best_decision or "?" }}</span>
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:monospace; font-size:.82rem; color:var(--muted);">{{ "%.3f"|format(item.max_score or 0) }}</td>
+            </tr>
+            {% endfor %}
+            {% for item in rows_c[:2] %}
+            <tr>
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border);">
+                <span style="background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe;
+                             padding:2px 8px; border-radius:999px; font-size:.7rem; font-weight:700;">直接一致</span>
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border);">
+                <div style="font-weight:600; font-size:.85rem;">
+                  {% if item.item_ids %}{{ item.item_ids | join(" / ") }}
+                  {% elif item.item_label %}{{ item.item_label }}
+                  {% else %}rule={{ item.rule_id }}{% endif %}
+                </div>
+                <div style="font-size:.72rem; color:var(--muted); margin-top:2px;">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:center;">
+                <span style="background:#fef9c3; color:#854d0e; padding:2px 8px; border-radius:999px; font-size:.75rem; font-weight:600;">{{ item.best_decision or "?" }}</span>
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:monospace; font-size:.82rem; color:var(--muted);">{{ "%.3f"|format(item.max_score or 0) }}</td>
+            </tr>
+            {% endfor %}
+            {% if rows_e %}
+            {% set item = rows_e[0] %}
+            <tr style="opacity:.8;">
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border);">
+                <span style="background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb;
+                             padding:2px 8px; border-radius:999px; font-size:.7rem; font-weight:700;">特許示唆</span>
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border);">
+                <div style="font-weight:600; font-size:.85rem;">
+                  {% if item.item_ids %}{{ item.item_ids | join(" / ") }}
+                  {% elif item.item_label %}{{ item.item_label }}
+                  {% else %}rule={{ item.rule_id }}{% endif %}
+                </div>
+                <div style="font-size:.72rem; color:var(--muted); margin-top:2px;">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:center;">
+                <span style="background:#f3f4f6; color:#6b7280; padding:2px 8px; border-radius:999px; font-size:.75rem; font-weight:600;">{{ item.best_decision or "?" }}</span>
+              </td>
+              <td style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:right; font-family:monospace; font-size:.82rem; color:var(--muted);">{{ "%.3f"|format(item.max_score or 0) }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+        {% set total = av_two_lists.get("counts", {}).get("total_unique_items", 0) %}
+        {% if total > 6 %}
+        <div style="padding:6px 12px; font-size:.75rem; color:var(--muted); text-align:right; border-top:1px solid var(--border);">
+          他 {{ total - 6 }} 件 — <a href="http://localhost:8001/ui/transactions/{{ profile.ai_validation_transaction_id }}" target="_blank" style="color:var(--primary);">全件を表示 →</a>
+        </div>
+        {% endif %}
+      </div>
+      {% elif av_two_lists.get("counts", {}).get("total_unique_items", 0) == 0 %}
+      <div style="padding:10px 0; font-size:.85rem; color:var(--muted);">マトリクス照合なし。用途テキストを具体的に入力して再実行してください。</div>
       {% endif %}
-      <a href="http://localhost:8001/ui/transactions/{{ profile.ai_validation_transaction_id }}"
-         target="_blank"
-         style="color:var(--primary); font-size:.82rem; text-decoration:none; font-weight:600;">
-        AI該非判定の詳細を見る →
-      </a>
-    </div>
-    <div class="kv" style="font-size:.82rem;">
-      <span class="k">判定 ID</span>
-      <span class="v"><code>#{{ profile.ai_validation_transaction_id }}</code></span>
-      <span class="k">実行日時</span>
-      <span class="v">{{ profile.ai_validation_run_at.strftime('%Y-%m-%d %H:%M') if profile.ai_validation_run_at else '—' }}</span>
-    </div>
-    <div style="margin-top:12px;">
+    {% else %}
+      {# ai_validation 未起動 or データ取得失敗 — キャッシュ済みリスクのみ表示 #}
+      <div style="padding:8px 12px; font-size:.82rem; color:var(--muted); background:var(--bg);
+                  border-radius:8px; margin-bottom:12px;">
+        ※ 詳細データを取得できませんでした。ai_validation モジュール（ポート 8001）が起動しているか確認してください。
+      </div>
+    {% endif %}
+
+    <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+      <div class="kv" style="font-size:.78rem; flex:1;">
+        <span class="k">判定 ID</span>
+        <span class="v"><code>#{{ profile.ai_validation_transaction_id }}</code></span>
+      </div>
       <form method="post"
             action="/ui/cases/{{ case.case_id }}/profiles/{{ profile.profile_id }}/run-ai-validation">
         <button type="submit" class="btn btn-ghost btn-sm">🔄 再実行</button>
       </form>
     </div>
+
   {% else %}
-    {# 未実行 #}
-    <p style="font-size:.86rem; color:var(--muted); margin-bottom:16px;">
-      このバージョンの用途情報を AI該非判定モジュールに送って規制リスクを照合します。<br>
-      <span style="font-size:.78rem;">※ ai_validation モジュール（ポート 8001）が起動している必要があります</span>
-    </p>
-    <form method="post"
-          action="/ui/cases/{{ case.case_id }}/profiles/{{ profile.profile_id }}/run-ai-validation">
-      <button type="submit" class="btn"
-              style="background:var(--primary); color:#fff; border:none;">
-        🔐 AI該非判定を実行
-      </button>
-    </form>
+    {# ── 未実行 ── #}
+    <div style="background:#f8fafc; border:1.5px dashed var(--border); border-radius:12px;
+                padding:20px; text-align:center; margin-bottom:14px;">
+      <div style="font-size:1.8rem; margin-bottom:8px; opacity:.5;">🔐</div>
+      <p style="font-weight:600; color:var(--text-h); margin-bottom:4px;">AI該非判定が未実行です</p>
+      <p style="font-size:.82rem; color:var(--muted); margin-bottom:16px;">
+        このバージョンの用途情報を AI該非判定モジュールに送って規制リスクを照合します。<br>
+        <span style="font-size:.76rem;">※ ai_validation モジュール（ポート 8001）が起動している必要があります</span>
+      </p>
+      <form method="post"
+            action="/ui/cases/{{ case.case_id }}/profiles/{{ profile.profile_id }}/run-ai-validation">
+        <button type="submit" class="btn"
+                style="background:var(--primary); color:#fff; border:none; padding:10px 24px; font-size:.9rem;">
+          🔐 AI該非判定を実行
+        </button>
+      </form>
+    </div>
   {% endif %}
 </div>
 

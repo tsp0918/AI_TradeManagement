@@ -105,7 +105,7 @@ def ui_root():
 # -----------------------------
 @router.get("/cases")
 def cases_list(request: Request, db: Session = Depends(get_db)):
-    cases = crud.list_cases(db, tenant_id="demo")
+    cases = crud.list_cases(db, tenant_id="tenant-demo")
     enriched = []
     for case in cases:
         latest = crud.get_latest_profile(db, case.case_id)
@@ -358,7 +358,7 @@ def profiles_create(
         disclosure_template_json=dis_json,
     )
 
-    return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest", status_code=303)
+    return RedirectResponse(url="/ui/cases", status_code=303)
 
 
 # -----------------------------
@@ -531,6 +531,19 @@ def profiles_latest(request: Request, case_id: str, db: Session = Depends(get_db
     profiles = crud.list_profiles(db, case_id)
     can_compare = len(profiles) >= 2
 
+    # AI 該非判定 2リスト結果（キャッシュなし・都度取得）
+    av_two_lists = None
+    if prof.ai_validation_transaction_id:
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                r = client.get(
+                    f"{AI_VALIDATION_BASE}/decision/{prof.ai_validation_transaction_id}/two-lists"
+                )
+            if r.status_code == 200:
+                av_two_lists = r.json()
+        except Exception:
+            pass
+
     return templates.TemplateResponse(
         "profiles_latest.html",
         {
@@ -542,6 +555,7 @@ def profiles_latest(request: Request, case_id: str, db: Session = Depends(get_db
             "ip_review": ip_review,
             "evidences": evidences,
             "can_compare": can_compare,
+            "av_two_lists": av_two_lists,
         },
     )
 

@@ -16,16 +16,19 @@
 
   <!-- ─── Sidebar ─────────────────────────────────────────────── -->
   <nav>
-    {% set ns = namespace(section="") %}
+    {% set ns = namespace(section="", first=true) %}
     {% for m in modules %}
     {% set sec = m.nav_section if m.nav_section is defined else "process" %}
     {% if sec != ns.section %}
-      {% set ns.section = sec %}
-      {% if sec == "process" %}
-      <span class="nav-section-label">輸出管理フロー</span>
-      {% else %}
-      <div class="nav-divider"></div>
+      {% if not ns.first %}
+        {% if sec == "process" %}
+        <span class="nav-section-label">輸出管理フロー</span>
+        {% else %}
+        <div class="nav-divider"></div>
+        {% endif %}
       {% endif %}
+      {% set ns.first = false %}
+      {% set ns.section = sec %}
     {% endif %}
     <div
       class="module-card{% if loop.first %} active{% endif %}"

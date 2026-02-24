@@ -251,7 +251,7 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
     for m in result.scalars().all():
         known[m.key] = _build_module_entry(m)
 
-    modules = list(known.values()) + [_PLATFORM_ENTRY]
+    modules = [_PLATFORM_ENTRY] + list(known.values())
 
     return templates.TemplateResponse(
         "home.html",
