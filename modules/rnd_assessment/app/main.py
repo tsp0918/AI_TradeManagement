@@ -8,6 +8,15 @@ from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan
 from app.core.logging import setup_logging
 from app.api.v1.api import api_router
 from app.ui.router import router as ui_router
+from app.db.base import Base
+from app.db.session import engine
+import app.models  # noqa: F401 — モデルを登録してから create_all を呼ぶ
+
+
+async def _init_db() -> None:
+    """SQLite 開発環境向け: 未作成テーブルを自動生成する。"""
+    Base.metadata.create_all(bind=engine)
+
 
 MODULE = ModuleInfo(
     key="rnd_assessment",
@@ -28,7 +37,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="R&D Risk App",
         version="0.1.0",
-        lifespan=build_lifespan(MODULE),
+        lifespan=build_lifespan(MODULE, on_startup=_init_db),
     )
 
     app.add_middleware(AuditMiddleware, module_key="rnd_assessment")

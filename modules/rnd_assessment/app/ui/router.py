@@ -4,6 +4,7 @@ import re
 import uuid
 from typing import Optional, List, Any, Dict
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
@@ -21,7 +22,9 @@ from app.schemas.templates import UseRequirementV1, EndUserRequirementV1, Disclo
 from app.services.template_renderer import render_use_text, render_end_user_text, render_disclosure_text
 from app.services.scoring import score_demo
 
-from app.models.rd_case import RDCaseProfiles
+from app.models.rd_case import RDCaseProfiles, RDAssessments
+
+AI_VALIDATION_BASE = "http://localhost:8001"
 
 
 router = APIRouter(prefix="/ui", tags=["ui"])
@@ -94,7 +97,28 @@ def _json_diff(old: dict | None, new: dict | None) -> list[dict]:
 
 @router.get("/")
 def ui_root():
-    return RedirectResponse(url="/ui/cases/new", status_code=303)
+    return RedirectResponse(url="/ui/cases", status_code=303)
+
+
+# -----------------------------
+# Case: list (プロジェクト一覧)
+# -----------------------------
+@router.get("/cases")
+def cases_list(request: Request, db: Session = Depends(get_db)):
+    cases = crud.list_cases(db, tenant_id="demo")
+    enriched = []
+    for case in cases:
+        latest = crud.get_latest_profile(db, case.case_id)
+        latest_assessment = None
+        if latest:
+            assmts = crud.list_assessments_by_case(db, case.case_id)
+            latest_assessment = assmts[0] if assmts else None
+        enriched.append({
+            "case": case,
+            "latest_profile": latest,
+            "latest_assessment": latest_assessment,
+        })
+    return templates.TemplateResponse("cases.html", {"request": request, "enriched": enriched})
 
 
 # -----------------------------
@@ -124,6 +148,31 @@ def cases_create(
         created_by_user_id=created_by_user_id,
     )
     return RedirectResponse(url=f"/ui/cases/{obj.case_id}/profiles/new", status_code=303)
+
+
+# -----------------------------
+# Case: detail (バージョン履歴)
+# -----------------------------
+@router.get("/cases/{case_id}")
+def case_detail(case_id: str, request: Request, db: Session = Depends(get_db)):
+    case = crud.get_case(db, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="case not found")
+    profiles = crud.list_profiles(db, case_id)  # 昇順
+    enriched_profiles = []
+    for p in reversed(profiles):
+        latest_a = db.scalars(
+            select(RDAssessments)
+            .where(RDAssessments.profile_id == p.profile_id)
+            .order_by(RDAssessments.performed_at.desc())
+            .limit(1)
+        ).first()
+        enriched_profiles.append({"profile": p, "assessment": latest_a})
+    return templates.TemplateResponse("case_detail.html", {
+        "request": request,
+        "case": case,
+        "enriched_profiles": enriched_profiles,
+    })
 
 
 # -----------------------------
@@ -560,3 +609,76 @@ def profiles_compare(
             "delta": delta,
         },
     )
+
+
+# -----------------------------
+# AI 該非判定 連携
+# -----------------------------
+@router.post("/cases/{case_id}/profiles/{profile_id}/run-ai-validation")
+def run_ai_validation(
+    case_id: str,
+    profile_id: str,
+    db: Session = Depends(get_db),
+):
+    """プロファイルの用途情報を ai_validation モジュールに送り、Transaction を作成 & パイプライン実行する。"""
+    profile = crud.get_profile_by_id(db, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="profile not found")
+    case = crud.get_case(db, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="case not found")
+
+    # 1. ai_validation に Transaction を作成（follow_redirects=False で Location を取得）
+    form_data = {
+        "title": f"[R&D] {case.title} ver.{profile.version_no}",
+        "description": profile.use_requirements_raw or "",
+        "product_code": f"RND-{case_id[:8]}",
+        "spec_text": profile.end_user_requirements_raw or "",
+        "case_no": f"RND-{case_id[:8]}-v{profile.version_no}",
+    }
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.post(
+                f"{AI_VALIDATION_BASE}/ui/transactions/new",
+                data=form_data,
+                follow_redirects=False,
+            )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"ai_validation への接続に失敗しました: {exc}")
+
+    # 2. Location ヘッダーから transaction_id を取得
+    location = resp.headers.get("location", "")
+    tx_id_match = re.search(r"/ui/transactions/(\d+)", location)
+    if not tx_id_match:
+        raise HTTPException(status_code=502, detail=f"ai_validation からの応答が不正です (location={location!r})")
+    transaction_id = int(tx_id_match.group(1))
+
+    # 3. パイプライン実行（タイムアウト長め）
+    try:
+        with httpx.Client(timeout=120.0) as client:
+            client.post(f"{AI_VALIDATION_BASE}/ui/transactions/{transaction_id}/run", follow_redirects=False)
+    except Exception:
+        pass  # タイムアウト等でも transaction_id は保存する
+
+    # 4. 2リスト結果からリスクレベルを取得
+    risk = "none"
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            r = client.get(f"{AI_VALIDATION_BASE}/decision/{transaction_id}/two-lists")
+        if r.status_code == 200:
+            counts = r.json().get("counts", {})
+            if counts.get("intersection", 0) > 0:
+                risk = "danger"
+            elif counts.get("core_only", 0) > 0:
+                risk = "warn"
+            elif counts.get("expanded_only", 0) > 0:
+                risk = "info"
+            else:
+                risk = "safe"
+    except Exception:
+        pass
+
+    # 5. プロファイルに保存
+    crud.update_profile_ai_validation(db, profile_id, transaction_id, risk)
+
+    return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest", status_code=303)

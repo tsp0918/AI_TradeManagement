@@ -41,6 +41,17 @@ def get_case(db: Session, case_id: str) -> RDCases | None:
     return db.get(RDCases, case_id)
 
 
+def list_cases(db: Session, tenant_id: str, limit: int = 200) -> list[RDCases]:
+    """全ケースを updated_at 降順で返す。"""
+    stmt = (
+        select(RDCases)
+        .where(RDCases.tenant_id == tenant_id)
+        .order_by(RDCases.updated_at.desc())
+        .limit(limit)
+    )
+    return list(db.scalars(stmt).all())
+
+
 def get_latest_profile(db: Session, case_id: str) -> RDCaseProfiles | None:
     stmt = (
         select(RDCaseProfiles)
@@ -194,6 +205,25 @@ def list_assessments_by_case(db: Session, case_id: str) -> list[RDAssessments]:
 
 def get_assessment(db: Session, assessment_id: str) -> RDAssessments | None:
     return db.get(RDAssessments, assessment_id)
+
+
+def get_profile_by_id(db: Session, profile_id: str) -> RDCaseProfiles | None:
+    return db.get(RDCaseProfiles, profile_id)
+
+
+def update_profile_ai_validation(
+    db: Session,
+    profile_id: str,
+    transaction_id: int,
+    risk: str,
+) -> None:
+    """ai_validation 連携結果をプロファイルに保存。"""
+    obj = db.get(RDCaseProfiles, profile_id)
+    if obj:
+        obj.ai_validation_transaction_id = transaction_id
+        obj.ai_validation_risk = risk
+        obj.ai_validation_run_at = datetime.utcnow()
+        db.commit()
 
 
 # =========================================================

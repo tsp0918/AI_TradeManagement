@@ -23,10 +23,12 @@
 <!-- ページヘッダー -->
 <div class="page-hd">
   <div class="breadcrumb">
-    <a href="/ui/">トップ</a> › ケース › {{ case.title }}
+    <a href="/ui/cases">プロジェクト一覧</a> ›
+    <a href="/ui/cases/{{ case.case_id }}">{{ case.title }}</a> ›
+    バージョン ver.{{ profile.version_no }}
   </div>
   <div class="flex items-center gap-3 flex-wrap">
-    <h1>最新プロファイル</h1>
+    <h1>ver.{{ profile.version_no }} — 詳細</h1>
     {% if can_compare %}
       <a href="/ui/cases/{{ case.case_id }}/profiles/compare" class="btn btn-ghost btn-sm">
         🔀 バージョン比較
@@ -38,9 +40,9 @@
   </div>
 </div>
 
-<!-- プロファイル基本情報 -->
+<!-- バージョン基本情報 -->
 <div class="card">
-  <div class="card-title">📄 プロファイル情報</div>
+  <div class="card-title">📄 バージョン情報</div>
   <div class="kv">
     <span class="k">バージョン</span>
     <span class="v"><strong>v{{ profile.version_no }}</strong></span>
@@ -295,6 +297,64 @@
     {% endfor %}
   {% else %}
     <p class="txt-muted mt-3" style="font-size:.82rem;">まだエビデンスが添付されていません。</p>
+  {% endif %}
+</div>
+
+<!-- ── AI 該非判定 ──────────────────── -->
+<div class="card mt-6">
+  <div class="card-title">🔐 AI該非判定</div>
+  {% if profile.ai_validation_transaction_id %}
+    {# 判定済み #}
+    {% set av_risk = profile.ai_validation_risk %}
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+      {% if av_risk == "danger" %}
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
+                     background:#fef2f2; color:#991b1b; border-radius:20px;
+                     font-size:.9rem; font-weight:700;">⚠ 要注意（両リスト合致あり）</span>
+      {% elif av_risk == "warn" %}
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
+                     background:#fffbeb; color:#92400e; border-radius:20px;
+                     font-size:.9rem; font-weight:700;">📋 照合候補あり（直接一致）</span>
+      {% elif av_risk == "info" %}
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
+                     background:#eff6ff; color:#1d4ed8; border-radius:20px;
+                     font-size:.9rem; font-weight:700;">ℹ 参考情報あり（特許示唆）</span>
+      {% else %}
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
+                     background:#f0fdf4; color:#166534; border-radius:20px;
+                     font-size:.9rem; font-weight:700;">✓ ヒットなし（問題なし）</span>
+      {% endif %}
+      <a href="http://localhost:8001/ui/transactions/{{ profile.ai_validation_transaction_id }}"
+         target="_blank"
+         style="color:var(--primary); font-size:.82rem; text-decoration:none; font-weight:600;">
+        AI該非判定の詳細を見る →
+      </a>
+    </div>
+    <div class="kv" style="font-size:.82rem;">
+      <span class="k">判定 ID</span>
+      <span class="v"><code>#{{ profile.ai_validation_transaction_id }}</code></span>
+      <span class="k">実行日時</span>
+      <span class="v">{{ profile.ai_validation_run_at.strftime('%Y-%m-%d %H:%M') if profile.ai_validation_run_at else '—' }}</span>
+    </div>
+    <div style="margin-top:12px;">
+      <form method="post"
+            action="/ui/cases/{{ case.case_id }}/profiles/{{ profile.profile_id }}/run-ai-validation">
+        <button type="submit" class="btn btn-ghost btn-sm">🔄 再実行</button>
+      </form>
+    </div>
+  {% else %}
+    {# 未実行 #}
+    <p style="font-size:.86rem; color:var(--muted); margin-bottom:16px;">
+      このバージョンの用途情報を AI該非判定モジュールに送って規制リスクを照合します。<br>
+      <span style="font-size:.78rem;">※ ai_validation モジュール（ポート 8001）が起動している必要があります</span>
+    </p>
+    <form method="post"
+          action="/ui/cases/{{ case.case_id }}/profiles/{{ profile.profile_id }}/run-ai-validation">
+      <button type="submit" class="btn"
+              style="background:var(--primary); color:#fff; border:none;">
+        🔐 AI該非判定を実行
+      </button>
+    </form>
   {% endif %}
 </div>
 

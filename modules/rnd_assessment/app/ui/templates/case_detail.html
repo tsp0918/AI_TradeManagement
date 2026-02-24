@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}{{ case.title }} | R&D リスク評価{% endblock %}
+{% block nav_cases %} active{% endblock %}
+
+{% block content %}
+<div style="max-width:900px; margin:0 auto;">
+
+  <!-- パンくず -->
+  <div style="font-size:.8rem; color:var(--muted); margin-bottom:16px;">
+    <a href="/ui/cases" style="color:var(--primary); text-decoration:none;">プロジェクト一覧</a>
+    <span style="margin:0 6px;">›</span>
+    <span>{{ case.title }}</span>
+  </div>
+
+  <!-- ヘッダー行 -->
+  <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; gap:16px;">
+    <div>
+      <h2 style="font-size:1.35rem; font-weight:700; color:var(--text-h); margin-bottom:6px;">🔬 {{ case.title }}</h2>
+      {% if case.description %}
+      <p style="font-size:.88rem; color:var(--muted); max-width:600px;">{{ case.description }}</p>
+      {% endif %}
+      <p style="font-size:.76rem; color:var(--muted); margin-top:8px;">
+        作成日: {{ case.created_at.strftime('%Y-%m-%d') if case.created_at else '—' }}
+        &nbsp;｜&nbsp;
+        更新日: {{ case.updated_at.strftime('%Y-%m-%d') if case.updated_at else '—' }}
+      </p>
+    </div>
+    <a href="/ui/cases/{{ case.case_id }}/profiles/new"
+       style="flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+              background:var(--primary); color:#fff; text-decoration:none;
+              padding:9px 18px; border-radius:var(--r-sm);
+              font-size:.88rem; font-weight:600; white-space:nowrap;">
+      ＋ 新規バージョン作成
+    </a>
+  </div>
+
+  <!-- バージョン履歴 -->
+  <div style="margin-bottom:8px; font-size:.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px;">
+    バージョン履歴
+  </div>
+
+  {% if enriched_profiles %}
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden;">
+    <table style="width:100%; border-collapse:collapse; font-size:.88rem;">
+      <thead>
+        <tr style="background:var(--bg);">
+          <th style="text-align:left; padding:11px 16px; font-size:.73rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); width:80px;">バージョン</th>
+          <th style="text-align:left; padding:11px 16px; font-size:.73rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border);">用途概要</th>
+          <th style="text-align:center; padding:11px 16px; font-size:.73rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); width:120px;">内部リスク</th>
+          <th style="text-align:center; padding:11px 16px; font-size:.73rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); width:130px;">AI該非判定</th>
+          <th style="text-align:right; padding:11px 16px; font-size:.73rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); width:100px;">作成日</th>
+          <th style="text-align:center; padding:11px 16px; font-size:.73rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); width:80px;">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in enriched_profiles %}
+        {% set prof = row.profile %}
+        {% set asmt = row.assessment %}
+        <tr style="transition:background .12s;"
+            onmouseover="this.style.background='var(--bg)'"
+            onmouseout="this.style.background=''">
+          <td style="padding:13px 16px; border-bottom:1px solid var(--border);">
+            <span style="font-size:1rem; font-weight:700; color:var(--primary);">ver.{{ prof.version_no }}</span>
+          </td>
+          <td style="padding:13px 16px; border-bottom:1px solid var(--border); max-width:280px;">
+            {% if prof.use_requirements_raw %}
+            <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); font-size:.84rem;">
+              {{ prof.use_requirements_raw[:100] }}{% if prof.use_requirements_raw|length > 100 %}…{% endif %}
+            </div>
+            {% else %}
+            <span style="color:var(--muted); font-size:.82rem;">（用途未入力）</span>
+            {% endif %}
+          </td>
+          <td style="padding:13px 16px; border-bottom:1px solid var(--border); text-align:center;">
+            {% if asmt %}
+              {% set rl = asmt.risk_level %}
+              {% if rl == "critical" %}
+                <span style="background:#fef2f2; color:#991b1b; padding:2px 9px; border-radius:20px; font-size:.76rem; font-weight:700;">🔴 危険</span>
+              {% elif rl == "high" %}
+                <span style="background:#fff7ed; color:#c2410c; padding:2px 9px; border-radius:20px; font-size:.76rem; font-weight:700;">🟠 高</span>
+              {% elif rl == "medium" %}
+                <span style="background:#fffbeb; color:#92400e; padding:2px 9px; border-radius:20px; font-size:.76rem; font-weight:700;">🟡 中</span>
+              {% else %}
+                <span style="background:#f0fdf4; color:#166534; padding:2px 9px; border-radius:20px; font-size:.76rem; font-weight:700;">🟢 低</span>
+              {% endif %}
+            {% else %}
+              <span style="color:var(--muted); font-size:.8rem;">未評価</span>
+            {% endif %}
+          </td>
+          <td style="padding:13px 16px; border-bottom:1px solid var(--border); text-align:center;">
+            {% if prof.ai_validation_transaction_id %}
+              {% set risk = prof.ai_validation_risk %}
+              {% if risk == "danger" %}
+                <span style="font-size:.78rem; font-weight:600; color:#991b1b;">⚠ 要注意</span>
+              {% elif risk == "warn" %}
+                <span style="font-size:.78rem; font-weight:600; color:#92400e;">📋 候補あり</span>
+              {% elif risk == "info" %}
+                <span style="font-size:.78rem; font-weight:600; color:#1d4ed8;">ℹ 参考あり</span>
+              {% else %}
+                <span style="font-size:.78rem; font-weight:600; color:#166534;">✓ 問題なし</span>
+              {% endif %}
+              <div style="font-size:.72rem; color:var(--muted); margin-top:2px;">#{{ prof.ai_validation_transaction_id }}</div>
+            {% else %}
+              <span style="color:var(--muted); font-size:.8rem;">未実行</span>
+            {% endif %}
+          </td>
+          <td style="padding:13px 16px; border-bottom:1px solid var(--border); text-align:right; font-size:.78rem; color:var(--muted);">
+            {{ prof.created_at.strftime('%Y-%m-%d') if prof.created_at else '—' }}
+          </td>
+          <td style="padding:13px 16px; border-bottom:1px solid var(--border); text-align:center;">
+            <a href="/ui/cases/{{ case.case_id }}/profiles/latest?version={{ prof.version_no }}"
+               style="display:inline-block; padding:4px 12px; border-radius:6px;
+                      background:var(--primary-lt); color:var(--primary-dk);
+                      text-decoration:none; font-size:.78rem; font-weight:600;">
+              詳細
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center; padding:48px 20px; background:var(--surface);
+              border:1px solid var(--border); border-radius:var(--r);">
+    <div style="font-size:2rem; margin-bottom:12px; opacity:.5;">📋</div>
+    <p style="font-weight:600; color:var(--text-h); margin-bottom:8px;">バージョンがまだありません</p>
+    <p style="font-size:.84rem; color:var(--muted); margin-bottom:20px;">「新規バージョン作成」からリスク評価を開始してください</p>
+    <a href="/ui/cases/{{ case.case_id }}/profiles/new"
+       style="display:inline-flex; align-items:center; gap:6px;
+              background:var(--primary); color:#fff; text-decoration:none;
+              padding:9px 20px; border-radius:var(--r-sm);
+              font-size:.88rem; font-weight:600;">
+      ＋ 新規バージョン作成
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

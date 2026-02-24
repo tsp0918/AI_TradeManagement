@@ -12,7 +12,6 @@ from sqlalchemy import (
     Integer,
     ForeignKey,
     JSON,
-    Index,
 )
 from sqlalchemy.orm import relationship
 
@@ -70,13 +69,14 @@ class RDCaseProfiles(Base):
     end_user_template_json = Column(JSON, nullable=True)
     disclosure_template_json = Column(JSON, nullable=True)
 
+    # ai_validation 連携
+    ai_validation_transaction_id = Column(Integer, nullable=True, index=True)
+    ai_validation_risk            = Column(String,  nullable=True)
+    ai_validation_run_at          = Column(DateTime, nullable=True)
+
     case = relationship("RDCases", back_populates="profiles")
     ip_review = relationship("RDIPReviews", back_populates="profile", uselist=False, cascade="all, delete-orphan")
 
-
-Index("ix_rd_case_profiles_case_id", RDCaseProfiles.case_id)
-Index("ix_rd_case_profiles_version_no", RDCaseProfiles.version_no)
-Index("ix_rd_case_profiles_input_fingerprint", RDCaseProfiles.input_fingerprint)
 
 
 class RDCaseItems(Base):
@@ -170,6 +170,3 @@ class RDIPReviewEvidence(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     ip_review = relationship("RDIPReviews", back_populates="evidences")
-
-
-Index("ix_rd_ip_review_evidence_ip_review_id", RDIPReviewEvidence.ip_review_id)
