@@ -143,6 +143,51 @@
 </div>
 {% endif %}
 
+<!-- ===== Section 2b: 取引先スクリーニング ===== -->
+<div class="card" style="margin-bottom:14px;">
+  <div class="card-section-title">🛡 取引先スクリーニング</div>
+  {% if tx.counterparty_name %}
+    {% if tx.screening_result_id %}
+      {% set sc = tx.screening_status %}
+      <div class="screening-banner screening-{{ sc }}">
+        <span class="screening-icon">
+          {%- if sc == "match" -%}🚨{%- elif sc == "possible_match" -%}⚠{%- else -%}✓{%- endif -%}
+        </span>
+        <span class="screening-label">
+          {%- if sc == "match" -%}一致 — 要注意
+          {%- elif sc == "possible_match" -%}要確認 — 照合候補あり
+          {%- else -%}クリア — 問題なし{%- endif -%}
+        </span>
+        <span class="muted small" style="margin-left:8px;">対象: {{ tx.counterparty_name }}</span>
+      </div>
+      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="http://localhost:8005/ui/results" target="_blank" class="btn btn-sm">
+          📋 詳細を見る
+        </a>
+        <form method="post" action="/ui/transactions/{{ tx.id }}/run-screening" style="margin:0;">
+          <button type="submit" class="btn btn-sm">🔄 再実行</button>
+        </form>
+      </div>
+    {% else %}
+      <p style="font-size:.88rem; color:var(--muted); margin:0 0 10px;">
+        対象企業: <strong style="color:var(--text);">{{ tx.counterparty_name }}</strong>
+      </p>
+      <form method="post" action="/ui/transactions/{{ tx.id }}/run-screening" style="margin:0;">
+        <button type="submit" class="btn btn-primary" style="font-size:.84rem;">
+          🛡 スクリーニングを実行
+        </button>
+      </form>
+    {% endif %}
+  {% else %}
+    <p style="font-size:.84rem; color:var(--muted); margin:0 0 10px;">
+      取引先企業名が未設定です。新規登録時または下記リンクから手動スクリーニングが可能です。
+    </p>
+    <a href="http://localhost:8005/ui/screen" target="_blank" class="btn" style="font-size:.82rem;">
+      手動スクリーニングへ →
+    </a>
+  {% endif %}
+</div>
+
 <!-- ===== Section 3: 取引情報（折りたたみ） ===== -->
 <details class="card detail-section">
   <summary class="detail-summary">
@@ -428,6 +473,22 @@
 /* ─── ページ見出し ─── */
 .page-title-row { margin-bottom:12px; }
 .page-title-row h1 { margin:0 0 2px; }
+
+/* ─── スクリーニングカード ─── */
+.card-section-title {
+  font-size:.82rem; font-weight:800; color:var(--muted); text-transform:uppercase;
+  letter-spacing:.5px; margin-bottom:10px;
+}
+.screening-banner {
+  display:flex; align-items:center; gap:10px; padding:10px 14px;
+  border-radius:10px; border:1.5px solid transparent; font-size:.88rem; font-weight:700;
+}
+.screening-clear    { background:#dcfce7; border-color:#86efac; color:#166534; }
+.screening-possible_match { background:#fffbeb; border-color:#fde68a; color:#854d0e; }
+.screening-match    { background:#fff1f2; border-color:#fecdd3; color:#be123c; }
+.screening-icon     { font-size:1.1rem; }
+.screening-label    { font-weight:800; }
+.btn-sm { padding:5px 12px; font-size:.78rem; }
 
 /* ─── ハイライトテーブル ─── */
 .highlight-card { margin-bottom:14px; }

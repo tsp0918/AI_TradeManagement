@@ -27,6 +27,7 @@ from app.schemas.screening import (
     WatchlistEntryResponse,
     WatchlistImportRow,
 )
+from app.services import faiss_service
 from app.services.screening_service import run_screening
 
 router = APIRouter(prefix="/api", tags=["screening"])
@@ -158,7 +159,13 @@ async def import_watchlist(
     ]
     db.add_all(entries)
     await db.flush()
-    return {"imported": len(entries)}
+    await db.commit()
+
+    # FAISS インデックスを自動再構築
+    all_result = await db.execute(select(Watchlist).where(Watchlist.is_active == True))  # noqa: E712
+    faiss_service.rebuild(all_result.scalars().all())
+
+    return {"imported": len(entries), "ntotal": faiss_service.ntotal()}
 
 
 @router.delete("/watchlist/{entry_id}", status_code=status.HTTP_200_OK)
@@ -172,3 +179,21 @@ async def deactivate_watchlist_entry(
         raise HTTPException(status_code=404, detail="Entry not found")
     entry.is_active = False
     return {"ok": True, "id": str(entry_id)}
+
+
+# ── FAISS インデックス管理 ──────────────────────────────────────────────────
+
+
+@router.post("/rebuild-index", status_code=status.HTTP_200_OK)
+async def rebuild_index(db: AsyncSession = Depends(get_db)):
+    """ウォッチリスト更新後に FAISS インデックスを再構築する。"""
+    result = await db.execute(select(Watchlist).where(Watchlist.is_active == True))  # noqa: E712
+    entities = result.scalars().all()
+    faiss_service.rebuild(entities)
+    return {"ok": True, "ntotal": faiss_service.ntotal(), "message": f"{faiss_service.ntotal()} entities indexed"}
+
+
+@router.get("/index-status", status_code=status.HTTP_200_OK)
+async def index_status():
+    """FAISS インデックスの現在のエンティティ数を返す。"""
+    return {"ntotal": faiss_service.ntotal()}

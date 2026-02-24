@@ -74,6 +74,10 @@ class RDCaseProfiles(Base):
     ai_validation_risk            = Column(String,  nullable=True)
     ai_validation_run_at          = Column(DateTime, nullable=True)
 
+    # スクリーニング連携
+    screening_result_id = Column(String(36), nullable=True)
+    screening_status    = Column(String(30), nullable=True)
+
     case = relationship("RDCases", back_populates="profiles")
     ip_review = relationship("RDIPReviews", back_populates="profile", uselist=False, cascade="all, delete-orphan")
 

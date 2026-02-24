@@ -25,6 +25,7 @@ from app.services.scoring import score_demo
 from app.models.rd_case import RDCaseProfiles, RDAssessments
 
 AI_VALIDATION_BASE = "http://localhost:8001"
+SCREENING_BASE = "http://localhost:8005"
 
 
 router = APIRouter(prefix="/ui", tags=["ui"])
@@ -694,5 +695,36 @@ def run_ai_validation(
 
     # 5. プロファイルに保存
     crud.update_profile_ai_validation(db, profile_id, transaction_id, risk)
+
+    return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest", status_code=303)
+
+
+@router.post("/cases/{case_id}/profiles/{profile_id}/run-screening")
+def run_screening(
+    case_id: str,
+    profile_id: str,
+    db: Session = Depends(get_db),
+):
+    """エンドユーザー名をスクリーニングモジュールに送信して結果を保存する。"""
+    profile = crud.get_profile_by_id(db, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="profile not found")
+
+    eu = profile.end_user_template_json or {}
+    company_name = (eu.get("end_user_name") or "").strip()
+    if not company_name:
+        raise HTTPException(status_code=400, detail="end_user_name が未設定です")
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            r = client.post(
+                f"{SCREENING_BASE}/api/screen",
+                json={"company_name": company_name, "threshold": 0.75},
+            )
+        if r.status_code == 200:
+            data = r.json()
+            crud.update_profile_screening(db, profile_id, str(data["id"]), data["result_status"])
+    except Exception:
+        pass  # スクリーニング失敗は非致命的
 
     return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest", status_code=303)

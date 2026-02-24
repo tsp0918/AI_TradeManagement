@@ -51,6 +51,11 @@ class Transaction(Base, TimestampMixin):
 
     created_by_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
+    # スクリーニング連携
+    counterparty_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    screening_result_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    screening_status: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+
     items: Mapped[List["TransactionItem"]] = relationship(
         back_populates="transaction",
         cascade="all, delete-orphan",

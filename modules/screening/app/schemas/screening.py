@@ -47,6 +47,8 @@ class MatchDetail(BaseModel):
     score: float
     country: str | None = None
     risk_level: str
+    source_id: str | None = None
+    reason: str | None = None
 
 
 class ScreenResultResponse(BaseModel):

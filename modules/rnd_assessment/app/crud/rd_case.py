@@ -226,6 +226,20 @@ def update_profile_ai_validation(
         db.commit()
 
 
+def update_profile_screening(
+    db: Session,
+    profile_id: str,
+    result_id: str,
+    status: str,
+) -> None:
+    """スクリーニング連携結果をプロファイルに保存。"""
+    obj = db.get(RDCaseProfiles, profile_id)
+    if obj:
+        obj.screening_result_id = result_id
+        obj.screening_status = status
+        db.commit()
+
+
 # =========================================================
 # NEW: IP review + evidence
 # =========================================================

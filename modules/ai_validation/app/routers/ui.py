@@ -1,13 +1,19 @@
 # app/routers/ui.py
 import csv
 import io
+import logging
 from datetime import datetime
 from typing import Optional, Dict, Any
 
+import httpx
 from fastapi import APIRouter, Depends, Request, HTTPException, Query, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
+
+logger = logging.getLogger(__name__)
+
+SCREENING_BASE = "http://localhost:8005"
 
 from app.db.deps import get_db
 
@@ -47,11 +53,13 @@ def _create_transaction_manual(
     description: str,
     spec_text: str,
     case_no: Optional[str] = None,
+    counterparty_name: Optional[str] = None,
 ) -> Transaction:
     tx = Transaction(
         case_no=case_no or _make_case_no_manual(),
         title=title.strip() or product_code.strip() or "新規審査",
         status="draft",
+        counterparty_name=counterparty_name.strip() if counterparty_name else None,
     )
     db.add(tx)
     db.flush()
@@ -103,6 +111,7 @@ def transaction_new_submit(
     description: str = Form(""),
     spec_text: str = Form(""),
     case_no: str = Form(""),
+    counterparty_name: Optional[str] = Form(None),
 ):
     """手動入力で新規審査を作成（AIパイプラインは実行しない）。"""
     templates = request.app.state.templates
@@ -119,6 +128,7 @@ def transaction_new_submit(
             description=description,
             spec_text=spec_text,
             case_no=case_no.strip() or None,
+            counterparty_name=counterparty_name,
         )
         db.commit()
     except Exception as e:
@@ -333,3 +343,34 @@ def run_pipeline_and_show(
         url += f"?run_id={latest.id}"
 
     return RedirectResponse(url=url, status_code=303)
+
+
+@router.post("/ui/transactions/{transaction_id}/run-screening")
+def run_screening(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+):
+    """取引先企業名をスクリーニングモジュールに送信して結果を保存する。"""
+    tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="transaction not found")
+    if not tx.counterparty_name:
+        raise HTTPException(status_code=400, detail="counterparty_name が未設定です")
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            r = client.post(
+                f"{SCREENING_BASE}/api/screen",
+                json={"company_name": tx.counterparty_name, "threshold": 0.75},
+            )
+        if r.status_code == 200:
+            data = r.json()
+            tx.screening_result_id = str(data["id"])
+            tx.screening_status = data["result_status"]
+            db.commit()
+        else:
+            logger.warning("Screening API returned %d for tx %d", r.status_code, transaction_id)
+    except Exception as exc:
+        logger.warning("Screening call failed for tx %d: %s", transaction_id, exc)
+
+    return RedirectResponse(url=f"/ui/transactions/{transaction_id}", status_code=303)

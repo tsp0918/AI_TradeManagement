@@ -21,13 +21,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
 
 from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan, health_router
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
+from app.db.session import AsyncSessionLocal
+from app.models.screening import Watchlist
 from app.routers.screening import router as screening_router
 from app.routers.ui import router as ui_router
+from app.services import faiss_service
 
 MODULE = ModuleInfo(
     key="screening",
@@ -42,12 +46,20 @@ MODULE = ModuleInfo(
 )
 
 
+async def _init_faiss() -> None:
+    """起動時に FAISS インデックスをロードまたは構築する。"""
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Watchlist).where(Watchlist.is_active == True))  # noqa: E712
+        entities = result.scalars().all()
+    faiss_service.get_or_build(entities)
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Screening Module",
         version="0.1.0",
         description="懸念取引先スクリーニング (BIS/OFAC等)",
-        lifespan=build_lifespan(MODULE),
+        lifespan=build_lifespan(MODULE, on_startup=_init_faiss),
     )
 
     app.add_middleware(

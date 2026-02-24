@@ -4,53 +4,211 @@
 
 {% block content %}
 <div class="page-hd">
-  <h1>懸念取引先スクリーニング</h1>
-  <p>企業名・住所を入力して BIS Entity List / OFAC SDN 等と照合します。</p>
+  <h1>🛡 懸念取引先スクリーニング</h1>
+  <p>企業名・氏名を入力して BIS Entity List / OFAC SDN 等の制裁リストと照合します。</p>
 </div>
 
+<!-- 入力フォーム -->
 <div class="card">
   <div class="card-title">スクリーニング実行</div>
   <form id="screen-form">
     <div class="input-row">
-      <div class="field">
+      <div class="field" style="flex:2;">
         <label for="query-name">企業名 / 氏名 <span style="color:#ef4444">*</span></label>
         <input type="text" id="query-name" name="query_name"
-          placeholder="例: Acme Corporation" required />
+          placeholder="例: Beijing Acme Technology Co., Ltd." required
+          style="font-size:1rem;" />
       </div>
-      <div class="field" style="max-width:180px;">
+      <div class="field" style="max-width:160px;">
         <label for="query-country">国コード</label>
         <input type="text" id="query-country" name="query_country"
-          placeholder="例: CN, RU, IR" maxlength="10" />
+          placeholder="CN, RU, IR …" maxlength="10" />
+      </div>
+      <div class="field" style="max-width:120px; align-self:flex-end;">
+        <label style="opacity:0;">実行</label>
+        <button type="submit" class="btn btn-primary" id="submit-btn"
+                style="width:100%; padding:10px 0;">
+          🔍 実行
+        </button>
       </div>
     </div>
-    <div class="field">
+    <div class="field" style="margin-top:0;">
       <label for="query-address">住所（任意）</label>
       <input type="text" id="query-address" name="query_address"
-        placeholder="例: 123 Main St, Beijing" />
+        placeholder="例: 123 Main St, Beijing, China" />
     </div>
-    <button type="submit" class="btn btn-primary">🔍 スクリーニング実行</button>
+    <div style="margin-top:8px; display:flex; align-items:center; gap:12px; font-size:.82rem; color:var(--muted);">
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+        <span>閾値</span>
+        <input type="range" id="threshold-range" min="50" max="99" value="75"
+               style="width:120px;" oninput="document.getElementById('threshold-val').textContent=this.value+'%'">
+        <span id="threshold-val">75%</span>
+      </label>
+      <span id="index-status" style="margin-left:auto;"></span>
+    </div>
   </form>
 </div>
 
-<!-- 結果表示エリア -->
-<div id="result-area" style="display:none;">
-  <div class="card">
-    <div class="card-title">スクリーニング結果</div>
-    <div id="result-content"></div>
+<!-- 結果エリア -->
+<div id="result-area" style="display:none; margin-top:0;">
+
+  <!-- ステータスバナー -->
+  <div id="status-banner" class="status-banner">
+    <div class="status-left">
+      <span id="banner-icon" class="status-icon"></span>
+      <span id="banner-label" class="status-label"></span>
+      <span id="banner-sub" class="status-sub"></span>
+    </div>
+    <div class="status-right">
+      <span id="banner-time" class="muted small"></span>
+      <a id="banner-link" href="/ui/results" class="btn" style="font-size:.82rem;">履歴を見る</a>
+    </div>
   </div>
+
+  <!-- マッチテーブル -->
+  <div id="match-card" class="card" style="display:none;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+      <h2 style="font-size:.95rem; font-weight:700; margin:0;">マッチ候補</h2>
+      <span id="match-count" class="muted small"></span>
+    </div>
+    <!-- 凡例 -->
+    <div class="legend-row">
+      <div class="legend-item">
+        <span class="badge badge-match">🚨 一致</span>
+        <span class="legend-desc">スコア 90% 以上 — 制裁対象の可能性が高い</span>
+      </div>
+      <div class="legend-item">
+        <span class="badge badge-possible">⚠ 要確認</span>
+        <span class="legend-desc">スコア 75-89% — 要手動確認</span>
+      </div>
+      <div class="legend-item">
+        <span class="badge badge-clear">✓ 参考</span>
+        <span class="legend-desc">閾値以上だが低スコア</span>
+      </div>
+    </div>
+    <div class="highlight-scroll">
+      <table class="table highlight-table">
+        <thead>
+          <tr>
+            <th style="width:110px;">判定</th>
+            <th>エンティティ名</th>
+            <th style="width:130px;">リスト</th>
+            <th style="width:60px;">国</th>
+            <th style="width:140px; text-align:right;">スコア</th>
+          </tr>
+        </thead>
+        <tbody id="match-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- クリア -->
+  <div id="clear-card" class="card" style="display:none; text-align:center; padding:28px 16px;">
+    <div style="font-size:2rem; margin-bottom:8px;">✅</div>
+    <p style="font-weight:700; color:#166534; margin-bottom:4px;">マッチなし — クリア</p>
+    <p style="font-size:.84rem; color:var(--muted);">制裁リストに一致するエンティティは見つかりませんでした。</p>
+  </div>
+
 </div>
 
+<style>
+.input-row { display:flex; gap:12px; flex-wrap:wrap; }
+.field { display:flex; flex-direction:column; gap:4px; flex:1; }
+.field label { font-size:.82rem; font-weight:700; color:var(--muted); }
+.field input { padding:9px 12px; border:1.5px solid var(--border); border-radius:8px;
+               font-size:.9rem; background:var(--surface); }
+.field input:focus { outline:2px solid var(--primary); border-color:transparent; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,10px);
+        padding:18px 20px; margin-bottom:14px; box-shadow:var(--shadow); }
+.card-title { font-size:.82rem; font-weight:800; color:var(--muted); text-transform:uppercase;
+              letter-spacing:.5px; margin-bottom:14px; }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
+       padding:7px 16px; border-radius:8px; font-size:.84rem; font-weight:600;
+       cursor:pointer; border:1.5px solid var(--border); background:var(--surface);
+       color:var(--text); text-decoration:none; transition:background .12s; }
+.btn:hover { background:var(--bg); }
+.btn-primary { background:var(--primary); color:#fff; border:none; }
+.btn-primary:hover { filter:brightness(1.1); }
+.btn-primary:disabled { opacity:.6; cursor:not-allowed; }
+.muted { color:var(--muted); }
+.small { font-size:.78rem; }
+
+/* ─── Status Banner ─── */
+.status-banner {
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;
+  gap:10px; padding:14px 18px; border-radius:12px; margin-bottom:12px;
+  border:1.5px solid transparent;
+}
+.status-left  { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.status-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.status-icon  { font-size:1.3rem; }
+.status-label { font-weight:800; font-size:1rem; }
+.status-sub   { font-size:.84rem; opacity:.85; }
+.banner-clear    { background:#dcfce7; border-color:#86efac; color:#166534; }
+.banner-possible { background:#fffbeb; border-color:#fde68a; color:#854d0e; }
+.banner-match    { background:#fff1f2; border-color:#fecdd3; color:#be123c; }
+
+/* ─── Legend ─── */
+.legend-row { display:flex; flex-direction:column; gap:4px; padding:6px 10px;
+              border-left:3px solid var(--border); margin-bottom:10px; font-size:.78rem; }
+.legend-item { display:flex; align-items:center; gap:8px; }
+.legend-desc { color:#9ca3af; }
+
+/* ─── Highlight table ─── */
+.highlight-scroll { max-height:380px; overflow-y:auto; border:1px solid var(--border); border-radius:10px; }
+.highlight-table { table-layout:fixed; width:100%; border-collapse:collapse; }
+.highlight-table thead th {
+  position:sticky; top:0; background:#fff; z-index:1;
+  border-bottom:2px solid var(--border);
+  padding:9px 10px; font-size:.72rem; font-weight:700; color:var(--muted); text-align:left;
+}
+.highlight-table td { padding:9px 10px; vertical-align:middle; }
+.highlight-table tr { border-bottom:1px solid var(--border); }
+.highlight-table tr:hover { background:var(--bg); }
+
+/* ─── Badges ─── */
+.badge { display:inline-flex; align-items:center; padding:2px 9px; border-radius:999px;
+         font-size:.72rem; font-weight:700; white-space:nowrap; }
+.badge-match    { background:#fef2f2; color:#991b1b; border:1px solid #fecdd3; }
+.badge-possible { background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
+.badge-clear    { background:#dcfce7; color:#166534; border:1px solid #86efac; }
+
+/* ─── Score bar ─── */
+.score-bar-wrap { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+.score-bar { flex:1; max-width:90px; height:8px; background:#e5e7eb; border-radius:4px; overflow:hidden; }
+.score-fill { height:100%; border-radius:4px; }
+.score-num  { font-size:.82rem; font-family:monospace; min-width:40px; text-align:right; }
+</style>
+
 <script>
+// URL パラメータによる自動実行
+const _urlP = new URLSearchParams(location.search);
+const _autoName = _urlP.get("company_name");
+if (_autoName) {
+  document.getElementById("query-name").value = _autoName;
+  document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => document.getElementById("screen-form").requestSubmit(), 400);
+  });
+}
+
+// FAISS インデックス件数を表示
+fetch("/api/index-status").then(r => r.json()).then(d => {
+  const el = document.getElementById("index-status");
+  if (el) el.textContent = `インデックス: ${d.ntotal.toLocaleString()} 件`;
+}).catch(() => {});
+
 document.getElementById("screen-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const btn = e.target.querySelector("button[type=submit]");
+  const btn = document.getElementById("submit-btn");
   btn.disabled = true;
   btn.textContent = "⏳ 照合中…";
 
+  const threshold = parseInt(document.getElementById("threshold-range").value, 10) / 100;
   const payload = {
-    query_name:    document.getElementById("query-name").value.trim(),
-    query_country: document.getElementById("query-country").value.trim() || null,
-    query_address: document.getElementById("query-address").value.trim() || null,
+    company_name: document.getElementById("query-name").value.trim(),
+    country:      document.getElementById("query-country").value.trim() || null,
+    address:      document.getElementById("query-address").value.trim() || null,
+    threshold:    threshold,
   };
 
   try {
@@ -59,56 +217,96 @@ document.getElementById("screen-form").addEventListener("submit", async (e) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-
-    const statusMap = {
-      clear:          { label: "クリア",           cls: "badge-clear",    icon: "✅" },
-      match:          { label: "一致",             cls: "badge-match",    icon: "🚨" },
-      possible_match: { label: "要確認",           cls: "badge-possible", icon: "⚠️" },
-    };
-    const s = statusMap[data.result_status] || { label: data.result_status, cls: "badge-pending", icon: "?" };
-
-    const score = data.max_score != null ? Math.round(data.max_score * 100) : 0;
-    let matchHtml = "";
-    if (data.matches && data.matches.length) {
-      matchHtml = `<div style="margin-top:14px;">
-        <p style="font-size:.85rem;font-weight:700;margin-bottom:8px;">マッチ候補</p>
-        <table class="table">
-          <thead><tr><th>エンティティ名</th><th>リスト</th><th>スコア</th><th>リスク</th></tr></thead>
-          <tbody>
-            ${data.matches.map(m => `<tr>
-              <td>${m.entity_name}</td>
-              <td>${m.list_source}</td>
-              <td>
-                <div class="score-bar" style="width:80px;">
-                  <div class="score-fill" style="width:${Math.round(m.score*100)}%"></div>
-                </div>
-                <small class="muted">${(m.score*100).toFixed(1)}%</small>
-              </td>
-              <td><span class="badge badge-${m.risk_level==='high'?'match':m.risk_level==='medium'?'possible':'clear'}">${m.risk_level}</span></td>
-            </tr>`).join("")}
-          </tbody>
-        </table>
-      </div>`;
-    }
-
-    document.getElementById("result-content").innerHTML = `
-      <div class="flex items-center gap-3" style="margin-bottom:14px;">
-        <span style="font-size:24px;">${s.icon}</span>
-        <div>
-          <span class="badge ${s.cls}" style="font-size:.9rem;padding:5px 14px;">${s.label}</span>
-          <p class="muted" style="margin-top:4px;">スコア: ${score}%</p>
-        </div>
-      </div>
-      ${matchHtml || '<p class="muted">マッチする候補は見つかりませんでした。</p>'}
-    `;
-    document.getElementById("result-area").style.display = "";
+    _renderResult(data);
   } catch (err) {
     alert("エラーが発生しました: " + err.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = "🔍 スクリーニング実行";
+    btn.textContent = "🔍 実行";
   }
 });
+
+function _scoreColor(score) {
+  if (score >= 0.9) return "#ef4444";
+  if (score >= 0.75) return "#f59e0b";
+  return "#22c55e";
+}
+
+function _renderResult(data) {
+  const area = document.getElementById("result-area");
+  area.style.display = "";
+
+  // ─ バナー ─
+  const banner = document.getElementById("status-banner");
+  banner.className = "status-banner";
+  const icon  = document.getElementById("banner-icon");
+  const label = document.getElementById("banner-label");
+  const sub   = document.getElementById("banner-sub");
+  const cnt   = data.matches ? data.matches.length : 0;
+  const max   = data.max_score != null ? Math.round(data.max_score * 1000) / 10 : null;
+
+  if (data.result_status === "match") {
+    banner.classList.add("banner-match");
+    icon.textContent  = "🚨";
+    label.textContent = "一致 — 要注意";
+    sub.textContent   = `${cnt} 件ヒット / 最高スコア ${max}%`;
+  } else if (data.result_status === "possible_match") {
+    banner.classList.add("banner-possible");
+    icon.textContent  = "⚠";
+    label.textContent = "要確認 — 照合候補あり";
+    sub.textContent   = `${cnt} 件ヒット / 最高スコア ${max}%`;
+  } else {
+    banner.classList.add("banner-clear");
+    icon.textContent  = "✓";
+    label.textContent = "クリア — 問題なし";
+    sub.textContent   = "制裁リストに一致するエンティティはありませんでした";
+  }
+
+  // ─ マッチテーブル ─
+  const matchCard = document.getElementById("match-card");
+  const clearCard = document.getElementById("clear-card");
+  if (data.matches && data.matches.length > 0) {
+    matchCard.style.display = "";
+    clearCard.style.display = "none";
+    document.getElementById("match-count").textContent = `${data.matches.length} 件`;
+
+    const tbody = document.getElementById("match-tbody");
+    tbody.innerHTML = data.matches.map(m => {
+      const pct   = Math.round(m.score * 100);
+      const color = _scoreColor(m.score);
+      let badgeCls = "badge-clear";
+      let badgeTxt = "参考";
+      if (m.score >= 0.9) { badgeCls = "badge-match"; badgeTxt = "🚨 一致"; }
+      else if (m.score >= 0.75) { badgeCls = "badge-possible"; badgeTxt = "⚠ 要確認"; }
+
+      const detail = [m.source_id, m.reason].filter(Boolean).map(t =>
+        `<div class="muted" style="font-size:.72rem; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:280px;">${t}</div>`
+      ).join("");
+
+      return `<tr>
+        <td><span class="badge ${badgeCls}">${badgeTxt}</span></td>
+        <td>
+          <div style="font-weight:600; font-size:.88rem;">${m.entity_name}</div>
+          ${detail}
+        </td>
+        <td style="font-size:.78rem; color:var(--muted);">${m.list_source}</td>
+        <td style="font-size:.78rem; color:var(--muted);">${m.country || "—"}</td>
+        <td>
+          <div class="score-bar-wrap">
+            <div class="score-bar">
+              <div class="score-fill" style="width:${pct}%; background:${color};"></div>
+            </div>
+            <span class="score-num" style="color:${color}; font-weight:700;">${pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  } else {
+    matchCard.style.display = "none";
+    clearCard.style.display = "";
+  }
+}
 </script>
 {% endblock %}

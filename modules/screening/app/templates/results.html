@@ -4,68 +4,233 @@
 
 {% block content %}
 <div class="page-hd">
-  <h1>スクリーニング結果履歴</h1>
-  <p>過去に実行したスクリーニングの結果一覧です。</p>
+  <h1>📋 スクリーニング結果履歴</h1>
+  <p>過去に実行したスクリーニングの結果一覧です。行をクリックするとマッチ詳細を確認できます。</p>
 </div>
 
 <div class="card">
-  <table class="table">
-    <thead>
-      <tr>
-        <th>照合対象</th>
-        <th>国コード</th>
-        <th>ステータス</th>
-        <th>スコア</th>
-        <th>実施日時</th>
-      </tr>
-    </thead>
-    <tbody id="results-tbody">
-      <tr><td colspan="5" style="text-align:center;padding:24px;">
-        <div class="empty-state">
-          <div class="icon">📋</div>
-          <p>データを読み込み中…</p>
-        </div>
-      </td></tr>
-    </tbody>
-  </table>
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+    <span id="total-count" class="muted small"></span>
+    <a href="/ui/screen" class="btn btn-primary" style="font-size:.82rem;">🔍 新規スクリーニング</a>
+  </div>
+
+  <div class="highlight-scroll" style="max-height:none;">
+    <table class="table highlight-table">
+      <thead>
+        <tr>
+          <th style="width:40px;"></th>
+          <th>照合対象</th>
+          <th style="width:70px;">国</th>
+          <th style="width:100px;">判定</th>
+          <th style="width:80px; text-align:right;">最高スコア</th>
+          <th style="width:140px;">実施日時</th>
+        </tr>
+      </thead>
+      <tbody id="results-tbody">
+        <tr><td colspan="6" style="text-align:center; padding:32px;">
+          <div class="empty-state">
+            <div style="font-size:2rem; margin-bottom:8px;">📋</div>
+            <p>データを読み込み中…</p>
+          </div>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
 </div>
+
+<style>
+.page-hd { margin-bottom:16px; }
+.page-hd h1 { font-size:1.25rem; font-weight:800; margin:0 0 4px; }
+.page-hd p  { font-size:.84rem; color:var(--muted); margin:0; }
+
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,10px);
+        padding:18px 20px; margin-bottom:14px; box-shadow:var(--shadow); }
+
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
+       padding:7px 16px; border-radius:8px; font-size:.84rem; font-weight:600;
+       cursor:pointer; border:1.5px solid var(--border); background:var(--surface);
+       color:var(--text); text-decoration:none; transition:background .12s; }
+.btn:hover { background:var(--bg); }
+.btn-primary { background:var(--primary); color:#fff; border:none; }
+.btn-primary:hover { filter:brightness(1.1); }
+
+.muted  { color:var(--muted); }
+.small  { font-size:.78rem; }
+
+/* ─── Highlight table ─── */
+.highlight-scroll { overflow-y:auto; border:1px solid var(--border); border-radius:10px; }
+.highlight-table { table-layout:fixed; width:100%; border-collapse:collapse; }
+.highlight-table thead th {
+  position:sticky; top:0; background:#fff; z-index:1;
+  border-bottom:2px solid var(--border);
+  padding:9px 10px; font-size:.72rem; font-weight:700; color:var(--muted); text-align:left;
+}
+.highlight-table td { padding:9px 10px; vertical-align:middle; font-size:.84rem; }
+.highlight-table tr.result-row { border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
+.highlight-table tr.result-row:hover { background:var(--bg); }
+.highlight-table tr.detail-row { border-bottom:1px solid var(--border); background:#fafafa; }
+.highlight-table tr.detail-row.hidden { display:none; }
+.detail-inner { padding:4px 8px 12px 8px; }
+
+/* ─── Chevron ─── */
+.chevron { display:inline-block; font-size:.7rem; color:var(--muted); transition:transform .15s; }
+.chevron.open { transform:rotate(90deg); }
+
+/* ─── Badges ─── */
+.badge { display:inline-flex; align-items:center; padding:2px 9px; border-radius:999px;
+         font-size:.72rem; font-weight:700; white-space:nowrap; }
+.badge-match    { background:#fef2f2; color:#991b1b; border:1px solid #fecdd3; }
+.badge-possible { background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
+.badge-clear    { background:#dcfce7; color:#166534; border:1px solid #86efac; }
+.badge-pending  { background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db; }
+
+/* ─── Score bar ─── */
+.score-bar-wrap { display:flex; align-items:center; gap:6px; justify-content:flex-end; }
+.score-bar  { flex:1; max-width:70px; height:7px; background:#e5e7eb; border-radius:4px; overflow:hidden; }
+.score-fill { height:100%; border-radius:4px; }
+.score-num  { font-size:.8rem; font-family:monospace; min-width:38px; text-align:right; }
+
+/* ─── Detail match mini table ─── */
+.match-mini-table { width:100%; border-collapse:collapse; font-size:.78rem; margin-top:8px; }
+.match-mini-table th { padding:5px 8px; background:#f3f4f6; font-weight:700; color:var(--muted); text-align:left; }
+.match-mini-table td { padding:5px 8px; border-top:1px solid var(--border); vertical-align:middle; }
+.match-mini-table tr:hover { background:#f9fafb; }
+
+/* ─── No match note ─── */
+.no-match-note { font-size:.78rem; color:var(--muted); padding:8px 4px; }
+</style>
 
 <script>
 const statusMap = {
-  clear:          { label: "クリア",   cls: "badge-clear" },
-  match:          { label: "一致",     cls: "badge-match" },
-  possible_match: { label: "要確認",   cls: "badge-possible" },
+  clear:          { label: "✓ クリア",  cls: "badge-clear",    icon: "✓",  bCls: "banner-clear" },
+  match:          { label: "🚨 一致",   cls: "badge-match",    icon: "🚨", bCls: "banner-match" },
+  possible_match: { label: "⚠ 要確認", cls: "badge-possible", icon: "⚠", bCls: "banner-possible" },
 };
+
+function scoreColor(s) {
+  if (s >= 0.9)  return "#ef4444";
+  if (s >= 0.75) return "#f59e0b";
+  return "#22c55e";
+}
+
+function badgeForScore(score) {
+  if (score >= 0.9)  return { cls: "badge-match",    txt: "🚨 一致" };
+  if (score >= 0.75) return { cls: "badge-possible", txt: "⚠ 要確認" };
+  return { cls: "badge-clear", txt: "✓ 参考" };
+}
+
+function renderDetail(matches) {
+  if (!matches || matches.length === 0) {
+    return `<div class="no-match-note">マッチした候補はありません。</div>`;
+  }
+  const rows = matches.map(m => {
+    const pct   = Math.round(m.score * 100);
+    const color = scoreColor(m.score);
+    const b     = badgeForScore(m.score);
+    const detail = [m.source_id, m.reason].filter(Boolean).join(" / ");
+    return `<tr>
+      <td><span class="badge ${b.cls}">${b.txt}</span></td>
+      <td>
+        <div style="font-weight:600;">${m.entity_name}</div>
+        ${detail ? `<div style="font-size:.72rem; color:var(--muted); margin-top:2px;">${detail}</div>` : ""}
+      </td>
+      <td style="color:var(--muted);">${m.list_source}</td>
+      <td style="color:var(--muted);">${m.country || "—"}</td>
+      <td>
+        <div class="score-bar-wrap">
+          <div class="score-bar">
+            <div class="score-fill" style="width:${pct}%; background:${color};"></div>
+          </div>
+          <span class="score-num" style="color:${color}; font-weight:700;">${pct}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+
+  return `<table class="match-mini-table">
+    <thead><tr>
+      <th style="width:90px;">判定</th>
+      <th>エンティティ名</th>
+      <th style="width:120px;">リスト</th>
+      <th style="width:55px;">国</th>
+      <th style="width:120px; text-align:right;">スコア</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function toggleDetail(id) {
+  const row = document.getElementById("detail-" + id);
+  const chev = document.getElementById("chev-" + id);
+  if (!row || !chev) return;
+  const hidden = row.classList.toggle("hidden");
+  chev.classList.toggle("open", !hidden);
+}
 
 async function load() {
   try {
-    const res  = await fetch("/api/results?limit=100");
-    const data = await res.json();
+    const res   = await fetch("/api/results?limit=200");
+    const data  = await res.json();
     const items = Array.isArray(data) ? data : (data.items || []);
     const tbody = document.getElementById("results-tbody");
+    const countEl = document.getElementById("total-count");
+    if (countEl) countEl.textContent = `${items.length} 件`;
 
     if (!items.length) {
-      tbody.innerHTML = `<tr><td colspan="5">
-        <div class="empty-state"><div class="icon">🛡️</div>
-        <p>まだスクリーニング結果がありません。</p></div>
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px;">
+        <div style="font-size:2rem; margin-bottom:8px;">🛡️</div>
+        <p style="color:var(--muted); font-size:.84rem;">まだスクリーニング結果がありません。</p>
       </td></tr>`;
       return;
     }
 
     tbody.innerHTML = items.map(r => {
-      const s     = statusMap[r.result_status] || { label: r.result_status, cls: "badge-pending" };
-      const score = r.max_score != null ? `${Math.round(r.max_score*100)}%` : "—";
-      const dt    = new Date(r.screened_at).toLocaleString("ja-JP");
-      return `<tr>
-        <td><strong>${r.query_name}</strong></td>
-        <td>${r.query_country || "—"}</td>
+      const s      = statusMap[r.result_status] || { label: r.result_status, cls: "badge-pending", icon: "?" };
+      const score  = r.max_score != null ? r.max_score : null;
+      const pct    = score != null ? Math.round(score * 100) : null;
+      const color  = score != null ? scoreColor(score) : "#9ca3af";
+      const dt     = new Date(r.screened_at).toLocaleString("ja-JP");
+      const cnt    = r.matches ? r.matches.length : 0;
+      const safeId = r.id.replace(/-/g, "");
+
+      const scoreCell = score != null
+        ? `<div class="score-bar-wrap">
+             <div class="score-bar"><div class="score-fill" style="width:${pct}%; background:${color};"></div></div>
+             <span class="score-num" style="color:${color}; font-weight:700;">${pct}%</span>
+           </div>`
+        : `<span style="color:var(--muted);">—</span>`;
+
+      const resultRow = `<tr class="result-row" onclick="toggleDetail('${safeId}')">
+        <td style="width:40px; text-align:center;">
+          <span class="chevron" id="chev-${safeId}">▶</span>
+        </td>
+        <td>
+          <div style="font-weight:600;">${r.query_name}</div>
+          ${cnt > 0 ? `<div style="font-size:.72rem; color:var(--muted); margin-top:2px;">${cnt} 件ヒット</div>` : ""}
+        </td>
+        <td style="color:var(--muted); font-size:.78rem;">${r.query_country || "—"}</td>
         <td><span class="badge ${s.cls}">${s.label}</span></td>
-        <td>${score}</td>
-        <td class="muted">${dt}</td>
+        <td>${scoreCell}</td>
+        <td style="color:var(--muted); font-size:.78rem;">${dt}</td>
       </tr>`;
+
+      const detailRow = `<tr class="detail-row hidden" id="detail-${safeId}">
+        <td colspan="6">
+          <div class="detail-inner">
+            ${renderDetail(r.matches)}
+          </div>
+        </td>
+      </tr>`;
+
+      return resultRow + detailRow;
     }).join("");
+
   } catch (err) {
     console.error(err);
+    document.getElementById("results-tbody").innerHTML =
+      `<tr><td colspan="6" style="text-align:center; padding:24px; color:#ef4444;">
+        データの読み込みに失敗しました。
+      </td></tr>`;
   }
 }
 

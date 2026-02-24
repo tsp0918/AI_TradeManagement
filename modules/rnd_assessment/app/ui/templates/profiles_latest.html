@@ -498,4 +498,68 @@
   {% endif %}
 </div>
 
+<!-- ── 取引先スクリーニング ──────────────── -->
+{% set eu = profile.end_user_template_json or {} %}
+{% set eu_name = eu.get("end_user_name") %}
+<div class="card mt-6">
+  <div class="card-title">🛡 取引先スクリーニング</div>
+
+  {% if eu_name %}
+    {% if profile.screening_result_id %}
+      {% set sc = profile.screening_status %}
+      <div style="display:flex; align-items:center; gap:10px; padding:10px 14px;
+                  border-radius:10px; border:1.5px solid transparent; font-size:.88rem; font-weight:700;
+                  {% if sc == 'match' %}background:#fff1f2; border-color:#fecdd3; color:#be123c;
+                  {% elif sc == 'possible_match' %}background:#fffbeb; border-color:#fde68a; color:#854d0e;
+                  {% else %}background:#dcfce7; border-color:#86efac; color:#166534;{% endif %}
+                  margin-bottom:10px;">
+        <span style="font-size:1.1rem;">
+          {%- if sc == 'match' -%}🚨{%- elif sc == 'possible_match' -%}⚠{%- else -%}✓{%- endif -%}
+        </span>
+        <span>
+          {%- if sc == 'match' -%}一致 — 要注意
+          {%- elif sc == 'possible_match' -%}要確認 — 照合候補あり
+          {%- else -%}クリア — 問題なし{%- endif -%}
+        </span>
+        <span style="font-size:.8rem; font-weight:400; margin-left:4px;">対象: {{ eu_name }}</span>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="http://localhost:8005/ui/results" target="_blank" class="btn"
+           style="font-size:.82rem; padding:6px 14px;">📋 詳細を見る</a>
+        <form method="post"
+              action="/ui/cases/{{ case.case_id }}/profiles/{{ profile.profile_id }}/run-screening"
+              style="margin:0;">
+          <button type="submit" class="btn" style="font-size:.82rem; padding:6px 14px;">🔄 再実行</button>
+        </form>
+      </div>
+    {% else %}
+      <div style="background:#f8fafc; border:1.5px dashed var(--border); border-radius:12px;
+                  padding:20px; text-align:center; margin-bottom:14px;">
+        <div style="font-size:1.8rem; margin-bottom:8px; opacity:.5;">🛡</div>
+        <p style="font-weight:600; color:var(--text-h); margin-bottom:4px;">取引先スクリーニングが未実行です</p>
+        <p style="font-size:.82rem; color:var(--muted); margin-bottom:4px;">
+          対象企業: <strong style="color:var(--text-h);">{{ eu_name }}</strong>
+        </p>
+        <p style="font-size:.82rem; color:var(--muted); margin-bottom:16px;">
+          制裁リスト（BIS Entity List / OFAC SDN 等）と照合します。<br>
+          <span style="font-size:.76rem;">※ スクリーニングモジュール（ポート 8005）が起動している必要があります</span>
+        </p>
+        <form method="post"
+              action="/ui/cases/{{ case.case_id }}/profiles/{{ profile.profile_id }}/run-screening">
+          <button type="submit" class="btn"
+                  style="background:var(--primary); color:#fff; border:none; padding:10px 24px; font-size:.9rem;">
+            🛡 取引先スクリーニングを実行
+          </button>
+        </form>
+      </div>
+    {% endif %}
+  {% else %}
+    <p style="font-size:.84rem; color:var(--muted); margin:0 0 10px;">
+      需要者要件でエンドユーザー名（end_user_name）を入力するとスクリーニングが利用できます。
+    </p>
+    <a href="http://localhost:8005/ui/screen" target="_blank" class="btn"
+       style="font-size:.82rem; padding:6px 14px;">手動スクリーニングへ →</a>
+  {% endif %}
+</div>
+
 {% endblock %}
