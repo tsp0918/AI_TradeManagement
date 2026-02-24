@@ -80,8 +80,18 @@ def _build(entities: list[Any]) -> tuple[faiss.Index, list[dict]]:
         return index, []
 
     entities_k, texts_k = zip(*keep)
-    emb = model.encode(list(texts_k), normalize_embeddings=True, show_progress_bar=False)
-    emb = np.asarray(emb, dtype="float32")
+    texts_list = list(texts_k)
+
+    # 大量エンティティでのメモリクラッシュを防ぐため、明示的にバッチ処理する
+    ENCODE_BATCH = 256
+    all_emb: list[np.ndarray] = []
+    for start in range(0, len(texts_list), ENCODE_BATCH):
+        chunk = texts_list[start: start + ENCODE_BATCH]
+        chunk_emb = model.encode(chunk, normalize_embeddings=True, show_progress_bar=False,
+                                 batch_size=64)
+        all_emb.append(np.asarray(chunk_emb, dtype="float32"))
+        logger.debug("Encoded %d / %d", min(start + ENCODE_BATCH, len(texts_list)), len(texts_list))
+    emb = np.vstack(all_emb)
     index.add(emb)
 
     meta = [{"id": str(e.id)} for e in entities_k]
