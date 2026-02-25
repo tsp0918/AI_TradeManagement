@@ -6,7 +6,8 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Union
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -15,6 +16,13 @@ from ..settings import settings
 from ..services.external_app_client import ExternalAppClient
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
+
+
+class _HsFormValues(BaseModel):
+    """モーダルから送られる現在のフォーム値（未保存でも最新値を使う）。"""
+    name:        Optional[str] = None
+    description: Optional[str] = None
+    item_class:  Optional[str] = None
 
 
 def _json_dumps(obj: Any) -> str:
@@ -233,38 +241,51 @@ def get_export_control_result(product_id: int, db: Session = Depends(get_db)):
 # ─────────────────────────────────────────────────────────────────────
 
 @router.post("/hs-classifier/request/{product_id}")
-async def request_hs_classification(product_id: int, db: Session = Depends(get_db)):
-    """品目詳細画面から hs_classifier モジュールへ HSコード判定依頼を送る。"""
+async def request_hs_classification(
+    product_id: int,
+    form_values: _HsFormValues = Body(default_factory=_HsFormValues),
+    db: Session = Depends(get_db),
+):
+    """品目詳細画面から hs_classifier モジュールへ HSコード判定を依頼する（同期検索）。
+
+    form_values が送られた場合はその値を優先（未保存の入力にも対応）。
+    /classify (Webhook 非同期) ではなく /search (同期) を呼び出して
+    即座に結果をDBに保存する。
+    """
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    import uuid as _uuid
-    request_id = str(_uuid.uuid4())
+    # フォーム値を優先、なければDB値にフォールバック
+    name  = (form_values.name        or "").strip() or (product.name        or "")
+    desc  = (form_values.description or "").strip() or (product.description or "")
+    cls   = (form_values.item_class  or "").strip() or (product.item_class  or "")
 
-    payload = {
-        "request_id":          request_id,
-        "item_id":             str(product_id),
-        "item_name":           product.name or "",
-        "item_description":    product.description or "",
-        "additional_keywords": [kw for kw in [product.item_class, product.hs_code] if kw],
-        "top_k":               5,
-        "callback_url":        settings.HS_WEBHOOK_URL,
-    }
+    # 検索クエリ: 品目名 + 説明 + 品目クラスを組み合わせる
+    parts = [p for p in [name, desc, cls] if p]
+    query = " ".join(parts).strip()
+    if not query:
+        return {
+            "ok":     False,
+            "detail": "品目名と説明が未入力です。入力してから判定を依頼してください。",
+        }
 
-    hs_url = settings.HS_CLASSIFIER_BASE_URL.rstrip("/") + "/classify"
+    hs_url = settings.HS_CLASSIFIER_BASE_URL.rstrip("/") + "/search"
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            r = await client.post(hs_url, json=payload)
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            r = await client.get(hs_url, params={"q": query, "top_k": 5})
             r.raise_for_status()
 
-        product.hs_request_id            = request_id
-        product.hs_classification_status = "pending"
-        product.hs_classification_result = None
-        product.hs_classified_at         = None
+        data = r.json()
+        results = data.get("results", [])
+
+        product.hs_classification_status = "completed"
+        product.hs_classification_result = _json_dumps(results)
+        product.hs_classified_at         = datetime.utcnow()
+        product.hs_request_id            = None
         db.commit()
-        return {"ok": True, "request_id": request_id}
+        return {"ok": True, "count": len(results)}
 
     except httpx.ConnectError:
         return {

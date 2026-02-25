@@ -877,6 +877,31 @@ def import_products(file: UploadFile = File(...), db: Session = Depends(get_db))
 
 
 # =========================
+# HSコード候補 ステータス確認（モーダルポーリング用）
+# =========================
+
+@router.get("/products/{product_id}/hs/status")
+def get_hs_status(product_id: int, db: Session = Depends(get_db)):
+    """HSコード判定のステータスと結果をJSONで返す（モーダルポーリング用）。"""
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    candidates = []
+    if product.hs_classification_result:
+        try:
+            candidates = json.loads(product.hs_classification_result)
+        except Exception:
+            candidates = []
+
+    return {
+        "status": product.hs_classification_status or "not_started",
+        "classified_at": product.hs_classified_at,
+        "candidates": candidates,
+    }
+
+
+# =========================
 # HSコード候補 適用
 # =========================
 

@@ -39,8 +39,16 @@
               <div class="field-body">
                 <div class="field">
                   <label class="label">HSコード</label>
-                  <div class="control">
-                    <input class="input" type="text" name="hs_code" value="{{ product.hs_code or '' }}">
+                  <div style="display:flex; gap:0;">
+                    <input id="hs-code-input" type="text" name="hs_code"
+                           value="{{ product.hs_code or '' }}" placeholder="例: 852580"
+                           style="flex:1; border-radius:8px 0 0 8px; border-right:none;">
+                    <button type="button" id="hs-ai-btn"
+                            onclick="openHsModal()"
+                            title="品目名・説明を元にAIがHSコードを提案します"
+                            style="padding:8px 14px; background:#3273dc; color:#fff; border:1.5px solid #2366d1; border-radius:0 8px 8px 0; font-size:.85rem; font-weight:700; cursor:pointer; white-space:nowrap; font-family:inherit;">
+                      🏷️ AI判定
+                    </button>
                   </div>
                 </div>
                 <div class="field">
@@ -444,94 +452,269 @@
       <!-- ===== /外部AI判定 ===== -->
     </div>
 
-    <!-- HSコード判定 -->
-    <div class="box">
-      <h2 class="subtitle is-5">🏷️ HSコード判定支援</h2>
+    <!-- HSコード判定ステータス（直前の判定結果サマリー） -->
+    {% if product.hs_classification_status %}
+    <div class="card" style="padding:12px 20px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span style="font-size:.8rem; color:var(--muted);">🏷️ 直前のHS判定:</span>
+        {% if product.hs_classification_status == "completed" %}
+          <span style="background:#effaf5; color:#257953; border:1px solid #b5e8d0; border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:700;">完了</span>
+        {% elif product.hs_classification_status == "pending" %}
+          <span style="background:#eff5fb; color:#2366d1; border:1px solid #b5d0f5; border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:700;">処理中</span>
+        {% elif product.hs_classification_status == "failed" %}
+          <span style="background:#fff5f7; color:#cc0f35; border:1px solid #f9b8c3; border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:700;">失敗</span>
+        {% else %}
+          <span style="background:#f5f5f5; color:#555; border:1px solid #ddd; border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:700;">{{ product.hs_classification_status }}</span>
+        {% endif %}
+        {% if product.hs_classified_at %}
+          <span style="font-size:.76rem; color:var(--muted);">{{ product.hs_classified_at }}</span>
+        {% endif %}
+        {% if hs_candidates %}
+          <span style="font-size:.76rem; color:var(--muted);">— 候補{{ hs_candidates|length }}件あり</span>
+          <button type="button" onclick="showLastCandidates()"
+                  style="padding:4px 12px; font-size:.78rem; font-weight:700; background:#eff5fb; color:#2366d1; border:1px solid #b5d0f5; border-radius:6px; cursor:pointer; font-family:inherit;">
+            前回の候補を見る
+          </button>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
 
-      <div class="columns">
-        <div class="column is-half">
-          <p class="mb-2">
-            <strong>判定ステータス:</strong>
-            {% if product.hs_classification_status == "completed" %}
-              <span class="tag is-success">完了</span>
-            {% elif product.hs_classification_status == "pending" %}
-              <span class="tag is-link is-light">処理中</span>
-            {% elif product.hs_classification_status == "failed" %}
-              <span class="tag is-danger is-light">失敗</span>
-            {% else %}
-              <span class="tag is-light">未実施</span>
-            {% endif %}
-          </p>
-
-          {% if product.hs_classified_at %}
-            <p class="is-size-7 has-text-grey">判定日時: {{ product.hs_classified_at }}</p>
-          {% endif %}
-
-          {% if hs_candidates %}
-            <div class="content mt-3">
-              <p class="is-size-7"><strong>候補コード（上位5件）:</strong></p>
-              <table class="table is-narrow is-striped is-fullwidth" style="font-size:0.8rem;">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>HSコード</th>
-                    <th>説明</th>
-                    <th>スコア</th>
-                    <th>適用</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for r in hs_candidates %}
-                  <tr>
-                    <td>{{ r.rank }}</td>
-                    <td><code>{{ r.hs_code }}</code></td>
-                    <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ r.description_en }}">{{ r.description_en }}</td>
-                    <td>
-                      <div style="background:#e8e8e8; border-radius:4px; width:80px; height:8px; display:inline-block; vertical-align:middle;">
-                        <div style="background:{% if r.similarity_score >= 0.7 %}#23d160{% elif r.similarity_score >= 0.5 %}#ffdd57{% else %}#ff3860{% endif %}; width:{{ (r.similarity_score * 100)|int }}%; height:100%; border-radius:4px;"></div>
-                      </div>
-                      <span class="ml-1">{{ "%.3f"|format(r.similarity_score) }}</span>
-                    </td>
-                    <td>
-                      <form method="post" action="/products/{{ product.id }}/hs/apply" style="display:inline;">
-                        <input type="hidden" name="hs_code" value="{{ r.hs_code }}">
-                        <button class="button is-small is-success is-light" type="submit">適用</button>
-                      </form>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          {% endif %}
+    <!-- HS判定モーダル（Bulma非依存・インラインスタイル） -->
+    <div id="hs-modal" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center;">
+      <!-- 背景オーバーレイ -->
+      <div onclick="closeHsModal()"
+           style="position:absolute; inset:0; background:rgba(10,10,10,.55);"></div>
+      <!-- モーダル本体 -->
+      <div style="position:relative; background:#fff; border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,.28); width:90%; min-width:320px; max-width:720px; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;">
+        <!-- ヘッダー -->
+        <div style="padding:14px 20px; background:#f0f7ff; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #d4e5ff; flex-shrink:0;">
+          <span style="font-size:.95rem; font-weight:800; color:#1a1a1a;">🏷️ HSコード AI判定</span>
+          <button type="button" onclick="closeHsModal()"
+                  style="background:none; border:none; font-size:1.3rem; line-height:1; cursor:pointer; color:#888; padding:2px 6px;">✕</button>
         </div>
-
-        <div class="column is-half">
-          <div class="buttons">
-            <form method="post" action="/integrations/hs-classifier/request/{{ product.id }}"
-                  id="hs-request-form">
-              <button class="button is-info" type="submit" id="hs-request-btn">
-                🏷️ HSコード判定を依頼
-              </button>
-            </form>
-            {% if product.hs_classification_status == "pending" %}
-            <button class="button is-light" type="button" onclick="location.reload();">
-              結果を更新
-            </button>
-            {% endif %}
-          </div>
-          <p class="is-size-7 has-text-grey mt-2">
-            品目名・説明を元に FAISS セマンティック検索で HS2022 6桁コードを提案します。<br>
-            判定結果は Webhook で受信後に上の候補リストに表示されます。
-          </p>
-          {% if product.hs_classification_status == "pending" %}
-          <p class="is-size-7 has-text-warning">
-            ⏳ 処理中です。しばらくしてから「結果を更新」を押してください。
-          </p>
-          {% endif %}
+        <!-- ボディ -->
+        <div id="hs-modal-body" style="padding:20px; overflow-y:auto; flex:1; min-height:140px;"></div>
+        <!-- フッター -->
+        <div style="padding:12px 20px; background:#f9f9f9; border-top:1px solid #eee; display:flex; justify-content:flex-end; flex-shrink:0;">
+          <button type="button" onclick="closeHsModal()" class="btn">閉じる</button>
         </div>
       </div>
     </div>
+
+    <script>
+    (function() {
+      const PRODUCT_ID      = {{ product.id }};
+      const LAST_CANDIDATES = {{ hs_candidates | tojson }};
+      let pollingTimer = null;
+
+      // フォームの現在値をDOMから取得（未保存の入力も含む）
+      function _getFormValues() {
+        return {
+          name:        (document.querySelector('input[name="name"]')?.value       || '').trim(),
+          description: (document.querySelector('textarea[name="description"]')?.value || '').trim(),
+          item_class:  (document.querySelector('input[name="item_class"]')?.value  || '').trim(),
+        };
+      }
+
+      function openHsModal() {
+        const modal = document.getElementById('hs-modal');
+        const body  = document.getElementById('hs-modal-body');
+        modal.style.display = 'flex';
+        body.innerHTML = _spinnerHtml('🏷️ HSコード判定を依頼しています...');
+
+        var fv = _getFormValues();
+
+        fetch('/integrations/hs-classifier/request/' + PRODUCT_ID, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(fv),
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (!data.ok) {
+              body.innerHTML = _alertHtml('danger', '⚠️ ' + (data.detail || '依頼に失敗しました'));
+              return;
+            }
+            body.innerHTML = _spinnerHtml('⏳ 結果を取得しています...');
+            _startPolling();
+          })
+          .catch(function(err) {
+            body.innerHTML = _alertHtml('danger', 'ネットワークエラー: ' + err);
+          });
+      }
+
+      function _startPolling() {
+        var elapsed = 0;
+        pollingTimer = setInterval(function() {
+          elapsed += 1;
+          fetch('/products/' + PRODUCT_ID + '/hs/status')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              if (data.status === 'completed') {
+                clearInterval(pollingTimer);
+                _showCandidates(data.candidates);
+              } else if (data.status === 'failed') {
+                clearInterval(pollingTimer);
+                document.getElementById('hs-modal-body').innerHTML =
+                  _alertHtml('danger', '⚠️ HS判定に失敗しました。品目名・説明を確認してください。');
+              } else if (elapsed >= 40) {
+                clearInterval(pollingTimer);
+                document.getElementById('hs-modal-body').innerHTML =
+                  _alertHtml('warning', '⏱ タイムアウトしました。ページを更新して結果をご確認ください。');
+              }
+            })
+            .catch(function() {});
+        }, 1000);
+      }
+
+      function showLastCandidates() {
+        document.getElementById('hs-modal').style.display = 'flex';
+        _showCandidates(LAST_CANDIDATES);
+      }
+
+      function _showCandidates(candidates) {
+        var body = document.getElementById('hs-modal-body');
+        if (!candidates || candidates.length === 0) {
+          body.innerHTML = _alertHtml('warning', '候補が見つかりませんでした。品目名・説明をより詳しく入力してください。')
+            + _hintsHtml(0)
+            + _disclaimerHtml();
+          return;
+        }
+        var rows = candidates.map(function(c, i) {
+          var pct   = Math.min(100, Math.round((c.similarity_score || 0) * 100));
+          var color = c.similarity_score >= 0.7 ? '#23d160'
+                    : c.similarity_score >= 0.5 ? '#f0ad00' : '#ff3860';
+          var rank  = c.rank != null ? c.rank : i + 1;
+          var desc  = (c.description_en || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+          var code  = (c.hs_code || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+          var score = (c.similarity_score || 0).toFixed(3);
+          return '<tr style="cursor:pointer;" onclick="_applyCode(\'' + c.hs_code + '\')" title="クリックしてHSコード欄に反映">'
+               + '<td><strong>' + rank + '</strong></td>'
+               + '<td><code style="background:#f0f4ff;padding:2px 6px;border-radius:4px;font-size:.9rem;">' + code + '</code></td>'
+               + '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + desc + '">' + desc + '</td>'
+               + '<td style="white-space:nowrap;">'
+               + '<div style="background:#e8e8e8;border-radius:4px;width:72px;height:8px;display:inline-block;vertical-align:middle;">'
+               + '<div style="background:' + color + ';width:' + pct + '%;height:100%;border-radius:4px;"></div></div>'
+               + '<span style="font-size:.78rem;margin-left:6px;color:#555;">' + score + '</span></td>'
+               + '</tr>';
+        }).join('');
+
+        var topScore = candidates[0] ? (candidates[0].similarity_score || 0) : 0;
+
+        body.innerHTML = '<p style="font-size:.78rem;color:var(--muted);margin-bottom:10px;">行をクリックするとHSコード欄に反映されます。</p>'
+          + '<table style="width:100%;border-collapse:collapse;font-size:.83rem;">'
+          + '<thead><tr style="border-bottom:2px solid var(--border);">'
+          + '<th style="padding:6px 8px;color:var(--muted);font-size:.78rem;">#</th>'
+          + '<th style="padding:6px 8px;color:var(--muted);font-size:.78rem;">HSコード</th>'
+          + '<th style="padding:6px 8px;color:var(--muted);font-size:.78rem;">説明（英語）</th>'
+          + '<th style="padding:6px 8px;color:var(--muted);font-size:.78rem;">類似度</th>'
+          + '</tr></thead>'
+          + '<tbody>' + rows + '</tbody>'
+          + '</table>'
+          + _hintsHtml(topScore)
+          + _disclaimerHtml();
+      }
+
+      function _hintsHtml(topScore) {
+        var fv = _getFormValues();
+        var hasDesc  = fv.description.length > 0;
+        var longDesc = fv.description.length >= 30;
+        var hasClass = fv.item_class.length > 0;
+        var lowScore = topScore < 0.55;
+
+        // スコア別メッセージ
+        var scoreMsg = '';
+        if (topScore >= 0.7) {
+          scoreMsg = '✅ 上位候補の類似度が高く、信頼性が高い結果です。';
+        } else if (topScore >= 0.5) {
+          scoreMsg = '🟡 類似度がやや低めです。情報を追加すると精度が向上する可能性があります。';
+        } else {
+          scoreMsg = '🔴 類似度が低めです（最高 ' + topScore.toFixed(3) + '）。品目情報を充実させてください。';
+        }
+
+        // チェックリスト
+        function ci(ok, label, hint) {
+          var icon = ok ? '✅' : '⬜';
+          var col  = ok ? '#257953' : '#888';
+          var row  = '<div style="display:flex;gap:8px;align-items:baseline;margin-bottom:5px;">'
+                   + '<span style="flex-shrink:0;">' + icon + '</span>'
+                   + '<span style="color:' + col + ';font-size:.8rem;">' + label + '</span>';
+          if (!ok && hint) row += '<span style="color:#b08000;font-size:.75rem;">← ' + hint + '</span>';
+          return row + '</div>';
+        }
+
+        var checklist = ci(hasDesc,  '説明（description）が入力済み',
+                                      '素材・用途・製造工程などを入力してください')
+          + ci(longDesc, '説明が30文字以上の詳細な記述',
+                         '短すぎる説明は精度低下の主な原因です')
+          + ci(hasClass, '品目クラス（item_class）が設定済み',
+                         '"Finished Goods" / "Raw Material" などを設定してください');
+
+        var tips = '<div style="margin-top:6px;font-size:.78rem;color:#555;line-height:1.7;">'
+          + '<strong>精度向上のポイント：</strong><br>'
+          + '・英語の技術用語・材質・規格（JIS/ASTMなど）を含める<br>'
+          + '・化学品ならCAS番号や主成分名を記述する<br>'
+          + '・加工品なら形状・製造工程（押出/鋳造/圧延 など）を記述する<br>'
+          + '・用途（半導体製造用、自動車部品 など）を具体的に書く'
+          + '</div>';
+
+        return '<div style="margin-top:16px;background:#fafbff;border:1px solid #dde8ff;border-radius:8px;padding:14px 16px;">'
+          + '<div style="font-size:.82rem;font-weight:700;color:#2a3a6a;margin-bottom:10px;">💡 判定精度について</div>'
+          + '<div style="font-size:.82rem;margin-bottom:10px;">' + scoreMsg + '</div>'
+          + checklist
+          + (lowScore ? tips : '')
+          + '</div>';
+      }
+
+      function _disclaimerHtml() {
+        return '<div style="margin-top:10px;background:#fffbeb;border:1px solid #f5e1a0;border-radius:8px;padding:10px 14px;font-size:.76rem;color:#7a5c00;line-height:1.6;">'
+          + '⚠️ <strong>免責事項：</strong>AIによる判定は参考情報であり、正確性を保証するものではありません。'
+          + '輸出申告・通関手続きに使用する正式なHSコードは、必ず専門家（通関士・税関）または税関相談窓口にてご確認ください。'
+          + '</div>';
+      }
+
+      function _applyCode(code) {
+        document.getElementById('hs-code-input').value = code;
+        closeHsModal();
+      }
+
+      function closeHsModal() {
+        document.getElementById('hs-modal').style.display = 'none';
+        if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+      }
+
+      function _spinnerHtml(msg) {
+        return '<div style="text-align:center;padding:40px 20px;">'
+          + '<p style="color:var(--muted);margin-bottom:16px;">' + msg + '</p>'
+          + '<div style="width:200px;height:6px;background:#e8e8e8;border-radius:4px;margin:0 auto;overflow:hidden;">'
+          + '<div style="height:100%;width:60%;background:#3273dc;border-radius:4px;animation:hsSweep 1.4s ease-in-out infinite;"></div>'
+          + '</div></div>';
+      }
+
+      function _alertHtml(type, msg) {
+        var bg  = type === 'danger'  ? '#fff5f7' : type === 'warning' ? '#fffbeb' : '#effaf5';
+        var col = type === 'danger'  ? '#cc0f35' : type === 'warning' ? '#946c00' : '#257953';
+        var br  = type === 'danger'  ? '#f9b8c3' : type === 'warning' ? '#f5e1a0' : '#b5e8d0';
+        return '<div style="background:' + bg + ';color:' + col + ';border:1px solid ' + br + ';border-radius:8px;padding:14px 18px;font-size:.88rem;">'
+          + msg + '</div>';
+      }
+
+      // グローバルに公開
+      window.openHsModal      = openHsModal;
+      window.showLastCandidates = showLastCandidates;
+      window.closeHsModal     = closeHsModal;
+      window._applyCode       = _applyCode;
+    })();
+    </script>
+    <style>
+    @keyframes hsSweep {
+      0%   { transform: translateX(-100%); }
+      50%  { transform: translateX(150%); }
+      100% { transform: translateX(150%); }
+    }
+    #hs-modal table tr:hover { background: #f0f7ff; }
+    </style>
 
     <!-- BOM 構成表示 -->
     <div class="box">
