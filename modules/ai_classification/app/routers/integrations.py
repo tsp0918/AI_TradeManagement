@@ -226,3 +226,106 @@ def get_export_control_result(product_id: int, db: Session = Depends(get_db)):
         "requested_at": product.external_eval_requested_at,
         "received_at": product.external_eval_received_at,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────
+#  HSコード判定 連携
+# ─────────────────────────────────────────────────────────────────────
+
+@router.post("/hs-classifier/request/{product_id}")
+async def request_hs_classification(product_id: int, db: Session = Depends(get_db)):
+    """品目詳細画面から hs_classifier モジュールへ HSコード判定依頼を送る。"""
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    import uuid as _uuid
+    request_id = str(_uuid.uuid4())
+
+    payload = {
+        "request_id":          request_id,
+        "item_id":             str(product_id),
+        "item_name":           product.name or "",
+        "item_description":    product.description or "",
+        "additional_keywords": [kw for kw in [product.item_class, product.hs_code] if kw],
+        "top_k":               5,
+        "callback_url":        settings.HS_WEBHOOK_URL,
+    }
+
+    hs_url = settings.HS_CLASSIFIER_BASE_URL.rstrip("/") + "/classify"
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.post(hs_url, json=payload)
+            r.raise_for_status()
+
+        product.hs_request_id            = request_id
+        product.hs_classification_status = "pending"
+        product.hs_classification_result = None
+        product.hs_classified_at         = None
+        db.commit()
+        return {"ok": True, "request_id": request_id}
+
+    except httpx.ConnectError:
+        return {
+            "ok":     False,
+            "detail": "HSコード判定モジュールに接続できません (http://localhost:8006)。起動しているか確認してください。",
+        }
+    except httpx.HTTPStatusError as e:
+        return {"ok": False, "detail": f"HSコード判定モジュールがエラーを返しました: HTTP {e.response.status_code}"}
+    except httpx.HTTPError as e:
+        return {"ok": False, "detail": f"HTTPエラー: {type(e).__name__}"}
+
+
+@router.post("/hs-classifier/webhook")
+async def hs_classifier_webhook(body: dict, db: Session = Depends(get_db)):
+    """hs_classifier モジュールから結果を受け取る Webhook エンドポイント。
+
+    hs_classifier が POST する ClassifyResult 形式:
+    {
+      "request_id": "...",
+      "item_id":    "123",         ← product_id (文字列)
+      "status":     "completed",
+      "classified_at": "...",
+      "results":    [...],         ← list[HSCandidate]
+      "error":      null
+    }
+    """
+    item_id = body.get("item_id")
+    if item_id is None:
+        raise HTTPException(status_code=400, detail="item_id is required")
+
+    try:
+        product_id = int(item_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="item_id must be an integer string")
+
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    status = body.get("status", "completed")
+    product.hs_classification_status = status
+
+    if status == "completed":
+        results = body.get("results") or []
+        product.hs_classification_result = _json_dumps(results)
+
+        classified_at_raw = body.get("classified_at")
+        if classified_at_raw:
+            from datetime import datetime as _dt
+            try:
+                product.hs_classified_at = _dt.fromisoformat(classified_at_raw.replace("Z", "+00:00"))
+            except Exception:
+                product.hs_classified_at = datetime.utcnow()
+        else:
+            product.hs_classified_at = datetime.utcnow()
+
+        # HSコードの最上位候補を hs_code カラムに反映するかはユーザー判断なので、
+        # ここでは自動更新しない（UIから手動確定）
+    else:
+        # failed
+        product.hs_classified_at = datetime.utcnow()
+
+    db.commit()
+    return {"ok": True}

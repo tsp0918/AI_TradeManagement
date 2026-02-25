@@ -348,6 +348,14 @@ def edit_product(request: Request, product_id: int, db: Session = Depends(get_db
     # --- 外部AIの要約（根拠/アクション） ---
     external_ai_summary = build_external_ai_summary(product)
 
+    # --- HS判定結果のパース ---
+    hs_candidates = []
+    if product.hs_classification_result:
+        try:
+            hs_candidates = json.loads(product.hs_classification_result)
+        except Exception:
+            hs_candidates = []
+
     return templates.TemplateResponse(
         "product_edit.html",
         {
@@ -357,6 +365,7 @@ def edit_product(request: Request, product_id: int, db: Session = Depends(get_db
             "bom_total_ratio": bom_total_ratio,
             "bom_total_cost": bom_total_cost,
             "external_ai_summary": external_ai_summary,
+            "hs_candidates": hs_candidates,
         },
     )
 
@@ -865,3 +874,23 @@ def import_products(file: UploadFile = File(...), db: Session = Depends(get_db))
         raise HTTPException(status_code=500, detail=str(e))
 
     return RedirectResponse(url="/products", status_code=303)
+
+
+# =========================
+# HSコード候補 適用
+# =========================
+
+@router.post("/products/{product_id}/hs/apply")
+def apply_hs_code(
+    product_id: int,
+    hs_code: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    """HS判定候補から選択したコードを product.hs_code に反映する。"""
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    product.hs_code = hs_code.strip()
+    db.commit()
+    return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)

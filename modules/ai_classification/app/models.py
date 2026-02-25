@@ -65,6 +65,12 @@ class Product(Base):
     external_eval_requested_at = Column(DateTime, nullable=True)     # 外部へPOSTした時刻
     external_eval_received_at = Column(DateTime, nullable=True)      # Webhookで受け取った時刻
 
+    # HSコード判定連携
+    hs_classification_status = Column(String(30), nullable=True)   # pending / completed / failed
+    hs_classification_result = Column(Text, nullable=True)         # JSON: list[HSCandidate]
+    hs_classified_at         = Column(DateTime, nullable=True)
+    hs_request_id            = Column(String(36), nullable=True)
+
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

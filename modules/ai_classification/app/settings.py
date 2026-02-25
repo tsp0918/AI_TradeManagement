@@ -19,5 +19,9 @@ class Settings(BaseSettings):
     # 外部アプリに「ここにPOSTしてね」と渡す用途
     PUBLIC_WEBHOOK_URL: str = "http://localhost:8002/integrations/export-control/webhook"
 
+    # HSコード判定モジュール連携
+    HS_CLASSIFIER_BASE_URL: str = "http://localhost:8006"
+    HS_WEBHOOK_URL: str = "http://localhost:8002/integrations/hs-classifier/webhook"
+
 
 settings = Settings()

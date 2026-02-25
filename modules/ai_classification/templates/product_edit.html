@@ -444,6 +444,95 @@
       <!-- ===== /外部AI判定 ===== -->
     </div>
 
+    <!-- HSコード判定 -->
+    <div class="box">
+      <h2 class="subtitle is-5">🏷️ HSコード判定支援</h2>
+
+      <div class="columns">
+        <div class="column is-half">
+          <p class="mb-2">
+            <strong>判定ステータス:</strong>
+            {% if product.hs_classification_status == "completed" %}
+              <span class="tag is-success">完了</span>
+            {% elif product.hs_classification_status == "pending" %}
+              <span class="tag is-link is-light">処理中</span>
+            {% elif product.hs_classification_status == "failed" %}
+              <span class="tag is-danger is-light">失敗</span>
+            {% else %}
+              <span class="tag is-light">未実施</span>
+            {% endif %}
+          </p>
+
+          {% if product.hs_classified_at %}
+            <p class="is-size-7 has-text-grey">判定日時: {{ product.hs_classified_at }}</p>
+          {% endif %}
+
+          {% if hs_candidates %}
+            <div class="content mt-3">
+              <p class="is-size-7"><strong>候補コード（上位5件）:</strong></p>
+              <table class="table is-narrow is-striped is-fullwidth" style="font-size:0.8rem;">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>HSコード</th>
+                    <th>説明</th>
+                    <th>スコア</th>
+                    <th>適用</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for r in hs_candidates %}
+                  <tr>
+                    <td>{{ r.rank }}</td>
+                    <td><code>{{ r.hs_code }}</code></td>
+                    <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ r.description_en }}">{{ r.description_en }}</td>
+                    <td>
+                      <div style="background:#e8e8e8; border-radius:4px; width:80px; height:8px; display:inline-block; vertical-align:middle;">
+                        <div style="background:{% if r.similarity_score >= 0.7 %}#23d160{% elif r.similarity_score >= 0.5 %}#ffdd57{% else %}#ff3860{% endif %}; width:{{ (r.similarity_score * 100)|int }}%; height:100%; border-radius:4px;"></div>
+                      </div>
+                      <span class="ml-1">{{ "%.3f"|format(r.similarity_score) }}</span>
+                    </td>
+                    <td>
+                      <form method="post" action="/products/{{ product.id }}/hs/apply" style="display:inline;">
+                        <input type="hidden" name="hs_code" value="{{ r.hs_code }}">
+                        <button class="button is-small is-success is-light" type="submit">適用</button>
+                      </form>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="column is-half">
+          <div class="buttons">
+            <form method="post" action="/integrations/hs-classifier/request/{{ product.id }}"
+                  id="hs-request-form">
+              <button class="button is-info" type="submit" id="hs-request-btn">
+                🏷️ HSコード判定を依頼
+              </button>
+            </form>
+            {% if product.hs_classification_status == "pending" %}
+            <button class="button is-light" type="button" onclick="location.reload();">
+              結果を更新
+            </button>
+            {% endif %}
+          </div>
+          <p class="is-size-7 has-text-grey mt-2">
+            品目名・説明を元に FAISS セマンティック検索で HS2022 6桁コードを提案します。<br>
+            判定結果は Webhook で受信後に上の候補リストに表示されます。
+          </p>
+          {% if product.hs_classification_status == "pending" %}
+          <p class="is-size-7 has-text-warning">
+            ⏳ 処理中です。しばらくしてから「結果を更新」を押してください。
+          </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
     <!-- BOM 構成表示 -->
     <div class="box">
       <div class="level">

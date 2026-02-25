@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}HSコード検索 - HSコード判定{% endblock %}
+{% block nav_search %} active{% endblock %}
+
+{% block content %}
+<div class="page-hd">
+  <h1>📦 HSコード検索</h1>
+  <p>品目名・説明を入力すると HS2022 6桁コードの候補をスコア順に表示します。</p>
+</div>
+
+<!-- インデックス状態バナー -->
+{% if is_built %}
+<div class="status-banner has-data">
+  <span class="banner-icon">✅</span>
+  <div class="banner-body">
+    <div class="banner-title">インデックス稼働中</div>
+    <div class="banner-sub">
+      {{ index_size | format_number if index_size else index_size }} 件の HS コードを検索可能 —
+      モデル: {{ model }}
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="status-banner no-data">
+  <span class="banner-icon">⚠️</span>
+  <div class="banner-body">
+    <div class="banner-title">データファイル未配置</div>
+    <div class="banner-sub">
+      <code>data/hs2022_6digit.json</code> をモジュールの <code>data/</code>
+      ディレクトリに配置してサービスを再起動してください。
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- 検索フォーム -->
+<div class="card">
+  <form id="search-form">
+    <div class="form-row">
+      <label class="label-sm">品目名・説明（日本語・英語どちらでも可）<span style="color:#ef4444;">*</span></label>
+      <textarea class="textarea" id="query-input" name="q" rows="3"
+        placeholder="例: 高純度シリコンウェーハ 300mm 半導体製造用 CZ法
+例: Integrated circuit processor semiconductor"></textarea>
+      <div class="hint">品目名と説明文を一緒に入力すると精度が向上します。</div>
+    </div>
+    <div class="form-row" style="flex-direction:row; align-items:center; gap:16px;">
+      <div>
+        <label class="label-sm">候補数</label>
+        <select class="input" name="top_k" id="top-k" style="width:80px; margin-top:4px;">
+          <option value="5" selected>5</option>
+          <option value="10">10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+        </select>
+      </div>
+      <div style="flex:1;"></div>
+      <button type="submit" class="btn btn-primary" id="search-btn" {% if not is_built %}disabled{% endif %}>
+        🔍 検索
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- 結果エリア -->
+<div id="result-area"></div>
+
+<script>
+function scoreColor(s) {
+  if (s >= 0.9)  return "#ef4444";
+  if (s >= 0.75) return "#f59e0b";
+  return "#22c55e";
+}
+
+const form  = document.getElementById("search-form");
+const btn   = document.getElementById("search-btn");
+const area  = document.getElementById("result-area");
+const qinp  = document.getElementById("query-input");
+
+// URL パラメータ自動実行
+const _p = new URLSearchParams(location.search);
+const _q = _p.get("q");
+if (_q && qinp) {
+  qinp.value = _q;
+  document.addEventListener("DOMContentLoaded", () => {
+    if ({{ 'true' if is_built else 'false' }}) {
+      setTimeout(() => form.dispatchEvent(new Event("submit")), 200);
+    }
+  });
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const q = qinp.value.trim();
+  if (!q) return;
+
+  const top_k = document.getElementById("top-k").value;
+  btn.disabled = true;
+  area.innerHTML = `<div class="card" style="display:flex; align-items:center; gap:12px;">
+    <div class="spinner"></div><span class="muted">検索中…</span>
+  </div>`;
+
+  try {
+    const r = await fetch(`/search?q=${encodeURIComponent(q)}&top_k=${top_k}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    renderResults(d);
+  } catch (err) {
+    area.innerHTML = `<div class="card" style="color:#ef4444;">エラー: ${err.message}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function renderResults(d) {
+  if (!d.results || d.results.length === 0) {
+    area.innerHTML = `<div class="card" style="text-align:center; padding:32px; color:var(--muted);">
+      <div style="font-size:2rem; margin-bottom:8px;">🔍</div>
+      <p>候補が見つかりませんでした。説明文をより具体的に入力してください。</p>
+    </div>`;
+    return;
+  }
+
+  const rows = d.results.map(r => {
+    const pct   = Math.round(r.similarity_score * 100);
+    const color = scoreColor(r.similarity_score);
+    const short = r.atlas_short_name ? `<span class="chip">${r.atlas_short_name}</span>` : "";
+    const legacy = r.hs2017_codes && r.hs2017_codes.length > 0
+      ? `<span class="muted" style="font-size:.72rem;">HS2017: ${r.hs2017_codes.join(", ")}</span>`
+      : "";
+    return `
+    <tr>
+      <td style="text-align:center; width:40px;">
+        <span class="rank-badge">${r.rank}</span>
+      </td>
+      <td>
+        <div style="font-size:1.1rem; font-weight:800; font-family:monospace; color:var(--primary);">
+          ${r.hs_code}
+        </div>
+        <div style="font-size:.72rem; color:var(--muted); margin-top:1px;">
+          Section ${r.section} › Ch.${r.chapter} › ${r.heading}
+        </div>
+      </td>
+      <td>
+        <div style="font-size:.84rem; font-weight:600; margin-bottom:4px;">${r.description_en}</div>
+        <div style="font-size:.74rem; color:var(--muted);">${r.heading_description || ""}</div>
+        <div style="margin-top:4px; display:flex; gap:4px; flex-wrap:wrap;">${short}${legacy}</div>
+      </td>
+      <td style="white-space:nowrap; text-align:right;">
+        <div class="score-wrap" style="justify-content:flex-end;">
+          <div class="score-bar">
+            <div class="score-fill" style="width:${pct}%; background:${color};"></div>
+          </div>
+          <span class="score-num" style="color:${color};">${pct}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+
+  area.innerHTML = `
+  <div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <span style="font-weight:700;">${d.results.length} 件の候補</span>
+      <span class="muted" style="font-size:.78rem;">クエリ: 「${escHtml(d.query)}」</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="result-table">
+        <thead>
+          <tr>
+            <th style="width:40px;">#</th>
+            <th style="width:90px;">HSコード</th>
+            <th>品目説明</th>
+            <th style="width:120px; text-align:right;">スコア</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:10px; font-size:.74rem; color:var(--muted);">
+      HS2022 · インデックス: ${d.index_size.toLocaleString()} 件 · ※ 正式な付番は専門家による確認が必要です
+    </div>
+  </div>`;
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+</script>
+{% endblock %}
