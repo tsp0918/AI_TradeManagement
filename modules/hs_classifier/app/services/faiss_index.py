@@ -76,17 +76,20 @@ def _build_subheading_index(
     """全 Subheading のインデックスを構築する。"""
     index = faiss.IndexFlatIP(settings.embedding_dimension)
     index.add(embs)
+    def _str_or_none(v) -> str | None:
+        return v if isinstance(v, str) else None
+
     meta = [
         {
             "hs_code": e.get("hs_code", ""),
             "description_en": e.get("description_en", ""),
             "section": e.get("section", ""),
             "chapter": e.get("chapter", ""),
-            "chapter_description": e.get("chapter_description", ""),
+            "chapter_description": _str_or_none(e.get("chapter_description")),
             "heading": e.get("heading", ""),
-            "heading_description": e.get("heading_description", ""),
-            "atlas_short_name": e.get("atlas_short_name"),
-            "hs2017_codes": e.get("hs2017_codes", []),
+            "heading_description": _str_or_none(e.get("heading_description")),
+            "atlas_short_name": _str_or_none(e.get("atlas_short_name")),
+            "hs2017_codes": e.get("hs2017_codes") or [],
         }
         for e in hs_data
     ]

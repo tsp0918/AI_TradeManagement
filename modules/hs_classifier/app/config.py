@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_MODULE_DIR = Path(__file__).resolve().parents[2]   # modules/hs_classifier/
+_MODULE_DIR = Path(__file__).resolve().parents[1]   # modules/hs_classifier/
 _DATA_DIR   = _MODULE_DIR / "data"
 
 
@@ -15,6 +15,7 @@ class Settings(BaseSettings):
         env_prefix="HS_CLASSIFIER_",
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     app_name: str = "HSコード判定"
