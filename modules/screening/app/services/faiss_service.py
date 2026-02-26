@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,31 @@ logger = logging.getLogger(__name__)
 
 MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
+# ── エイリアス正規化 ──────────────────────────────────────────────────────────
+
+_CORP_SUFFIX_RE = re.compile(
+    r"\b(?:"
+    r"co(?:mpany|rporation|\.?\s*ltd\.?)?\.?|"
+    r"corp(?:oration)?\.?|"
+    r"ltd\.?|"
+    r"inc(?:orporated)?\.?|"
+    r"llc\.?|"
+    r"gmbh\.?|"
+    r"s\.?\s*a\.?|"   # S.A.
+    r"b\.?\s*v\.?|"   # B.V.
+    r"plc\.?|"
+    r"pte\.?\s*ltd\.?|"
+    r"株式会社|有限会社|合同会社|合資会社|合名会社"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _normalize_query(name: str) -> str:
+    """企業名からよくある法人格表記を除去して正規化する（クエリ専用）。"""
+    normalized = _CORP_SUFFIX_RE.sub(" ", name)
+    return " ".join(normalized.split())
+
 _INDEX_DIR  = Path(__file__).resolve().parents[3] / "data" / "faiss"
 _INDEX_PATH = _INDEX_DIR / "entities.index"
 _META_PATH  = _INDEX_DIR / "entities_meta.json"
@@ -26,6 +52,16 @@ _META_PATH  = _INDEX_DIR / "entities_meta.json"
 # ── グローバルキャッシュ ────────────────────────────────────────────────────
 _faiss_index: faiss.Index | None = None
 _faiss_meta:  list[dict]   | None = None
+_model: SentenceTransformer | None = None
+
+
+def _get_model() -> SentenceTransformer:
+    """モデルをグローバルキャッシュしてリクエスト毎の再ロードを防ぐ。"""
+    global _model
+    if _model is None:
+        _model = SentenceTransformer(MODEL_NAME)
+        logger.info("SentenceTransformer model loaded: %s", MODEL_NAME)
+    return _model
 
 
 # ── I/O ────────────────────────────────────────────────────────────────────
@@ -66,7 +102,7 @@ def _entity_to_text(entity: Any) -> str:
 
 
 def _build(entities: list[Any]) -> tuple[faiss.Index, list[dict]]:
-    model = SentenceTransformer(MODEL_NAME)
+    model = _get_model()
     dim   = model.get_sentence_embedding_dimension()
     index = faiss.IndexFlatIP(dim)
 
@@ -131,8 +167,13 @@ def search(query: str, top_k: int = 20) -> list[tuple[str, float]]:
     if _faiss_index is None or _faiss_index.ntotal == 0:
         return []
 
-    model = SentenceTransformer(MODEL_NAME)
-    qv = model.encode([query], normalize_embeddings=True, show_progress_bar=False)
+    # 法人格サフィックスを除去して正規化（精度向上）
+    normalized = _normalize_query(query)
+    if not normalized:
+        normalized = query
+
+    model = _get_model()
+    qv = model.encode([normalized], normalize_embeddings=True, show_progress_bar=False)
     qv = np.asarray(qv, dtype="float32")
 
     actual_k = min(top_k, _faiss_index.ntotal)
