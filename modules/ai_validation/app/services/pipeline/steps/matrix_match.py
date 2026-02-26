@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from datetime import datetime
 from typing import Dict, Any, List, Tuple, Optional
 
+import numpy as np
+import faiss
+from sentence_transformers import SentenceTransformer
 from sqlalchemy.orm import Session
 from sqlalchemy import inspect
 
@@ -15,38 +17,193 @@ from app.db.models.ai_run import MatrixMatch
 from app.db.models.transaction import UsageRequirement
 
 
-# -----------------------------
-# File / path helpers
-# -----------------------------
+# ── Embedding model ───────────────────────────────────────────────────────────
+_MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+_model: Optional[SentenceTransformer] = None
+
+
+def _get_model() -> SentenceTransformer:
+    """モデルをグローバルキャッシュ。リクエスト毎の再ロードを防ぐ。"""
+    global _model
+    if _model is None:
+        _model = SentenceTransformer(_MODEL_NAME)
+    return _model
+
+
+# ── Path helpers ──────────────────────────────────────────────────────────────
 def _project_root() -> str:
-    # this file: app/services/pipeline/steps/matrix_match.py
     here = os.path.abspath(os.path.dirname(__file__))
-    # steps -> pipeline -> services -> app -> PROJECT_ROOT
     return os.path.abspath(os.path.join(here, "..", "..", "..", ".."))
 
 
-def _read_matrix_json(path: str) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+def _faiss_dir() -> str:
+    return os.path.join(_project_root(), "data", "faiss")
 
 
+def _matrix_index_path() -> str:
+    return os.path.join(_faiss_dir(), "matrix_rules.index")
+
+
+def _matrix_meta_path() -> str:
+    return os.path.join(_faiss_dir(), "matrix_rules_meta.json")
+
+
+# ── Matrix-rule FAISS cache ───────────────────────────────────────────────────
+_matrix_index: Optional[faiss.Index] = None
+_matrix_meta: Optional[List[Dict[str, Any]]] = None  # [{"rule_id": int}, ...]
+
+
+def _rule_to_text(rule: MatrixRule) -> str:
+    """ルールの全フィールドを結合してエンコード用テキストを作る。"""
+    parts = [
+        (rule.title or "").strip(),
+        (rule.requirement_text or "").strip(),
+        (rule.usage_criteria_text or "").strip(),
+        (rule.tech_criteria_text or "").strip(),
+        (rule.notes or "").strip(),
+        (rule.item_no or "").strip(),
+        (rule.list_name or "").strip(),
+    ]
+    return "\n".join(p for p in parts if p)
+
+
+def _load_matrix_faiss() -> Optional[Tuple[faiss.Index, List[Dict[str, Any]]]]:
+    ip, mp = _matrix_index_path(), _matrix_meta_path()
+    if not os.path.exists(ip) or not os.path.exists(mp):
+        return None
+    try:
+        index = faiss.read_index(ip)
+        with open(mp, encoding="utf-8") as f:
+            meta = json.load(f)
+        if isinstance(meta, list):
+            return index, meta
+    except Exception:
+        pass
+    return None
+
+
+def _save_matrix_faiss(index: faiss.Index, meta: List[Dict[str, Any]]) -> None:
+    os.makedirs(_faiss_dir(), exist_ok=True)
+    faiss.write_index(index, _matrix_index_path())
+    with open(_matrix_meta_path(), "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False)
+
+
+def _build_matrix_faiss(
+    rules: List[MatrixRule],
+) -> Tuple[faiss.Index, List[Dict[str, Any]]]:
+    """ルール一覧を埋め込みエンコードして IndexFlatIP を構築する。"""
+    model = _get_model()
+    dim = model.get_sentence_embedding_dimension()
+    index = faiss.IndexFlatIP(dim)
+
+    if not rules:
+        return index, []
+
+    pairs = [(r, _rule_to_text(r)) for r in rules]
+    keep = [(r, t) for r, t in pairs if t]
+    if not keep:
+        return index, []
+
+    keep_rules, texts = zip(*keep)
+    texts_list = list(texts)
+
+    BATCH = 256
+    all_emb: List[np.ndarray] = []
+    for start in range(0, len(texts_list), BATCH):
+        chunk = texts_list[start: start + BATCH]
+        emb = model.encode(
+            chunk, normalize_embeddings=True, show_progress_bar=False, batch_size=64
+        )
+        all_emb.append(np.asarray(emb, dtype="float32"))
+
+    index.add(np.vstack(all_emb))
+    meta = [{"rule_id": r.id} for r in keep_rules]
+    return index, meta
+
+
+def _get_or_build_matrix_faiss(
+    rules: List[MatrixRule],
+    force_rebuild: bool = False,
+) -> Tuple[faiss.Index, List[Dict[str, Any]]]:
+    """in-memory → disk → ビルド の順で取得。force_rebuild=True で強制再構築。"""
+    global _matrix_index, _matrix_meta
+
+    if not force_rebuild and _matrix_index is not None and _matrix_meta is not None:
+        return _matrix_index, _matrix_meta
+
+    if not force_rebuild:
+        loaded = _load_matrix_faiss()
+        if loaded:
+            _matrix_index, _matrix_meta = loaded
+            return _matrix_index, _matrix_meta
+
+    _matrix_index, _matrix_meta = _build_matrix_faiss(rules)
+    if _matrix_index.ntotal > 0:
+        _save_matrix_faiss(_matrix_index, _matrix_meta)
+    return _matrix_index, _matrix_meta
+
+
+def _search_matrix_faiss(
+    index: faiss.Index,
+    meta: List[Dict[str, Any]],
+    rules_map: Dict[int, MatrixRule],
+    query: str,
+    top_k: int,
+) -> List[Tuple[MatrixRule, float]]:
+    """クエリに対して FAISS コサイン類似度でルールを検索する。"""
+    if not query.strip() or index.ntotal == 0:
+        return []
+
+    model = _get_model()
+    qv = model.encode(
+        [query.strip()], normalize_embeddings=True, show_progress_bar=False
+    )
+    qv = np.asarray(qv, dtype="float32")
+
+    actual_k = min(top_k, index.ntotal)
+    D, I = index.search(qv, actual_k)
+
+    results: List[Tuple[MatrixRule, float]] = []
+    for score, idx in zip(D[0].tolist(), I[0].tolist()):
+        if idx < 0 or idx >= len(meta):
+            continue
+        rule = rules_map.get(meta[idx]["rule_id"])
+        if rule is not None:
+            results.append((rule, float(score)))
+    return results
+
+
+# ── misc helpers ──────────────────────────────────────────────────────────────
 def _safe_str(x: Any) -> str:
     if x is None:
         return ""
     if isinstance(x, str):
         return x
-    # dict/list etc -> JSON string
     try:
         return json.dumps(x, ensure_ascii=False)
     except Exception:
         return str(x)
 
 
+def _table_has_column(db: Session, table_name: str, col_name: str) -> bool:
+    try:
+        cols = inspect(db.get_bind()).get_columns(table_name)
+        return any(c["name"] == col_name for c in cols)
+    except Exception:
+        return False
+
+
+# ── matrix.json ingest ────────────────────────────────────────────────────────
+def _read_matrix_json(path: str) -> Dict[str, Any]:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def _flatten_matrix_json_to_rules(doc: Dict[str, Any], regime: str) -> List[Dict[str, Any]]:
     """
     schema_version 0.2-normalized の export_items を DB用 MatrixRule rows に flatten
-    - item_no: export_order_ref + meti_order_ref を “見える文字列” として連結
-    - requirement_text: 基本は meti_order_text / export_order_item / term / notes 等を寄せる
     """
     out: List[Dict[str, Any]] = []
 
@@ -63,7 +220,6 @@ def _flatten_matrix_json_to_rules(doc: Dict[str, Any], regime: str) -> List[Dict
         if sheet:
             list_name = sheet
 
-        # intro meti part (sometimes exists)
         intro_meti = item.get("intro_meti_order_ref") or {}
         intro_meti_norm = intro_meti.get("norm") or intro_meti.get("raw") or ""
         intro_meti_id = intro_meti.get("id") or ""
@@ -71,7 +227,6 @@ def _flatten_matrix_json_to_rules(doc: Dict[str, Any], regime: str) -> List[Dict
 
         cargo_rules = item.get("cargo_rules") or []
         if cargo_rules:
-            # 号ごとに 1 レコード
             for cr in cargo_rules:
                 meti_ref = cr.get("meti_order_ref") or {}
                 meti_norm = meti_ref.get("norm") or meti_ref.get("raw") or ""
@@ -84,7 +239,6 @@ def _flatten_matrix_json_to_rules(doc: Dict[str, Any], regime: str) -> List[Dict
                 eccn = cr.get("eccn") or ""
                 substances = cr.get("substances") or []
 
-                # substances text (join)
                 subs_texts = []
                 for s in substances:
                     subs_texts.append((s.get("text") or s.get("raw") or "").strip())
@@ -122,7 +276,6 @@ def _flatten_matrix_json_to_rules(doc: Dict[str, Any], regime: str) -> List[Dict
                     )
                 )
         else:
-            # cargo_rules が無い場合も 1 レコードにしておく（0件回避）
             item_no = f"{export_norm} ({export_id})"
             title = export_item_text or ""
             requirement_parts = [
@@ -152,10 +305,7 @@ def _flatten_matrix_json_to_rules(doc: Dict[str, Any], regime: str) -> List[Dict
 
 
 def _upsert_matrix_rules_from_json(db: Session, json_path: str, regime: str) -> Dict[str, int]:
-    """
-    JSON -> matrix_rules へ upsert
-    key: (regime, item_no, version)
-    """
+    """JSON -> matrix_rules へ upsert (key: regime + item_no + version)"""
     doc = _read_matrix_json(json_path)
     rows = _flatten_matrix_json_to_rules(doc, regime=regime)
 
@@ -172,13 +322,11 @@ def _upsert_matrix_rules_from_json(db: Session, json_path: str, regime: str) -> 
             .filter(MatrixRule.regime == key_regime)
             .filter(MatrixRule.item_no == key_item_no)
         )
-        # version がある運用なら version もキーへ
         if key_version is not None:
             q = q.filter(MatrixRule.version == key_version)
 
         obj = q.first()
         if obj:
-            # update
             obj.list_name = r.get("list_name")
             obj.title = r.get("title")
             obj.requirement_text = r.get("requirement_text") or obj.requirement_text
@@ -190,7 +338,6 @@ def _upsert_matrix_rules_from_json(db: Session, json_path: str, regime: str) -> 
             obj.updated_at = datetime.utcnow()
             updated += 1
         else:
-            # insert
             obj = MatrixRule(
                 regime=r["regime"],
                 list_name=r.get("list_name"),
@@ -212,73 +359,7 @@ def _upsert_matrix_rules_from_json(db: Session, json_path: str, regime: str) -> 
     return {"inserted": inserted, "updated": updated, "total_in_json": len(rows)}
 
 
-# -----------------------------
-# Tokenize (Japanese-friendly)
-# -----------------------------
-_LATIN_RE = re.compile(r"[A-Za-z0-9]+")
-_JP_BLOCK_RE = re.compile(r"[\u3040-\u30ff\u4e00-\u9fff]+")
-
-
-def _normalize_text(s: str) -> str:
-    if not s:
-        return ""
-    t = str(s).lower()
-    t = t.replace("（", "(").replace("）", ")")
-    t = t.replace("，", ",").replace("．", ".").replace("・", " ")
-    t = t.replace("－", "-").replace("―", "-").replace("−", "-")
-    t = re.sub(r"\s+", " ", t).strip()
-    return t
-
-
-def _ngrams(s: str, n: int) -> List[str]:
-    if not s or len(s) < n:
-        return []
-    return [s[i : i + n] for i in range(0, len(s) - n + 1)]
-
-
-def _tokenize(text: str) -> List[str]:
-    t = _normalize_text(text)
-    if not t:
-        return []
-
-    tokens: List[str] = []
-    tokens.extend(_LATIN_RE.findall(t))
-
-    for m in _JP_BLOCK_RE.finditer(t):
-        block = m.group(0)
-        tokens.extend(_ngrams(block, 2))
-        tokens.extend(_ngrams(block, 3))
-
-    seen = set()
-    out: List[str] = []
-    for x in tokens:
-        if x and x not in seen:
-            seen.add(x)
-            out.append(x)
-    return out
-
-
-def _binary_cosine(a_tokens: List[str], b_tokens: List[str]) -> Tuple[float, List[str]]:
-    A = set(a_tokens)
-    B = set(b_tokens)
-    if not A or not B:
-        return 0.0, []
-
-    inter = A.intersection(B)
-    score = len(inter) / ((len(A) * len(B)) ** 0.5)
-
-    matched = sorted(list(inter), key=lambda x: (-len(x), x))[:40]
-    return float(score), matched
-
-
-def _table_has_column(db: Session, table_name: str, col_name: str) -> bool:
-    try:
-        cols = inspect(db.get_bind()).get_columns(table_name)
-        return any(c["name"] == col_name for c in cols)
-    except Exception:
-        return False
-
-
+# ── Step entry ────────────────────────────────────────────────────────────────
 def step_matrix_match(
     db: Session,
     transaction_id: int,
@@ -286,26 +367,24 @@ def step_matrix_match(
     params: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    usage_requirements × matrix_rules
+    usage_requirements × matrix_rules を FAISS コサイン類似度でマッチング。
 
-    - data/matrix.json を必要に応じて読み込み、matrix_rules に upsert してから照合する
-      * params["matrix_json_path"] でパス上書き可能
-    - threshold 以上は decision="hit"
-    - threshold 未満でも上位 top_k_per_usage は decision="maybe" として保存（0件回避）
-    - evidence_json / updated_at 等は「実DBにカラムがある時だけ」埋める
+    - data/matrix.json を必要に応じて読み込み matrix_rules に upsert
+    - ルール群を paraphrase-multilingual-MiniLM-L12-v2 でエンコードし FAISS インデックス構築
+    - 各 usage_requirement をエンコードして上位 top_k_per_usage ルールを取得
+    - score >= threshold → decision="hit"、それ以外 → "maybe"
+    - FAISS インデックスはディスク & メモリにキャッシュ（matrix.json 更新時に再構築）
     """
     threshold = float(params.get("threshold", 0.75))
     regime = str(params.get("regime", "JP_FX"))
-    top_k_per_usage = int(params.get("top_k_per_usage", 10))
-    top_k_per_usage = max(top_k_per_usage, 1)
+    top_k_per_usage = max(int(params.get("top_k_per_usage", 10)), 1)
 
-    # --- detect real DB columns ---
     has_evidence_json = _table_has_column(db, "matrix_matches", "evidence_json")
     has_decision = _table_has_column(db, "matrix_matches", "decision")
     has_created_at = _table_has_column(db, "matrix_matches", "created_at")
     has_updated_at = _table_has_column(db, "matrix_matches", "updated_at")
 
-    # --- ensure matrix_rules are loaded from data/matrix.json (optional ingest) ---
+    # --- matrix.json upsert ---
     matrix_json_path = str(params.get("matrix_json_path") or "").strip()
     if not matrix_json_path:
         matrix_json_path = os.path.join(_project_root(), "data", "matrix.json")
@@ -315,10 +394,9 @@ def step_matrix_match(
         if os.path.exists(matrix_json_path):
             ingest_result = _upsert_matrix_rules_from_json(db, matrix_json_path, regime=regime)
     except Exception:
-        # ingest 失敗でも match 自体は継続（既存DBで動かす）
-        ingest_result = {"inserted": 0, "updated": 0, "total_in_json": 0}
+        pass
 
-    # --- delete existing matches for this run_id ---
+    # --- delete existing matches for this run ---
     db.query(MatrixMatch).filter(MatrixMatch.ai_run_id == run_id).delete(synchronize_session=False)
     db.flush()
 
@@ -357,49 +435,28 @@ def step_matrix_match(
             "matrix_rules_count": 0,
         }
 
-    # --- load rules ---
     rules: List[MatrixRule] = (
-        db.query(MatrixRule)
-        .filter(MatrixRule.regime == regime)
-        .all()
+        db.query(MatrixRule).filter(MatrixRule.regime == regime).all()
     )
+    rules_map: Dict[int, MatrixRule] = {r.id: r for r in rules}
 
-    # --- build rule token packs ---
-    rule_pack: List[Tuple[MatrixRule, str, List[str]]] = []
-    for rule in rules:
-        parts = [
-            (rule.title or "").strip(),
-            (rule.requirement_text or "").strip(),
-            (rule.usage_criteria_text or "").strip(),
-            (rule.tech_criteria_text or "").strip(),
-            (rule.notes or "").strip(),
-            (rule.item_no or "").strip(),
-            (rule.list_name or "").strip(),
-        ]
-        rule_text = "\n".join([p for p in parts if p])
-        rtoks = _tokenize(rule_text)
-        if rtoks:
-            rule_pack.append((rule, rule_text, rtoks))
+    # --- FAISS インデックス取得（matrix.json に変更があれば強制再構築）---
+    force_rebuild = (
+        ingest_result.get("inserted", 0) > 0 or ingest_result.get("updated", 0) > 0
+    )
+    index, meta = _get_or_build_matrix_faiss(rules, force_rebuild=force_rebuild)
 
     inserted = 0
     now = datetime.utcnow()
 
     for u in usages:
-        ut = (u.text or "").strip()
-        utoks = _tokenize(ut)
-        if not utoks:
+        qt = (u.text or "").strip()
+        if not qt:
             continue
 
-        scored: List[Tuple[float, MatrixRule, str, List[str]]] = []
-        for rule, rule_text, rtoks in rule_pack:
-            score, matched = _binary_cosine(utoks, rtoks)
-            scored.append((score, rule, rule_text, matched))
+        scored = _search_matrix_faiss(index, meta, rules_map, qt, top_k_per_usage)
 
-        scored.sort(key=lambda x: x[0], reverse=True)
-        keep = scored[:top_k_per_usage]
-
-        for score, rule, rule_text, matched in keep:
-            # 完全0は保存しない（ノイズ増えすぎ防止）
+        for rule, score in scored:
             if score <= 0.0:
                 continue
 
@@ -414,27 +471,23 @@ def step_matrix_match(
                 match_score=float(score),
             )
 
-            # --- set required columns if they exist in REAL DB ---
             if has_decision:
                 setattr(mm, "decision", decision_val)
-
             if has_created_at:
                 setattr(mm, "created_at", now)
-
             if has_updated_at:
                 setattr(mm, "updated_at", now)
-
             if has_evidence_json:
+                rule_text = _rule_to_text(rule)
                 evidence = {
-                    "matched_tokens": matched,
                     "usage_source": u.source,
-                    "usage_text": ut[:500],
+                    "usage_text": qt[:500],
                     "rule_id": rule.id,
                     "rule_item_no": _safe_str(rule.item_no)[:300],
                     "rule_title": (rule.title or "")[:200],
                     "rule_snippet": rule_text[:900],
                     "scoring": {
-                        "method": "binary_cosine(jp_2gram_3gram + latin_words)",
+                        "method": "faiss_cosine(paraphrase-multilingual-MiniLM-L12-v2)",
                         "threshold": threshold,
                         "kept_top_k_per_usage": top_k_per_usage,
                     },
@@ -457,7 +510,8 @@ def step_matrix_match(
         "inserted": inserted,
         "usage_count": len(usages),
         "matrix_rules_count": current_rule_count,
+        "faiss_index_ntotal": index.ntotal,
         "matrix_json_path": matrix_json_path,
         "ingest": ingest_result,
-        "note": "data/matrix.json ingest(upsert) -> match. decision/updated_at NOT NULL対応 + 日本語ngramでマッチ改善",
+        "note": "FAISS cosine(paraphrase-multilingual-MiniLM-L12-v2) でマトリクスルールとマッチング",
     }

@@ -37,7 +37,7 @@ def run_until_matrix_match(db: Session, transaction_id: int, threshold: float = 
         transaction_id=transaction_id,
         run_type=RunType.usage_expand,
         step_fn=step_usage_expand,
-        params={},
+        params={"min_patent_score": 0.5},
         model_name="local",
         prompt_version="usage_expand_v1",
     )

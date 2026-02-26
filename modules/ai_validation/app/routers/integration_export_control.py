@@ -20,6 +20,7 @@ class ExportControlRequestIn(BaseModel):
     code: str
     name: str
     description: Optional[str] = None
+    usage_summary: Optional[str] = None
     hs_code: Optional[str] = None
     eccn: Optional[str] = None
     item_class: Optional[str] = None

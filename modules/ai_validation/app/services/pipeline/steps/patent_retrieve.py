@@ -23,6 +23,16 @@ from app.db.models.ai_run import PatentRetrieval
 # =========================
 _MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
+# モデルをグローバルキャッシュ（リクエスト毎の再ロードを防ぐ）
+_model: Optional[SentenceTransformer] = None
+
+
+def _get_model() -> SentenceTransformer:
+    global _model
+    if _model is None:
+        _model = SentenceTransformer(_MODEL_NAME)
+    return _model
+
 
 def _project_root() -> str:
     here = os.path.dirname(os.path.abspath(__file__))
@@ -172,7 +182,7 @@ def _load_faiss_if_exists() -> Optional[Tuple[faiss.Index, List[Dict[str, Any]]]
 
 
 def _build_faiss_from_db(db: Session) -> Tuple[faiss.Index, List[Dict[str, Any]]]:
-    model = SentenceTransformer(_MODEL_NAME)
+    model = _get_model()
 
     patents: List[Patent] = db.query(Patent).all()
     texts = [_patent_to_text(p) for p in patents]
@@ -228,7 +238,7 @@ def _search_patents_faiss(
     if not query or index.ntotal == 0:
         return []
 
-    model = SentenceTransformer(_MODEL_NAME)
+    model = _get_model()
     qv = model.encode([query], normalize_embeddings=True, show_progress_bar=False)
     qv = np.asarray(qv, dtype="float32")
 
