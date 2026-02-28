@@ -78,6 +78,10 @@ class RDCaseProfiles(Base):
     screening_result_id = Column(String(36), nullable=True)
     screening_status    = Column(String(30), nullable=True)
 
+    # 品目管理への昇格（ai_classification 連携）
+    promoted_product_id = Column(Integer,  nullable=True)   # ai_classification product.id
+    promoted_at         = Column(DateTime, nullable=True)
+
     case = relationship("RDCases", back_populates="profiles")
     ip_review = relationship("RDIPReviews", back_populates="profile", uselist=False, cascade="all, delete-orphan")
 

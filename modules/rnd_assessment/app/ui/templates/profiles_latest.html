@@ -562,4 +562,71 @@
   {% endif %}
 </div>
 
+<!-- ── 品目管理への登録 ──────────────── -->
+<div class="card" style="margin-top:24px;">
+  <div class="card-title">📦 品目管理への登録</div>
+
+  {% if profile.promoted_product_id %}
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+      <span style="color:#22863a; font-weight:600; font-size:.9rem;">✓ 品目管理へ登録済み</span>
+      <span style="font-size:.8rem; color:var(--muted);">製品ID: #{{ profile.promoted_product_id }}</span>
+      {% if profile.promoted_at %}
+      <span style="font-size:.78rem; color:var(--muted);">
+        {{ profile.promoted_at.strftime('%Y-%m-%d %H:%M') }}
+      </span>
+      {% endif %}
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <a href="http://localhost:8002/products/{{ profile.promoted_product_id }}/edit"
+         target="_blank" class="btn" style="font-size:.82rem; padding:6px 14px;">
+        品目詳細を見る →
+      </a>
+      {% if profile.ai_validation_transaction_id %}
+      <a href="http://localhost:8001/ui/transactions/{{ profile.ai_validation_transaction_id }}"
+         target="_blank" class="btn" style="font-size:.82rem; padding:6px 14px;">
+        RND審査を見る →
+      </a>
+      {% endif %}
+    </div>
+
+  {% elif profile.ai_validation_transaction_id %}
+    <p style="font-size:.84rem; color:var(--text-h); margin:0 0 6px;">
+      AI該非判定（RND）が完了しています。品目管理モジュールへ一括登録できます。
+    </p>
+    <p style="font-size:.78rem; color:var(--muted); margin:0 0 12px;">
+      品目コードは <code>RND-{{ case.case_id[:8] }}</code> で自動生成されます（登録後に変更可）。
+    </p>
+    <form method="post"
+          action="/ui/cases/{{ case.case_id }}/profiles/{{ profile.profile_id }}/promote-to-item">
+      <button type="submit" class="btn"
+              style="background:var(--primary);color:#fff;font-weight:600;padding:8px 18px;font-size:.88rem;">
+        📦 品目管理へ登録（ワンクリック）
+      </button>
+    </form>
+    <p style="font-size:.76rem; color:var(--muted); margin-top:6px;">
+      ※ ai_classification モジュール（ポート 8002）が起動している必要があります。
+      登録完了後、自動で外部AI該非判定（UI審査）が発火します。
+    </p>
+
+  {% else %}
+    <p style="font-size:.84rem; color:var(--muted); margin:0;">
+      先に「AI該非判定を実行」してから品目管理へ登録できます。
+    </p>
+  {% endif %}
+</div>
+
+{% if request.query_params.get('promoted') %}
+<div style="
+  position:fixed; bottom:24px; right:24px; z-index:9999;
+  background:#22863a; color:#fff; border-radius:10px;
+  padding:12px 20px; font-size:.9rem; font-weight:600;
+  box-shadow:0 4px 16px rgba(0,0,0,0.2);
+" id="promotedToast">
+  ✓ 品目管理への登録が完了しました
+</div>
+<script>
+  setTimeout(function(){ var t = document.getElementById('promotedToast'); if(t) t.style.display='none'; }, 4000);
+</script>
+{% endif %}
+
 {% endblock %}

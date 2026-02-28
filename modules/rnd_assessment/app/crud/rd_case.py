@@ -240,6 +240,19 @@ def update_profile_screening(
         db.commit()
 
 
+def update_profile_promotion(
+    db: Session,
+    profile_id: str,
+    product_id: int,
+) -> None:
+    """品目管理（ai_classification）への昇格結果をプロファイルに保存。"""
+    obj = db.get(RDCaseProfiles, profile_id)
+    if obj:
+        obj.promoted_product_id = product_id
+        obj.promoted_at = datetime.utcnow()
+        db.commit()
+
+
 # =========================================================
 # NEW: IP review + evidence
 # =========================================================

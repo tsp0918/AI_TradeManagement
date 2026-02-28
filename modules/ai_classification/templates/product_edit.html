@@ -4,10 +4,25 @@
   <div class="container">
     <h1 class="title is-4">品目詳細 / 編集 (ID: {{ product.id }})</h1>
   
-    <div class="mb-4">
+    <div class="mb-4" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
       <a href="/products" class="button is-light">
         品目一覧に戻る
       </a>
+      {% if product.source_rnd_case_id %}
+      <span style="
+        display:inline-flex; align-items:center; gap:8px;
+        background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px;
+        padding:6px 12px; font-size:13px; color:#2e7d32;
+      ">
+        🔬 R&D案件 <strong>RND-{{ product.source_rnd_case_id[:8] }}</strong> から登録
+        <a href="http://localhost:8003/ui/cases/{{ product.source_rnd_case_id }}" target="_blank"
+           style="color:#1565c0; font-size:12px;">R&D詳細 →</a>
+        {% if product.source_rnd_transaction_id %}
+        <a href="http://localhost:8001/ui/transactions/{{ product.source_rnd_transaction_id }}" target="_blank"
+           style="color:#1565c0; font-size:12px;">RND審査 →</a>
+        {% endif %}
+      </span>
+      {% endif %}
     </div>
 
     <div class="box">

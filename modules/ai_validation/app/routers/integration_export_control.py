@@ -27,6 +27,10 @@ class ExportControlRequestIn(BaseModel):
     bom_json: Optional[str] = None
     regulation_ai_raw: Optional[str] = None
     callback_webhook: HttpUrl
+    # 審査連鎖フィールド
+    source_module: Optional[str] = None       # "ai_classification" | "rnd_assessment" | "manual"
+    rnd_case_id: Optional[str] = None         # RND case_id (UUID)
+    rnd_transaction_id: Optional[int] = None  # RND_xxx の ai_validation transaction ID
 
 
 class ExportControlRequestOut(BaseModel):

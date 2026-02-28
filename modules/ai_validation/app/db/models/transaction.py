@@ -56,6 +56,11 @@ class Transaction(Base, TimestampMixin):
     screening_result_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     screening_status: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
 
+    # 審査連鎖（証跡管理）
+    source_module: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)           # "rnd_assessment" | "ai_classification" | "manual"
+    parent_transaction_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True)
+    rnd_case_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)             # RND case_id（表示用・非正規化）
+
     items: Mapped[List["TransactionItem"]] = relationship(
         back_populates="transaction",
         cascade="all, delete-orphan",

@@ -71,6 +71,10 @@ class Product(Base):
     hs_classified_at         = Column(DateTime, nullable=True)
     hs_request_id            = Column(String(36), nullable=True)
 
+    # R&D 由来リネージ（rnd_assessment 連携）
+    source_rnd_case_id        = Column(String(64), nullable=True)   # rnd_assessment case_id (UUID)
+    source_rnd_transaction_id = Column(Integer,    nullable=True)   # RND_xxx の ai_validation transaction ID
+
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

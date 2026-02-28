@@ -46,8 +46,9 @@ def _json_dumps_safe(v: Any) -> str:
     return json.dumps(v, ensure_ascii=False, default=str)
 
 
-def _make_case_no(product_id: int) -> str:
-    return f"UI-{product_id}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+def _make_case_no(product_id: int, product_code: Optional[str] = None) -> str:
+    code = product_code or str(product_id)
+    return f"UI-{code}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
 
 
 def _build_spec_text(payload: Dict[str, Any]) -> str:
@@ -94,10 +95,18 @@ def create_transaction_from_payload(db: Session, payload: Dict[str, Any]) -> int
     UI(Product) payload → AI側 Transaction / Item / UsageRequirement を最小で作成
     """
     product_id = int(payload["product_id"])
-    case_no = _make_case_no(product_id)
+    product_code = payload.get("code") or str(product_id)
+    case_no = _make_case_no(product_id, product_code)
     title = f"External Request: {payload.get('code')} {payload.get('name')}"
 
-    tx = Transaction(case_no=case_no, title=title, status="draft")
+    tx = Transaction(
+        case_no=case_no,
+        title=title,
+        status="draft",
+        source_module=payload.get("source_module") or "ai_classification",
+        rnd_case_id=payload.get("rnd_case_id"),
+        parent_transaction_id=payload.get("rnd_transaction_id"),
+    )
     db.add(tx)
     db.flush()
 

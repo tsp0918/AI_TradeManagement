@@ -82,6 +82,21 @@
           <div class="hint">入力すると取引詳細画面から制裁リストスクリーニングを実行できます。</div>
         </div>
 
+        <div class="form-row">
+          <label class="label-sm">前段審査参照（任意）</label>
+          <input class="input" type="text" id="parentCaseNoSearch"
+                 placeholder="UI-TS4620 などで検索..."
+                 autocomplete="off">
+          <input type="hidden" name="parent_transaction_id" id="parentTxId"
+                 value="{{ request.query_params.get('parent_transaction_id', '') }}">
+          <div class="hint">品目管理または R&D から起案された審査番号を入力すると証跡が連鎖します。</div>
+          <ul id="parentSearchResults" style="
+            list-style:none; margin:4px 0 0; padding:0;
+            border:1px solid var(--line, #ddd); border-radius:6px;
+            background:#fff; display:none; max-height:200px; overflow-y:auto;
+          "></ul>
+        </div>
+
       </div>
 
       <div style="margin-top: 20px; display:flex; gap:10px; align-items:center;">
@@ -89,6 +104,50 @@
         <a class="btn" href="/ui/transactions">キャンセル</a>
       </div>
     </form>
+
+<script>
+(function(){
+  const inp = document.getElementById("parentCaseNoSearch");
+  const hid = document.getElementById("parentTxId");
+  const ul  = document.getElementById("parentSearchResults");
+
+  // URL パラメータで親が指定されていたら表示名をセット
+  const preId = hid.value;
+  if (preId) {
+    const preCaseNo = "{{ request.query_params.get('parent_case_no', '') }}";
+    if (preCaseNo) inp.value = preCaseNo;
+  }
+
+  inp.addEventListener("input", async function(){
+    const q = inp.value.trim();
+    if (q.length < 2) { ul.style.display = "none"; return; }
+    try {
+      const res = await fetch(`/api/transactions/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      ul.innerHTML = "";
+      if (!data.length) { ul.style.display = "none"; return; }
+      data.forEach(function(item){
+        const li = document.createElement("li");
+        li.style.cssText = "padding:8px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:13px;";
+        const src = item.source_module === "ai_classification" ? "品目管理" :
+                    item.source_module === "rnd_assessment" ? "R&D" : "手動";
+        li.textContent = `${item.case_no}  [${src}] ${item.title || ""}`;
+        li.addEventListener("click", function(){
+          inp.value = item.case_no;
+          hid.value = item.id;
+          ul.style.display = "none";
+        });
+        ul.appendChild(li);
+      });
+      ul.style.display = "block";
+    } catch(e){ ul.style.display = "none"; }
+  });
+
+  document.addEventListener("click", function(e){
+    if (!ul.contains(e.target) && e.target !== inp) ul.style.display = "none";
+  });
+})();
+</script>
   </div>
 </div>
 

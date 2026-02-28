@@ -86,12 +86,17 @@ async def request_export_control(product_id: int, db: Session = Depends(get_db))
         "name": product.name,
         # description が最重要。NoneだとAI側が困るので空文字に寄せる。
         "description": product.description or "",
+        "usage_summary": product.usage_summary or "",
         "hs_code": product.hs_code,
         "eccn": product.eccn,
         "item_class": product.item_class,
         "bom_json": product.bom_json,
         "regulation_ai_raw": product.regulation_ai_raw,
         "callback_webhook": settings.PUBLIC_WEBHOOK_URL,  # UI側Webhook URL
+        # 審査連鎖フィールド（R&D 由来の場合に自動付与）
+        "source_module": "ai_classification",
+        "rnd_case_id": product.source_rnd_case_id,
+        "rnd_transaction_id": product.source_rnd_transaction_id,
     }
 
     client = ExternalAppClient()
@@ -213,6 +218,74 @@ async def export_control_webhook(body: dict, db: Session = Depends(get_db)):
 
     db.commit()
     return {"ok": True}
+
+
+class ProductFromRndIn(BaseModel):
+    case_id:            str
+    case_title:         str
+    rnd_transaction_id: Optional[int] = None
+    usage_summary:      str = ""
+    product_code:       Optional[str] = None  # 省略時は RND-{case_id[:8]} で自動生成
+
+
+class ProductFromRndOut(BaseModel):
+    product_id:        int
+    product_code:      str
+    export_request_id: Optional[int] = None
+
+
+@router.post("/products/from-rnd", response_model=ProductFromRndOut)
+async def create_product_from_rnd(req: ProductFromRndIn, db: Session = Depends(get_db)):
+    """R&D案件（rnd_assessment）からワンクリックで品目を登録し、即座に外部AI判定を発火する。"""
+    code = (req.product_code or f"RND-{req.case_id[:8]}").strip()
+
+    # 重複コードの場合はサフィックスを付ける
+    existing = db.query(Product).filter(Product.code == code).first()
+    if existing:
+        from datetime import datetime as _dt
+        code = f"{code}-{_dt.utcnow().strftime('%H%M%S')}"
+
+    product = Product(
+        code=code,
+        name=req.case_title,
+        usage_summary=req.usage_summary or "",
+        source_rnd_case_id=req.case_id,
+        source_rnd_transaction_id=req.rnd_transaction_id,
+        export_control_status="not_evaluated",
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+
+    # 即時 export-control request を発火
+    client = ExternalAppClient()
+    payload: Dict[str, Any] = {
+        "product_id": product.id,
+        "code": product.code,
+        "name": product.name,
+        "description": "",
+        "usage_summary": product.usage_summary or "",
+        "callback_webhook": settings.PUBLIC_WEBHOOK_URL,
+        "source_module": "ai_classification",
+        "rnd_case_id": req.case_id,
+        "rnd_transaction_id": req.rnd_transaction_id,
+    }
+    export_request_id: Optional[int] = None
+    try:
+        resp = await client.request_export_control(payload)
+        export_request_id = resp.get("request_id")
+        product.external_eval_requested_at = datetime.utcnow()
+        product.external_eval_status = resp.get("status") or "queued"
+        product.external_eval_payload = _wrap_payload(export_request_id, {"status": "queued"})
+        db.commit()
+    except Exception:
+        pass  # 外部AI発火失敗は非致命的 — 品目登録は成功扱い
+
+    return ProductFromRndOut(
+        product_id=product.id,
+        product_code=product.code,
+        export_request_id=export_request_id,
+    )
 
 
 @router.get("/export-control/result/{product_id}")

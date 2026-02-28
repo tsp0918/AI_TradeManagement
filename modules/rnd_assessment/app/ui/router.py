@@ -728,3 +728,50 @@ def run_screening(
         pass  # スクリーニング失敗は非致命的
 
     return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest", status_code=303)
+
+
+AI_CLASSIFICATION_BASE = "http://localhost:8002"
+
+
+@router.post("/cases/{case_id}/profiles/{profile_id}/promote-to-item")
+def promote_to_item(
+    case_id: str,
+    profile_id: str,
+    db: Session = Depends(get_db),
+):
+    """プロファイルの品目情報を ai_classification へワンクリック登録し、即座に外部AI判定を発火する。"""
+    case = crud.get_case(db, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="case not found")
+    profile = crud.get_profile_by_id(db, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="profile not found")
+
+    if profile.promoted_product_id:
+        # すでに登録済みなら詳細ページへ
+        return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest", status_code=303)
+
+    usage = "\n".join(filter(None, [
+        profile.use_requirements_raw or "",
+        profile.end_user_requirements_raw or "",
+    ])).strip()
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            r = client.post(
+                f"{AI_CLASSIFICATION_BASE}/integrations/products/from-rnd",
+                json={
+                    "case_id":            case_id,
+                    "case_title":         case.title,
+                    "rnd_transaction_id": profile.ai_validation_transaction_id,
+                    "usage_summary":      usage,
+                },
+            )
+        if r.status_code not in (200, 201):
+            raise ValueError(f"HTTP {r.status_code}: {r.text[:200]}")
+        data = r.json()
+        crud.update_profile_promotion(db, profile_id, data["product_id"])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"品目登録に失敗しました: {e}")
+
+    return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest?promoted=1", status_code=303)

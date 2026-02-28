@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any
 
 import httpx
 from fastapi import APIRouter, Depends, Request, HTTPException, Query, Form, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
@@ -22,6 +22,7 @@ from app.db.models.ai_run import AiRun, RunType
 from app.db.models.integration import ExternalEvalRequest
 from app.services.pipeline.orchestrator import run_until_matrix_match
 from app.services.two_list import compute_two_lists
+from app.services.export_report import build_csv, build_pdf
 
 router = APIRouter(tags=["ui"])
 
@@ -46,6 +47,39 @@ def _make_case_no_manual() -> str:
     return f"MANUAL-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}"
 
 
+def _build_chain(db: Session, tx: Transaction) -> list:
+    """parent_transaction_id を辿って祖先チェーンを構築する（古い順）。"""
+    source_labels = {
+        "rnd_assessment": "R&D案件",
+        "ai_classification": "品目管理",
+        "manual": "手動起案",
+    }
+    risk_labels = {"danger": "要注意", "warn": "照合候補", "info": "参考情報", "safe": "クリア", "none": "未実行"}
+
+    def _risk_of(t: Transaction) -> str:
+        """最新 matrix_match run の two-lists から overall_risk を推定（簡易版）。"""
+        return "none"  # 詳細計算は重いため詳細ページで行う
+
+    chain = []
+    visited = set()
+    cursor = tx
+    while cursor and cursor.id not in visited:
+        visited.add(cursor.id)
+        chain.append({
+            "id": cursor.id,
+            "case_no": cursor.case_no or f"#{cursor.id}",
+            "source_module": cursor.source_module or "manual",
+            "source_label": source_labels.get(cursor.source_module or "manual", "審査"),
+            "is_current": cursor.id == tx.id,
+        })
+        if cursor.parent_transaction_id:
+            cursor = db.query(Transaction).filter(Transaction.id == cursor.parent_transaction_id).first()
+        else:
+            break
+    chain.reverse()  # 祖先が先（古い順）
+    return chain
+
+
 def _create_transaction_manual(
     db: Session,
     title: str,
@@ -54,12 +88,15 @@ def _create_transaction_manual(
     spec_text: str,
     case_no: Optional[str] = None,
     counterparty_name: Optional[str] = None,
+    parent_transaction_id: Optional[int] = None,
 ) -> Transaction:
     tx = Transaction(
         case_no=case_no or _make_case_no_manual(),
         title=title.strip() or product_code.strip() or "新規審査",
         status="draft",
         counterparty_name=counterparty_name.strip() if counterparty_name else None,
+        source_module="manual",
+        parent_transaction_id=parent_transaction_id,
     )
     db.add(tx)
     db.flush()
@@ -102,6 +139,30 @@ def transaction_new_form(request: Request):
     )
 
 
+@router.get("/api/transactions/search")
+def transactions_search(
+    q: str = Query(default="", min_length=1),
+    db: Session = Depends(get_db),
+):
+    """前段審査参照フィールドのオートコンプリート用。"""
+    results = (
+        db.query(Transaction)
+        .filter(Transaction.case_no.ilike(f"%{q}%"))
+        .order_by(desc(Transaction.id))
+        .limit(10)
+        .all()
+    )
+    return [
+        {
+            "id": t.id,
+            "case_no": t.case_no,
+            "title": t.title,
+            "source_module": t.source_module,
+        }
+        for t in results
+    ]
+
+
 @router.post("/ui/transactions/new", response_class=HTMLResponse)
 def transaction_new_submit(
     request: Request,
@@ -112,6 +173,7 @@ def transaction_new_submit(
     spec_text: str = Form(""),
     case_no: str = Form(""),
     counterparty_name: Optional[str] = Form(None),
+    parent_transaction_id: Optional[int] = Form(None),
 ):
     """手動入力で新規審査を作成（AIパイプラインは実行しない）。"""
     templates = request.app.state.templates
@@ -129,6 +191,7 @@ def transaction_new_submit(
             spec_text=spec_text,
             case_no=case_no.strip() or None,
             counterparty_name=counterparty_name,
+            parent_transaction_id=parent_transaction_id,
         )
         db.commit()
     except Exception as e:
@@ -283,6 +346,8 @@ def transaction_detail_page(
             overall_risk = "safe"
             overall_label = "ヒットなし"
 
+    chain = _build_chain(db, tx)
+
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "transaction_detail.html",
@@ -298,6 +363,7 @@ def transaction_detail_page(
             "highlight_rows": highlight_rows,
             "overall_risk": overall_risk,
             "overall_label": overall_label,
+            "chain": chain,
         },
     )
 
@@ -343,6 +409,80 @@ def run_pipeline_and_show(
         url += f"?run_id={latest.id}"
 
     return RedirectResponse(url=url, status_code=303)
+
+
+@router.get("/ui/transactions/{transaction_id}/export/csv")
+def export_csv(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    run_id: Optional[int] = Query(default=None),
+):
+    """該非判定結果を CSV でダウンロード。"""
+    tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="transaction not found")
+
+    latest = (
+        db.query(AiRun)
+        .filter(AiRun.transaction_id == transaction_id, AiRun.run_type == RunType.matrix_match.value)
+        .order_by(desc(AiRun.id))
+        .first()
+    )
+    effective_run_id = run_id or (latest.id if latest else None)
+    if effective_run_id is None:
+        raise HTTPException(status_code=400, detail="AI解析がまだ実行されていません。")
+
+    two_lists = compute_two_lists(db=db, transaction_id=transaction_id, run_id=effective_run_id)
+    run_at = latest.finished_at if latest else None
+
+    csv_text = build_csv(tx=tx, two_lists=two_lists, run_at=run_at)
+
+    filename = f"report_{tx.case_no or tx.id}_{datetime.now().strftime('%Y%m%d%H%M')}.csv"
+    return StreamingResponse(
+        iter([csv_text.encode("utf-8-sig")]),
+        media_type="text/csv; charset=utf-8-sig",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/ui/transactions/{transaction_id}/export/pdf")
+def export_pdf(
+    request: Request,
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    run_id: Optional[int] = Query(default=None),
+):
+    """該非判定結果を PDF でダウンロード。"""
+    tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="transaction not found")
+
+    latest = (
+        db.query(AiRun)
+        .filter(AiRun.transaction_id == transaction_id, AiRun.run_type == RunType.matrix_match.value)
+        .order_by(desc(AiRun.id))
+        .first()
+    )
+    effective_run_id = run_id or (latest.id if latest else None)
+    if effective_run_id is None:
+        raise HTTPException(status_code=400, detail="AI解析がまだ実行されていません。")
+
+    two_lists = compute_two_lists(db=db, transaction_id=transaction_id, run_id=effective_run_id)
+    run_at = latest.finished_at if latest else None
+
+    templates = request.app.state.templates
+    try:
+        pdf_bytes = build_pdf(tx=tx, two_lists=two_lists, run_at=run_at, templates=templates)
+    except Exception as exc:
+        logger.error("PDF generation failed for tx %d: %s", transaction_id, exc)
+        raise HTTPException(status_code=500, detail=f"PDF生成エラー: {exc}")
+
+    filename = f"report_{tx.case_no or tx.id}_{datetime.now().strftime('%Y%m%d%H%M')}.pdf"
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/ui/transactions/{transaction_id}/run-screening")

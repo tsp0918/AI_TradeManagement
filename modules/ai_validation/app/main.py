@@ -17,6 +17,7 @@ from app.routers.decision import router as decision_router
 from app.routers.ui import router as ui_router
 from app.routers.integration_export_control import router as integration_router
 from app.routers.admin import router as admin_router
+from app.routers.api_transactions import router as api_transactions_router
 
 MODULE = ModuleInfo(
     key="ai_validation",
@@ -46,3 +47,4 @@ app.include_router(ui_router)
 app.include_router(decision_router)
 app.include_router(integration_router)
 app.include_router(admin_router)
+app.include_router(api_transactions_router)
