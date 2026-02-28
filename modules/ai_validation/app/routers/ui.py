@@ -54,23 +54,45 @@ def _build_chain(db: Session, tx: Transaction) -> list:
         "ai_classification": "品目管理",
         "manual": "手動起案",
     }
-    risk_labels = {"danger": "要注意", "warn": "照合候補", "info": "参考情報", "safe": "クリア", "none": "未実行"}
 
     def _risk_of(t: Transaction) -> str:
-        """最新 matrix_match run の two-lists から overall_risk を推定（簡易版）。"""
-        return "none"  # 詳細計算は重いため詳細ページで行う
+        """最新 matrix_match run の AiRun 存在から risk を簡易推定。"""
+        latest = (
+            db.query(AiRun)
+            .filter(AiRun.transaction_id == t.id, AiRun.run_type == RunType.matrix_match.value)
+            .order_by(desc(AiRun.id))
+            .first()
+        )
+        if not latest:
+            return "none"
+        try:
+            tl = compute_two_lists(db=db, transaction_id=t.id, run_id=latest.id)
+            counts = tl.get("counts") or {}
+            if (counts.get("intersection") or 0) > 0:
+                return "danger"
+            if (counts.get("core_only") or 0) > 0:
+                return "warn"
+            return "safe"
+        except Exception:
+            return "none"
 
     chain = []
     visited = set()
     cursor = tx
     while cursor and cursor.id not in visited:
         visited.add(cursor.id)
+        risk = _risk_of(cursor)
+        risk_label = {"danger": "要注意", "warn": "照合候補", "safe": "クリア", "none": "未実行"}.get(risk, "")
         chain.append({
             "id": cursor.id,
             "case_no": cursor.case_no or f"#{cursor.id}",
             "source_module": cursor.source_module or "manual",
             "source_label": source_labels.get(cursor.source_module or "manual", "審査"),
             "is_current": cursor.id == tx.id,
+            "risk": risk,
+            "risk_label": risk_label,
+            "created_at": cursor.created_at.strftime("%Y-%m-%d") if cursor.created_at else None,
+            "title": cursor.title or "",
         })
         if cursor.parent_transaction_id:
             cursor = db.query(Transaction).filter(Transaction.id == cursor.parent_transaction_id).first()

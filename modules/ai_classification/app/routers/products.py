@@ -27,8 +27,11 @@ from ..models import Product, BomHistory
 from ..settings import settings
 from ..services.external_app_client import ExternalAppClient
 
+from urllib.parse import quote_plus as _quote_plus
+
 router = APIRouter(tags=["products"])
 templates = Jinja2Templates(directory="templates")
+templates.env.filters["urlencode"] = lambda s: _quote_plus(str(s) if s is not None else "")
 
 
 # =========================
@@ -236,6 +239,49 @@ def build_external_ai_summary(product: Product):
 
 
 # =========================
+# 外部AI payload → 判定明細リスト
+# =========================
+def build_external_ai_items(product: Product) -> list[dict]:
+    """matrix_matches_top の全アイテムを [{rule_item_no, decision, match_score}] で返す。"""
+    raw = getattr(product, "external_eval_payload", None)
+    if not raw:
+        return []
+    try:
+        obj = json.loads(raw) if isinstance(raw, str) else raw
+    except Exception:
+        return []
+
+    payload = None
+    if isinstance(obj, dict):
+        maybe = obj.get("payload")
+        if isinstance(maybe, dict):
+            payload = maybe
+        elif any(k in obj for k in ("matrix_matches_top", "followup_questions", "transaction_id")):
+            payload = obj
+
+    if not isinstance(payload, dict):
+        return []
+
+    mm = payload.get("matrix_matches_top")
+    if not isinstance(mm, list):
+        return []
+
+    items = []
+    for m in mm:
+        if not isinstance(m, dict):
+            continue
+        ev = m.get("evidence") or {}
+        if not isinstance(ev, dict):
+            ev = {}
+        items.append({
+            "rule_item_no": ev.get("rule_item_no") or m.get("rule_item_no") or "",
+            "decision": m.get("decision") or ev.get("decision") or "",
+            "match_score": m.get("match_score"),
+        })
+    return items
+
+
+# =========================
 # Routes
 # =========================
 
@@ -356,6 +402,17 @@ def edit_product(request: Request, product_id: int, db: Session = Depends(get_db
         except Exception:
             hs_candidates = []
 
+    # --- 輸出管理 判定明細のパース ---
+    ec_items: list[dict] = []
+    raw_ec = getattr(product, "export_control_items", None)
+    if raw_ec:
+        try:
+            ec_items = json.loads(raw_ec)
+            if not isinstance(ec_items, list):
+                ec_items = []
+        except Exception:
+            ec_items = []
+
     return templates.TemplateResponse(
         "product_edit.html",
         {
@@ -366,6 +423,7 @@ def edit_product(request: Request, product_id: int, db: Session = Depends(get_db
             "bom_total_cost": bom_total_cost,
             "external_ai_summary": external_ai_summary,
             "hs_candidates": hs_candidates,
+            "export_control_items": ec_items,
         },
     )
 
@@ -822,6 +880,41 @@ def update_export_control_manual(
     product.export_control_status = status
     product.export_control_reason = reason or None
     product.export_control_checked_at = datetime.utcnow()
+
+    db.commit()
+    return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
+
+
+@router.post("/products/{product_id}/export/items")
+def save_export_items(
+    product_id: int,
+    status: str = Form(...),
+    export_reason: str = Form(""),
+    items_json: str = Form("[]"),
+    db: Session = Depends(get_db),
+):
+    """輸出管理 判定記録（全体ステータス＋明細テーブル）を保存する。"""
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    allowed_status = [
+        "not_evaluated", "non_controlled", "needs_attention", "to_be_checked", "controlled",
+    ]
+    if status not in allowed_status:
+        raise HTTPException(status_code=400, detail="不正なステータスです。")
+
+    try:
+        items = json.loads(items_json)
+        if not isinstance(items, list):
+            items = []
+    except Exception:
+        items = []
+
+    product.export_control_status = status
+    product.export_control_reason = export_reason or None
+    product.export_control_checked_at = datetime.utcnow()
+    product.export_control_items = json.dumps(items, ensure_ascii=False)
 
     db.commit()
     return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)

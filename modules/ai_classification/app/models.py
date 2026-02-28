@@ -75,6 +75,12 @@ class Product(Base):
     source_rnd_case_id        = Column(String(64), nullable=True)   # rnd_assessment case_id (UUID)
     source_rnd_transaction_id = Column(Integer,    nullable=True)   # RND_xxx の ai_validation transaction ID
 
+    # ai_validation 連携（Webhook で受け取る UI_xxx transaction ID）
+    ui_validation_transaction_id = Column(Integer, nullable=True)   # UI_xxx / TX_xxx の transaction ID
+
+    # 輸出管理 判定明細（JSON list: [{rule_item_no, decision, comment}, ...]）
+    export_control_items = Column(Text, nullable=True)
+
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

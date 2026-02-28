@@ -47,7 +47,9 @@
 
         <div class="form-row">
           <label class="label-sm">品名 <span class="required">*</span></label>
-          <input class="input" type="text" name="title" placeholder="例: TSP2110 テスト品目" required>
+          <input class="input" type="text" name="title"
+                 placeholder="例: TSP2110 テスト品目" required
+                 value="{{ request.query_params.get('title', '') }}">
           <div class="hint">表示用のタイトル。自動的に審査 ID が付与されます。</div>
         </div>
 
@@ -59,7 +61,7 @@
         <div class="form-row">
           <label class="label-sm">用途・説明 <span class="required">*</span></label>
           <textarea class="textarea" name="description" rows="4"
-            placeholder="例: エチレングリコール、水酸化ナトリウムを主原料とした冷却液。産業用熱交換器向け。"></textarea>
+            placeholder="例: エチレングリコール、水酸化ナトリウムを主原料とした冷却液。産業用熱交換器向け。">{{ request.query_params.get('description', '') }}</textarea>
           <div class="hint">この内容が AI 判定の照合テキストに使用されます。できるだけ具体的に記入してください。</div>
         </div>
 

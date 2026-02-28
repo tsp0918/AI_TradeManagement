@@ -18,6 +18,34 @@ from app.routers.ui import router as ui_router
 from app.routers.integration_export_control import router as integration_router
 from app.routers.admin import router as admin_router
 from app.routers.api_transactions import router as api_transactions_router
+from app.db.session import engine
+
+
+async def _ensure_columns() -> None:
+    """SQLite 起動時カラム自動追加（Alembic 非適用環境向け）"""
+    from sqlalchemy import inspect as sa_inspect, text
+
+    needed: dict[str, list[tuple[str, str]]] = {
+        "transactions": [
+            ("source_module",         "VARCHAR(32)"),
+            ("parent_transaction_id", "INTEGER"),
+            ("rnd_case_id",           "VARCHAR(64)"),
+        ],
+    }
+    with engine.connect() as conn:
+        inspector = sa_inspect(engine)
+        for table, cols in needed.items():
+            try:
+                existing = {c["name"] for c in inspector.get_columns(table)}
+            except Exception:
+                continue
+            for col_name, col_type in cols:
+                if col_name not in existing:
+                    conn.execute(text(
+                        f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}"
+                    ))
+        conn.commit()
+
 
 MODULE = ModuleInfo(
     key="ai_validation",
@@ -34,7 +62,7 @@ MODULE = ModuleInfo(
 app = FastAPI(
     title="AI Validation (Trade Screening)",
     version="0.1.0",
-    lifespan=build_lifespan(MODULE),
+    lifespan=build_lifespan(MODULE, on_startup=_ensure_columns),
 )
 
 app.add_middleware(AuditMiddleware, module_key="ai_validation")

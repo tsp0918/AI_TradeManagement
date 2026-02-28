@@ -20,6 +20,10 @@
       照合候補 <b>{{ two_lists.counts.core_only or 0 }}</b> /
       参考 <b>{{ two_lists.counts.expanded_only }}</b>
     </span>
+    {# DAP-6: intersection 検知用隠し要素 #}
+    {% if two_lists.counts.intersection > 0 %}
+    <span id="dap-has-intersection" data-dap-field="intersection_found" style="display:none;">yes</span>
+    {% endif %}
     {% endif %}
   </div>
   <div class="status-right">
@@ -51,17 +55,29 @@
     {% for node in chain %}
     {% if not loop.first %}<span style="color:var(--muted,#888); font-size:14px;">→</span>{% endif %}
     <div style="
-      display:inline-flex; align-items:center; gap:6px;
-      background:{% if node.is_current %}var(--primary-dim,#e8f0fe){% else %}var(--surface,#f5f5f5){% endif %};
-      border:1px solid {% if node.is_current %}var(--primary,#1a73e8){% else %}var(--line,#ddd){% endif %};
-      border-radius:8px; padding:5px 10px; font-size:12px;
+      display:inline-flex; align-items:center; gap:6px; flex-direction:column;
+      background:{% if node.is_current %}var(--primary-dim,#e8f0fe){% elif node.risk == 'danger' %}#fff5f5{% elif node.risk == 'warn' %}#fffbea{% else %}var(--surface,#f5f5f5){% endif %};
+      border:1px solid {% if node.is_current %}var(--primary,#1a73e8){% elif node.risk == 'danger' %}#d73a49{% elif node.risk == 'warn' %}#f66a0a{% else %}var(--line,#ddd){% endif %};
+      border-radius:8px; padding:6px 10px; font-size:12px; min-width:80px;
     ">
-      <span style="color:var(--muted,#888);">{{ node.source_label }}</span>
+      <div style="display:flex; align-items:center; gap:5px;">
+        <span style="color:var(--muted,#888); font-size:10px;">{{ node.source_label }}</span>
+        {% if node.risk == 'danger' %}
+          <span style="background:#d73a49; color:#fff; border-radius:3px; padding:1px 5px; font-size:10px;">要注意</span>
+        {% elif node.risk == 'warn' %}
+          <span style="background:#f66a0a; color:#fff; border-radius:3px; padding:1px 5px; font-size:10px;">照合候補</span>
+        {% elif node.risk == 'safe' %}
+          <span style="background:#22863a; color:#fff; border-radius:3px; padding:1px 5px; font-size:10px;">クリア</span>
+        {% endif %}
+      </div>
       {% if node.is_current %}
         <span style="font-weight:600; color:var(--primary,#1a73e8);">{{ node.case_no }}</span>
         <span style="font-size:10px; color:var(--primary,#1a73e8);">← 現在</span>
       {% else %}
         <a href="/ui/transactions/{{ node.id }}" style="font-weight:600; color:var(--fg,#222); text-decoration:none;">{{ node.case_no }}</a>
+      {% endif %}
+      {% if node.created_at %}
+        <span style="font-size:10px; color:var(--muted,#888);">{{ node.created_at }}</span>
       {% endif %}
     </div>
     {% endfor %}

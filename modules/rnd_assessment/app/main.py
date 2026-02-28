@@ -14,8 +14,30 @@ import app.models  # noqa: F401 — モデルを登録してから create_all �
 
 
 async def _init_db() -> None:
-    """SQLite 開発環境向け: 未作成テーブルを自動生成する。"""
+    """SQLite 開発環境向け: 未作成テーブルを自動生成し、不足カラムを追加する。"""
+    from sqlalchemy import inspect as sa_inspect, text
+
     Base.metadata.create_all(bind=engine)
+
+    needed: dict[str, list[tuple[str, str]]] = {
+        "rd_case_profiles": [
+            ("promoted_product_id", "INTEGER"),
+            ("promoted_at",         "DATETIME"),
+        ],
+    }
+    with engine.connect() as conn:
+        inspector = sa_inspect(engine)
+        for table, cols in needed.items():
+            try:
+                existing = {c["name"] for c in inspector.get_columns(table)}
+            except Exception:
+                continue
+            for col_name, col_type in cols:
+                if col_name not in existing:
+                    conn.execute(text(
+                        f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}"
+                    ))
+        conn.commit()
 
 
 MODULE = ModuleInfo(

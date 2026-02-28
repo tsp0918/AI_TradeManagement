@@ -216,6 +216,14 @@ async def export_control_webhook(body: dict, db: Session = Depends(get_db)):
 
     product.external_eval_received_at = datetime.utcnow()
 
+    # ai_validation で作成された transaction_id を保存（証跡連鎖用）
+    tx_id = (payload_obj or {}).get("transaction_id") if isinstance(payload_obj, dict) else None
+    if tx_id is not None:
+        try:
+            product.ui_validation_transaction_id = int(tx_id)
+        except (ValueError, TypeError):
+            pass
+
     db.commit()
     return {"ok": True}
 
@@ -306,6 +314,7 @@ def get_export_control_result(product_id: int, db: Session = Depends(get_db)):
         "external_eval_payload": product.external_eval_payload,
         "requested_at": product.external_eval_requested_at,
         "received_at": product.external_eval_received_at,
+        "ui_validation_transaction_id": product.ui_validation_transaction_id,
     }
 
 

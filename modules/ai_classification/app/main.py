@@ -8,6 +8,35 @@ from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan
 from .routers.products import router as products_router
 from .routers.sds import router as sds_router
 from .routers.integrations import router as integrations_router
+from .database import engine
+
+
+async def _ensure_columns() -> None:
+    """SQLite 起動時カラム自動追加（Alembic 非適用環境向け）"""
+    from sqlalchemy import inspect as sa_inspect, text
+
+    needed: dict[str, list[tuple[str, str]]] = {
+        "products": [
+            ("source_rnd_case_id",          "VARCHAR(64)"),
+            ("source_rnd_transaction_id",   "INTEGER"),
+            ("ui_validation_transaction_id","INTEGER"),
+            ("export_control_items",        "TEXT"),
+        ],
+    }
+    with engine.connect() as conn:
+        inspector = sa_inspect(engine)
+        for table, cols in needed.items():
+            try:
+                existing = {c["name"] for c in inspector.get_columns(table)}
+            except Exception:
+                continue
+            for col_name, col_type in cols:
+                if col_name not in existing:
+                    conn.execute(text(
+                        f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}"
+                    ))
+        conn.commit()
+
 
 MODULE = ModuleInfo(
     key="ai_classification",
@@ -26,7 +55,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="AI Classification (Product Management)",
         version="0.1.0",
-        lifespan=build_lifespan(MODULE),
+        lifespan=build_lifespan(MODULE, on_startup=_ensure_columns),
     )
 
     app.add_middleware(AuditMiddleware, module_key="ai_classification")

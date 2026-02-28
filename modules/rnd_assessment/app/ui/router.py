@@ -545,6 +545,19 @@ def profiles_latest(request: Request, case_id: str, db: Session = Depends(get_db
         except Exception:
             pass
 
+    # 品目管理からUI審査ステータスを取得
+    product_eval: dict | None = None
+    if prof.promoted_product_id:
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                r = client.get(
+                    f"{AI_CLASSIFICATION_BASE}/integrations/export-control/result/{prof.promoted_product_id}"
+                )
+            if r.status_code == 200:
+                product_eval = r.json()
+        except Exception:
+            pass
+
     return templates.TemplateResponse(
         "profiles_latest.html",
         {
@@ -557,6 +570,7 @@ def profiles_latest(request: Request, case_id: str, db: Session = Depends(get_db
             "evidences": evidences,
             "can_compare": can_compare,
             "av_two_lists": av_two_lists,
+            "product_eval": product_eval,
         },
     )
 
@@ -768,10 +782,18 @@ def promote_to_item(
                 },
             )
         if r.status_code not in (200, 201):
-            raise ValueError(f"HTTP {r.status_code}: {r.text[:200]}")
+            raise ValueError(f"サービスが HTTP {r.status_code} を返しました")
         data = r.json()
         crud.update_profile_promotion(db, profile_id, data["product_id"])
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"品目登録に失敗しました: {e}")
+    except httpx.ConnectError:
+        return RedirectResponse(
+            url=f"/ui/cases/{case_id}/profiles/latest?promote_error=connection",
+            status_code=303,
+        )
+    except Exception:
+        return RedirectResponse(
+            url=f"/ui/cases/{case_id}/profiles/latest?promote_error=server",
+            status_code=303,
+        )
 
     return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest?promoted=1", status_code=303)

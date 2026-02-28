@@ -3,7 +3,7 @@
 <section class="section">
   <div class="container">
     <h1 class="title is-4">品目詳細 / 編集 (ID: {{ product.id }})</h1>
-  
+
     <div class="mb-4" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
       <a href="/products" class="button is-light">
         品目一覧に戻る
@@ -23,8 +23,26 @@
         {% endif %}
       </span>
       {% endif %}
+      {% if product.ui_validation_transaction_id %}
+      <span style="
+        display:inline-flex; align-items:center; gap:8px;
+        background:#e3f2fd; border:1px solid #90caf9; border-radius:8px;
+        padding:6px 12px; font-size:13px; color:#1565c0;
+      ">
+        🔍 UI品目審査あり
+        <a href="http://localhost:8001/ui/transactions/{{ product.ui_validation_transaction_id }}" target="_blank"
+           style="color:#1565c0; font-size:12px; font-weight:600;">UI審査を確認 →</a>
+        <a href="http://localhost:8001/ui/transactions/new?parent_transaction_id={{ product.ui_validation_transaction_id }}&title={{ (product.name ~ ' の輸出取引') | urlencode }}&description={{ (product.usage_summary or '') | urlencode }}"
+           target="_blank"
+           style="
+             background:#1565c0; color:#fff; border-radius:5px;
+             padding:3px 10px; font-size:12px; font-weight:600; text-decoration:none;
+           ">＋ 正式取引審査を起案</a>
+      </span>
+      {% endif %}
     </div>
 
+    <!-- ===== 基本情報フォーム ===== -->
     <div class="box">
       <form method="post" action="/products/{{ product.id }}/edit">
         <div class="columns">
@@ -97,6 +115,16 @@
 
           <div class="column is-half">
             <h2 class="subtitle is-6">GHS / 国内規制フラグ</h2>
+
+            <!-- SDS / 規制情報（GHS h2 直下に移動） -->
+            <div style="margin-bottom:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <a href="/products/{{ product.id }}/sds" class="btn btn-sm">
+                SDS PDF アップロード &amp; AI解析
+              </a>
+              {% if product.sds_file_path %}
+                <span style="background:#effaf5; color:#257953; border:1px solid #b5e8d0; border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:700;">SDS 登録済み</span>
+              {% endif %}
+            </div>
 
             <div class="field">
               <label class="label">GHS シグナルワード</label>
@@ -210,88 +238,166 @@
       </form>
     </div>
 
-    <!-- 該非判定 UI -->
+    <!-- ===== BOM 構成表示（輸出管理の前に移動） ===== -->
     <div class="box">
-      <h2 class="subtitle is-5">輸出管理 該非判定</h2>
-
-      <div class="columns">
-        <div class="column is-half">
-          <p class="mb-2">
-            <strong>現在のステータス:</strong>
-            {% if product.export_control_status == "controlled" %}
-              <span class="tag is-danger">該当（要専門家レビュー）</span>
-            {% elif product.export_control_status == "needs_attention" %}
-              <span class="tag is-warning">要注意（該非要確認）</span>
-            {% elif product.export_control_status == "to_be_checked" %}
-              <span class="tag is-link is-light">要確認（情報不足）</span>
-            {% elif product.export_control_status == "non_controlled" %}
-              <span class="tag is-success is-light">非該当と推定</span>
-            {% else %}
-              <span class="tag is-light">未評価</span>
-            {% endif %}
-          </p>
-
-          {% if product.export_control_checked_at %}
-            <p class="is-size-7 has-text-grey">
-              最終更新日時: {{ product.export_control_checked_at }}
-            </p>
-          {% endif %}
-
-          {% if product.export_control_reason %}
-            <div class="content mt-3">
-              <p class="is-size-7"><strong>判定理由（メモ）:</strong></p>
-              <pre style="white-space: pre-wrap; font-size: 0.8rem;">{{ product.export_control_reason }}</pre>
-            </div>
-          {% endif %}
+      <div class="level">
+        <div class="level-left">
+          <h2 class="subtitle is-5">BOM構成 / 原価内訳</h2>
         </div>
-
-        <div class="column is-half">
-          <div class="buttons">
-            <form method="post" action="/products/{{ product.id }}/export/evaluate">
-              <button class="button is-info is-light" type="submit">
-                自動判定（ルールベース）
-              </button>
-            </form>
-          </div>
-
-          <form method="post" action="/products/{{ product.id }}/export/manual">
-            <div class="field">
-              <label class="label">ステータスを手動で更新</label>
-              <div class="control">
-                <div class="select">
-                  <select name="status">
-                    <option value="not_evaluated" {% if product.export_control_status == "not_evaluated" %}selected{% endif %}>未評価</option>
-                    <option value="non_controlled" {% if product.export_control_status == "non_controlled" %}selected{% endif %}>非該当と推定</option>
-                    <option value="needs_attention" {% if product.export_control_status == "needs_attention" %}selected{% endif %}>要注意（該非要確認）</option>
-                    <option value="to_be_checked" {% if product.export_control_status == "to_be_checked" %}selected{% endif %}>要確認（情報不足）</option>
-                    <option value="controlled" {% if product.export_control_status == "controlled" %}selected{% endif %}>該当（要専門家レビュー）</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div class="field">
-              <label class="label">理由・コメント</label>
-              <div class="control">
-                <textarea class="textarea" name="reason" rows="3" placeholder="規制条文、根拠、確認内容などを記録">{{ product.export_control_reason or "" }}</textarea>
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="control">
-                <button class="button is-warning is-light" type="submit">
-                  手動で更新
-                </button>
-              </div>
-            </div>
-          </form>
+        <div class="level-right">
+          <a class="btn btn-sm" href="/products/{{ product.id }}/bom">BOM CSV アップロード</a>
+          <a class="btn btn-sm" href="/products/{{ product.id }}/bom/history" style="margin-left:6px;">BOM 履歴</a>
         </div>
       </div>
 
-      <!-- ===== 外部AI判定 ===== -->
-      <hr>
+      {% if bom_components %}
+        <table class="table is-fullwidth is-striped is-hoverable">
+          <thead>
+            <tr>
+              <th>種別</th>
+              <th>コード</th>
+              <th>名称</th>
+              <th>クラス</th>
+              <th class="has-text-right">構成比 (%)</th>
+              <th class="has-text-right">単価</th>
+              <th class="has-text-right">金額</th>
+              <th>メモ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in bom_components %}
+              <tr>
+                <td>
+                  {% if c.kind == "material" %}
+                    <span class="tag is-info is-light">Material</span>
+                  {% else %}
+                    <span class="tag is-dark is-light">Overhead</span>
+                  {% endif %}
+                </td>
+                <td>{{ c.code }}</td>
+                <td>{{ c.name }}</td>
+                <td>{{ c.item_class }}</td>
+                <td class="has-text-right">
+                  {% if c.ratio is not none %}
+                    {{ "%.2f"|format(c.ratio * 100) }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="has-text-right">
+                  {% if c.std_price is not none %}
+                    {{ "%.2f"|format(c.std_price) }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="has-text-right">
+                  {% if c.cost is not none %}
+                    {{ "%.2f"|format(c.cost) }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>{{ c.note }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th colspan="4" class="has-text-right">合計</th>
+              <th class="has-text-right">{{ "%.2f"|format(bom_total_ratio * 100) }} %</th>
+              <th></th>
+              <th class="has-text-right">{{ "%.2f"|format(bom_total_cost) }}</th>
+              <th></th>
+            </tr>
+          </tfoot>
+        </table>
+        <p class="is-size-7 has-text-grey">
+          ※ 構成比は 0〜100% 表記。標準価格は Material + Overhead の合計コストです。
+        </p>
+      {% else %}
+        <p class="has-text-grey">BOMが登録されていません。Finished Goods の場合はBOM CSVをアップロードしてください。</p>
+      {% endif %}
+    </div>
 
-      <h3 class="subtitle is-6">外部AI判定（Webhook連携）</h3>
+    <!-- ===== 輸出管理 該非判定（リデザイン） ===== -->
+    <div class="box">
+      <h2 class="subtitle is-5">輸出管理 該非判定</h2>
+
+      <form method="post" action="/products/{{ product.id }}/export/items"
+            id="ecForm" onsubmit="collectItemsJson()">
+
+        <!-- 全体判定結果 + 判定日時 -->
+        <div style="display:flex; gap:20px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px;">
+          <div>
+            <label class="label" style="margin-bottom:4px;">該非判定結果</label>
+            <div class="select">
+              <select name="status" id="ecStatus">
+                <option value="not_evaluated" {% if product.export_control_status == "not_evaluated" or not product.export_control_status %}selected{% endif %}>未評価</option>
+                <option value="non_controlled" {% if product.export_control_status == "non_controlled" %}selected{% endif %}>非該当と推定</option>
+                <option value="needs_attention" {% if product.export_control_status == "needs_attention" %}selected{% endif %}>要注意（該非要確認）</option>
+                <option value="to_be_checked" {% if product.export_control_status == "to_be_checked" %}selected{% endif %}>要確認（情報不足）</option>
+                <option value="controlled" {% if product.export_control_status == "controlled" %}selected{% endif %}>該当（要専門家レビュー）</option>
+              </select>
+            </div>
+          </div>
+          {% if product.export_control_checked_at %}
+          <div style="font-size:.82rem; color:var(--muted); padding-bottom:8px;">
+            判定日時: {{ product.export_control_checked_at }}
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- 判定理由・コメント -->
+        <div class="field" style="margin-bottom:16px;">
+          <label class="label" style="margin-bottom:4px;">判定理由・コメント</label>
+          <div class="control">
+            <textarea class="textarea" name="export_reason" rows="2"
+              placeholder="規制条文、根拠、確認内容などを記録">{{ product.export_control_reason or "" }}</textarea>
+          </div>
+        </div>
+
+        <!-- 判定明細テーブル -->
+        <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <span class="label" style="margin:0;">判定明細</span>
+          <button type="button" class="btn btn-sm" onclick="transferFromAI()"
+                  title="外部AI判定の matrix_matches_top を行に転記します">
+            外部AI判定から転記
+          </button>
+          <button type="button" class="btn btn-sm" onclick="addEcRow()"
+                  title="行を追加します">
+            ＋ 行を追加
+          </button>
+        </div>
+
+        <div style="overflow-x:auto; margin-bottom:16px;">
+          <table style="width:100%; border-collapse:collapse; font-size:.85rem;">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border); background:var(--bg);">
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.78rem; white-space:nowrap; width:140px;">該当項番</th>
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.78rem; white-space:nowrap; width:160px;">判定結果</th>
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.78rem;">コメント</th>
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.78rem; white-space:nowrap; width:130px;">日時</th>
+                <th style="padding:8px 6px; width:36px;"></th>
+              </tr>
+            </thead>
+            <tbody id="ecItemsBody">
+              <!-- JS で描画 -->
+            </tbody>
+          </table>
+        </div>
+
+        <input type="hidden" name="items_json" id="ecItemsJson">
+
+        <div style="display:flex; gap:8px; margin-top:16px; margin-bottom:32px;">
+          <button type="submit" class="btn btn-primary">判定記録を保存</button>
+        </div>
+      </form>
+
+      <!-- ===== 外部AI判定 ===== -->
+      <hr style="margin: 0 0 28px 0;">
+
+      <h3 class="subtitle is-6" id="ext-eval-heading" style="margin-bottom:16px;">外部AI判定（Webhook連携）</h3>
 
       <div class="columns">
         <div class="column is-half">
@@ -332,7 +438,6 @@
             </div>
           {% endif %}
 
-          <!-- ★追加：根拠と次アクション（外部AI payload 要約） -->
           {% if external_ai_summary %}
             <div class="content mt-3">
 
@@ -384,41 +489,32 @@
 
             </div>
           {% endif %}
-          <!-- ★ここまで -->
-
-          <!-- ★ここまで -->
         </div>
 
         <div class="column is-half">
 
-          <!-- ★用途概要（外部AI判定用）入力欄 -->
+          <!-- 用途概要（外部AI判定用）入力欄 -->
           <form method="post" action="/products/{{ product.id }}/usage-summary" style="margin-bottom: 16px;">
             <div class="field">
               <label class="label">用途概要（外部AI判定用）</label>
               <div class="control">
-                <textarea class="textarea" name="usage_summary" rows="4"
+                <textarea id="usage-summary-field" class="textarea" name="usage_summary" rows="4"
                   placeholder="例: エチレングリコールと水酸化ナトリウムを主原料とした冷却液。半導体製造工程の熱交換器向けに使用。">{{ product.usage_summary or "" }}</textarea>
               </div>
               <p class="help">この内容が外部AI判定リクエストに含まれ、2リスト解析の照合テキストとして使用されます。具体的に記入してください。</p>
             </div>
             <div class="field">
               <div class="control">
-                <button class="button is-primary is-light" type="submit">用途概要を保存</button>
+                <button class="btn btn-primary" type="submit">用途概要を保存</button>
               </div>
             </div>
           </form>
 
-          <div class="buttons">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
             <form method="post" action="/products/{{ product.id }}/external/request">
-              <button class="button is-info is-light" type="submit">
-                外部AIへ判定依頼
-              </button>
+              <button class="btn btn-primary" type="submit">外部AIへ判定依頼</button>
             </form>
-
-            <!-- 更新ボタン（ページリロード） -->
-            <button class="button is-light" type="button" onclick="location.reload();">
-              最新結果を更新
-            </button>
+            <button class="btn" type="button" onclick="location.reload();">最新結果を更新</button>
           </div>
 
           <form method="post" action="/products/{{ product.id }}/external/manual">
@@ -456,9 +552,7 @@
 
             <div class="field">
               <div class="control">
-                <button class="button is-warning is-light" type="submit">
-                  外部AI結果を手動保存
-                </button>
+                <button class="btn" type="submit">外部AI結果を手動保存</button>
               </div>
             </div>
           </form>
@@ -518,12 +612,193 @@
     </div>
 
     <script>
+    // =====================================================================
+    // 輸出管理 判定明細テーブル
+    // =====================================================================
+    (function() {
+      const SAVED_ITEMS   = {{ (export_control_items | default([])) | tojson }};
+      const EXT_PAYLOAD   = {{ (product.external_eval_payload or 'null') | tojson }};
+      const ROW_COUNT     = 10;
+
+      const DECISION_OPTIONS = [
+        { value: "",            label: "（未判定）" },
+        { value: "controlled",  label: "該当" },
+        { value: "non_controlled", label: "非該当" },
+        { value: "needs_review",label: "要確認" },
+        { value: "exempted",    label: "適用除外" },
+      ];
+
+      function buildSelectHtml(selected) {
+        return DECISION_OPTIONS.map(function(o) {
+          var sel = (o.value === selected) ? ' selected' : '';
+          return '<option value="' + o.value + '"' + sel + '>' + o.label + '</option>';
+        }).join('');
+      }
+
+      function renderRows(items) {
+        var tbody = document.getElementById('ecItemsBody');
+        var rows = [];
+        var total = Math.max(ROW_COUNT, items.length);
+        for (var i = 0; i < total; i++) {
+          var it = items[i] || { rule_item_no: '', decision: '', comment: '', recorded_at: '' };
+          var dt = it.recorded_at || '';
+          rows.push(
+            '<tr style="border-bottom:1px solid var(--border);">'
+            + '<td style="padding:6px 8px;">'
+            +   '<input type="text" class="ec-item-no" value="' + _esc(it.rule_item_no) + '" placeholder="EL-7-19"'
+            +   ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;">'
+            + '</td>'
+            + '<td style="padding:6px 8px;">'
+            +   '<select class="ec-decision" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:.82rem; font-family:inherit;">'
+            +   buildSelectHtml(it.decision)
+            +   '</select>'
+            + '</td>'
+            + '<td style="padding:6px 8px;">'
+            +   '<input type="text" class="ec-comment" value="' + _esc(it.comment || '') + '" placeholder="メモ"'
+            +   ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;">'
+            + '</td>'
+            + '<td style="padding:6px 8px; width:130px;">'
+            +   '<span class="ec-datetime" data-value="' + _esc(dt) + '"'
+            +   ' style="display:block; font-size:.75rem; color:var(--muted); white-space:nowrap;">'
+            +   (dt || '—') + '</span>'
+            + '</td>'
+            + '<td style="padding:6px 4px; text-align:center;">'
+            +   '<button type="button" onclick="removeEcRow(this)" title="削除"'
+            +   ' style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1rem; line-height:1; padding:2px 4px;">&times;</button>'
+            + '</td>'
+            + '</tr>'
+          );
+        }
+        tbody.innerHTML = rows.join('');
+      }
+
+      function _esc(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+      }
+
+      window.addEcRow = function() {
+        var tbody = document.getElementById('ecItemsBody');
+        var tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid var(--border)';
+        tr.innerHTML = '<td style="padding:6px 8px;">'
+          + '<input type="text" class="ec-item-no" placeholder="EL-7-19"'
+          + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;">'
+          + '</td>'
+          + '<td style="padding:6px 8px;">'
+          + '<select class="ec-decision" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:.82rem; font-family:inherit;">'
+          + buildSelectHtml('')
+          + '</select>'
+          + '</td>'
+          + '<td style="padding:6px 8px;">'
+          + '<input type="text" class="ec-comment" placeholder="メモ"'
+          + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;">'
+          + '</td>'
+          + '<td style="padding:6px 8px; width:130px;">'
+          + '<span class="ec-datetime" data-value=""'
+          + ' style="display:block; font-size:.75rem; color:var(--muted); white-space:nowrap;">—</span>'
+          + '</td>'
+          + '<td style="padding:6px 4px; text-align:center;">'
+          + '<button type="button" onclick="removeEcRow(this)" title="削除"'
+          + ' style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1rem; line-height:1; padding:2px 4px;">&times;</button>'
+          + '</td>';
+        tbody.appendChild(tr);
+      };
+
+      window.removeEcRow = function(btn) {
+        var tr = btn.closest('tr');
+        if (tr) tr.remove();
+      };
+
+      // 外部AI判定から転記
+      window.transferFromAI = function() {
+        var payload = null;
+        try { payload = JSON.parse(EXT_PAYLOAD); } catch(e) {}
+        if (!payload) {
+          alert('外部AI判定の結果がまだ保存されていません。先に外部AIへ判定依頼を行ってください。');
+          return;
+        }
+
+        // payload が {payload: {...}} の場合もある
+        var inner = payload;
+        if (payload.payload && typeof payload.payload === 'object') {
+          inner = payload.payload;
+        }
+
+        var mm = inner.matrix_matches_top;
+        if (!Array.isArray(mm) || mm.length === 0) {
+          alert('外部AI判定結果に matrix_matches_top が見つかりませんでした。');
+          return;
+        }
+
+        // decision マッピング
+        var decisionMap = {
+          'intersection': 'controlled',
+          'core_only':    'needs_review',
+          'list2_only':   'needs_review',
+          'not_matched':  'non_controlled',
+        };
+
+        var items = mm.map(function(m) {
+          var ev = (m.evidence && typeof m.evidence === 'object') ? m.evidence : {};
+          var ruleNo = ev.rule_item_no || m.rule_item_no || '';
+          var rawDec = m.decision || ev.decision || '';
+          var mappedDec = decisionMap[rawDec] || '';
+          return { rule_item_no: ruleNo, decision: mappedDec, comment: rawDec, recorded_at: '' };
+        });
+
+        if (confirm('外部AI判定の ' + items.length + ' 件を転記します。現在の入力内容は上書きされます。よろしいですか？')) {
+          renderRows(items);
+        }
+      };
+
+      // フォーム送信前に items_json を収集（内容のある行に現在日時をスタンプ）
+      window.collectItemsJson = function() {
+        var now = new Date();
+        var nowStr = now.getFullYear() + '-'
+          + String(now.getMonth() + 1).padStart(2, '0') + '-'
+          + String(now.getDate()).padStart(2, '0') + ' '
+          + String(now.getHours()).padStart(2, '0') + ':'
+          + String(now.getMinutes()).padStart(2, '0');
+
+        var rows = document.querySelectorAll('#ecItemsBody tr');
+        var items = [];
+        rows.forEach(function(tr) {
+          var no   = (tr.querySelector('.ec-item-no')  || {}).value || '';
+          var dec  = (tr.querySelector('.ec-decision') || {}).value || '';
+          var cmt  = (tr.querySelector('.ec-comment')  || {}).value || '';
+          var dtEl = tr.querySelector('.ec-datetime');
+          var dt   = '';
+
+          if (no.trim() || dec) {
+            // 内容がある行 → 現在日時で上書き
+            dt = nowStr;
+            if (dtEl) {
+              dtEl.setAttribute('data-value', dt);
+              dtEl.textContent = dt;
+            }
+          } else {
+            // 空行 → 既存の日時を保持
+            dt = dtEl ? (dtEl.getAttribute('data-value') || '') : '';
+          }
+
+          items.push({ rule_item_no: no.trim(), decision: dec, comment: cmt.trim(), recorded_at: dt });
+        });
+        document.getElementById('ecItemsJson').value = JSON.stringify(items);
+        return true;
+      };
+
+      // 初期描画
+      renderRows(SAVED_ITEMS);
+    })();
+
+    // =====================================================================
+    // HS判定モーダル
+    // =====================================================================
     (function() {
       const PRODUCT_ID      = {{ product.id }};
       const LAST_CANDIDATES = {{ hs_candidates | tojson }};
       let pollingTimer = null;
 
-      // フォームの現在値をDOMから取得（未保存の入力も含む）
       function _getFormValues() {
         return {
           name:        (document.querySelector('input[name="name"]')?.value       || '').trim(),
@@ -638,7 +913,6 @@
         var hasClass = fv.item_class.length > 0;
         var lowScore = topScore < 0.55;
 
-        // スコア別メッセージ
         var scoreMsg = '';
         if (topScore >= 0.7) {
           scoreMsg = '✅ 上位候補の類似度が高く、信頼性が高い結果です。';
@@ -648,7 +922,6 @@
           scoreMsg = '🔴 類似度が低めです（最高 ' + topScore.toFixed(3) + '）。品目情報を充実させてください。';
         }
 
-        // チェックリスト
         function ci(ok, label, hint) {
           var icon = ok ? '✅' : '⬜';
           var col  = ok ? '#257953' : '#888';
@@ -715,11 +988,10 @@
           + msg + '</div>';
       }
 
-      // グローバルに公開
-      window.openHsModal      = openHsModal;
+      window.openHsModal        = openHsModal;
       window.showLastCandidates = showLastCandidates;
-      window.closeHsModal     = closeHsModal;
-      window._applyCode       = _applyCode;
+      window.closeHsModal       = closeHsModal;
+      window._applyCode         = _applyCode;
     })();
     </script>
     <style>
@@ -730,108 +1002,6 @@
     }
     #hs-modal table tr:hover { background: #f0f7ff; }
     </style>
-
-    <!-- BOM 構成表示 -->
-    <div class="box">
-      <div class="level">
-        <div class="level-left">
-          <h2 class="subtitle is-5">BOM構成 / 原価内訳</h2>
-        </div>
-        <div class="level-right">
-          <a class="button is-small is-link is-light" href="/products/{{ product.id }}/bom">BOM CSV アップロード</a>
-          <a class="button is-small is-light ml-2" href="/products/{{ product.id }}/bom/history">BOM 履歴</a>
-        </div>
-      </div>
-
-      {% if bom_components %}
-        <table class="table is-fullwidth is-striped is-hoverable">
-          <thead>
-            <tr>
-              <th>種別</th>
-              <th>コード</th>
-              <th>名称</th>
-              <th>クラス</th>
-              <th class="has-text-right">構成比 (%)</th>
-              <th class="has-text-right">単価</th>
-              <th class="has-text-right">金額</th>
-              <th>メモ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for c in bom_components %}
-              <tr>
-                <td>
-                  {% if c.kind == "material" %}
-                    <span class="tag is-info is-light">Material</span>
-                  {% else %}
-                    <span class="tag is-dark is-light">Overhead</span>
-                  {% endif %}
-                </td>
-                <td>{{ c.code }}</td>
-                <td>{{ c.name }}</td>
-                <td>{{ c.item_class }}</td>
-                <td class="has-text-right">
-                  {% if c.ratio is not none %}
-                    {{ "%.2f"|format(c.ratio * 100) }}
-                  {% else %}
-                    -
-                  {% endif %}
-                </td>
-                <td class="has-text-right">
-                  {% if c.std_price is not none %}
-                    {{ "%.2f"|format(c.std_price) }}
-                  {% else %}
-                    -
-                  {% endif %}
-                </td>
-                <td class="has-text-right">
-                  {% if c.cost is not none %}
-                    {{ "%.2f"|format(c.cost) }}
-                  {% else %}
-                    -
-                  {% endif %}
-                </td>
-                <td>{{ c.note }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-          <tfoot>
-            <tr>
-              <th colspan="4" class="has-text-right">合計</th>
-              <th class="has-text-right">{{ "%.2f"|format(bom_total_ratio * 100) }} %</th>
-              <th></th>
-              <th class="has-text-right">{{ "%.2f"|format(bom_total_cost) }}</th>
-              <th></th>
-            </tr>
-          </tfoot>
-        </table>
-        <p class="is-size-7 has-text-grey">
-          ※ 構成比は 0〜100% 表記。標準価格は Material + Overhead の合計コストです。
-        </p>
-      {% else %}
-        <p class="has-text-grey">BOMが登録されていません。Finished Goods の場合はBOM CSVをアップロードしてください。</p>
-      {% endif %}
-    </div>
-
-    <!-- SDS 関連リンク -->
-    <div class="box">
-      <h2 class="subtitle is-5">SDS / 規制情報</h2>
-      <div class="field is-grouped">
-        <div class="control">
-          <a class="button is-small is-link is-light" href="/products/{{ product.id }}/sds">
-            SDS PDF アップロード &amp; AI解析
-          </a>
-        </div>
-        {% if product.sds_file_path %}
-          <div class="control">
-            <span class="tag is-success is-light">SDS 登録済み</span>
-          </div>
-        {% endif %}
-      </div>
-      <p class="is-size-7 has-text-grey">
-        将来的にここから GPT による自動該非判定も呼び出せるように拡張できます。
-      </p>
-    </div>
 
   </div>
 </section>

@@ -567,13 +567,26 @@
   <div class="card-title">📦 品目管理への登録</div>
 
   {% if profile.promoted_product_id %}
-    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
       <span style="color:#22863a; font-weight:600; font-size:.9rem;">✓ 品目管理へ登録済み</span>
       <span style="font-size:.8rem; color:var(--muted);">製品ID: #{{ profile.promoted_product_id }}</span>
       {% if profile.promoted_at %}
       <span style="font-size:.78rem; color:var(--muted);">
         {{ profile.promoted_at.strftime('%Y-%m-%d %H:%M') }}
       </span>
+      {% endif %}
+      {# UI審査ステータスバッジ #}
+      {% if product_eval %}
+        {% set ui_status = product_eval.get('external_eval_status') %}
+        {% if ui_status == 'controlled' %}
+          <span style="background:#d73a49;color:#fff;border-radius:5px;padding:2px 8px;font-size:.75rem;font-weight:600;">⚠ 規制対象 (UI審査)</span>
+        {% elif ui_status == 'needs_review' %}
+          <span style="background:#f66a0a;color:#fff;border-radius:5px;padding:2px 8px;font-size:.75rem;font-weight:600;">要確認 (UI審査)</span>
+        {% elif ui_status == 'non_controlled' %}
+          <span style="background:#22863a;color:#fff;border-radius:5px;padding:2px 8px;font-size:.75rem;font-weight:600;">✓ 非規制 (UI審査)</span>
+        {% elif ui_status in ('queued', 'running') %}
+          <span style="background:#6c757d;color:#fff;border-radius:5px;padding:2px 8px;font-size:.75rem;">UI審査 判定中...</span>
+        {% endif %}
       {% endif %}
     </div>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -585,6 +598,13 @@
       <a href="http://localhost:8001/ui/transactions/{{ profile.ai_validation_transaction_id }}"
          target="_blank" class="btn" style="font-size:.82rem; padding:6px 14px;">
         RND審査を見る →
+      </a>
+      {% endif %}
+      {% if product_eval and product_eval.get('ui_validation_transaction_id') %}
+      <a href="http://localhost:8001/ui/transactions/{{ product_eval.ui_validation_transaction_id }}"
+         target="_blank" class="btn"
+         style="font-size:.82rem; padding:6px 14px; background:#1565c0; color:#fff;">
+        UI審査を見る →
       </a>
       {% endif %}
     </div>
@@ -626,6 +646,27 @@
 </div>
 <script>
   setTimeout(function(){ var t = document.getElementById('promotedToast'); if(t) t.style.display='none'; }, 4000);
+</script>
+{% endif %}
+
+{% set promote_error = request.query_params.get('promote_error') %}
+{% if promote_error %}
+<div style="
+  position:fixed; bottom:24px; right:24px; z-index:9999;
+  background:#d73a49; color:#fff; border-radius:10px;
+  padding:14px 20px; font-size:.9rem; font-weight:600;
+  box-shadow:0 4px 16px rgba(0,0,0,0.2); max-width:340px;
+" id="promoteErrorToast">
+  {% if promote_error == 'connection' %}
+    ⚠️ 品目管理モジュールに接続できません。<br>
+    <span style="font-weight:400;font-size:.82rem;">サービス（ポート 8002）が起動しているか確認してください。</span>
+  {% else %}
+    ⚠️ 品目登録中にエラーが発生しました。<br>
+    <span style="font-weight:400;font-size:.82rem;">しばらく待ってから再試行してください。</span>
+  {% endif %}
+</div>
+<script>
+  setTimeout(function(){ var t = document.getElementById('promoteErrorToast'); if(t) t.style.display='none'; }, 7000);
 </script>
 {% endif %}
 
