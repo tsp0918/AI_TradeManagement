@@ -12,6 +12,9 @@
   <header>
     <span class="logo">AI <em>Trade</em> Management</span>
     <span class="version">v{{ version }}</span>
+    <button id="panel-toggle-btn" class="panel-toggle-btn" title="チートシート / AIコーチ (Ctrl+/)">
+      <span class="panel-toggle-icon">?</span>
+    </button>
   </header>
 
   <!-- ─── Sidebar ─────────────────────────────────────────────── -->
@@ -76,6 +79,34 @@
     </div>
     <iframe id="module-frame" style="display: none;"></iframe>
     {% endif %}
+
+    <!-- ─── DAP 右パネル（main 内に配置 → position:absolute が確実に機能） -->
+    <aside id="dap-panel">
+      <!-- パネルヘッダー -->
+      <div class="dap-panel-header">
+        <span id="dap-panel-module-icon" class="dap-panel-module-icon">📌</span>
+        <span id="dap-panel-module-name" class="dap-panel-module-name">チートシート</span>
+        <button class="dap-panel-close" id="dap-panel-close" title="閉じる (Ctrl+/)">✕</button>
+      </div>
+
+      <!-- チートシートコンテンツ -->
+      <div class="dap-panel-body" id="dap-panel-body">
+        <div class="dap-panel-loading">
+          <div class="dap-spinner"></div>
+          <span>読み込み中…</span>
+        </div>
+      </div>
+
+      <!-- AI エージェントエリア（将来実装） -->
+      <div class="dap-agent-area">
+        <div class="dap-agent-header">
+          <span class="dap-agent-icon">🤖</span>
+          <span class="dap-agent-title">AI コーチ</span>
+          <span class="dap-agent-badge">近日公開</span>
+        </div>
+        <p class="dap-agent-desc">入力支援・エラー先回り・ワークフロー伴走のAIエージェントが間もなく利用可能になります。</p>
+      </div>
+    </aside>
   </main>
 
   <script src="/static/platform.js"></script>

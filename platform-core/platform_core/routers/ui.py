@@ -46,6 +46,18 @@ _MODULE_ICONS: dict[str, str] = {
     "screening":         "🛡️",
 }
 
+# 案件ダッシュボード（固定エントリ、最初に表示）
+_DASHBOARD_ENTRY = {
+    "key":               "dashboard",
+    "name":              "案件ダッシュボード",
+    "description":       "審査進行中案件の一覧と未完了アクション",
+    "base_url":          "",
+    "iframe_url":        "/ui/dashboard",
+    "icon":              "📊",
+    "health_check_path": "",
+    "nav_section":       "admin",
+}
+
 # platform-core 自身の固定エントリ
 _PLATFORM_ENTRY = {
     "key":               "platform-core",
@@ -262,11 +274,34 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
     for m in result.scalars().all():
         known[m.key] = _build_module_entry(m)
 
-    modules = [_PLATFORM_ENTRY] + list(known.values())
+    modules = [_DASHBOARD_ENTRY, _PLATFORM_ENTRY] + list(known.values())
 
     return templates.TemplateResponse(
         "home.html",
         {"request": request, "modules": modules, "version": "0.1.0"},
+    )
+
+
+@router.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
+async def dashboard(request: Request):
+    """案件ダッシュボード — ai_validation から直近案件を取得して表示。"""
+    ai_validation_url = "http://localhost:8001"
+    transactions: list[dict] = []
+    error: str | None = None
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{ai_validation_url}/api/transactions/recent?limit=5")
+        if resp.status_code == 200:
+            transactions = resp.json().get("transactions", [])
+        else:
+            error = f"ai_validation API エラー (HTTP {resp.status_code})"
+    except Exception as exc:
+        error = "AI該非判定モジュールに接続できません。起動しているか確認してください。"
+
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request, "transactions": transactions, "error": error},
     )
 
 
@@ -286,7 +321,7 @@ async def platform_dashboard(request: Request, db: AsyncSession = Depends(get_db
 @router.get("/health/{module_key}", include_in_schema=False)
 async def module_health(module_key: str, db: AsyncSession = Depends(get_db)):
     """モジュールヘルスチェックのサーバー側プロキシ (CORS 回避)。"""
-    if module_key == "platform-core":
+    if module_key in ("platform-core", "dashboard"):
         return {"status": "online"}
 
     # DB 優先、未登録の場合は既知モジュール設定で代替

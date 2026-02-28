@@ -8,6 +8,9 @@
 
 const TRIGGER_LABELS = {
   "field_blur":     "フォーカスアウト時",
+  "field_focus":    "フォーカス取得時",
+  "field_change":   "値変更時",
+  "field_input":    "入力中（リアルタイム）",
   "attempt_action": "ボタン押下時",
   "page_load":      "ページ読込時",
 };
@@ -67,6 +70,7 @@ const state = {
   rules:           [],
   interventions:   new Map(),   // pageId -> DapIntervention[]
   publishedVersion: null,
+  hasPendingChanges: false,     // true if edits made since last publish
   expandedCardId:  null,        // currently open card id
   expandedPageId:  null,        // which page the expanded card belongs to
   dirtyCard:       null,        // draft copy while editing
@@ -128,7 +132,8 @@ async function setApp(appId, appKey) {
   state.pages = pages;
   state.rules = rules;
   state.publishedVersion = rel.version || null;
-  updatePublishBadge();
+  state.hasPendingChanges = false;
+  updateDeployStatus();
 
   // Load targets + interventions for each page in parallel
   state.targets.clear();
@@ -148,17 +153,46 @@ async function loadPageData(pageId) {
 }
 
 // ============================================================
-// SECTION 5: Publish Badge
+// SECTION 5: Deploy Status
 // ============================================================
 
-function updatePublishBadge() {
+function updateDeployStatus() {
   const badge = document.getElementById("versionBadge");
-  if (state.publishedVersion) {
-    badge.textContent = "配信中: v" + state.publishedVersion;
-    badge.classList.remove("noPub");
+  const bar   = document.getElementById("deployStatusBar");
+  const btn   = document.getElementById("btnPublish");
+  const pub   = state.publishedVersion;
+  const dirty = state.hasPendingChanges;
+
+  // --- Sidebar badge ---
+  if (pub && !dirty) {
+    badge.textContent = "● 配信中 v" + pub;
+    badge.className   = "versionBadge isLive";
+  } else if (pub && dirty) {
+    badge.textContent = "⚠ v" + pub + " (変更あり)";
+    badge.className   = "versionBadge hasPending";
   } else {
-    badge.textContent = "未配信";
-    badge.classList.add("noPub");
+    badge.textContent = "○ 未配信";
+    badge.className   = "versionBadge noPub";
+  }
+
+  // --- Publish button ---
+  if (dirty || !pub) {
+    btn.classList.add("needsPublish");
+  } else {
+    btn.classList.remove("needsPublish");
+  }
+
+  // --- Scenarios tab status bar ---
+  if (!bar) return;
+  if (pub && !dirty) {
+    bar.className = "deployStatusBar isLive";
+    bar.innerHTML = `<span class="dsIcon">🟢</span><span class="dsText">配信中 <strong>v${pub}</strong> — すべてのサポートがライブです</span>`;
+  } else if (pub && dirty) {
+    bar.className = "deployStatusBar isPending";
+    bar.innerHTML = `<span class="dsIcon">🟡</span><span class="dsText">配信中 <strong>v${pub}</strong> — 未配信の変更があります <button class="dsPublishBtn" onclick="publish()">今すぐ Publish →</button></span>`;
+  } else {
+    bar.className = "deployStatusBar isDraft";
+    bar.innerHTML = `<span class="dsIcon">⚫</span><span class="dsText">未配信 — サイドバーの <strong>Publish</strong> ボタンで配信してください</span>`;
   }
 }
 
@@ -196,9 +230,14 @@ function buildPageSection(page) {
         <span class="pageName">${esc(page.name || page.page_key)}</span>
         <span class="pageUrl">${esc(page.url_regex)}</span>
       </div>
-      <button class="btnIcon danger" data-action="deletePage" data-page-id="${page.id}"
-        title="ページを削除">🗑</button>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btnGhost btnSm" data-action="addTarget" data-page-id="${page.id}"
+          title="CSSセレクタでターゲットを登録">＋ ターゲット追加</button>
+        <button class="btnIcon danger" data-action="deletePage" data-page-id="${page.id}"
+          title="ページを削除">🗑</button>
+      </div>
     </div>
+    <div class="pageTargets" id="pageTargets_${page.id}">${buildTargetsHTML(page.id)}</div>
     <div class="interventionList" data-page-id="${page.id}"></div>
     <button class="btnAddIntervention" data-action="addIntervention" data-page-id="${page.id}">
       ＋ 新しいガイダンスを追加
@@ -206,6 +245,21 @@ function buildPageSection(page) {
 
   fillInterventionList(section.querySelector(".interventionList"), page.id);
   return section;
+}
+
+function buildTargetsHTML(pageId) {
+  const targets = state.targets.get(pageId) || [];
+  if (!targets.length) {
+    return `<div class="emptyTargets">ターゲット未登録 — 「＋ ターゲット追加」または Recorder (Shift+Alt+R) で登録してください</div>`;
+  }
+  return `<div class="targetsGrid">${targets.map(t => `
+    <div class="targetChip">
+      <span class="targetChipIcon">🎯</span>
+      <span class="targetChipKey">${esc(t.target_key)}</span>
+      <span class="targetChipDesc">${esc(t.description || "")}</span>
+      <button class="btnIconXs danger" data-action="deleteTarget"
+        data-target-id="${t.id}" data-page-id="${pageId}" title="削除">✕</button>
+    </div>`).join("")}</div>`;
 }
 
 function fillInterventionList(listEl, pageId) {
@@ -286,8 +340,9 @@ function actionIconFor(iv) {
 // ---- Expanded card HTML ----
 function buildExpandedHTML(dirty, pageId) {
   const targets = state.targets.get(pageId) || [];
-  const triggerType = dirty.triggerType || (dirty.trigger?.type) || "field_blur";
-  const triggerTargetId = dirty.triggerTargetId || dirty.trigger?.target_id || "";
+  const triggerType    = dirty.triggerType    || (dirty.trigger?.type)      || "field_blur";
+  const triggerTargetId = dirty.triggerTargetId || dirty.trigger?.target_id  || "";
+  const triggerDelayMs  = dirty.triggerDelayMs  ?? (dirty.trigger?.delay_ms) ?? 0;
   const ruleType  = dirty._ruleType || "always";
   const tone      = dirty.coachTone || (dirty.coach?.tone) || "senior_supportive";
   const opening   = dirty.coachOpening || (dirty.coach?.opening) || "";
@@ -300,11 +355,14 @@ function buildExpandedHTML(dirty, pageId) {
 
   // Trigger radios
   const triggerRadios = [
-    { value: "field_blur",     label: "フォーカスアウト時" },
-    { value: "attempt_action", label: "ボタン押下時" },
-    { value: "page_load",      label: "ページ読込時" },
+    { value: "field_blur",     label: "フォーカスアウト時",       hint: "入力欄からフォーカスが外れた瞬間" },
+    { value: "field_focus",    label: "フォーカス取得時",         hint: "入力欄をクリック・Tabで入った瞬間" },
+    { value: "field_change",   label: "値変更時",                 hint: "値が確定して変わった瞬間（select / checkbox 向き）" },
+    { value: "field_input",    label: "入力中（リアルタイム）",   hint: "キー入力ごとに評価（feedback 遅延推奨）" },
+    { value: "attempt_action", label: "ボタン押下時",             hint: "送信・実行ボタンのクリック直前" },
+    { value: "page_load",      label: "ページ読込時",             hint: "ページを開いた直後に自動発動" },
   ].map(opt => `
-    <label class="radioLabel">
+    <label class="radioLabel" title="${esc(opt.hint)}">
       <input type="radio" name="triggerType_${dirty.id}" value="${opt.value}"
         ${triggerType === opt.value ? "checked" : ""} data-field="triggerType">
       ${opt.label}
@@ -358,6 +416,12 @@ function buildExpandedHTML(dirty, pageId) {
         <div class="formSection">
           <div class="formSectionTitle">⚡ トリガー</div>
           <div class="radioGroup">${triggerRadios}</div>
+          <label class="formLabel" style="margin-top:8px;">⏱ 遅延（ms）— イベント発火から何ミリ秒後に評価するか</label>
+          <input type="number" class="input" data-field="triggerDelayMs"
+            placeholder="0" min="0" max="30000" step="500"
+            value="${triggerDelayMs}"
+            style="width:140px;">
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">例: 3000 = 3秒後。field_input など頻繁に発火するトリガーに設定推奨。</div>
         </div>
 
         <div class="formSection">
@@ -631,13 +695,14 @@ function openCard(ivId, pageId) {
   state.expandedPageId = pageId;
   state.dirtyCard = deepClone(iv);
   // Set UI-only fields
-  state.dirtyCard._name         = iv.name || "";
-  state.dirtyCard.triggerType   = iv.trigger?.type || "field_blur";
+  state.dirtyCard._name          = iv.name || "";
+  state.dirtyCard.triggerType    = iv.trigger?.type || "field_blur";
   state.dirtyCard.triggerTargetId = iv.trigger?.target_id || "";
-  state.dirtyCard._ruleType     = resolveRuleTypeFromKey(iv.rule_key);
-  state.dirtyCard.coachTone     = iv.coach?.tone || "senior_supportive";
-  state.dirtyCard.coachOpening  = iv.coach?.opening || "";
-  state.dirtyCard.id            = iv.id;
+  state.dirtyCard.triggerDelayMs  = iv.trigger?.delay_ms ?? 0;
+  state.dirtyCard._ruleType      = resolveRuleTypeFromKey(iv.rule_key);
+  state.dirtyCard.coachTone      = iv.coach?.tone || "senior_supportive";
+  state.dirtyCard.coachOpening   = iv.coach?.opening || "";
+  state.dirtyCard.id             = iv.id;
 
   rerenderPageSection(pageId);
   // Scroll the card into view
@@ -699,11 +764,10 @@ function addAction() {
   state.dirtyCard.actions = state.dirtyCard.actions || [];
   state.dirtyCard.actions.push({ type: "tooltip", params: {} });
   // Re-render just the actions wrap
-  const ivId = state.dirtyCard.id;
+  const ivId   = state.dirtyCard.id;
   const pageId = state.expandedPageId;
-  const wrap = document.getElementById(`actionsWrap_${ivId}`);
+  const wrap   = document.getElementById(`actionsWrap_${ivId}`);
   if (wrap) {
-    const targets = state.targets.get(pageId) || [];
     wrap.innerHTML = state.dirtyCard.actions.map((a, i) =>
       buildActionRowHTML(a, i, pageId)
     ).join("") || `<div style="color:var(--muted);font-size:12px;">アクションがありません</div>`;
@@ -717,7 +781,6 @@ function removeAction(actionIdx) {
   const pageId = state.expandedPageId;
   const wrap   = document.getElementById(`actionsWrap_${ivId}`);
   if (wrap) {
-    const targets = state.targets.get(pageId) || [];
     wrap.innerHTML = state.dirtyCard.actions.map((a, i) =>
       buildActionRowHTML(a, i, pageId)
     ).join("") || `<div style="color:var(--muted);font-size:12px;">アクションがありません</div>`;
@@ -744,9 +807,14 @@ async function saveCard(ivId, pageId) {
     return norm;
   });
 
+  const delayMs = Number(d.triggerDelayMs) || 0;
   const payload = {
     name:         d._name || d.name || "",
-    trigger:      { type: d.triggerType, target_id: d.triggerTargetId || undefined },
+    trigger:      {
+      type:      d.triggerType,
+      target_id: d.triggerTargetId || undefined,
+      ...(delayMs > 0 ? { delay_ms: delayMs } : {}),
+    },
     rule_key:     ruleKey,
     block_action: actions.some(a => a.type === "block_action") ? 1 : 0,
     coach:        { tone: d.coachTone, opening: d.coachOpening },
@@ -767,8 +835,10 @@ async function saveCard(ivId, pageId) {
       state.interventions.set(pageId, ivs);
     }
 
+    state.hasPendingChanges = true;
+    updateDeployStatus();
     closeCard();
-    showToast("保存しました", "success");
+    showToast("保存しました（Publish で配信）", "success");
   } catch (err) {
     showToast("保存に失敗しました: " + err.message, "error");
   }
@@ -806,6 +876,8 @@ async function createIntervention(pageId) {
     ivs.unshift(newIv);
     state.interventions.set(pageId, ivs);
 
+    state.hasPendingChanges = true;
+    updateDeployStatus();
     rerenderPageSection(pageId);
     openCard(result.id, pageId);
   } catch (err) {
@@ -824,8 +896,82 @@ async function deleteIntervention(ivId, pageId) {
       state.expandedPageId = null;
       state.dirtyCard      = null;
     }
+    state.hasPendingChanges = true;
+    updateDeployStatus();
     rerenderPageSection(pageId);
     showToast("削除しました", "warn");
+  } catch (err) {
+    showToast("削除に失敗しました: " + err.message, "error");
+  }
+}
+
+// ============================================================
+// SECTION 8.5: Target CRUD
+// ============================================================
+
+function openAddTargetDialog(pageId) {
+  document.getElementById("dlgTargetPageId").value = pageId;
+  document.getElementById("dlgTargetKey").value    = "";
+  document.getElementById("dlgTargetCss").value    = "";
+  document.getElementById("dlgTargetDesc").value   = "";
+  document.getElementById("addTargetDialog").showModal();
+  // 最初のフィールドにフォーカス
+  setTimeout(() => document.getElementById("dlgTargetKey").focus(), 80);
+}
+
+async function saveNewTarget() {
+  const pageId = Number(document.getElementById("dlgTargetPageId").value);
+  const key    = document.getElementById("dlgTargetKey").value.trim();
+  const css    = document.getElementById("dlgTargetCss").value.trim();
+  const desc   = document.getElementById("dlgTargetDesc").value.trim();
+
+  if (!key || !css) {
+    showToast("target_key と CSSセレクタは必須です", "warn");
+    return;
+  }
+
+  try {
+    const result = await api("/api/targets/upsert", {
+      method: "POST",
+      body: JSON.stringify({
+        page_id:    pageId,
+        target_key: key,
+        description: desc || key,
+        anchors: [{ strategy: "css", value: css }],
+      }),
+    });
+    const targets    = state.targets.get(pageId) || [];
+    const newTarget  = { id: result.id, page_id: pageId, target_key: key, description: desc || key, anchors: [{ strategy: "css", value: css }] };
+    const existingIdx = targets.findIndex(t => t.target_key === key);
+    if (existingIdx >= 0) {
+      targets[existingIdx] = newTarget;
+    } else {
+      targets.push(newTarget);
+    }
+    state.targets.set(pageId, targets);
+
+    document.getElementById("addTargetDialog").close();
+    const targetsEl = document.getElementById(`pageTargets_${pageId}`);
+    if (targetsEl) targetsEl.innerHTML = buildTargetsHTML(pageId);
+    state.hasPendingChanges = true;
+    updateDeployStatus();
+    showToast("ターゲットを追加しました", "success");
+  } catch (err) {
+    showToast("追加に失敗しました: " + err.message, "error");
+  }
+}
+
+async function deleteTarget(targetId, pageId) {
+  if (!confirm("このターゲットを削除しますか？\n関連するガイダンスのトリガーに影響が出る場合があります。")) return;
+  try {
+    await api(`/api/targets/${targetId}`, { method: "DELETE" });
+    const targets = (state.targets.get(pageId) || []).filter(t => t.id !== targetId);
+    state.targets.set(pageId, targets);
+    const targetsEl = document.getElementById(`pageTargets_${pageId}`);
+    if (targetsEl) targetsEl.innerHTML = buildTargetsHTML(pageId);
+    state.hasPendingChanges = true;
+    updateDeployStatus();
+    showToast("ターゲットを削除しました", "warn");
   } catch (err) {
     showToast("削除に失敗しました: " + err.message, "error");
   }
@@ -904,8 +1050,9 @@ async function publish() {
       body: JSON.stringify({ app_id: state.currentAppId, env: "local" }),
     });
     state.publishedVersion = result.version;
-    updatePublishBadge();
-    showToast(`v${result.version} を配信しました`, "success");
+    state.hasPendingChanges = false;
+    updateDeployStatus();
+    showToast(`v${result.version} を配信しました ✓`, "success");
   } catch (err) {
     showToast("配信に失敗しました: " + err.message, "error");
   } finally {
@@ -1032,6 +1179,17 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("addPageDialog").close();
   });
 
+  // Add Target dialog
+  document.getElementById("dlgTargetSave").addEventListener("click", saveNewTarget);
+  document.getElementById("dlgTargetCancel").addEventListener("click", () => {
+    document.getElementById("addTargetDialog").close();
+  });
+  // Enterキーでも保存
+  document.getElementById("addTargetDialog").addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveNewTarget(); }
+    if (e.key === "Escape") document.getElementById("addTargetDialog").close();
+  });
+
   // Analytics reload
   document.getElementById("btnLoadAnalytics").addEventListener("click", loadAnalytics);
 
@@ -1071,6 +1229,12 @@ document.addEventListener("DOMContentLoaded", () => {
         break;
       case "removeAction":
         removeAction(actIdx);
+        break;
+      case "addTarget":
+        openAddTargetDialog(pageId);
+        break;
+      case "deleteTarget":
+        deleteTarget(Number(btn.dataset.targetId), pageId);
         break;
     }
   });

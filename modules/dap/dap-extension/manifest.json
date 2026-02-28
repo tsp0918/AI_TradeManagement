@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DAP Coach",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "background": {
     "service_worker": "background.js"
   },
@@ -9,14 +9,42 @@
   "host_permissions": [
     "http://localhost:8000/*",
     "http://127.0.0.1:8000/*",
-    "http://localhost:8710/*",
-    "http://127.0.0.1:8710/*"
+    "http://localhost:8001/*",
+    "http://127.0.0.1:8001/*",
+    "http://localhost:8002/*",
+    "http://127.0.0.1:8002/*",
+    "http://localhost:8003/*",
+    "http://127.0.0.1:8003/*",
+    "http://localhost:8004/*",
+    "http://127.0.0.1:8004/*",
+    "http://localhost:8005/*",
+    "http://127.0.0.1:8005/*",
+    "http://localhost:8006/*",
+    "http://127.0.0.1:8006/*",
+    "http://localhost:8010/*",
+    "http://127.0.0.1:8010/*"
   ],
   "content_scripts": [
     {
-      "matches": ["http://localhost:8000/*", "http://127.0.0.1:8000/*"],
+      "matches": [
+        "http://localhost:8000/*",
+        "http://127.0.0.1:8000/*",
+        "http://localhost:8001/*",
+        "http://127.0.0.1:8001/*",
+        "http://localhost:8002/*",
+        "http://127.0.0.1:8002/*",
+        "http://localhost:8003/*",
+        "http://127.0.0.1:8003/*",
+        "http://localhost:8004/*",
+        "http://127.0.0.1:8004/*",
+        "http://localhost:8005/*",
+        "http://127.0.0.1:8005/*",
+        "http://localhost:8006/*",
+        "http://127.0.0.1:8006/*"
+      ],
       "js": ["overlay.js", "engine.js", "recorder.js", "content.js"],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ]
 }

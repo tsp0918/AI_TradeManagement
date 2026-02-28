@@ -19,7 +19,7 @@ from .schemas import (
 )
 from .runtime_builder import build_runtime_config
 from .utils import stable_etag
-from .seed import seed_if_empty
+from .seed import seed_if_empty, ensure_new_apps
 
 MODULE = ModuleInfo(
     key="dap",
@@ -40,9 +40,13 @@ async def _startup() -> None:
     db = next(get_db())
     try:
         seed_if_empty(db)
+        ensure_new_apps(db)
     finally:
         db.close()
 
+
+import time as _time
+_STATIC_VER = str(int(_time.time()))  # cache-busting token; changes on every restart
 
 app = FastAPI(
     title="DAP Coach Server (Admin + Runtime)",
@@ -67,7 +71,7 @@ app.include_router(health_router)
 
 @app.get("/", response_class=HTMLResponse)
 def admin_home(request: Request):
-    return templates.TemplateResponse("admin.html", {"request": request})
+    return templates.TemplateResponse("admin.html", {"request": request, "sv": _STATIC_VER})
 
 # ─────────────────── Runtime Config ──────────────────────────────────────────
 
@@ -240,3 +244,223 @@ def post_event(payload: EventIn, db: Session = Depends(get_db)):
 def analytics_summary(app_key: str, db: Session = Depends(get_db)):
     rows = db.query(DapEvent).filter(DapEvent.app_key == app_key).order_by(DapEvent.created_at.desc()).limit(200).all()
     return [{"ts": r.ts, "page_id": r.page_id, "event_type": r.event_type, "event_name": r.event_name, "context": r.context} for r in rows]
+
+# ─────────────────── Cheatsheet API ──────────────────────────────────────────
+
+_CHEATSHEETS: dict[str, dict] = {
+    "ai_validation": {
+        "module": "AI該非判定",
+        "icon": "🔬",
+        "sections": [
+            {
+                "title": "📋 案件フロー",
+                "items": [
+                    "①案件を新規作成（品目・取引先を設定）",
+                    "②スクリーニング実行（制裁リストチェック）",
+                    "③AI判定を実行（外為法マトリクス照合）",
+                    "④結果を確認して CSV / PDF 出力",
+                ],
+            },
+            {
+                "title": "⚡ ショートカット",
+                "items": [
+                    "スクリーニング実行 → 案件詳細ページから「スクリーニングを実行」ボタン",
+                    "AI判定実行 → 「AI判定を実行」リンク（閾値 0.75 デフォルト）",
+                    "CSV出力 → 「↓ CSV」ボタン（Excelで開く場合はBOM付きUTF-8）",
+                    "PDF出力 → 「↓ PDF」ボタン（WeasyPrint生成）",
+                ],
+            },
+            {
+                "title": "🚦 ステータスの読み方",
+                "items": [
+                    "intersection（黄）: 直接 ∩ 参考、両方でヒット → 要注意",
+                    "core_only（青）: 直接リストのみヒット",
+                    "expanded_only（灰）: 参考リストのみ → 低リスク",
+                    "スクリーニング: match=🚨 / possible_match=⚠ / clear=✓",
+                ],
+            },
+            {
+                "title": "💡 入力のコツ",
+                "items": [
+                    "取引先企業名は英語正式法人名で入力（スクリーニング精度向上）",
+                    "案件タイトル例：「ArFフォトレジスト TS-4620 輸出審査 2025-Q1」",
+                    "用途要件：工程/装置/性能/条件/最終使用地 の4要素を必ず記載",
+                    "需要者要件：法人名・使用場所・第三者提供の有無を明記",
+                ],
+            },
+        ],
+    },
+    "screening": {
+        "module": "取引先スクリーニング",
+        "icon": "🛡",
+        "sections": [
+            {
+                "title": "📋 スクリーニングフロー",
+                "items": [
+                    "①企業名を入力（英語正式法人名推奨）",
+                    "②スクリーニング実行 → FAISSで意味類似度検索",
+                    "③スコアとリスクレベルを確認",
+                    "④match/possible_match は輸出管理担当者に確認",
+                ],
+            },
+            {
+                "title": "🚦 判定基準",
+                "items": [
+                    "match: スコア 0.95以上 → 制裁リストと高確率で一致",
+                    "possible_match: 0.75〜0.94 → 要人工確認",
+                    "clear: 0.75未満 → リストなし（ただし人工確認も推奨）",
+                ],
+            },
+            {
+                "title": "💡 検索精度のヒント",
+                "items": [
+                    "英語正式法人名で検索（例: Huawei Technologies Co., Ltd.）",
+                    "略称・日本語名でも検索可（セマンティック検索で対応）",
+                    "スコアが高い場合でも最終判断は人間が行う",
+                    "ウォッチリスト追加後は「インデックス再構築」を実行",
+                ],
+            },
+        ],
+    },
+    "ai_classification": {
+        "module": "品目管理",
+        "icon": "📦",
+        "sections": [
+            {
+                "title": "📋 品目管理フロー",
+                "items": [
+                    "①品目を新規登録（品目コード・名称・仕様）",
+                    "②HSコード判定（hs_classifier連携）",
+                    "③ECCN分類を設定",
+                    "④AI該非判定モジュールと連携",
+                ],
+            },
+            {
+                "title": "💡 入力のコツ",
+                "items": [
+                    "品目コードは「TS-XXXX」形式を推奨",
+                    "仕様テキストは英語・日本語混在可",
+                    "usage_summary に用途・規制観点を記載するとAI判定精度向上",
+                    "BOM（部品表）はフラットリスト形式で入力",
+                ],
+            },
+        ],
+    },
+    "rnd_assessment": {
+        "module": "R&D審査",
+        "icon": "🧪",
+        "sections": [
+            {
+                "title": "📋 審査フロー",
+                "items": [
+                    "①R&Dプロジェクト案件を新規作成",
+                    "②需要者要件プロファイルを入力",
+                    "③AI審査実行（リスクレベルを算出）",
+                    "④スクリーニング連携（エンドユーザー名でチェック）",
+                ],
+            },
+            {
+                "title": "⚠️ 入力必須項目",
+                "items": [
+                    "用途要件：工程/装置/対象/性能/最終使用地 の4要素",
+                    "需要者要件：法人名・使用場所・第三者提供の有無",
+                    "仕向国：EAR規制対象国（中国/ロシア/北朝鮮等）は特に注意",
+                ],
+            },
+            {
+                "title": "💡 コーチングヒント",
+                "items": [
+                    "用途が「研究用途」「一般用途」→ 具体化が必要",
+                    "需要者が「不明」「顧客」→ 審査不可、詳細確認を",
+                    "AI判定前に用途+需要者の2項目を必ず入力すること",
+                ],
+            },
+        ],
+    },
+    "dashboard": {
+        "module": "案件ダッシュボード",
+        "icon": "📊",
+        "sections": [
+            {
+                "title": "📋 ダッシュボードの見方",
+                "items": [
+                    "最新5件の案件と各ステップの進捗を表示",
+                    "①スクリーニング → ②AI判定 → ③報告書の順に進める",
+                    "赤=要注意 / 黄=要確認 / 緑=完了 / 灰=未実施",
+                ],
+            },
+            {
+                "title": "⚡ クイックアクション",
+                "items": [
+                    "「スクリーニングを実行」→ 制裁リストチェックを即時実行",
+                    "「AI解析を実行」→ 外為法マトリクス判定を開始",
+                    "「詳細を開く」→ ai_validationモジュールで案件詳細を表示",
+                ],
+            },
+        ],
+    },
+    "patent_search": {
+        "module": "特許検索",
+        "icon": "📄",
+        "sections": [
+            {
+                "title": "📋 特許検索フロー",
+                "items": [
+                    "①キーワードまたは技術説明文を入力",
+                    "②FAISSセマンティック検索で関連特許を取得",
+                    "③AI該非判定のusage_expandステップと連携",
+                ],
+            },
+        ],
+    },
+    "hs_classifier": {
+        "module": "HSコード判定",
+        "icon": "🏷",
+        "sections": [
+            {
+                "title": "📋 HSコード判定フロー",
+                "items": [
+                    "①品目管理から「HSコード判定を依頼」ボタンをクリック",
+                    "②品目仕様テキストでFAISS検索→HSコード候補を返す",
+                    "③結果はWebhookで品目管理に自動反映",
+                ],
+            },
+        ],
+    },
+    "dap": {
+        "module": "DAP / AIオーケストレーター",
+        "icon": "🤖",
+        "sections": [
+            {
+                "title": "📋 DAP管理",
+                "items": [
+                    "各モジュールの入力補助ルールを管理",
+                    "アプリ・ページ・ターゲット・ルール・介入を設定",
+                    "Chrome拡張と連携してリアルタイムコーチングを実施",
+                ],
+            },
+        ],
+    },
+}
+
+
+@app.get("/api/cheatsheet/{module_key}")
+def get_cheatsheet(module_key: str):
+    """
+    モジュール別チートシートを返す。
+    platform-core の右パネルから呼ばれる。
+    """
+    data = _CHEATSHEETS.get(module_key)
+    if not data:
+        # 未定義モジュールはシンプルなデフォルトを返す
+        return {
+            "module": module_key,
+            "icon": "📌",
+            "sections": [
+                {
+                    "title": "📋 このモジュールについて",
+                    "items": ["チートシートはまだ用意されていません。"],
+                }
+            ],
+        }
+    return data

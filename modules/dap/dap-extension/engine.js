@@ -126,7 +126,7 @@
   }
 
   function runRule(rule, ctx){
-    if(!rule) return {ok:true};
+    if(!rule) return {ok:false};  // null = "常に表示" → 必ず発動
     const params = rule.params || {};
     if(rule.type === "text_quality") return evalTextQuality(ctx.value || "", params);
     if(rule.type === "missing_or_generic") return evalMissingOrGeneric(ctx.value || "", params);
@@ -175,6 +175,15 @@
 
       this.attachListeners();
 
+      // page_load トリガー: DOM 安定後に発火
+      for(const iv of this.interventions){
+        const trg = iv.trigger || {};
+        if(trg.type !== "page_load") continue;
+        const delayMs = trg.delay_ms ?? 600;  // デフォルト0.6秒待ってから表示
+        if(delayMs > 0) await sleep(delayMs);
+        await this.evaluateAndRun(iv, {eventTarget: "page"});
+      }
+
       await postEvent(this.serverBase, {
         ts: nowIso(),
         app_key: this.appKey,
@@ -192,9 +201,19 @@
         this.handleFieldEvent("field_blur", e.target);
       }, true);
 
+      document.addEventListener("focusin", (e)=>{
+        if(!this.enabled) return;
+        this.handleFieldEvent("field_focus", e.target);
+      }, true);
+
       document.addEventListener("change", (e)=>{
         if(!this.enabled) return;
         this.handleFieldEvent("field_change", e.target);
+      }, true);
+
+      document.addEventListener("input", (e)=>{
+        if(!this.enabled) return;
+        this.handleFieldEvent("field_input", e.target);
       }, true);
 
       // capture click for attempt_action + blocking
@@ -239,6 +258,13 @@
         const trg = iv.trigger || {};
         if(trg.type !== triggerType) continue;
         if((trg.target_id || trg.target_key) !== tid) continue;
+
+        // delay_ms サポート: 指定ms後に発動（その間に別要素へ移動しても実行）
+        const delayMs = trg.delay_ms ?? 0;
+        if(delayMs > 0){
+          await sleep(delayMs);
+        }
+
         await this.evaluateAndRun(iv, {eventTarget: tid});
       }
     }
@@ -318,6 +344,48 @@
 
       // Execute actions
       window.DAPOverlay.clearAll();
+
+      // ── page_load 専用: スポットライト → チェックリスト 二段演出 ──
+      if ((iv.trigger || {}).type === "page_load") {
+        const tooltipAct   = (iv.actions || []).find(a => a.type === "tooltip");
+        const checklistAct = (iv.actions || []).find(a => a.type === "checklist");
+        const highlightAct = (iv.actions || []).find(a => a.type === "highlight");
+        const tid  = tooltipAct?.params?.target_id || highlightAct?.params?.target_id;
+        const tObj = tid ? this.targets.get(tid) : null;
+        const el   = tObj?.el;
+
+        // フェーズ1: 暗転 + ハイライト + ツールチップ
+        if (el) {
+          window.DAPOverlay.spotlight(el);
+          window.DAPOverlay.highlight(el);
+        }
+        if (el && tooltipAct) {
+          window.DAPOverlay.tooltip(
+            el,
+            "先輩より",
+            `${opening}\n\n${tooltipAct.params?.content || ""}`,
+            {
+              badge: toneBadge(tone),
+              primaryText:   tooltipAct.params?.primaryText || "入力してみる",
+              secondaryText: "スキップ",
+              onPrimary: () => {
+                // フェーズ2: 暗転解除 + チェックリストをelの横に表示
+                window.DAPOverlay.clearAll();
+                if (el && checklistAct) {
+                  window.DAPOverlay.panelNear(
+                    el,
+                    checklistAct.params?.title || "チェック",
+                    checklistAct.params?.items || [],
+                    { subtitle: opening }
+                  );
+                }
+              },
+              onSecondary: () => { window.DAPOverlay.clearAll(); },
+            }
+          );
+        }
+        return true;
+      }
 
       for(const act of (iv.actions || [])){
         const type = act.type;

@@ -1,7 +1,14 @@
 (async function () {
-  // ---- Change here if you want ----
-  const SERVER_BASE = "http://localhost:8710";
-  const APP_KEY = "rd_risk_local";
+  const SERVER_BASE = "http://localhost:8010";
+
+  // 現在のタブのポートから app_key を自動選択
+  const PORT_TO_APP = {
+    "8000": "rd_risk_local",
+    "8001": "ai_validation_local",
+    "8003": "rnd_assessment_local",
+    "8005": "screening_local",
+  };
+  const APP_KEY = PORT_TO_APP[location.port] || "rd_risk_local";
   const ENV = "local";
 
   try {

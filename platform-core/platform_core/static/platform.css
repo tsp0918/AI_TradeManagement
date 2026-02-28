@@ -22,6 +22,7 @@
   /* Layout */
   --sidebar-width: 236px;
   --header-height: 52px;
+  --panel-width: 296px;
 
   /* Status */
   --status-online:  #6BA88A;
@@ -292,4 +293,225 @@ main {
   font-size: 13px;
   color: var(--cream-400);
   font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* ─── Panel toggle button (header) ──────── */
+.panel-toggle-btn {
+  margin-left: 12px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--cream-400);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0;
+  transition: background var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+.panel-toggle-btn:hover {
+  background: rgba(255,255,255,0.14);
+  color: var(--cream-100);
+}
+.panel-toggle-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--cream-100);
+}
+
+/* ─── DAP 右パネル ────────────────────────── */
+/* main は position:relative なので absolute で確実に右端に配置される */
+#dap-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--panel-width);
+  height: 100%;
+  background: var(--cream-100);
+  border-left: 1px solid var(--cream-300);
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+  overflow: hidden;
+}
+
+#dap-panel.open {
+  transform: translateX(0);
+  box-shadow: -4px 0 20px rgba(44,30,18,0.08);
+}
+
+/* パネルヘッダー */
+.dap-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--cream-300);
+  background: var(--cream-200);
+  flex-shrink: 0;
+}
+
+.dap-panel-module-icon {
+  font-size: 15px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.dap-panel-module-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cream-900);
+  font-family: 'Noto Sans JP', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dap-panel-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--cream-500);
+  font-size: 12px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+.dap-panel-close:hover {
+  background: var(--cream-300);
+  color: var(--cream-900);
+}
+
+/* パネルボディ */
+.dap-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cream-300) transparent;
+}
+.dap-panel-body::-webkit-scrollbar { width: 3px; }
+.dap-panel-body::-webkit-scrollbar-thumb { background: var(--cream-300); border-radius: 2px; }
+
+/* チートシートセクション */
+.cs-section {
+  margin-bottom: 14px;
+}
+
+.cs-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cream-700);
+  font-family: 'Noto Sans JP', sans-serif;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.cs-items {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cs-item {
+  font-size: 11px;
+  color: var(--cream-700);
+  font-family: 'Noto Sans JP', sans-serif;
+  line-height: 1.5;
+  padding: 5px 8px;
+  background: var(--cream-50);
+  border: 1px solid var(--cream-200);
+  border-radius: 5px;
+}
+
+/* ローディング */
+.dap-panel-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 16px;
+  color: var(--cream-400);
+  font-size: 12px;
+}
+
+.dap-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--cream-300);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* エラー */
+.dap-panel-error {
+  padding: 16px;
+  font-size: 11px;
+  color: var(--cream-500);
+  font-family: 'Noto Sans JP', sans-serif;
+  text-align: center;
+}
+
+/* ─── AI エージェントエリア ───────────────── */
+.dap-agent-area {
+  border-top: 1px solid var(--cream-300);
+  padding: 12px 14px;
+  background: var(--cream-50);
+  flex-shrink: 0;
+}
+
+.dap-agent-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.dap-agent-icon {
+  font-size: 13px;
+}
+
+.dap-agent-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cream-700);
+  font-family: 'Noto Sans JP', sans-serif;
+  flex: 1;
+}
+
+.dap-agent-badge {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--accent);
+  background: #F7EFE6;
+  border: 1px solid #DDD3C5;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.dap-agent-desc {
+  font-size: 10.5px;
+  color: var(--cream-500);
+  font-family: 'Noto Sans JP', sans-serif;
+  line-height: 1.55;
 }

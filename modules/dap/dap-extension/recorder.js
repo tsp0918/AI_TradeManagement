@@ -1,6 +1,6 @@
 (function () {
-  const SERVER_BASE = "http://localhost:8710";
-  const APP_KEY = "rd_risk_local"; // ここを変えれば別appにも流用可能
+  const SERVER_BASE = "http://localhost:8010";
+  const APP_KEY = "rd_risk_local"; // content.js で APP_KEY が動的に決まるため Recorder はデフォルト固定
 
   let recorderOn = false;
 
@@ -131,7 +131,7 @@
       alert(`Saved: ${targetKey}\nanchors=${anchors.length}\nAdminでTargetsをReloadして確認してください。`);
     }catch(err){
       console.warn("[DAP/Recorder] failed", err);
-      alert("Recorder送信に失敗しました。DAPサーバ(8710)が起動しているか確認してください。");
+      alert("Recorder送信に失敗しました。DAPサーバ(8010)が起動しているか確認してください。");
     }
   }, true);
 })();

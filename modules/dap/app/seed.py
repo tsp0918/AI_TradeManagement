@@ -154,3 +154,406 @@ def seed_if_empty(db: Session) -> None:
     rel = DapRelease(app_id=app.id, env="local", version="0.1.0", status="published", runtime_config=cfg)
     db.add(rel)
     db.commit()
+
+
+def ensure_new_apps(db: Session) -> None:
+    """seed_if_empty() 後に呼ぶ。新モジュールのアプリを冪等的に追加する。"""
+    _ensure_ai_validation(db)
+    _ensure_screening(db)
+    _ensure_rnd_assessment(db)
+
+
+def _ensure_ai_validation(db: Session) -> None:
+    if db.query(DapApp).filter(DapApp.app_key == "ai_validation_local").first():
+        return
+
+    app = DapApp(app_key="ai_validation_local", name="AI該非判定（ローカル）")
+    db.add(app)
+    db.flush()
+
+    # Page: 新規案件作成フォーム
+    page_new = DapPage(
+        app_id=app.id,
+        page_key="transaction_new",
+        name="案件新規作成",
+        url_regex=r".*(localhost|127\.0\.0\.1):8001/ui/transactions/new",
+        must_have={},
+    )
+    db.add(page_new)
+    db.flush()
+
+    db.add_all([
+        DapTarget(page_id=page_new.id, target_key="t_title", description="案件タイトル", anchors=[
+            {"strategy": "css", "value": "input[name='title']"},
+            {"strategy": "label_text", "value": "案件タイトル"},
+        ]),
+        DapTarget(page_id=page_new.id, target_key="t_counterparty", description="取引先企業名", anchors=[
+            {"strategy": "css", "value": "input[name='counterparty_name']"},
+            {"strategy": "label_text", "value": "取引先企業名"},
+        ]),
+        DapTarget(page_id=page_new.id, target_key="t_submit", description="案件登録ボタン", anchors=[
+            {"strategy": "css", "value": "button[type='submit']"},
+            {"strategy": "text_button", "value": "案件を登録"},
+        ]),
+    ])
+
+    db.add_all([
+        DapRule(
+            app_id=app.id,
+            rule_key="qr_title_quality",
+            name="案件タイトル：具体化",
+            rule_type="text_quality",
+            severity="medium",
+            params={
+                "min_chars": 10,
+                "forbidden_phrases": ["テスト", "test", "案件", "新規"],
+                "field_target_id": "t_title",
+            },
+        ),
+        DapRule(
+            app_id=app.id,
+            rule_key="qr_counterparty_missing",
+            name="取引先企業名：未入力",
+            rule_type="missing_or_generic",
+            severity="high",
+            params={
+                "generic_values": ["不明", "未定", "TBD"],
+                "field_target_id": "t_counterparty",
+            },
+        ),
+        DapRule(
+            app_id=app.id,
+            rule_key="qr_new_min_gate",
+            name="案件登録前：最低入力ゲート",
+            rule_type="any_of_targets_missing",
+            severity="high",
+            params={"required_target_ids": ["t_title", "t_counterparty"]},
+        ),
+    ])
+
+    db.add_all([
+        DapIntervention(
+            page_id=page_new.id,
+            intervention_key="iv_title_coach",
+            name="タイトルが抽象なら具体化テンプレ提示",
+            trigger={"type": "field_blur", "target_id": "t_title"},
+            rule_key="qr_title_quality",
+            block_action=0,
+            coach={"tone": "senior_supportive", "opening": "タイトルは「品目名 + 取引先 + 年度」のフォーマットにすると後で検索しやすくなります。"},
+            actions=[
+                {"type": "tooltip", "params": {"target_id": "t_title", "content": "例：「ArFフォトレジスト TS-4620 輸出審査 2025-Q1」のように具体的に。"}},
+            ],
+        ),
+        DapIntervention(
+            page_id=page_new.id,
+            intervention_key="iv_counterparty_coach",
+            name="取引先未入力なら入力促進",
+            trigger={"type": "field_blur", "target_id": "t_counterparty"},
+            rule_key="qr_counterparty_missing",
+            block_action=0,
+            coach={"tone": "strict_risk", "opening": "取引先企業名を入力するとスクリーニング（制裁リストチェック）を自動で実行できます。"},
+            actions=[
+                {"type": "tooltip", "params": {"target_id": "t_counterparty", "content": "正式な英語法人名を入力。例: Beijing Tech Co., Ltd."}},
+                {"type": "highlight", "params": {"target_id": "t_counterparty"}},
+            ],
+        ),
+        DapIntervention(
+            page_id=page_new.id,
+            intervention_key="iv_gate_before_submit",
+            name="案件登録前：最低入力ゲート",
+            trigger={"type": "attempt_action", "target_id": "t_submit"},
+            rule_key="qr_new_min_gate",
+            block_action=1,
+            coach={"tone": "strict_risk", "opening": "タイトルと取引先企業名を入力してから登録してください。"},
+            actions=[
+                {"type": "checklist", "params": {"title": "登録前の確認", "items": [
+                    "案件タイトルが具体的に記入されている",
+                    "取引先企業名（英語法人名）が入力されている",
+                ]}},
+                {"type": "block_action", "params": {"target_id": "t_submit", "ttl_ms": 10000, "reason": "タイトルまたは取引先企業名が未入力です。"}},
+            ],
+        ),
+    ])
+
+    # Page: 案件詳細
+    page_detail = DapPage(
+        app_id=app.id,
+        page_key="transaction_detail",
+        name="案件詳細",
+        url_regex=r".*(localhost|127\.0\.0\.1):8001/ui/transactions/\d+$",
+        must_have={},
+    )
+    db.add(page_detail)
+    db.flush()
+
+    db.add_all([
+        DapTarget(page_id=page_detail.id, target_key="t_run_ai", description="AI判定実行ボタン", anchors=[
+            {"strategy": "css", "value": "a[href*='run']"},
+            {"strategy": "text_button", "value": "AI判定を実行"},
+        ]),
+        DapTarget(page_id=page_detail.id, target_key="t_screening_btn", description="スクリーニング実行ボタン", anchors=[
+            {"strategy": "css", "value": "button[type='submit']"},
+            {"strategy": "text_button", "value": "スクリーニングを実行"},
+        ]),
+    ])
+
+    db.commit()
+
+    cfg = build_runtime_config(db, "ai_validation_local")
+    rel = DapRelease(app_id=app.id, env="local", version="0.1.0", status="published", runtime_config=cfg)
+    db.add(rel)
+    db.commit()
+
+
+def _ensure_screening(db: Session) -> None:
+    if db.query(DapApp).filter(DapApp.app_key == "screening_local").first():
+        return
+
+    app = DapApp(app_key="screening_local", name="スクリーニング（ローカル）")
+    db.add(app)
+    db.flush()
+
+    page = DapPage(
+        app_id=app.id,
+        page_key="screen_form",
+        name="スクリーニング実行",
+        url_regex=r".*(localhost|127\.0\.0\.1):8005/ui/screen",
+        must_have={},
+    )
+    db.add(page)
+    db.flush()
+
+    db.add_all([
+        DapTarget(page_id=page.id, target_key="t_company_name", description="企業名入力欄", anchors=[
+            {"strategy": "css", "value": "input[name='company_name']"},
+            {"strategy": "label_text", "value": "企業名"},
+        ]),
+    ])
+
+    db.add_all([
+        DapRule(
+            app_id=app.id,
+            rule_key="qr_company_name_quality",
+            name="企業名：具体化",
+            rule_type="text_quality",
+            severity="medium",
+            params={
+                "min_chars": 5,
+                "forbidden_phrases": ["不明", "未定", "企業"],
+                "field_target_id": "t_company_name",
+            },
+        ),
+    ])
+
+    db.add_all([
+        DapIntervention(
+            page_id=page.id,
+            intervention_key="iv_company_name_coach",
+            name="企業名が抽象なら正式名称を促す",
+            trigger={"type": "field_blur", "target_id": "t_company_name"},
+            rule_key="qr_company_name_quality",
+            block_action=0,
+            coach={"tone": "senior_supportive", "opening": "正式な英語法人名を入力するとスクリーニング精度が上がります。"},
+            actions=[
+                {"type": "tooltip", "params": {"target_id": "t_company_name", "content": "例: Beijing Technology Co., Ltd. / Huawei Technologies Co., Ltd."}},
+            ],
+        ),
+    ])
+
+    db.commit()
+
+    cfg = build_runtime_config(db, "screening_local")
+    rel = DapRelease(app_id=app.id, env="local", version="0.1.0", status="published", runtime_config=cfg)
+    db.add(rel)
+    db.commit()
+
+
+def _ensure_rnd_assessment(db: Session) -> None:
+    if db.query(DapApp).filter(DapApp.app_key == "rnd_assessment_local").first():
+        return
+
+    app = DapApp(app_key="rnd_assessment_local", name="R&D審査（ローカル）")
+    db.add(app)
+    db.flush()
+
+    # ─── ページ: 新規ケース作成（http://localhost:8003/ui/cases/new）
+    page_new = DapPage(
+        app_id=app.id,
+        page_key="cases_new",
+        name="新規ケース作成",
+        url_regex=r".*(localhost|127\.0\.0\.1):8003/ui/cases/new",
+        must_have={},
+    )
+    db.add(page_new)
+    db.flush()
+
+    # ─── ターゲット
+    db.add_all([
+        DapTarget(
+            page_id=page_new.id,
+            target_key="t_description",
+            description="説明テキストエリア",
+            anchors=[
+                # 最も確実なセレクタを優先
+                {"strategy": "css",        "value": "textarea[name='description']"},
+                {"strategy": "label_text", "value": "説明"},
+                # ユーザー指定セレクタ（フォールバック）
+                {"strategy": "css",        "value": "body > main > div.card > form > div:nth-child(3) > textarea"},
+            ],
+        ),
+        DapTarget(
+            page_id=page_new.id,
+            target_key="t_title",
+            description="ケースタイトル入力欄",
+            anchors=[
+                {"strategy": "css",        "value": "input[name='title']"},
+                {"strategy": "label_text", "value": "ケースタイトル"},
+            ],
+        ),
+        DapTarget(
+            page_id=page_new.id,
+            target_key="t_submit",
+            description="ケース作成ボタン",
+            anchors=[
+                {"strategy": "css",        "value": "button[type='submit']"},
+                {"strategy": "text_button","value": "ケースを作成して入力へ"},
+            ],
+        ),
+    ])
+
+    # ─── ルール
+    db.add_all([
+        DapRule(
+            app_id=app.id,
+            rule_key="qr_case_title_quality",
+            name="ケースタイトル：具体性チェック",
+            rule_type="text_quality",
+            severity="medium",
+            params={
+                "min_chars": 10,
+                "forbidden_phrases": ["テスト", "test", "ケース", "新規", "未定"],
+                "field_target_id": "t_title",
+            },
+        ),
+        DapRule(
+            app_id=app.id,
+            rule_key="qr_case_min_gate",
+            name="ケース作成前：最低入力ゲート",
+            rule_type="any_of_targets_missing",
+            severity="high",
+            params={"required_target_ids": ["t_title"]},
+        ),
+    ])
+
+    # ─── 介入
+    db.add_all([
+        # ① ページ読込チュートリアル: 説明欄をハイライト + 記入ポイントをポップアップ
+        DapIntervention(
+            page_id=page_new.id,
+            intervention_key="iv_cases_new_tutorial",
+            name="新規ケース作成チュートリアル（ページ読込時）",
+            trigger={"type": "page_load", "delay_ms": 700},
+            rule_key=None,   # 常に表示（always）
+            block_action=0,
+            coach={
+                "tone": "senior_supportive",
+                "opening": "記入内容が具体的なほど審査精度が上がります。最低限この5点を押さえましょう。",
+            },
+            actions=[
+                # 説明欄をウォームブラウンのパルスリングで強調
+                {"type": "highlight", "params": {"target_id": "t_description"}},
+                # 説明欄の横に記入例を吹き出しで表示
+                {
+                    "type": "tooltip",
+                    "params": {
+                        "target_id": "t_description",
+                        "content": (
+                            "【記入例】\n"
+                            "研究目的：次世代ArF液浸フォトレジストの解像度向上\n"
+                            "対象品目：NA≥1.35 対応 193nm フォトレジスト\n"
+                            "最終用途：自社ラボでのリソグラフィプロセス評価\n"
+                            "使用地：日本国内（海外移転・第三者提供なし）\n"
+                            "軍事関連：なし"
+                        ),
+                        "primaryText": "入力してみる",
+                    },
+                },
+                # 右上パネルに5点チェックリスト
+                {
+                    "type": "checklist",
+                    "params": {
+                        "title": "📝 説明欄に記載すべき5点",
+                        "items": [
+                            "① 研究目的・技術的背景（何の問題を解くか）",
+                            "② 対象品目・材料のスペック（波長・NA など）",
+                            "③ 最終用途（工程名・装置・性能条件）",
+                            "④ 最終使用地・第三国移転の有無",
+                            "⑤ 軍事・政府機関との関連（なければ「なし」と明記）",
+                        ],
+                    },
+                },
+            ],
+        ),
+        # ② タイトルフォーカスアウト時：具体的なタイトルを促す
+        DapIntervention(
+            page_id=page_new.id,
+            intervention_key="iv_case_title_coach",
+            name="ケースタイトル：具体化コーチ",
+            trigger={"type": "field_blur", "target_id": "t_title"},
+            rule_key="qr_case_title_quality",
+            block_action=0,
+            coach={
+                "tone": "senior_supportive",
+                "opening": "タイトルは「品目名 ＋ 目的 ＋ 年度」の形式にするとあとで検索しやすくなります。",
+            },
+            actions=[
+                {
+                    "type": "tooltip",
+                    "params": {
+                        "target_id": "t_title",
+                        "content": "例：「ArFフォトレジスト TS-4620 リソグラフィ適用評価 2026-Q1」",
+                    },
+                },
+            ],
+        ),
+        # ③ 作成ボタン押下前：タイトル未入力ならブロック
+        DapIntervention(
+            page_id=page_new.id,
+            intervention_key="iv_case_submit_gate",
+            name="ケース作成前：タイトル入力ゲート",
+            trigger={"type": "attempt_action", "target_id": "t_submit"},
+            rule_key="qr_case_min_gate",
+            block_action=1,
+            coach={
+                "tone": "strict_risk",
+                "opening": "ケースタイトルが入力されていません。タイトルは審査の基準情報になります。",
+            },
+            actions=[
+                {
+                    "type": "checklist",
+                    "params": {
+                        "title": "作成前の確認",
+                        "items": [
+                            "ケースタイトルが具体的に記入されている",
+                            "説明欄に研究目的・品目・用途が記載されている",
+                        ],
+                    },
+                },
+                {
+                    "type": "block_action",
+                    "params": {
+                        "target_id": "t_submit",
+                        "ttl_ms": 10000,
+                        "reason": "ケースタイトルを入力してから作成してください。",
+                    },
+                },
+            ],
+        ),
+    ])
+
+    db.commit()
+
+    cfg = build_runtime_config(db, "rnd_assessment_local")
+    rel = DapRelease(app_id=app.id, env="local", version="0.1.0", status="published", runtime_config=cfg)
+    db.add(rel)
+    db.commit()

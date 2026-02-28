@@ -46,6 +46,10 @@
       <div class="scenarioToolbar">
         <button id="btnAddPage" class="btnGhost btnSm">＋ ページを追加</button>
       </div>
+      <div id="deployStatusBar" class="deployStatusBar isDraft">
+        <span class="dsIcon">⚫</span>
+        <span class="dsText">読み込み中…</span>
+      </div>
       <div id="pagesContainer"></div>
     </section>
 
@@ -108,6 +112,31 @@
     <div class="dialogActions">
       <button id="dlgPageCancel" class="btnGhost">キャンセル</button>
       <button id="dlgPageSave" class="btnPrimary">追加</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ===== ADD TARGET DIALOG ===== -->
+<dialog id="addTargetDialog" class="dialog">
+  <div class="dialogContent">
+    <div class="dialogTitle">🎯 ターゲットを追加（CSSセレクタ）</div>
+    <input type="hidden" id="dlgTargetPageId">
+
+    <label class="formLabel" for="dlgTargetKey">target_key（英数字・アンダースコア）</label>
+    <input id="dlgTargetKey" class="input" placeholder="例: t_company_name">
+
+    <label class="formLabel" for="dlgTargetCss">CSSセレクタ</label>
+    <input id="dlgTargetCss" class="input" placeholder="例: input[name='company_name']">
+    <div style="font-size:11px;color:#6b88a8;margin-top:3px;margin-bottom:10px;">
+      ブラウザの DevTools で要素を右クリック →「コピー」→「セレクターをコピー」で取得できます。
+    </div>
+
+    <label class="formLabel" for="dlgTargetDesc">説明（任意）</label>
+    <input id="dlgTargetDesc" class="input" placeholder="例: 企業名入力欄">
+
+    <div class="dialogActions">
+      <button id="dlgTargetCancel" class="btnGhost">キャンセル</button>
+      <button id="dlgTargetSave" class="btnPrimary">追加</button>
     </div>
   </div>
 </dialog>
