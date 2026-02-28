@@ -141,23 +141,40 @@ def transaction_new_form(request: Request):
 
 @router.get("/api/transactions/search")
 def transactions_search(
-    q: str = Query(default="", min_length=1),
+    q: str = Query(default=""),
     db: Session = Depends(get_db),
 ):
-    """前段審査参照フィールドのオートコンプリート用。"""
-    results = (
-        db.query(Transaction)
-        .filter(Transaction.case_no.ilike(f"%{q}%"))
-        .order_by(desc(Transaction.id))
-        .limit(10)
-        .all()
-    )
+    """前段審査参照フィールドの検索用。q が空なら直近20件を返す。"""
+    query = db.query(Transaction).order_by(desc(Transaction.id))
+    if q.strip():
+        keyword = f"%{q.strip()}%"
+        from sqlalchemy import or_
+        query = query.filter(
+            or_(
+                Transaction.case_no.ilike(keyword),
+                Transaction.title.ilike(keyword),
+            )
+        )
+    results = query.limit(20).all()
+
+    def _infer_source(t: Transaction) -> str:
+        """source_module が未設定の場合、case_no プレフィックスから推定する。"""
+        if t.source_module:
+            return t.source_module
+        cn = (t.case_no or "").upper()
+        if cn.startswith("RND-"):
+            return "rnd_assessment"
+        if cn.startswith("UI-"):
+            return "ai_classification"
+        return "manual"
+
     return [
         {
             "id": t.id,
             "case_no": t.case_no,
             "title": t.title,
-            "source_module": t.source_module,
+            "source_module": _infer_source(t),
+            "created_at": t.created_at.strftime("%Y-%m-%d") if t.created_at else None,
         }
         for t in results
     ]

@@ -82,19 +82,27 @@
           <div class="hint">入力すると取引詳細画面から制裁リストスクリーニングを実行できます。</div>
         </div>
 
-        <div class="form-row">
+        <div class="form-row" id="parentTxRow">
           <label class="label-sm">前段審査参照（任意）</label>
-          <input class="input" type="text" id="parentCaseNoSearch"
-                 placeholder="UI-TS4620 などで検索..."
-                 autocomplete="off">
           <input type="hidden" name="parent_transaction_id" id="parentTxId"
                  value="{{ request.query_params.get('parent_transaction_id', '') }}">
-          <div class="hint">品目管理または R&D から起案された審査番号を入力すると証跡が連鎖します。</div>
-          <ul id="parentSearchResults" style="
-            list-style:none; margin:4px 0 0; padding:0;
-            border:1px solid var(--line, #ddd); border-radius:6px;
-            background:#fff; display:none; max-height:200px; overflow-y:auto;
-          "></ul>
+          <!-- 選択済み表示 / クリックで開くトリガー -->
+          <div id="parentTxDisplay" class="ptx-display" onclick="ptxOpen()">
+            <span id="parentTxLabel" class="ptx-placeholder">クリックして審査を選択...</span>
+            <span id="parentTxClear" class="ptx-clear" onclick="ptxClear(event)" style="display:none;">✕ 解除</span>
+          </div>
+          <!-- ドロップダウンパネル -->
+          <div id="parentTxPanel" class="ptx-panel" style="display:none;">
+            <div class="ptx-search-wrap">
+              <input type="text" id="parentTxSearch" class="ptx-search"
+                     placeholder="案件番号・品名で絞り込み..."
+                     oninput="ptxSearch(this.value)" autocomplete="off">
+            </div>
+            <div id="parentTxList" class="ptx-list">
+              <div class="ptx-loading">読み込み中...</div>
+            </div>
+          </div>
+          <div class="hint">品目管理（UI-xxx）またはR&D（RND-xxx）から起案された審査を選択すると証跡が連鎖します。</div>
         </div>
 
       </div>
@@ -105,46 +113,174 @@
       </div>
     </form>
 
+<style>
+.ptx-display {
+  display: flex; align-items: center; justify-content: space-between;
+  border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 12px;
+  cursor: pointer; background: #fff; font-size: .9rem; min-height: 38px;
+  transition: border-color .15s;
+}
+.ptx-display:hover { border-color: var(--brand, #2563eb); }
+.ptx-placeholder { color: #9ca3af; }
+.ptx-selected { color: #111; font-weight: 500; }
+.ptx-clear {
+  font-size: .75rem; color: #6b7280; cursor: pointer; white-space: nowrap;
+  padding: 2px 6px; border-radius: 4px; background: #f3f4f6; margin-left: 8px;
+}
+.ptx-clear:hover { background: #fecaca; color: #b91c1c; }
+.ptx-panel {
+  position: relative; border: 1px solid #d1d5db; border-radius: 8px;
+  background: #fff; margin-top: 4px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  z-index: 100;
+}
+.ptx-search-wrap { padding: 8px; border-bottom: 1px solid #f0f0f0; }
+.ptx-search {
+  width: 100%; box-sizing: border-box;
+  border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 10px;
+  font-size: .88rem; font-family: inherit;
+}
+.ptx-search:focus { outline: 2px solid var(--brand, #2563eb); border-color: transparent; }
+.ptx-list { max-height: 260px; overflow-y: auto; }
+.ptx-loading { padding: 16px; text-align: center; color: #9ca3af; font-size: .85rem; }
+.ptx-empty  { padding: 16px; text-align: center; color: #9ca3af; font-size: .85rem; }
+.ptx-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f5f5f5;
+  transition: background .1s;
+}
+.ptx-item:last-child { border-bottom: none; }
+.ptx-item:hover { background: #f0f6ff; }
+.ptx-item-left { flex: 1; min-width: 0; }
+.ptx-caseno { font-family: monospace; font-size: .82rem; font-weight: 600; color: #1d4ed8; }
+.ptx-title  { font-size: .85rem; color: #374151; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px; }
+.ptx-badge  {
+  font-size: .7rem; font-weight: 600; padding: 2px 7px; border-radius: 10px;
+  white-space: nowrap; margin-top: 2px;
+}
+.ptx-badge-ui  { background: #dbeafe; color: #1e40af; }
+.ptx-badge-rnd { background: #d1fae5; color: #065f46; }
+.ptx-badge-man { background: #f3f4f6; color: #6b7280; }
+.ptx-date   { font-size: .75rem; color: #9ca3af; }
+</style>
+
 <script>
 (function(){
-  const inp = document.getElementById("parentCaseNoSearch");
-  const hid = document.getElementById("parentTxId");
-  const ul  = document.getElementById("parentSearchResults");
+  const hid     = document.getElementById("parentTxId");
+  const label   = document.getElementById("parentTxLabel");
+  const clearBtn= document.getElementById("parentTxClear");
+  const display = document.getElementById("parentTxDisplay");
+  const panel   = document.getElementById("parentTxPanel");
+  const searchEl= document.getElementById("parentTxSearch");
+  const listEl  = document.getElementById("parentTxList");
 
-  // URL パラメータで親が指定されていたら表示名をセット
-  const preId = hid.value;
-  if (preId) {
-    const preCaseNo = "{{ request.query_params.get('parent_case_no', '') }}";
-    if (preCaseNo) inp.value = preCaseNo;
+  let _cache = null;   // 全件キャッシュ
+  let _open  = false;
+
+  // URL パラメータからの事前選択
+  const preId     = hid.value;
+  const preCaseNo = "{{ request.query_params.get('parent_case_no', '') }}";
+  if (preId && preCaseNo) {
+    _setSelected({ id: preId, case_no: preCaseNo, title: "", source_module: null });
   }
 
-  inp.addEventListener("input", async function(){
-    const q = inp.value.trim();
-    if (q.length < 2) { ul.style.display = "none"; return; }
-    try {
-      const res = await fetch(`/api/transactions/search?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      ul.innerHTML = "";
-      if (!data.length) { ul.style.display = "none"; return; }
-      data.forEach(function(item){
-        const li = document.createElement("li");
-        li.style.cssText = "padding:8px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:13px;";
-        const src = item.source_module === "ai_classification" ? "品目管理" :
-                    item.source_module === "rnd_assessment" ? "R&D" : "手動";
-        li.textContent = `${item.case_no}  [${src}] ${item.title || ""}`;
-        li.addEventListener("click", function(){
-          inp.value = item.case_no;
-          hid.value = item.id;
-          ul.style.display = "none";
-        });
-        ul.appendChild(li);
-      });
-      ul.style.display = "block";
-    } catch(e){ ul.style.display = "none"; }
-  });
+  function _srcInfo(s) {
+    if (s === "ai_classification") return { label: "品目管理", cls: "ptx-badge-ui" };
+    if (s === "rnd_assessment")    return { label: "R&D",     cls: "ptx-badge-rnd" };
+    return                                 { label: "手動",   cls: "ptx-badge-man" };
+  }
 
-  document.addEventListener("click", function(e){
-    if (!ul.contains(e.target) && e.target !== inp) ul.style.display = "none";
+  function _renderList(items) {
+    if (!items.length) {
+      listEl.innerHTML = '<div class="ptx-empty">該当する審査が見つかりません</div>';
+      return;
+    }
+    listEl.innerHTML = "";
+    items.forEach(function(item) {
+      const src = _srcInfo(item.source_module);
+      const div = document.createElement("div");
+      div.className = "ptx-item";
+      div.innerHTML =
+        `<div class="ptx-item-left">` +
+          `<div class="ptx-caseno">${item.case_no}</div>` +
+          `<div class="ptx-title">${item.title || "（タイトルなし）"}</div>` +
+        `</div>` +
+        `<div style="text-align:right;flex-shrink:0;">` +
+          `<div class="ptx-badge ${src.cls}">${src.label}</div>` +
+          `<div class="ptx-date">${item.created_at || ""}</div>` +
+        `</div>`;
+      div.addEventListener("click", function() {
+        _setSelected(item);
+        ptxClose();
+      });
+      listEl.appendChild(div);
+    });
+  }
+
+  function _setSelected(item) {
+    hid.value = item.id;
+    label.textContent = `${item.case_no}${item.title ? "  " + item.title : ""}`;
+    label.classList.remove("ptx-placeholder");
+    label.classList.add("ptx-selected");
+    clearBtn.style.display = "";
+  }
+
+  function ptxClear(e) {
+    e.stopPropagation();
+    hid.value = "";
+    label.textContent = "クリックして審査を選択...";
+    label.classList.remove("ptx-selected");
+    label.classList.add("ptx-placeholder");
+    clearBtn.style.display = "none";
+    ptxClose();
+  }
+  window.ptxClear = ptxClear;
+
+  async function _loadAll() {
+    if (_cache) { _renderList(_cache); return; }
+    listEl.innerHTML = '<div class="ptx-loading">読み込み中...</div>';
+    try {
+      const res  = await fetch("/api/transactions/search");
+      _cache     = await res.json();
+      _renderList(_cache);
+    } catch(e) {
+      listEl.innerHTML = '<div class="ptx-empty">読み込みに失敗しました</div>';
+    }
+  }
+
+  function ptxOpen() {
+    if (_open) { ptxClose(); return; }
+    _open = true;
+    panel.style.display = "";
+    searchEl.value = "";
+    _loadAll();
+    setTimeout(function(){ searchEl.focus(); }, 50);
+  }
+  window.ptxOpen = ptxOpen;
+
+  function ptxClose() {
+    _open = false;
+    panel.style.display = "none";
+  }
+  window.ptxClose = ptxClose;
+
+  let _timer = null;
+  function ptxSearch(q) {
+    clearTimeout(_timer);
+    _timer = setTimeout(async function() {
+      const trimmed = q.trim();
+      if (!trimmed) { _renderList(_cache || []); return; }
+      try {
+        const res  = await fetch(`/api/transactions/search?q=${encodeURIComponent(trimmed)}`);
+        const data = await res.json();
+        _renderList(data);
+      } catch(e) {}
+    }, 200);
+  }
+  window.ptxSearch = ptxSearch;
+
+  // パネル外クリックで閉じる
+  document.addEventListener("click", function(e) {
+    if (_open && !panel.contains(e.target) && !display.contains(e.target)) ptxClose();
   });
 })();
 </script>
