@@ -42,3 +42,16 @@ logs/
 .env.*
 !.env.example
 secrets/
+
+# FAISS / ML キャッシュ（再構築可能なバイナリ）
+*.index
+*.npy
+**/data/faiss/
+**/.hf_cache/
+
+# アップロードファイル
+modules/*/uploads/
+
+# モジュール内 runtime data（DB は上記 *.db で除外済み）
+modules/*/data/
+modules/data/
