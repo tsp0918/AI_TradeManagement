@@ -28,11 +28,9 @@ class Settings(BaseSettings):
     embedding_cache_path: str = str(_DATA_DIR / "embeddings_cache.npy")
 
     # ── Embedding モデル ─────────────────────────────────────────────────
-    # デフォルト: 既にキャッシュ済みの multilingual モデル
-    # E5 モデルを使う場合: intfloat/multilingual-e5-small
-    embedding_model_name: str = (
-        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-    )
+    # E5 系は query:/passage: プレフィックスで日本語↔英語の意味的距離を縮める
+    # embedding.py が _USE_E5_PREFIX フラグでプレフィックスを自動付与する
+    embedding_model_name: str = "intfloat/multilingual-e5-small"
     embedding_dimension: int = 384
 
     # ── FAISS ───────────────────────────────────────────────────────────
@@ -40,7 +38,7 @@ class Settings(BaseSettings):
 
     # ── 判定パラメータ ───────────────────────────────────────────────────
     default_top_k: int = 5
-    stage1_top_chapters: int = 3
+    stage1_top_chapters: int = 8
     min_similarity_threshold: float = 0.3
 
     # ── webhook ─────────────────────────────────────────────────────────
