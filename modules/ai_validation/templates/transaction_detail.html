@@ -16,9 +16,9 @@
     <span class="status-label">{{ overall_label }}</span>
     {% if two_lists %}
     <span class="status-sub">
-      両リスト合致 <b>{{ two_lists.counts.intersection }}</b> /
-      照合候補 <b>{{ two_lists.counts.core_only or 0 }}</b> /
-      参考 <b>{{ two_lists.counts.expanded_only }}</b>
+      規制合致 <b>{{ two_lists.counts.intersection }}</b> /
+      直接一致 <b>{{ two_lists.counts.core_only or 0 }}</b> /
+      用途関連 <b>{{ two_lists.counts.expanded_only }}</b>
     </span>
     {# DAP-6: intersection 検知用隠し要素 #}
     {% if two_lists.counts.intersection > 0 %}
@@ -96,46 +96,50 @@
 </div>
 {% endif %}
 
-<!-- ===== Section 2: 判定ハイライトテーブル ===== -->
+<!-- ===== Section 2: 判定結果サマリー ===== -->
 {% if highlight_rows %}
 <div class="card highlight-card">
   <div class="highlight-header">
-    <h2 style="margin:0">判定ハイライト</h2>
-    <span class="muted small">{{ highlight_rows|length }} 件 — 行クリックで詳細へ</span>
+    <h2 style="margin:0">判定結果サマリー</h2>
+    <span class="muted small">{{ highlight_rows|length }} 件 — 行クリックで根拠詳細へ</span>
   </div>
   <!-- 区分凡例 -->
   <div class="legend-row">
-    <div class="legend-item"><span class="badge badge-intersection">★ 両方一致</span><span class="legend-desc">申告用途・特許展開用途の<b>両方</b>で規制項目にヒット（最も確度が高い）</span></div>
-    <div class="legend-item"><span class="badge badge-core">直接一致</span><span class="legend-desc">申告用途テキストが規制項目に<b>直接</b>ヒット</span></div>
-    <div class="legend-item"><span class="badge badge-expanded">特許示唆</span><span class="legend-desc">関連特許から展開した用途でのみヒット（参考情報・確定ではない）</span></div>
+    <div class="legend-item"><span class="badge badge-intersection">★ 規制合致</span><span class="legend-desc">申告用途・応用展開用途の<b>両方</b>で規制項目に一致（最も優先度が高い）</span></div>
+    <div class="legend-item"><span class="badge badge-core">直接一致</span><span class="legend-desc">申告用途テキストが規制項目の技術要件に<b>直接</b>一致</span></div>
+    <div class="legend-item"><span class="badge badge-expanded">用途関連</span><span class="legend-desc">本品目の応用展開用途から規制可能性が示唆（要精査）</span></div>
   </div>
   <div class="highlight-scroll">
   <table class="table highlight-table">
     <thead>
       <tr>
-        <th style="width:106px">区分</th>
-        <th style="width:130px">判定項番</th>
-        <th style="width:72px">リスク</th>
+        <th style="width:100px">判定区分</th>
+        <th style="width:140px">規制項番</th>
+        <th>判定根拠（概要）</th>
         <th style="width:58px;text-align:right">スコア</th>
-        <th>根拠説明</th>
       </tr>
     </thead>
     <tbody>
       {% for row in highlight_rows %}
       <tr class="hrow hrow-{{ row.category }}"
           onclick="document.getElementById('detail-rule-{{ row.rule_id }}').scrollIntoView({behavior:'smooth', block:'start'}); document.getElementById('sec-detail').open = true;"
-          title="クリックで2リスト詳細へ">
+          title="クリックで詳細へ">
         <td>
           {% if row.category == "intersection" %}
-            <span class="badge badge-intersection">★ 両方一致</span>
+            <span class="badge badge-intersection">★ 規制合致</span>
           {% elif row.category == "core_only" %}
             <span class="badge badge-core">直接一致</span>
           {% else %}
-            <span class="badge badge-expanded">特許示唆</span>
+            <span class="badge badge-expanded">用途関連</span>
           {% endif %}
+          <div style="margin-top:4px">
+            <span class="chip {% if row.best_decision == 'hit' %}chip-hit{% elif row.best_decision == 'maybe' %}chip-maybe{% endif %}" style="font-size:.72rem">
+              {{ row.best_decision or "?" }}
+            </span>
+          </div>
         </td>
         <td>
-          <div class="strong" style="font-size:.9rem; line-height:1.3">
+          <div class="strong" style="font-size:.88rem; line-height:1.3">
             {% if row.item_ids and row.item_ids|length > 0 %}
               {{ row.item_ids | join(" / ") }}
             {% elif row.item_label %}
@@ -144,37 +148,37 @@
               rule_id={{ row.rule_id }}
             {% endif %}
           </div>
-          <div class="muted small" style="margin-top:2px">
-            {{ row.regime }}{% if row.list_name %} — {{ row.list_name }}{% endif %}
-          </div>
+          {% if row.fefta_category_label %}
+          <div style="margin-top:3px; font-size:.75rem; color:#6b7280;">{{ row.fefta_category_label }}</div>
+          {% else %}
+          <div class="muted small" style="margin-top:2px">{{ row.regime }}{% if row.list_name %} — {{ row.list_name }}{% endif %}</div>
+          {% endif %}
+          {% if row.eccn_refs and row.eccn_refs|length > 0 %}
+          <div style="margin-top:3px; font-size:.72rem; color:#9ca3af;">ECCN: {{ row.eccn_refs[:2] | join(" / ") }}</div>
+          {% endif %}
         </td>
         <td>
-          <span class="chip {% if row.best_decision == 'hit' %}chip-hit{% elif row.best_decision == 'maybe' %}chip-maybe{% endif %}">
-            {{ row.best_decision or "?" }}
-          </span>
-        </td>
-        <td class="mono" style="text-align:right; font-size:.87rem">
-          {{ "%.3f"|format(row.max_score or 0) }}
-        </td>
-        <td>
-          {% if row.title %}
+          {% if row.reason_text %}
+          <div style="font-size:.85rem; color:#374151; line-height:1.5; margin-bottom:4px;">{{ row.reason_text }}</div>
+          {% elif row.title %}
           <div style="font-size:.88rem; font-weight:600; margin-bottom:4px; color:#374151">{{ row.title }}</div>
           {% elif row.rule_summary %}
-          <div style="font-size:.88rem; margin-bottom:4px; color:#374151">{{ row.rule_summary[:60] }}{% if row.rule_summary|length > 60 %}…{% endif %}</div>
+          <div style="font-size:.88rem; margin-bottom:4px; color:#374151">{{ row.rule_summary[:80] }}{% if row.rule_summary|length > 80 %}…{% endif %}</div>
           {% endif %}
           {%- set primary_hits = (row.hits.core or []) if (row.hits.core or []) else (row.hits.expanded or []) -%}
           {% for h in primary_hits[:1] %}
             {% if h.matched_compact %}
-            <div style="margin-top:2px">
-              <span class="muted" style="font-size:.78rem">一致語: </span>
+            <div style="margin-top:3px">
+              <span class="muted" style="font-size:.75rem">一致語: </span>
               {% for t in h.matched_compact[:5] %}
                 <span class="chip chip-token">{{ t }}</span>
               {% endfor %}
             </div>
-            {% elif h.usage_text %}
-            <div class="muted small" style="margin-top:2px">{{ h.usage_text[:80] }}{% if h.usage_text|length > 80 %}…{% endif %}</div>
             {% endif %}
           {% endfor %}
+        </td>
+        <td class="mono" style="text-align:right; font-size:.87rem">
+          {{ "%.3f"|format(row.max_score or 0) }}
         </td>
       </tr>
       {% endfor %}
@@ -288,125 +292,123 @@
   </div>
 </details>
 
-<!-- ===== Section 4: 2リスト詳細（折りたたみ、アンカー付き） ===== -->
+<!-- ===== Section 4: 判定詳細（折りたたみ、アンカー付き） ===== -->
 {% if two_lists %}
 <details id="sec-detail" class="card detail-section" {% if two_lists.counts.total_unique_items > 0 %}open{% endif %}>
   <summary class="detail-summary">
-    <span>2リスト詳細</span>
+    <span>判定詳細</span>
     <span class="muted small">run_id: {{ two_lists.run_id }} / {{ two_lists.counts.total_unique_items }} 件</span>
   </summary>
   <div style="margin-top:14px">
 
-    <!-- 1) 両方一致（intersection） -->
+    <!-- ① 規制合致（intersection） -->
     {% if two_lists.intersection and two_lists.intersection|length > 0 %}
     <details open>
       <summary class="subsection-summary" style="color:#b45309">
-        <span class="badge badge-intersection" style="margin-right:6px">★ 両方一致</span>（{{ two_lists.counts.intersection }} 件）
+        <span class="badge badge-intersection" style="margin-right:6px">★ 規制合致</span>（{{ two_lists.counts.intersection }} 件）
+        <span class="muted small" style="font-weight:400; margin-left:6px">申告用途・応用展開用途の両面で規制項目に一致</span>
       </summary>
       <div class="list" style="margin-top:8px">
         {% for item in two_lists.intersection %}
-        <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor" style="border-color:#fde68a; background:#fffbeb">
-          <div class="row" style="align-items:flex-start; gap:8px">
-            <div class="strong" style="flex:1">
+        <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor judgment-item judgment-intersection">
+          {# ── インライン描画 ── #}
+          <div class="ji-header">
+            <div class="ji-ids">
               {% if item.item_ids and item.item_ids|length > 0 %}{{ item.item_ids | join(" / ") }}
               {% elif item.item_label %}{{ item.item_label }}
               {% else %}rule_id={{ item.rule_id }}{% endif %}
-              <div class="muted small" style="margin-top:1px; font-weight:400">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
-            </div>
-            <span class="chip {% if item.best_decision == 'hit' %}chip-hit{% elif item.best_decision == 'maybe' %}chip-maybe{% endif %}">{{ item.best_decision or "?" }}</span>
-            <span class="chip">{{ "%.4f"|format(item.max_score or 0) }}</span>
-          </div>
-          {% if item.title %}<div style="font-size:.88rem; margin-top:4px; color:#374151">{{ item.title }}</div>{% endif %}
-          {% if item.rule_summary %}<div class="muted small" style="margin-top:6px">{{ item.rule_summary }}</div>{% endif %}
-          <div class="subgrid" style="margin-top:10px">
-            <div>
-              <div class="muted small">申告用途ヒット（直接）</div>
-              <ul class="bul">
-                {% for h in item.hits.core %}
-                <li style="margin-bottom:10px">
-                  <span class="chip">{{ h.match_type }}</span>
-                  <span class="chip"><b>{{ h.decision }}</b></span>
-                  <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
-                  {% if h.matched_compact and h.matched_compact|length > 0 %}
-                  <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>{% endif %}
-                  <div class="muted small">{{ h.usage_text or "-" }}</div>
-                </li>
-                {% endfor %}
-              </ul>
-            </div>
-            <div>
-              <div class="muted small">特許展開用途ヒット</div>
-              <ul class="bul">
-                {% for h in item.hits.expanded %}
-                <li style="margin-bottom:10px">
-                  <span class="chip">{{ h.match_type }}</span>
-                  <span class="chip"><b>{{ h.decision }}</b></span>
-                  <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
-                  {% if h.matched_compact and h.matched_compact|length > 0 %}
-                  <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>{% endif %}
-                  <div class="muted small">{{ h.usage_text or "-" }}</div>
-                </li>
-                {% endfor %}
-              </ul>
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    </details>
-    {% endif %}
-
-    <!-- 2) 直接一致（core_only） -->
-    {% if two_lists.core_only and two_lists.core_only|length > 0 %}
-    <details open style="margin-top:14px">
-      <summary class="subsection-summary" style="color:#1d4ed8">
-        <span class="badge badge-core" style="margin-right:6px">直接一致</span>（{{ two_lists.counts.core_only or 0 }} 件）
-      </summary>
-      <div class="list" style="margin-top:8px">
-        {% for item in two_lists.core_only %}
-        <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor">
-          <div class="row" style="align-items:flex-start; gap:8px">
-            <div class="strong" style="flex:1">
-              {% if item.item_ids and item.item_ids|length > 0 %}{{ item.item_ids | join(" / ") }}
-              {% elif item.item_label %}{{ item.item_label }}
-              {% else %}rule_id={{ item.rule_id }}{% endif %}
-              <div class="muted small" style="margin-top:1px; font-weight:400">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
-            </div>
-            <span class="chip {% if item.best_decision == 'hit' %}chip-hit{% elif item.best_decision == 'maybe' %}chip-maybe{% endif %}">{{ item.best_decision or "?" }}</span>
-            <span class="chip">{{ "%.4f"|format(item.max_score or 0) }}</span>
-          </div>
-          {% if item.title %}<div style="font-size:.88rem; margin-top:4px; color:#374151">{{ item.title }}</div>{% endif %}
-          {% if item.rule_summary %}<div class="muted small" style="margin-top:6px; white-space:pre-wrap">{{ item.rule_summary }}</div>{% endif %}
-          {% if item.hits.core %}
-          <div style="margin-top:8px">
-            {% for h in item.hits.core %}
-            <div style="font-size:.82rem; margin-bottom:4px">
-              {% if h.matched_compact %}
-                <span class="muted">一致語:</span>
-                {% for t in h.matched_compact %}<span class="chip chip-token">{{ t }}</span>{% endfor %}
+              {% if item.fefta_category_label %}
+              <span class="ji-category-badge">{{ item.fefta_category_label }}</span>
               {% endif %}
             </div>
-            {% endfor %}
+            <div class="ji-chips">
+              <span class="chip {% if item.best_decision == 'hit' %}chip-hit{% elif item.best_decision == 'maybe' %}chip-maybe{% endif %}">{{ item.best_decision or "?" }}</span>
+              <span class="chip chip-score">{{ "%.3f"|format(item.max_score or 0) }}</span>
+            </div>
           </div>
+
+          {# Layer 1: 誰でも読める判定根拠 #}
+          {% if item.reason_text %}
+          <div class="ji-reason">{{ item.reason_text }}</div>
           {% endif %}
-          <details style="margin-top:8px">
-            <summary class="muted small" style="cursor:pointer">詳細を表示</summary>
-            <ul class="bul" style="margin-top:6px">
-              {% for h in item.hits.core %}
-              <li style="margin-bottom:10px; font-size:.85rem">
-                <span class="chip">{{ h.match_type }}</span>
-                <span class="chip"><b>{{ h.decision }}</b></span>
-                <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
-                <div class="muted small">用途: {{ h.usage_text or "-" }}</div>
-                {% if h.evidence %}
-                <details style="margin-top:4px">
-                  <summary class="muted small">evidence JSON</summary>
-                  <pre style="white-space:pre-wrap; margin-top:6px; font-size:.78rem">{{ h.evidence | tojson(indent=2) }}</pre>
-                </details>
-                {% endif %}
-              </li>
-              {% endfor %}
-            </ul>
+
+          {# 一致語タグ #}
+          {%- set primary_hits = item.hits.core if item.hits.core else item.hits.expanded -%}
+          {% for h in primary_hits[:1] %}{% if h.matched_compact %}
+          <div class="ji-tokens">
+            <span class="muted" style="font-size:.75rem">一致語: </span>
+            {% for t in h.matched_compact[:6] %}<span class="chip chip-token">{{ t }}</span>{% endfor %}
+          </div>
+          {% endif %}{% endfor %}
+
+          {# Layer 2: 専門家向け根拠詳細（折りたたみ） #}
+          <details class="ji-law-detail">
+            <summary>根拠詳細を確認する ▸</summary>
+            <div class="ji-law-body">
+              {# 外為法条文 #}
+              {% if item.fefta_category_text %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">外為法 別表第一（関連条文抜粋）</div>
+                <div class="ji-law-text">{{ item.fefta_category_text[:350] }}{% if item.fefta_category_text|length > 350 %}…{% endif %}</div>
+              </div>
+              {% endif %}
+              {# 規制要件 #}
+              {% if item.rule_summary %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">規制要件</div>
+                <div class="ji-law-text mono-sm">{{ item.rule_summary }}</div>
+              </div>
+              {% endif %}
+              {# ECCN 参照 #}
+              {% if item.eccn_refs and item.eccn_refs|length > 0 %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">対応 ECCN（BIS CCL）</div>
+                <div>
+                  {% for eccn in item.eccn_refs[:5] %}
+                  <span class="chip" style="margin-right:4px; font-size:.78rem;">{{ eccn }}</span>
+                  {% endfor %}
+                  {% if item.eccn_descriptions and item.eccn_descriptions[0] %}
+                  <div class="muted small" style="margin-top:4px;">{{ item.eccn_descriptions[0] }}</div>
+                  {% endif %}
+                </div>
+              </div>
+              {% endif %}
+              {# BIS 制御理由 #}
+              {% if item.bis_controls and item.bis_controls|length > 0 %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">BIS 制御理由</div>
+                <div>{% for c in item.bis_controls %}<span class="chip chip-bis">{{ c }}</span> {% endfor %}</div>
+              </div>
+              {% endif %}
+              {# 直接一致ヒット詳細 #}
+              <div class="ji-law-section">
+                <div class="ji-law-label">直接判定ヒット</div>
+                <ul class="bul" style="margin-top:4px">
+                  {% for h in item.hits.core %}
+                  <li style="margin-bottom:8px; font-size:.83rem">
+                    <span class="chip"><b>{{ h.decision }}</b></span>
+                    <span class="mono">{{ "%.4f"|format(h.match_score or 0) }}</span>
+                    {% if h.matched_compact %}<span class="muted"> | {{ h.matched_compact | join(" / ") }}</span>{% endif %}
+                    <div class="muted small">{{ h.usage_text or "-" }}</div>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {# 用途関連ヒット詳細 #}
+              <div class="ji-law-section">
+                <div class="ji-law-label">用途関連ヒット</div>
+                <ul class="bul" style="margin-top:4px">
+                  {% for h in item.hits.expanded %}
+                  <li style="margin-bottom:8px; font-size:.83rem">
+                    <span class="chip"><b>{{ h.decision }}</b></span>
+                    <span class="mono">{{ "%.4f"|format(h.match_score or 0) }}</span>
+                    {% if h.matched_compact %}<span class="muted"> | {{ h.matched_compact | join(" / ") }}</span>{% endif %}
+                    <div class="muted small">{{ h.usage_text or "-" }}</div>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
           </details>
         </div>
         {% endfor %}
@@ -414,37 +416,141 @@
     </details>
     {% endif %}
 
-    <!-- 3) 特許示唆（expanded_only） -->
-    {% if two_lists.expanded_only and two_lists.expanded_only|length > 0 %}
-    <details style="margin-top:14px">
-      <summary class="subsection-summary" style="color:var(--muted)">
-        <span class="badge badge-expanded" style="margin-right:6px">特許示唆</span>（{{ two_lists.counts.expanded_only }} 件）
+    <!-- ② 直接一致（core_only） -->
+    {% if two_lists.core_only and two_lists.core_only|length > 0 %}
+    <details open style="margin-top:14px">
+      <summary class="subsection-summary" style="color:#1d4ed8">
+        <span class="badge badge-core" style="margin-right:6px">直接一致</span>（{{ two_lists.counts.core_only or 0 }} 件）
+        <span class="muted small" style="font-weight:400; margin-left:6px">申告用途テキストが規制項目に直接一致</span>
       </summary>
       <div class="list" style="margin-top:8px">
-        {% for item in two_lists.expanded_only %}
-        <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor" style="opacity:.85">
-          <div class="row" style="align-items:flex-start">
-            <div class="strong">
+        {% for item in two_lists.core_only %}
+        <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor judgment-item">
+          <div class="ji-header">
+            <div class="ji-ids">
               {% if item.item_ids and item.item_ids|length > 0 %}{{ item.item_ids | join(" / ") }}
               {% elif item.item_label %}{{ item.item_label }}
               {% else %}rule_id={{ item.rule_id }}{% endif %}
-              <div class="muted small" style="margin-top:1px; font-weight:400">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
+              {% if item.fefta_category_label %}
+              <span class="ji-category-badge">{{ item.fefta_category_label }}</span>
+              {% endif %}
             </div>
-            <span class="chip">{{ "%.4f"|format(item.max_score or 0) }}</span>
+            <div class="ji-chips">
+              <span class="chip {% if item.best_decision == 'hit' %}chip-hit{% elif item.best_decision == 'maybe' %}chip-maybe{% endif %}">{{ item.best_decision or "?" }}</span>
+              <span class="chip chip-score">{{ "%.3f"|format(item.max_score or 0) }}</span>
+            </div>
           </div>
-          {% if item.rule_summary %}<div class="muted small" style="margin-top:6px">{{ item.rule_summary }}</div>{% endif %}
-          <ul class="bul">
-            {% for h in item.hits.expanded %}
-            <li style="margin-bottom:10px">
-              <span class="chip">{{ h.match_type }}</span>
-              <span class="chip"><b>{{ h.decision }}</b></span>
-              <span class="mono">score={{ "%.4f"|format(h.match_score or 0) }}</span>
-              {% if h.matched_compact and h.matched_compact|length > 0 %}
-              <div class="muted small">matched: {{ h.matched_compact | join(" / ") }}</div>{% endif %}
-              <div class="muted small">{{ h.usage_text or "-" }}</div>
-            </li>
-            {% endfor %}
-          </ul>
+          {% if item.reason_text %}
+          <div class="ji-reason">{{ item.reason_text }}</div>
+          {% endif %}
+          {% for h in item.hits.core[:1] %}{% if h.matched_compact %}
+          <div class="ji-tokens">
+            <span class="muted" style="font-size:.75rem">一致語: </span>
+            {% for t in h.matched_compact[:6] %}<span class="chip chip-token">{{ t }}</span>{% endfor %}
+          </div>
+          {% endif %}{% endfor %}
+          <details class="ji-law-detail">
+            <summary>根拠詳細を確認する ▸</summary>
+            <div class="ji-law-body">
+              {% if item.fefta_category_text %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">外為法 別表第一（関連条文抜粋）</div>
+                <div class="ji-law-text">{{ item.fefta_category_text[:350] }}{% if item.fefta_category_text|length > 350 %}…{% endif %}</div>
+              </div>
+              {% endif %}
+              {% if item.rule_summary %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">規制要件</div>
+                <div class="ji-law-text mono-sm">{{ item.rule_summary }}</div>
+              </div>
+              {% endif %}
+              {% if item.eccn_refs and item.eccn_refs|length > 0 %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">対応 ECCN</div>
+                <div>{% for eccn in item.eccn_refs[:5] %}<span class="chip" style="margin-right:4px; font-size:.78rem;">{{ eccn }}</span>{% endfor %}</div>
+              </div>
+              {% endif %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">直接判定ヒット詳細</div>
+                <ul class="bul" style="margin-top:4px">
+                  {% for h in item.hits.core %}
+                  <li style="margin-bottom:8px; font-size:.83rem">
+                    <span class="chip"><b>{{ h.decision }}</b></span>
+                    <span class="mono">{{ "%.4f"|format(h.match_score or 0) }}</span>
+                    {% if h.matched_compact %}<span class="muted"> | {{ h.matched_compact | join(" / ") }}</span>{% endif %}
+                    <div class="muted small">{{ h.usage_text or "-" }}</div>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </details>
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+
+    <!-- ③ 用途関連（expanded_only） -->
+    {% if two_lists.expanded_only and two_lists.expanded_only|length > 0 %}
+    <details style="margin-top:14px">
+      <summary class="subsection-summary" style="color:var(--muted)">
+        <span class="badge badge-expanded" style="margin-right:6px">用途関連</span>（{{ two_lists.counts.expanded_only }} 件）
+        <span class="muted small" style="font-weight:400; margin-left:6px">応用展開用途から規制可能性を示唆（要精査）</span>
+      </summary>
+      <div class="list" style="margin-top:8px">
+        {% for item in two_lists.expanded_only %}
+        <div id="detail-rule-{{ item.rule_id }}" class="list-item detail-anchor judgment-item" style="opacity:.9">
+          <div class="ji-header">
+            <div class="ji-ids">
+              {% if item.item_ids and item.item_ids|length > 0 %}{{ item.item_ids | join(" / ") }}
+              {% elif item.item_label %}{{ item.item_label }}
+              {% else %}rule_id={{ item.rule_id }}{% endif %}
+              {% if item.fefta_category_label %}
+              <span class="ji-category-badge">{{ item.fefta_category_label }}</span>
+              {% endif %}
+            </div>
+            <span class="chip chip-score">{{ "%.3f"|format(item.max_score or 0) }}</span>
+          </div>
+          {% if item.reason_text %}
+          <div class="ji-reason" style="color:#6b7280;">{{ item.reason_text }}</div>
+          {% endif %}
+          <details class="ji-law-detail">
+            <summary>根拠詳細を確認する ▸</summary>
+            <div class="ji-law-body">
+              {% if item.fefta_category_text %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">外為法 別表第一（関連条文抜粋）</div>
+                <div class="ji-law-text">{{ item.fefta_category_text[:350] }}{% if item.fefta_category_text|length > 350 %}…{% endif %}</div>
+              </div>
+              {% endif %}
+              {% if item.rule_summary %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">規制要件</div>
+                <div class="ji-law-text mono-sm">{{ item.rule_summary }}</div>
+              </div>
+              {% endif %}
+              {% if item.eccn_refs and item.eccn_refs|length > 0 %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">対応 ECCN</div>
+                <div>{% for eccn in item.eccn_refs[:5] %}<span class="chip" style="margin-right:4px; font-size:.78rem;">{{ eccn }}</span>{% endfor %}</div>
+              </div>
+              {% endif %}
+              <div class="ji-law-section">
+                <div class="ji-law-label">用途関連ヒット詳細</div>
+                <ul class="bul" style="margin-top:4px">
+                  {% for h in item.hits.expanded %}
+                  <li style="margin-bottom:8px; font-size:.83rem">
+                    <span class="chip"><b>{{ h.decision }}</b></span>
+                    <span class="mono">{{ "%.4f"|format(h.match_score or 0) }}</span>
+                    {% if h.matched_compact %}<span class="muted"> | {{ h.matched_compact | join(" / ") }}</span>{% endif %}
+                    <div class="muted small">{{ h.usage_text or "-" }}</div>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </details>
         </div>
         {% endfor %}
       </div>
@@ -651,6 +757,94 @@ details[open] > .detail-summary::before { transform: rotate(90deg); }
 .subsection-summary::-webkit-details-marker { display:none; }
 
 .label-sm { font-size:.82rem; font-weight:600; color:#6b7280; }
+
+/* ─── 判定アイテム（ji-*） ─── */
+.judgment-item { padding: 14px 16px; }
+.judgment-intersection { border-left: 3px solid #f59e0b; background:#fffbeb; }
+
+.ji-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.ji-ids {
+  font-weight: 700;
+  font-size: .92rem;
+  line-height: 1.4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ji-category-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: .72rem;
+  font-weight: 600;
+  border: 1px solid #e5e7eb;
+}
+.ji-chips { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.chip-score { background: #f3f4f6; color: #374151; font-family: monospace; }
+.chip-bis { background: #ede9fe; color: #5b21b6; font-size: .72rem; font-weight: 600; }
+
+.ji-reason {
+  font-size: .88rem;
+  color: #374151;
+  line-height: 1.6;
+  margin: 6px 0;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 3px solid #cbd5e1;
+}
+.ji-tokens { margin: 5px 0 4px; }
+
+/* ─── 根拠詳細（折りたたみ） ─── */
+.ji-law-detail {
+  margin-top: 8px;
+}
+.ji-law-detail > summary {
+  font-size: .78rem;
+  color: #6b7280;
+  cursor: pointer;
+  display: inline-block;
+  padding: 3px 0;
+  list-style: none;
+  user-select: none;
+}
+.ji-law-detail > summary::-webkit-details-marker { display:none; }
+.ji-law-detail[open] > summary { color: #374151; }
+.ji-law-body {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ji-law-section {}
+.ji-law-label {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #9ca3af;
+  margin-bottom: 4px;
+}
+.ji-law-text {
+  font-size: .83rem;
+  color: #374151;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  padding: 8px 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+.mono-sm { font-family: monospace; font-size: .8rem; }
 </style>
 
 {% endblock %}

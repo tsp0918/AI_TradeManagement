@@ -11,6 +11,8 @@ from sqlalchemy import desc
 from app.db.models.ai_run import AiRun, RunType, MatrixMatch
 from app.db.models.matrix import MatrixRule
 from app.db.models.transaction import UsageRequirement, UsageSource
+from app.services.control_node_lookup import enrich_two_list_item
+from app.services.judgment_reason import make_judgment_reason
 
 
 # -----------------------------
@@ -71,21 +73,27 @@ def _load_usage_map(db: Session, transaction_id: int) -> Dict[int, UsageRequirem
 # -----------------------------
 _ID_RE_1 = re.compile(r"'id'\s*:\s*'([^']+)'")
 _ID_RE_2 = re.compile(r'"id"\s*:\s*"([^"]+)"')
+# EL-7-19, EL-7, METI-2-1-3 などのプレーン ID パターン（カテゴリ単体も含む）
+_ID_RE_PLAIN = re.compile(r"\b([A-Z]{2,6}-\d+(?:-\d+)*)\b")
 
 
 def _extract_item_ids(item_no: Optional[str]) -> List[str]:
     """
-    item_no には現在、
-      "{'raw': '...', 'norm': '...', 'id': 'EL-3-1'} / {'raw': ... 'id': 'METI-2-1-3'}"
-    のような「python dict文字列」が入っていることがある。
+    item_no には以下のいずれかの形式が入っている:
+      1) プレーン ID: "EL-7-19"
+      2) python dict 文字列: "{'raw': '...', 'id': 'EL-3-1'} / {'raw': ... 'id': 'METI-2-1-3'}"
 
-    ここから id だけ抜いて UI表示を簡潔にする。
+    どちらからでも ID を抽出して UI 表示を簡潔にする。
     """
     if not item_no:
         return []
+    # まず dict 形式を試みる
     ids = _ID_RE_1.findall(item_no)
     if not ids:
         ids = _ID_RE_2.findall(item_no)
+    # dict 形式でなければプレーン ID パターンで抽出
+    if not ids:
+        ids = _ID_RE_PLAIN.findall(item_no)
     # 去重しつつ順序保持
     seen = set()
     out: List[str] = []
@@ -266,6 +274,14 @@ def compute_two_lists(db: Session, transaction_id: int, run_id: Optional[int] = 
     intersection.sort(key=sort_key)
     expanded_only.sort(key=sort_key)
     core_only.sort(key=sort_key)
+
+    # ── control_nodes.json から外為法条文・ECCN 情報を付与 ──────────
+    for item in intersection + core_only + expanded_only:
+        try:
+            enrich_two_list_item(item)
+            item["reason_text"] = make_judgment_reason(item, "intersection" if item in intersection else ("core_only" if item in core_only else "expanded_only"))
+        except Exception:
+            item.setdefault("reason_text", "")
 
     return {
         "transaction_id": transaction_id,
