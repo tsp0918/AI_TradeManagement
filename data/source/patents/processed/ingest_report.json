@@ -1,0 +1,16 @@
+{
+  "status": "ok",
+  "generated_at": "2026-03-01T22:32:39.043121+00:00",
+  "total_unique": 4,
+  "files": [
+    {
+      "file": "test_jplatpat.csv",
+      "format": "jplatpat",
+      "encoding": "utf-8",
+      "parsed": 4,
+      "skipped": 0,
+      "duplicate_skipped": 0
+    }
+  ],
+  "errors": []
+}
