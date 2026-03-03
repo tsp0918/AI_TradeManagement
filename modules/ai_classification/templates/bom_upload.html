@@ -31,13 +31,17 @@
 
     <h2 class="title is-6">BOM CSV format example</h2>
     <pre class="box" style="background:#f6f8fa; font-size: 0.85rem;">
-product_id	component_code	component_name	ratio	kind	description	amount	note
-1	RM-001	Ethylene Glycol	0.60	material		Main solvent
-1	RM-002	Sodium Hydroxide	0.15	material		pH control
-1	RM-003	Water	0.25	material		Diluent
-1				overhead	Labor cost	1200	Cleanroom staffing
-1				overhead	Equipment depreciation	800	Exposure system depreciation
+product_id	component_code	component_name	ratio	kind	description	amount	coo	unit_value	note
+1	RM-001	Ethylene Glycol	0.60	material			US	12.50	Main solvent
+1	RM-002	Sodium Hydroxide	0.15	material			JP	3.80	pH control
+1	RM-003	Water	0.25	material			JP	0.10	Diluent
+1				overhead	Labor cost	1200			Cleanroom staffing
+1				overhead	Equipment depreciation	800			Exposure system depreciation
     </pre>
+    <p class="is-size-7 has-text-grey mt-2">
+      <strong>coo</strong>: 原産地（ISO 3166-1 alpha-2, 例: JP / US / CN / KR）— 省略可。再輸出規制の De Minimis 計算に使用します。<br>
+      <strong>unit_value</strong>: 単価 USD — 省略可。De Minimis / FDP ルール計算の基礎値です。
+    </p>
 
   </div>
 </section>

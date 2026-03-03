@@ -368,6 +368,8 @@ def edit_product(request: Request, product_id: int, db: Session = Depends(get_db
                         "std_price": std_price,
                         "cost": cost,
                         "note": note,
+                        "coo": item.get("coo"),
+                        "unit_value": item.get("unit_value"),
                     }
                 )
 
@@ -388,6 +390,8 @@ def edit_product(request: Request, product_id: int, db: Session = Depends(get_db
                         "std_price": amount,
                         "cost": amount,
                         "note": note,
+                        "coo": None,
+                        "unit_value": None,
                     }
                 )
 
@@ -453,6 +457,7 @@ def update_product(
     is_prtr: bool = Form(False),
     is_shoubouho: bool = Form(False),
     is_high_pressure_gas: bool = Form(False),
+    country_of_origin: str = Form(""),
     db: Session = Depends(get_db),
 ):
     product = db.get(Product, product_id)
@@ -464,6 +469,8 @@ def update_product(
     product.description = description or None
     product.hs_code = hs_code or None
     product.eccn = eccn or None
+    coo_val = country_of_origin.strip().upper()
+    product.country_of_origin = coo_val[:2] if coo_val else None
     product.ghs_signal_word = ghs_signal_word or None
     product.ghs_pictograms = ghs_pictograms or None
     product.ghs_h_statements = ghs_h_statements or None
@@ -635,6 +642,9 @@ def bom_upload(
     total_cost = 0.0
     total_ratio = 0.0
 
+    has_coo = "coo" in df.columns
+    has_unit_value = "unit_value" in df.columns
+
     for _, row in df.iterrows():
         kind = "material"
         if has_kind and not pd.isna(row.get("kind", "")):
@@ -661,6 +671,15 @@ def bom_upload(
             else:
                 description = ""
 
+            # 再輸出規制用: 原産地 (ISO 3166-1 alpha-2) と単価USD
+            coo_raw = str(row.get("coo", "") or "").strip().upper() if has_coo else ""
+            coo = coo_raw[:2] if coo_raw else None
+
+            try:
+                unit_value = float(row.get("unit_value", 0.0) or 0.0) if has_unit_value else None
+            except Exception:
+                unit_value = None
+
             comp = db.query(Product).filter(Product.code == comp_code).first()
             if not comp:
                 raise HTTPException(status_code=400, detail=f"構成品目コードが未登録です: {comp_code}")
@@ -668,17 +687,21 @@ def bom_upload(
             comp_price = float(comp.std_price or 0.0)
             cost = comp_price * ratio
 
-            bom_items.append(
-                {
-                    "kind": "material",
-                    "component_id": comp.id,
-                    "component_code": comp.code,
-                    "component_name": comp.name,
-                    "description": description,
-                    "ratio": ratio,
-                    "note": note,
-                }
-            )
+            bom_item: dict = {
+                "kind": "material",
+                "component_id": comp.id,
+                "component_code": comp.code,
+                "component_name": comp.name,
+                "description": description,
+                "ratio": ratio,
+                "note": note,
+            }
+            if coo is not None:
+                bom_item["coo"] = coo
+            if unit_value is not None:
+                bom_item["unit_value"] = unit_value
+
+            bom_items.append(bom_item)
 
             total_ratio += ratio
             total_cost += cost

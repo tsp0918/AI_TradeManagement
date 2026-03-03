@@ -21,6 +21,7 @@ async def _ensure_columns() -> None:
             ("source_rnd_transaction_id",   "INTEGER"),
             ("ui_validation_transaction_id","INTEGER"),
             ("export_control_items",        "TEXT"),
+            ("country_of_origin",           "VARCHAR(10)"),
         ],
     }
     with engine.connect() as conn:

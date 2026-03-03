@@ -49,6 +49,9 @@ class Product(Base):
     std_price = Column(Float, nullable=True)
     bom_json = Column(Text, nullable=True)
 
+    # 再輸出規制用：原産地（ISO 3166-1 alpha-2: JP/US/CN/KR など）
+    country_of_origin = Column(String(10), nullable=True)
+
     # 既存：社内簡易該非判定（残すなら）
     export_control_status = Column(String(50), default="not_evaluated", nullable=False)
     export_control_reason = Column(Text, nullable=True)

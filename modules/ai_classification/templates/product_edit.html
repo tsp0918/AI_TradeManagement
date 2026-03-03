@@ -101,6 +101,16 @@
                     <input class="input" type="text" name="item_class" placeholder="Finished Goods / Raw Material など" value="{{ product.item_class or '' }}">
                   </div>
                 </div>
+                <div class="field" style="max-width:120px;">
+                  <label class="label" title="原産地（再輸出規制・De Minimis 計算用）">原産地 (COO)</label>
+                  <div class="control">
+                    <input class="input" type="text" name="country_of_origin"
+                           maxlength="2" placeholder="JP"
+                           style="text-transform:uppercase; font-family:monospace;"
+                           value="{{ product.country_of_origin or '' }}">
+                  </div>
+                  <p class="help">ISO 3166-1 alpha-2</p>
+                </div>
                 <div class="field">
                   <label class="label">標準価格</label>
                   <div class="control has-icons-right">
@@ -261,6 +271,8 @@
               <th class="has-text-right">構成比 (%)</th>
               <th class="has-text-right">単価</th>
               <th class="has-text-right">金額</th>
+              <th title="原産地 (ISO 3166-1 alpha-2)">原産地</th>
+              <th class="has-text-right" title="単価 USD（De Minimis 計算用）">単価USD</th>
               <th>メモ</th>
             </tr>
           </thead>
@@ -298,6 +310,20 @@
                     -
                   {% endif %}
                 </td>
+                <td>
+                  {% if c.coo %}
+                    <span class="tag is-light" style="font-family:monospace;">{{ c.coo }}</span>
+                  {% else %}
+                    <span class="has-text-grey">-</span>
+                  {% endif %}
+                </td>
+                <td class="has-text-right">
+                  {% if c.unit_value is not none %}
+                    ${{ "%.2f"|format(c.unit_value) }}
+                  {% else %}
+                    <span class="has-text-grey">-</span>
+                  {% endif %}
+                </td>
                 <td>{{ c.note }}</td>
               </tr>
             {% endfor %}
@@ -308,7 +334,7 @@
               <th class="has-text-right">{{ "%.2f"|format(bom_total_ratio * 100) }} %</th>
               <th></th>
               <th class="has-text-right">{{ "%.2f"|format(bom_total_cost) }}</th>
-              <th></th>
+              <th colspan="3"></th>
             </tr>
           </tfoot>
         </table>
