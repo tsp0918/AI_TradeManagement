@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>データセット管理 — AI Trade Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+JP:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cream-50:  #FDFBF8;
+      --cream-100: #F7F3EE;
+      --cream-200: #EDE6DC;
+      --cream-300: #DDD3C5;
+      --cream-400: #C4B5A2;
+      --cream-500: #9C8A78;
+      --cream-700: #5A4A3A;
+      --cream-900: #2C1E12;
+      --accent:       #8C6A50;
+      --accent-light: #C4A088;
+      --green:    #6BA88A;
+      --green-bg: #E6F4EE;
+      --red:      #B05050;
+      --red-bg:   #F5E6E6;
+      --warn:     #C09040;
+      --warn-bg:  #FDF5E0;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont,
+        "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+      background: var(--cream-50);
+      color: var(--cream-700);
+      padding: 36px 44px;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1 { font-size: 20px; font-weight: 500; color: var(--cream-900); margin-bottom: 4px;
+         font-family: 'Noto Sans JP', sans-serif; letter-spacing: 0.01em; }
+    .subtitle { color: var(--cream-500); margin-bottom: 28px; font-size: 12px; letter-spacing: 0.02em; }
+
+    /* ── Flash ── */
+    .flash {
+      padding: 12px 18px; border-radius: var(--radius); margin-bottom: 24px;
+      font-family: 'Noto Sans JP', sans-serif; font-size: 13px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .flash-ok   { background: var(--green-bg); color: #3A7A5A; border: 1px solid #B8DDD0; }
+    .flash-warn { background: var(--warn-bg);  color: #7A5A20; border: 1px solid #E8D090; }
+
+    /* ── Unified status banner ── */
+    .unified-banner {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 18px 22px; border-radius: var(--radius);
+      border: 1px solid var(--cream-200); background: #fff;
+      margin-bottom: 28px;
+    }
+    .unified-banner .ub-left { display: flex; align-items: center; gap: 14px; }
+    .ub-icon { font-size: 24px; }
+    .ub-title { font-weight: 500; font-family: 'Noto Sans JP', sans-serif;
+                color: var(--cream-900); font-size: 14px; }
+    .ub-meta  { font-size: 11px; color: var(--cream-500); margin-top: 2px; font-family: 'Inter', monospace; }
+    .ub-badge { display: inline-block; padding: 3px 10px; border-radius: 12px;
+                font-size: 11px; font-weight: 600; font-family: 'Inter', sans-serif; }
+    .ub-badge.ready  { background: var(--green-bg); color: #3A7A5A; }
+    .ub-badge.empty  { background: var(--cream-100); color: var(--cream-500); }
+    .btn-build {
+      padding: 8px 18px; border-radius: 6px; font-size: 12px; font-weight: 500;
+      font-family: 'Noto Sans JP', sans-serif; cursor: pointer;
+      border: 1px solid var(--accent-light); background: var(--accent);
+      color: #fff; transition: opacity 0.15s;
+    }
+    .btn-build:hover:not(:disabled) { opacity: 0.85; }
+    .btn-build:disabled { opacity: 0.4; cursor: not-allowed;
+      background: var(--cream-300); border-color: var(--cream-300); color: var(--cream-500); }
+
+    /* ── Section ── */
+    .section-title {
+      font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--cream-400);
+      margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--cream-200);
+    }
+
+    /* ── Source grid ── */
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .source-card {
+      background: #fff; border: 1px solid var(--cream-200);
+      border-radius: var(--radius); padding: 20px 22px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .source-card:hover { border-color: var(--accent-light); }
+
+    .sc-header { display: flex; align-items: flex-start; gap: 12px; }
+    .sc-icon { font-size: 22px; flex-shrink: 0; }
+    .sc-label { font-weight: 500; font-family: 'Noto Sans JP', sans-serif;
+                color: var(--cream-900); font-size: 14px; }
+    .sc-desc  { font-size: 11px; color: var(--cream-500); margin-top: 3px;
+                line-height: 1.5; }
+    .sc-source-link { font-size: 10px; color: var(--accent); font-family: 'Inter', monospace; }
+
+    /* ── File list ── */
+    .file-list { display: flex; flex-direction: column; gap: 6px; }
+    .file-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; border-radius: 6px;
+      background: var(--cream-50); border: 1px solid var(--cream-100);
+      font-size: 12px;
+    }
+    .file-name { flex: 1; font-family: 'Inter', monospace; color: var(--cream-900);
+                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-size { color: var(--cream-400); font-family: 'Inter', sans-serif;
+                 font-size: 10px; flex-shrink: 0; }
+    .file-date { color: var(--cream-400); font-family: 'Inter', sans-serif;
+                 font-size: 10px; flex-shrink: 0; }
+    .btn-del {
+      flex-shrink: 0; padding: 3px 8px; border-radius: 4px; font-size: 10px;
+      cursor: pointer; background: transparent; border: 1px solid var(--cream-200);
+      color: var(--cream-400); font-family: 'Inter', sans-serif;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .btn-del:hover { color: var(--red); border-color: var(--red); }
+    .no-files { font-size: 11px; color: var(--cream-400); font-family: 'Noto Sans JP', sans-serif;
+                padding: 10px 0; }
+
+    /* ── Upload form ── */
+    .upload-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .file-input-wrap {
+      flex: 1; min-width: 180px; position: relative; overflow: hidden;
+      border: 1px dashed var(--cream-300); border-radius: 6px;
+      padding: 8px 12px; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .file-input-wrap:hover { border-color: var(--accent-light); background: var(--cream-50); }
+    .file-input-wrap input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
+    }
+    .file-input-label { font-size: 11px; color: var(--cream-500);
+                        font-family: 'Noto Sans JP', sans-serif; pointer-events: none; }
+    .file-input-label strong { color: var(--cream-700); }
+    .btn-upload {
+      flex-shrink: 0; padding: 8px 14px; border-radius: 6px; font-size: 12px;
+      font-weight: 500; font-family: 'Noto Sans JP', sans-serif; cursor: pointer;
+      border: 1px solid var(--accent-light); background: #fff;
+      color: var(--accent); transition: background 0.15s;
+    }
+    .btn-upload:hover { background: var(--cream-100); }
+
+    /* ── Hint ── */
+    .sc-hint { font-size: 10px; color: var(--cream-400); font-family: 'Inter', monospace; }
+
+    /* ── Count badge ── */
+    .cnt-badge {
+      display: inline-block; padding: 1px 7px; border-radius: 9px;
+      font-size: 10px; font-weight: 600; font-family: 'Inter', sans-serif;
+      background: var(--cream-100); color: var(--cream-500);
+    }
+    .cnt-badge.has-files { background: var(--green-bg); color: #3A7A5A; }
+  </style>
+</head>
+<body>
+
+  <h1>🗂 データセット管理</h1>
+  <p class="subtitle">規制法令・特許の生データを管理し、統合 control_nodes.json を構築します</p>
+
+  {% if flash %}
+  <div class="flash flash-{{ flash_type }}">
+    {% if flash_type == 'ok' %}✓{% else %}⚠{% endif %}
+    {{ flash }}
+  </div>
+  {% endif %}
+
+  <!-- ── Unified ステータス ── -->
+  <div class="unified-banner">
+    <div class="ub-left">
+      <div class="ub-icon">🧩</div>
+      <div>
+        <div class="ub-title">統合データセット — control_nodes.json</div>
+        {% if unified.exists %}
+        <div class="ub-meta">
+          {{ unified.size_kb }} KB
+          {% if unified.modified %} · 最終ビルド: {{ unified.modified }}{% endif %}
+          {% if unified.manifest %} · manifest あり{% endif %}
+        </div>
+        {% else %}
+        <div class="ub-meta">未生成 — 各ソースデータをアップロード後にビルドしてください</div>
+        {% endif %}
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      {% if unified.exists %}
+      <span class="ub-badge ready">✓ Ready</span>
+      {% else %}
+      <span class="ub-badge empty">未生成</span>
+      {% endif %}
+      <form method="post" action="/admin/datasets/build" style="margin:0;"
+            onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='⏳ ビルド中…';">
+        <button class="btn-build" type="submit">⚙ ビルド実行</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── ソースデータ ── -->
+  <div class="section-title">ソースデータ管理</div>
+  <div class="source-grid">
+    {% for src in sources %}
+    <div class="source-card">
+      <div class="sc-header">
+        <div class="sc-icon">{{ src.icon }}</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="sc-label">{{ src.label }}</div>
+            <span class="cnt-badge {% if src.file_count > 0 %}has-files{% endif %}">
+              {{ src.file_count }} ファイル
+            </span>
+          </div>
+          <div class="sc-desc">{{ src.description }}</div>
+          <div class="sc-source-link">
+            <a href="{{ src.source_url }}" target="_blank"
+               style="color:var(--accent);">{{ src.source_url[:60] }}{% if src.source_url|length > 60 %}…{% endif %}</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ファイル一覧 -->
+      {% if src.files %}
+      <div class="file-list">
+        {% for f in src.files %}
+        <div class="file-row">
+          <span class="file-name" title="{{ f.name }}">{{ f.name }}</span>
+          <span class="file-size">{{ f.size_kb }} KB</span>
+          <span class="file-date">{{ f.modified }}</span>
+          <form method="post"
+                action="/admin/datasets/files/{{ src.key }}/{{ f.name }}/delete"
+                onsubmit="return confirm('「{{ f.name }}」を削除しますか？');"
+                style="margin:0;">
+            <button class="btn-del" type="submit">削除</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="no-files">まだファイルがありません</div>
+      {% endif %}
+
+      <!-- 特許のみ: 前処理実行ボタン -->
+      {% if src.key == 'patents' %}
+      <form method="post" action="/admin/datasets/ingest/patents" style="margin:0;">
+        <button class="btn-upload" type="submit"
+                style="background:var(--cream-100);border-color:var(--accent-light);width:100%;">
+          ⚙ CSV 前処理実行（→ processed/）
+        </button>
+      </form>
+      {% endif %}
+
+      <!-- アップロードフォーム -->
+      <form class="upload-form" method="post"
+            action="/admin/datasets/upload"
+            enctype="multipart/form-data">
+        <input type="hidden" name="source_type" value="{{ src.key }}" />
+        <div class="file-input-wrap" id="wrap-{{ src.key }}">
+          <input type="file" name="file" accept="{{ src.accept }}"
+                 onchange="updateLabel(this, '{{ src.key }}')" required />
+          <div class="file-input-label" id="lbl-{{ src.key }}">
+            クリックまたはドラッグ &amp; ドロップ<br>
+            <strong>{{ src.accept }}</strong>
+          </div>
+        </div>
+        <button class="btn-upload" type="submit">アップロード</button>
+      </form>
+      <div class="sc-hint">例: {{ src.hint }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    function updateLabel(input, key) {
+      const lbl = document.getElementById('lbl-' + key);
+      if (input.files && input.files[0]) {
+        lbl.innerHTML = '<strong>' + input.files[0].name + '</strong> (' +
+          (input.files[0].size / 1024).toFixed(1) + ' KB)';
+      }
+    }
+  </script>
+</body>
+</html>

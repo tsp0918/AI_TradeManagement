@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  /* ── 基本フォント（macOS / Linux 両対応） ── */
+  @font-face {
+    font-family: 'NotoSans';
+    src: local('Noto Sans CJK JP'),
+         local('Noto Sans JP'),
+         local('Hiragino Kaku Gothic ProN'),
+         local('Hiragino Sans'),
+         local('Yu Gothic');
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'NotoSans', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
+                 'Yu Gothic', 'Noto Sans JP', sans-serif;
+    font-size: 9pt;
+    color: #1a1a1a;
+    line-height: 1.5;
+    padding: 18mm 15mm 15mm 15mm;
+  }
+
+  /* ── ページ設定 ── */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  @page :first {
+    @top-center { content: ''; }
+  }
+
+  /* ── ヘッダー ── */
+  .doc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 2px solid #1e3a5f;
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+  }
+  .doc-title { font-size: 16pt; font-weight: bold; color: #1e3a5f; }
+  .doc-meta  { font-size: 7.5pt; color: #555; text-align: right; line-height: 1.6; }
+
+  /* ── 案件情報カード ── */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 110px 1fr 110px 1fr;
+    gap: 3px 8px;
+    background: #f0f4f8;
+    border: 1px solid #c5d3e8;
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 8.5pt;
+  }
+  .info-label { color: #4a5568; font-weight: bold; }
+  .info-value { color: #1a202c; }
+
+  /* ── 判定サマリーバッジ ── */
+  .summary-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+  .summary-badge {
+    border-radius: 4px;
+    padding: 5px 14px;
+    font-size: 9pt;
+    font-weight: bold;
+    text-align: center;
+  }
+  .badge-intersection { background: #fef3c7; border: 1.5px solid #d97706; color: #92400e; }
+  .badge-core         { background: #dbeafe; border: 1.5px solid #2563eb; color: #1e3a8a; }
+  .badge-expanded     { background: #f3f4f6; border: 1.5px solid #9ca3af; color: #374151; }
+  .badge-number       { font-size: 13pt; display: block; }
+
+  /* ── セクション ── */
+  .section-title {
+    font-size: 10.5pt;
+    font-weight: bold;
+    color: #1e3a5f;
+    margin: 16px 0 6px 0;
+    padding: 4px 10px;
+    background: #e8eef7;
+    border-left: 4px solid #1e3a5f;
+  }
+  .section-title.warn   { background: #fef9e7; border-color: #d97706; color: #92400e; }
+  .section-title.safe   { background: #f0f9f0; border-color: #2d8a4e; color: #1a5c34; }
+  .section-title.hint   { background: #f9fafb; border-color: #9ca3af; color: #374151; }
+
+  /* ── テーブル ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+    margin-bottom: 6px;
+  }
+  thead tr { background: #1e3a5f; color: #fff; }
+  thead.warn tr  { background: #92400e; }
+  thead.hint tr  { background: #4b5563; }
+  th {
+    padding: 5px 6px;
+    text-align: left;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+  td { padding: 4px 6px; vertical-align: top; border-bottom: 1px solid #e5e7eb; }
+  tr:nth-child(even) td { background: #f8fafc; }
+
+  /* カテゴリ別行色 */
+  .row-intersection td { border-left: 3px solid #d97706; }
+  .row-core_only    td { border-left: 3px solid #2563eb; }
+  .row-expanded_only td { border-left: 3px solid #9ca3af; }
+
+  .score-cell   { text-align: right; font-family: monospace; white-space: nowrap; }
+  .decision-hit  { color: #b91c1c; font-weight: bold; }
+  .decision-maybe { color: #92400e; }
+
+  .rule-id   { font-weight: bold; white-space: nowrap; }
+  .list-name { font-size: 7pt; color: #6b7280; }
+  .req-text  { color: #374151; font-size: 7.5pt; }
+  .tokens    { font-size: 7pt; color: #374151; }
+
+  /* ── フッター ── */
+  .doc-footer {
+    margin-top: 20px;
+    padding-top: 6px;
+    border-top: 1px solid #d1d5db;
+    font-size: 7pt;
+    color: #9ca3af;
+    text-align: center;
+  }
+
+  /* ページ番号（WeasyPrint） */
+  @page { @bottom-right { content: counter(page) " / " counter(pages); font-size: 7pt; color: #9ca3af; margin: 0 15mm 10mm 0; } }
+  @page { @bottom-left  { content: "【社外秘】該非判定レポート"; font-size: 7pt; color: #9ca3af; margin: 0 0 10mm 15mm; } }
+</style>
+</head>
+<body>
+
+<!-- ── ヘッダー ── -->
+<div class="doc-header">
+  <div class="doc-title">該非判定レポート</div>
+  <div class="doc-meta">
+    出力日時：{{ generated_at }}<br>
+    AI解析日時：{{ run_at_str }}<br>
+    安全保障貿易管理プラットフォーム
+  </div>
+</div>
+
+<!-- ── 案件情報 ── -->
+<div class="info-grid">
+  <span class="info-label">案件番号</span>
+  <span class="info-value">{{ tx.case_no or "-" }}</span>
+  <span class="info-label">ステータス</span>
+  <span class="info-value">{{ tx.status or "-" }}</span>
+
+  <span class="info-label">タイトル</span>
+  <span class="info-value" style="grid-column: span 3">{{ tx.title or "-" }}</span>
+
+  <span class="info-label">取引先企業</span>
+  <span class="info-value">{{ tx.counterparty_name or "（未設定）" }}</span>
+  <span class="info-label">スクリーニング</span>
+  <span class="info-value">{{ tx.screening_status or "未実施" }}</span>
+</div>
+
+<!-- ── 判定サマリー ── -->
+<div class="summary-bar">
+  <div class="summary-badge badge-intersection">
+    <span class="badge-number">{{ counts.intersection or 0 }}</span>
+    件<br>両方一致
+  </div>
+  <div class="summary-badge badge-core">
+    <span class="badge-number">{{ counts.core_only or 0 }}</span>
+    件<br>直接一致のみ
+  </div>
+  <div class="summary-badge badge-expanded">
+    <span class="badge-number">{{ counts.expanded_only or 0 }}</span>
+    件<br>特許示唆のみ
+  </div>
+  <div style="font-size:8pt; color:#4a5568; margin-left:8px; line-height:1.8">
+    <b>両方一致</b>: 申告用途・特許展開用途の両方で規制項目にヒット（最も確度が高い）<br>
+    <b>直接一致のみ</b>: 申告用途テキストが規制項目に直接ヒット<br>
+    <b>特許示唆のみ</b>: 関連特許から展開した用途でのみヒット（参考情報）
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     SECTION 1: INTERSECTION
+════════════════════════════════════════════ -->
+{% set intersection_rows = two_lists.intersection %}
+<div class="section-title warn">
+  ★ 両方一致（Intersection）— {{ counts.intersection or 0 }} 件
+  {% if counts.intersection and counts.intersection > 0 %}
+  ｜ 最も確度が高い規制ヒット。要確認。
+  {% else %}
+  ｜ 該当なし
+  {% endif %}
+</div>
+
+{% if intersection_rows %}
+<table>
+  <thead class="warn">
+    <tr>
+      <th style="width:16%">規制番号</th>
+      <th style="width:20%">タイトル</th>
+      <th>規制要件</th>
+      <th style="width:7%">判定</th>
+      <th style="width:7%">スコア</th>
+      <th style="width:14%">主要一致語</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for item in intersection_rows %}
+    {% set core_hits = item.hits.core %}
+    {% set exp_hits  = item.hits.expanded %}
+    {% set primary   = (core_hits if core_hits else exp_hits) %}
+    {% set first_hit = primary[0] if primary else {} %}
+    {% set matched   = first_hit.matched_compact or [] %}
+    <tr class="row-intersection">
+      <td>
+        <div class="rule-id">{{ row_label(item) }}</div>
+        <div class="list-name">{{ item.list_name or "" }}</div>
+      </td>
+      <td style="font-size:7.5pt">{{ (item.title or "")[:40] }}</td>
+      <td class="req-text">{{ (item.rule_summary or "")[:120] }}{% if (item.rule_summary or "")|length > 120 %}…{% endif %}</td>
+      <td class="{{ 'decision-hit' if item.best_decision == 'hit' else 'decision-maybe' }}">
+        {{ item.best_decision or "-" }}
+      </td>
+      <td class="score-cell">{{ fmt_score(item.max_score) }}</td>
+      <td class="tokens">{{ matched[:5]|join(" / ") if matched else "-" }}</td>
+    </tr>
+    <!-- コア用途テキスト -->
+    {% for h in core_hits[:2] %}
+    <tr style="background:#fffbeb">
+      <td colspan="6" style="font-size:7pt; color:#78350f; padding: 2px 6px 4px 24px">
+        <b>[直接用途]</b> {{ (h.usage_text or "")[:140] }}{% if (h.usage_text or "")|length > 140 %}…{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p style="font-size:8pt; color:#9ca3af; margin: 4px 0 12px 0">該当なし</p>
+{% endif %}
+
+
+<!-- ═══════════════════════════════════════════
+     SECTION 2: CORE ONLY
+════════════════════════════════════════════ -->
+{% set core_only_rows = two_lists.core_only %}
+<div class="section-title">
+  直接一致のみ（Core Only）— {{ counts.core_only or 0 }} 件
+  {% if counts.core_only and counts.core_only > 0 %}
+  ｜ 申告用途テキストが直接ヒット。詳細確認を推奨。
+  {% else %}
+  ｜ 該当なし
+  {% endif %}
+</div>
+
+{% if core_only_rows %}
+<table>
+  <thead>
+    <tr>
+      <th style="width:16%">規制番号</th>
+      <th style="width:20%">タイトル</th>
+      <th>規制要件</th>
+      <th style="width:7%">判定</th>
+      <th style="width:7%">スコア</th>
+      <th style="width:14%">主要一致語</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for item in core_only_rows %}
+    {% set core_hits = item.hits.core %}
+    {% set first_hit = core_hits[0] if core_hits else {} %}
+    {% set matched   = first_hit.matched_compact or [] %}
+    <tr class="row-core_only">
+      <td>
+        <div class="rule-id">{{ row_label(item) }}</div>
+        <div class="list-name">{{ item.list_name or "" }}</div>
+      </td>
+      <td style="font-size:7.5pt">{{ (item.title or "")[:40] }}</td>
+      <td class="req-text">{{ (item.rule_summary or "")[:120] }}{% if (item.rule_summary or "")|length > 120 %}…{% endif %}</td>
+      <td class="{{ 'decision-hit' if item.best_decision == 'hit' else 'decision-maybe' }}">
+        {{ item.best_decision or "-" }}
+      </td>
+      <td class="score-cell">{{ fmt_score(item.max_score) }}</td>
+      <td class="tokens">{{ matched[:5]|join(" / ") if matched else "-" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p style="font-size:8pt; color:#9ca3af; margin: 4px 0 12px 0">該当なし</p>
+{% endif %}
+
+
+<!-- ═══════════════════════════════════════════
+     SECTION 3: EXPANDED ONLY（スコア上位10件）
+════════════════════════════════════════════ -->
+{% set exp_rows = two_lists.expanded_only %}
+{% set exp_top  = exp_rows[:10] %}
+<div class="section-title hint">
+  特許示唆のみ（Expanded Only）— {{ counts.expanded_only or 0 }} 件表示（上位10件）
+  ｜ 参考情報（非確定）
+</div>
+
+{% if exp_top %}
+<table>
+  <thead class="hint">
+    <tr>
+      <th style="width:16%">規制番号</th>
+      <th style="width:20%">タイトル</th>
+      <th>規制要件</th>
+      <th style="width:7%">スコア</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for item in exp_top %}
+    <tr class="row-expanded_only">
+      <td>
+        <div class="rule-id">{{ row_label(item) }}</div>
+        <div class="list-name">{{ item.list_name or "" }}</div>
+      </td>
+      <td style="font-size:7.5pt">{{ (item.title or "")[:40] }}</td>
+      <td class="req-text">{{ (item.rule_summary or "")[:120] }}{% if (item.rule_summary or "")|length > 120 %}…{% endif %}</td>
+      <td class="score-cell">{{ fmt_score(item.max_score) }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if exp_rows|length > 10 %}
+<p style="font-size:7.5pt; color:#9ca3af; margin-top:4px">
+  ※ 残り {{ exp_rows|length - 10 }} 件は CSV 出力をご参照ください。
+</p>
+{% endif %}
+{% else %}
+<p style="font-size:8pt; color:#9ca3af; margin: 4px 0 12px 0">該当なし</p>
+{% endif %}
+
+
+<!-- ── フッター ── -->
+<div class="doc-footer">
+  本レポートはAIによる補助的判定結果です。最終判断は貿易管理担当者が行ってください。
+  ｜ 安全保障貿易管理プラットフォーム ｜ {{ generated_at }} 出力
+</div>
+
+</body>
+</html>

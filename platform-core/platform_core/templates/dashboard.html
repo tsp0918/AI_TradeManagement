@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>案件ダッシュボード</title>
+  <style>
+    /* ── ベース ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont,
+        "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+      font-size: 13px;
+      background: #FDFBF8;
+      color: #5A4A3A;
+      padding: 20px 24px;
+      min-height: 100vh;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── ページヘッダー ── */
+    .page-header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1.5px solid #EDE6DC;
+    }
+    .page-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #2C1E12;
+    }
+    .page-sub {
+      font-size: 11.5px;
+      color: #9C8A78;
+    }
+    .refresh-btn {
+      margin-left: auto;
+      background: transparent;
+      border: 1px solid #DDD3C5;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: #9C8A78;
+      cursor: pointer;
+      transition: background .12s;
+    }
+    .refresh-btn:hover { background: #F7F3EE; }
+
+    /* ── エラーバナー ── */
+    .error-banner {
+      background: #FEF3C7;
+      border: 1px solid #FDE68A;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #854D0E;
+      margin-bottom: 16px;
+    }
+
+    /* ── 空状態 ── */
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: #9C8A78;
+    }
+    .empty-state .icon { font-size: 32px; margin-bottom: 12px; }
+    .empty-state p { font-size: 13px; }
+
+    /* ── 案件カード ── */
+    .case-card {
+      background: #fff;
+      border: 1px solid #EDE6DC;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      transition: box-shadow .15s;
+    }
+    .case-card:hover { box-shadow: 0 2px 10px rgba(44,30,18,.07); }
+
+    /* カードヘッダー */
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .case-no {
+      font-size: 11px;
+      font-weight: 700;
+      color: #8C6A50;
+      background: #F7F3EE;
+      border: 1px solid #DDD3C5;
+      border-radius: 5px;
+      padding: 2px 7px;
+      white-space: nowrap;
+    }
+    .case-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #2C1E12;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .status-chip {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .status-draft       { background: #F7F3EE; color: #9C8A78; border: 1px solid #DDD3C5; }
+    .status-in_review   { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+    .status-approved    { background: #DCFCE7; color: #166534; border: 1px solid #86EFAC; }
+    .status-rejected    { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
+
+    /* ── ステップパイプライン ── */
+    .pipeline {
+      display: flex;
+      gap: 6px;
+      align-items: stretch;
+      margin-bottom: 10px;
+    }
+    .step {
+      flex: 1;
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-size: 11px;
+      border: 1px solid transparent;
+      position: relative;
+    }
+    .step-label { font-weight: 600; display: block; margin-bottom: 2px; }
+    .step-detail { font-size: 10px; opacity: .85; }
+
+    /* 状態別色 */
+    .step-done {
+      background: #F0FDF4;
+      border-color: #86EFAC;
+      color: #166534;
+    }
+    .step-warn {
+      background: #FFFBEB;
+      border-color: #FDE68A;
+      color: #854D0E;
+    }
+    .step-danger {
+      background: #FEF2F2;
+      border-color: #FECACA;
+      color: #991B1B;
+    }
+    .step-pending {
+      background: #F7F3EE;
+      border-color: #DDD3C5;
+      color: #9C8A78;
+    }
+    .step-na {
+      background: #FDFBF8;
+      border-color: #EDE6DC;
+      color: #C4B5A2;
+    }
+    .step-num {
+      font-size: 10px;
+      opacity: .6;
+      margin-right: 3px;
+    }
+    .step-icon { float: right; font-size: 13px; }
+
+    /* ── 件数バッジ ── */
+    .count-row {
+      display: flex;
+      gap: 5px;
+      margin-top: 3px;
+      flex-wrap: wrap;
+    }
+    .cnt {
+      font-size: 9.5px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+    .cnt-intersection { background: #FEF3C7; color: #92400E; }
+    .cnt-core         { background: #DBEAFE; color: #1E40AF; }
+    .cnt-expanded     { background: #F3F4F6; color: #6B7280; }
+
+    /* ── アクションエリア ── */
+    .action-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #F7F3EE;
+      align-items: center;
+    }
+    .action-btn {
+      font-size: 11px;
+      padding: 5px 11px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-weight: 600;
+      transition: opacity .12s;
+    }
+    .action-btn:hover { opacity: .82; }
+    .action-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .action-btn.p-danger  { background: #FEF2F2; border-color: #FECACA; color: #991B1B; }
+    .action-btn.p-warn    { background: #FFFBEB; border-color: #FDE68A; color: #854D0E; }
+    .action-btn.p-info    { background: #EFF6FF; border-color: #BFDBFE; color: #1E40AF; }
+    .open-btn {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 5px 11px;
+      border-radius: 6px;
+      border: 1px solid #DDD3C5;
+      background: transparent;
+      color: #8C6A50;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background .12s;
+    }
+    .open-btn:hover { background: #F7F3EE; }
+
+    /* ── スピナー ── */
+    .spinner {
+      display: inline-block;
+      width: 10px; height: 10px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- ── ページヘッダー ── -->
+<div class="page-header">
+  <span class="page-title">📊 案件ダッシュボード</span>
+  <span class="page-sub">審査進行中 — 最新 {{ transactions|length }} 件</span>
+  <button class="refresh-btn" onclick="location.reload()">↻ 更新</button>
+</div>
+
+<!-- ── エラーバナー ── -->
+{% if error %}
+<div class="error-banner">⚠ {{ error }}</div>
+{% endif %}
+
+<!-- ── 案件なし ── -->
+{% if not transactions and not error %}
+<div class="empty-state">
+  <div class="icon">📋</div>
+  <p>案件がありません。AI該非判定モジュールから新規案件を作成してください。</p>
+</div>
+{% endif %}
+
+<!-- ── 案件カード一覧 ── -->
+{% for tx in transactions %}
+{% set sc = tx.screening_status %}
+{% set counts = tx.counts or {} %}
+<div class="case-card" id="card-{{ tx.id }}">
+
+  <!-- カードヘッダー -->
+  <div class="card-head">
+    <span class="case-no">{{ tx.case_no or ("#" ~ tx.id) }}</span>
+    <span class="case-title" title="{{ tx.title or '-' }}">{{ tx.title or '（タイトル未設定）' }}</span>
+    <span class="status-chip status-{{ tx.status or 'draft' }}">{{ tx.status or 'draft' }}</span>
+  </div>
+
+  <!-- ── ステップパイプライン ── -->
+  <div class="pipeline">
+
+    <!-- Step 1: スクリーニング -->
+    {% if not tx.counterparty_name %}
+      <div class="step step-na">
+        <span class="step-label"><span class="step-num">①</span>スクリーニング</span>
+        <span class="step-detail">取引先未設定</span>
+      </div>
+    {% elif tx.screening_status == "match" %}
+      <div class="step step-danger">
+        <span class="step-icon">🚨</span>
+        <span class="step-label"><span class="step-num">①</span>スクリーニング</span>
+        <span class="step-detail">一致 — 要注意</span>
+      </div>
+    {% elif tx.screening_status == "possible_match" %}
+      <div class="step step-warn">
+        <span class="step-icon">⚠</span>
+        <span class="step-label"><span class="step-num">①</span>スクリーニング</span>
+        <span class="step-detail">要確認</span>
+      </div>
+    {% elif tx.screening_result_id %}
+      <div class="step step-done">
+        <span class="step-icon">✓</span>
+        <span class="step-label"><span class="step-num">①</span>スクリーニング</span>
+        <span class="step-detail">クリア</span>
+      </div>
+    {% else %}
+      <div class="step step-pending">
+        <span class="step-label"><span class="step-num">①</span>スクリーニング</span>
+        <span class="step-detail">未実施</span>
+      </div>
+    {% endif %}
+
+    <!-- Step 2: AI判定 -->
+    {% if tx.has_ai_run %}
+      {% set inter = counts.get("intersection", 0) if counts else 0 %}
+      {% set core  = counts.get("core_only", 0)    if counts else 0 %}
+      <div class="step {% if inter > 0 %}step-warn{% else %}step-done{% endif %}">
+        <span class="step-icon">{% if inter > 0 %}⚡{% else %}✓{% endif %}</span>
+        <span class="step-label"><span class="step-num">②</span>AI判定</span>
+        {% if counts %}
+        <div class="count-row">
+          <span class="cnt cnt-intersection">両方 {{ counts.get("intersection", 0) }}</span>
+          <span class="cnt cnt-core">直接 {{ counts.get("core_only", 0) }}</span>
+          <span class="cnt cnt-expanded">参考 {{ counts.get("expanded_only", 0) }}</span>
+        </div>
+        {% else %}
+        <span class="step-detail">実行済み</span>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="step step-pending">
+        <span class="step-label"><span class="step-num">②</span>AI判定</span>
+        <span class="step-detail">未実行</span>
+      </div>
+    {% endif %}
+
+    <!-- Step 3: 報告書 -->
+    {% if tx.has_ai_run %}
+      <div class="step step-done">
+        <span class="step-icon">↓</span>
+        <span class="step-label"><span class="step-num">③</span>報告書</span>
+        <span class="step-detail">出力可能</span>
+      </div>
+    {% else %}
+      <div class="step step-na">
+        <span class="step-label"><span class="step-num">③</span>報告書</span>
+        <span class="step-detail">AI判定後に出力</span>
+      </div>
+    {% endif %}
+
+  </div>{# .pipeline #}
+
+  <!-- ── アクションボタン ── -->
+  {% if tx.pending_actions or tx.has_ai_run %}
+  <div class="action-row">
+
+    {% for a in tx.pending_actions %}
+    <button
+      class="action-btn p-{{ a.priority }}"
+      data-url="{{ a.url }}"
+      data-method="{{ a.method }}"
+      data-tx="{{ tx.id }}"
+      onclick="runAction(this)"
+    >{{ a.label }}</button>
+    {% endfor %}
+
+    {% if tx.has_ai_run %}
+    <a href="{{ 'http://localhost:8001/ui/transactions/' ~ tx.id ~ '/export/csv' }}"
+       class="action-btn p-info" target="_blank">↓ CSV</a>
+    <a href="{{ 'http://localhost:8001/ui/transactions/' ~ tx.id ~ '/export/pdf' }}"
+       class="action-btn p-info" target="_blank">↓ PDF</a>
+    {% endif %}
+
+    <button class="open-btn"
+            onclick="openInPortal('http://localhost:8001/ui/transactions/{{ tx.id }}')">
+      詳細を開く →
+    </button>
+  </div>
+  {% else %}
+  <div class="action-row">
+    <button class="open-btn"
+            onclick="openInPortal('http://localhost:8001/ui/transactions/{{ tx.id }}')">
+      詳細を開く →
+    </button>
+  </div>
+  {% endif %}
+
+</div>{# .case-card #}
+{% endfor %}
+
+<script>
+// ── 親フレームの iframe src を切り替えて対象モジュールを開く ──
+function openInPortal(url) {
+  try {
+    const frame = window.parent.document.getElementById('module-frame');
+    if (frame) {
+      frame.src = url;
+      // アクティブカードを更新（ai_validation）
+      const cards = window.parent.document.querySelectorAll('.module-card');
+      cards.forEach(c => c.classList.remove('active'));
+      const aiCard = window.parent.document.getElementById('card-ai_validation');
+      if (aiCard) aiCard.classList.add('active');
+    } else {
+      window.open(url, '_blank');
+    }
+  } catch(e) {
+    window.open(url, '_blank');
+  }
+}
+
+// ── POST / GET アクション実行 ──
+async function runAction(btn) {
+  const url    = btn.dataset.url;
+  const method = btn.dataset.method;
+  const txId   = btn.dataset.tx;
+
+  const origLabel = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>実行中…';
+
+  try {
+    if (method === 'POST') {
+      // FormData で POST → redirect は無視し、ダッシュボードを再読み込み
+      const resp = await fetch(url, { method: 'POST', redirect: 'manual' });
+      // 少し待ってからリロード（モジュール側の処理完了を待つ）
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      // GET: 新しいタブで開く（PDF等）
+      window.open(url, '_blank');
+      btn.disabled = false;
+      btn.textContent = origLabel;
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = origLabel;
+  }
+}
+</script>
+</body>
+</html>
