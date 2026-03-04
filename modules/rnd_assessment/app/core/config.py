@@ -7,9 +7,9 @@ class Settings(BaseSettings):
     # DB
     database_url: str = "sqlite:///./rd_risk_app.db"
 
-    # External services (placeholders)
-    item_service_base_url: str = "http://127.0.0.1:8001"
-    screening_service_base_url: str = "http://127.0.0.1:8002"
+    # External services
+    item_service_base_url: str = "http://127.0.0.1:8001"       # ai_validation
+    screening_service_base_url: str = "http://127.0.0.1:8005"  # screening（旧: 8002 は誤り）
 
     # Versions (evidence / audit)
     ruleset_version: str = "2026-02-02-jp-v1"
