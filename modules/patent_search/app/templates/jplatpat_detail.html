@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}{{ patent.title }} - J-Platpat 詳細{% endblock %}
+
+{% block content %}
+<div style="max-width:900px; margin:0 auto;">
+
+  <!-- パンくず -->
+  <p style="font-size:.82rem; color:#888; margin-bottom:12px;">
+    <a href="/jplatpat" style="color:#2366d1;">J-Platpat 照会一覧</a> &rsaquo; 詳細
+  </p>
+
+  <!-- タイトル + ステータス -->
+  <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap;">
+    <div style="flex:1;">
+      <h1 style="margin:0; font-size:1.2rem; line-height:1.5;">{{ patent.title }}</h1>
+      <p style="margin:4px 0 0; font-family:monospace; color:#666; font-size:.85rem;">
+        出願番号: {{ patent.app_number_raw }}
+        {% if patent.jpp_url %}
+        &nbsp;
+        <a href="{{ patent.jpp_url }}" target="_blank"
+           style="font-size:.8rem; color:#2366d1;">J-PlatPat で開く ↗</a>
+        {% endif %}
+      </p>
+    </div>
+    <div>
+      {% if patent.fetch_status == 'completed' %}
+        <span style="background:#effaf5; color:#257953; border-radius:6px; padding:4px 12px; font-size:.82rem; font-weight:700;">取得済</span>
+      {% elif patent.fetch_status == 'failed' %}
+        <span style="background:#fff5f7; color:#cc0f35; border-radius:6px; padding:4px 12px; font-size:.82rem; font-weight:700;">取得失敗</span>
+      {% else %}
+        <span style="background:#f5f5f5; color:#888; border-radius:6px; padding:4px 12px; font-size:.82rem;">未取得</span>
+      {% endif %}
+      {% if patent.fetch_status != 'completed' %}
+      <button onclick="fetchThis({{ patent.id }})"
+        style="padding:4px 14px; background:#2366d1; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:.82rem; margin-left:8px;">
+        今すぐ取得
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 基本情報 -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+    <div style="background:#f8f9fa; border-radius:8px; padding:16px;">
+      <p style="font-size:.78rem; color:#888; margin:0 0 10px; font-weight:700; text-transform:uppercase;">基本情報</p>
+      {% macro row(label, value) %}
+      <div style="display:flex; gap:8px; margin-bottom:6px; font-size:.85rem;">
+        <span style="color:#666; min-width:90px;">{{ label }}</span>
+        <span style="color:#333; font-weight:{% if value %}500{% else %}400{% endif %};">
+          {{ value or "—" }}
+        </span>
+      </div>
+      {% endmacro %}
+      {{ row("出願日", patent.filing_date) }}
+      {{ row("公開番号", patent.publication_number) }}
+      {{ row("公開日", patent.publication_date) }}
+      {{ row("登録番号", patent.registration_number) }}
+      {{ row("登録日", patent.registration_date) }}
+      {{ row("審査状況", patent.app_status) }}
+      {{ row("請求項数", patent.number_of_claims) }}
+      {{ row("存続期間満了", patent.expire_date) }}
+    </div>
+
+    <div style="background:#f8f9fa; border-radius:8px; padding:16px;">
+      <p style="font-size:.78rem; color:#888; margin:0 0 10px; font-weight:700; text-transform:uppercase;">出願人 / 権利者 / 発明者</p>
+      {% if patent.applicants %}
+        <p style="font-size:.78rem; color:#888; margin:0 0 4px;">出願人</p>
+        {% for a in patent.applicants %}
+          <div style="font-size:.85rem; margin-bottom:2px;">{{ a }}</div>
+        {% endfor %}
+      {% endif %}
+      {% if patent.right_persons %}
+        <p style="font-size:.78rem; color:#888; margin:10px 0 4px;">権利者</p>
+        {% for rp in patent.right_persons %}
+          <div style="font-size:.85rem; margin-bottom:2px; color:#257953;">{{ rp }}</div>
+        {% endfor %}
+      {% endif %}
+      {% if patent.inventors %}
+        <p style="font-size:.78rem; color:#888; margin:10px 0 4px;">発明者</p>
+        {% for inv in patent.inventors %}
+          <div style="font-size:.85rem; margin-bottom:2px; color:#555;">{{ inv }}</div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 利用可能書類 -->
+  {% if patent.available_docs %}
+  <div style="margin-bottom:20px;">
+    <p style="font-size:.8rem; color:#666; font-weight:700; margin:0 0 8px;">利用可能書類</p>
+    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+      {% for doc in patent.available_docs %}
+      <span style="background:#f5f0ff; color:#6b3fa0; border-radius:4px; padding:2px 10px; font-size:.78rem;">{{ doc }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 分類情報 + 全文取得ボタン -->
+  <div style="margin-bottom:24px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #eee; padding-bottom:6px;">
+      <h3 style="font-size:.95rem; margin:0;">分類情報（IPC）</h3>
+      {% if patent.fetch_status == 'completed' %}
+      <div style="display:flex; gap:8px; align-items:center;">
+        {% if patent.full_text_fetched_at %}
+        <span style="font-size:.75rem; color:#888;">取得: {{ patent.full_text_fetched_at[:10] }}</span>
+        {% endif %}
+        <button onclick="fetchFulltext({{ patent.id }})" id="fulltextBtn"
+          style="padding:4px 14px; background:{% if patent.has_full_text %}#555{% else %}#2366d1{% endif %}; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:.78rem;">
+          {% if patent.has_full_text %}再取得{% else %}全文取得（Google Patents）{% endif %}
+        </button>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- IPC コード -->
+    {% if patent.ipc_codes %}
+    <div style="margin-bottom:14px;">
+      <p style="font-size:.78rem; color:#666; font-weight:700; margin:0 0 6px;">IPC（国際特許分類）{% if patent.google_doc_id %}<span style="font-weight:400; margin-left:6px; color:#888;">via Google Patents / {{ patent.google_doc_id }}</span>{% endif %}</p>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        {% for code in patent.ipc_codes %}
+        <span style="background:#e8f4fd; color:#1a6bb5; border-radius:6px; padding:3px 10px; font-size:.82rem; font-family:monospace; font-weight:700;">
+          {{ code }}
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <p style="color:#aaa; font-size:.85rem; margin-bottom:12px;">
+      IPC未取得 — 「全文取得（Google Patents）」ボタンで取得できます。
+    </p>
+    {% endif %}
+
+    <!-- FI コード（J-PlatPat APIからは取得不可） -->
+    {% if patent.fi_codes %}
+    <div style="margin-bottom:14px;">
+      <p style="font-size:.78rem; color:#666; font-weight:700; margin:0 0 6px;">FI コード</p>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        {% for code in patent.fi_codes %}
+        <span style="background:#f0f0ff; color:#4040a0; border-radius:6px; padding:3px 10px; font-size:.78rem; font-family:monospace;">{{ code }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 要約 -->
+  {% if patent.abstract_ja %}
+  <div style="margin-bottom:24px;">
+    <h3 style="font-size:.95rem; margin:0 0 10px; border-bottom:1px solid #eee; padding-bottom:6px;">要約</h3>
+    <p style="font-size:.85rem; line-height:1.7; color:#333; background:#fafafa; border-radius:8px; padding:14px 16px; border:1px solid #eee; white-space:pre-wrap;">{{ patent.abstract_ja }}</p>
+  </div>
+  {% endif %}
+
+  <!-- 請求項 -->
+  {% if patent.claims_text %}
+  <div style="margin-bottom:24px;">
+    <h3 style="font-size:.95rem; margin:0 0 10px; border-bottom:1px solid #eee; padding-bottom:6px;">
+      請求項
+      <span style="font-size:.78rem; color:#888; font-weight:400; margin-left:6px;">（{{ patent.number_of_claims }} 項）</span>
+    </h3>
+    <div id="claimsContent" style="font-size:.84rem; line-height:1.75; color:#333; background:#fafafa; border-radius:8px; padding:14px 16px; border:1px solid #eee; white-space:pre-wrap; max-height:280px; overflow:hidden; position:relative;">
+      {{ patent.claims_text[:2000] }}{% if patent.claims_text|length > 2000 %}…{% endif %}
+    </div>
+    {% if patent.claims_text|length > 500 %}
+    <button onclick="toggleExpand('claimsContent', this)"
+      style="margin-top:6px; font-size:.78rem; color:#2366d1; background:none; border:none; cursor:pointer; padding:0;">
+      ▼ すべて表示
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- 明細書（先頭） -->
+  {% if patent.description_text %}
+  <details style="margin-bottom:24px;">
+    <summary style="cursor:pointer; font-size:.88rem; font-weight:700; color:#444; padding:10px 0; border-bottom:1px solid #eee; list-style:none; display:flex; justify-content:space-between; align-items:center;">
+      <span>明細書（先頭 8,000 字）</span>
+      <span style="font-size:.75rem; color:#888; font-weight:400;">▶ クリックで展開</span>
+    </summary>
+    <pre style="background:#f8f9fa; border:1px solid #ddd; border-radius:6px; padding:12px; font-size:.75rem; overflow-x:auto; max-height:500px; overflow-y:auto; white-space:pre-wrap; font-family:inherit; margin-top:10px;">{{ patent.description_text }}</pre>
+  </details>
+  {% endif %}
+
+  <!-- 引用文献 -->
+  {% if patent.cited_docs %}
+  <div style="margin-bottom:24px;">
+    <h3 style="font-size:.95rem; margin:0 0 12px; border-bottom:1px solid #eee; padding-bottom:6px;">引用文献（{{ patent.cited_docs|length }} 件）</h3>
+    <ul style="font-size:.83rem; color:#444; padding-left:20px;">
+      {% for doc in patent.cited_docs %}
+      <li style="margin-bottom:4px;">{{ doc }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <!-- 取得エラー -->
+  {% if patent.fetch_error %}
+  <div style="background:#fff5f7; border:1px solid #f9b8c3; border-radius:8px; padding:12px 16px; margin-bottom:20px; font-size:.83rem; color:#cc0f35;">
+    <strong>取得エラー:</strong> {{ patent.fetch_error }}
+  </div>
+  {% endif %}
+
+  <!-- 生 JSON（折りたたみ） -->
+  {% if progress_raw %}
+  <details style="margin-bottom:24px;">
+    <summary style="cursor:pointer; font-size:.85rem; color:#666; padding:8px 0;">
+      生データ（API レスポンス JSON）を表示
+    </summary>
+    <pre style="background:#f8f9fa; border:1px solid #ddd; border-radius:6px; padding:12px; font-size:.75rem; overflow-x:auto; max-height:400px; overflow-y:auto;">{{ progress_raw | tojson(indent=2) }}</pre>
+  </details>
+  {% endif %}
+
+  <div style="margin-top:8px;">
+    <a href="/jplatpat" style="font-size:.85rem; color:#2366d1;">← 一覧に戻る</a>
+  </div>
+
+</div>
+
+<script>
+async function fetchThis(id) {
+  var btn = event.target;
+  btn.disabled = true; btn.textContent = '取得中...';
+  try {
+    var resp = await fetch('/jplatpat/fetch/' + id, { method: 'POST' });
+    var data = await resp.json();
+    if (data.ok) {
+      location.reload();
+    } else {
+      alert('取得失敗: ' + data.error);
+      btn.disabled = false; btn.textContent = '今すぐ取得';
+    }
+  } catch(e) {
+    alert('通信エラー: ' + e.message);
+    btn.disabled = false; btn.textContent = '今すぐ取得';
+  }
+}
+
+async function fetchFulltext(id) {
+  var btn = document.getElementById('fulltextBtn');
+  btn.disabled = true; btn.textContent = '取得中...';
+  try {
+    var resp = await fetch('/jplatpat/fetch-fulltext/' + id, { method: 'POST' });
+    var data = await resp.json();
+    if (data.ok) {
+      location.reload();
+    } else {
+      alert('全文取得失敗: ' + (data.error || 'unknown error'));
+      btn.disabled = false; btn.textContent = '全文取得（Google Patents）';
+    }
+  } catch(e) {
+    alert('通信エラー: ' + e.message);
+    btn.disabled = false; btn.textContent = '全文取得（Google Patents）';
+  }
+}
+
+function toggleExpand(id, btn) {
+  var el = document.getElementById(id);
+  if (el.style.maxHeight === 'none') {
+    el.style.maxHeight = '280px';
+    btn.textContent = '▼ すべて表示';
+  } else {
+    el.style.maxHeight = 'none';
+    btn.textContent = '▲ 折りたたむ';
+  }
+}
+</script>
+{% endblock %}

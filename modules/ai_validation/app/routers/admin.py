@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from app.db.deps import get_db
@@ -72,3 +72,46 @@ async def admin_import_patents(
         return _render(request, patents_error=f"JSONパースエラー: {e}")
     except Exception as e:
         return _render(request, patents_error=str(e))
+
+
+@router.post("/api/admin/patents/sync-one")
+async def sync_patent_from_jplatpat(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    patent_search から1件の実特許を受け取り ai_validation の patents テーブルに upsert する。
+    source_type="jplatpat" を付与し、FAISS 再構築フラグは返すだけ（再構築は次回判定時）。
+
+    Request body:
+        {
+          "publication_number": "JP2023041059A",
+          "title": "...",
+          "assignee": "...",
+          "abstract": "...",     # 要約
+          "fulltext": "...",     # 請求項テキスト
+          "ipc_codes": ["G03F7/00", ...],
+          "jplatpat_id": 42      # patent_search DB の id
+        }
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "invalid JSON"})
+
+    # source_type を強制上書き
+    body["source_type"] = "jplatpat"
+    result = import_patents_from_data(db, [body])
+
+    # FAISS キャッシュを削除して次回判定時に再構築させる
+    import os
+    faiss_idx = os.path.join(os.path.dirname(__file__), "..", "..", "data", "faiss", "patents.index")
+    faiss_idx = os.path.normpath(faiss_idx)
+    faiss_meta = faiss_idx.replace(".index", "_meta.json")
+    for f in [faiss_idx, faiss_meta]:
+        try:
+            os.remove(f)
+        except FileNotFoundError:
+            pass
+
+    return JSONResponse({"ok": True, **result, "faiss_cache_cleared": True})

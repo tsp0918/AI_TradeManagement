@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}J-Platpat 照会一覧{% endblock %}
+
+{% block content %}
+<div style="max-width:1100px; margin:0 auto;">
+
+  <!-- ヘッダー -->
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <div>
+      <h1 style="margin:0; font-size:1.4rem;">J-Platpat 特許照会</h1>
+      <p style="margin:4px 0 0; color:#666; font-size:.85rem;">
+        J-PlatPat Web から CSV エクスポートした出願番号を読み込み、特許庁 API でメタ情報を取得します。
+      </p>
+    </div>
+    <button onclick="document.getElementById('importSection').style.display='block'; this.style.display='none';"
+      style="padding:8px 20px; background:#2366d1; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:700; font-size:.9rem;">
+      + CSV インポート
+    </button>
+  </div>
+
+  <!-- CSV インポートフォーム -->
+  <div id="importSection" style="display:none; background:#f8f9fa; border:1px solid #ddd; border-radius:10px; padding:20px; margin-bottom:24px;">
+    <h3 style="margin:0 0 12px; font-size:1rem;">CSV インポート</h3>
+    <p style="font-size:.82rem; color:#555; margin-bottom:12px;">
+      J-PlatPat Web の検索結果画面から「CSV ダウンロード」したファイルをアップロードしてください。<br>
+      CSVに <strong>「出願番号」</strong> カラムが含まれている必要があります。
+    </p>
+    <form id="importForm" enctype="multipart/form-data">
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <input type="file" id="csvFile" name="file" accept=".csv"
+          style="border:1px solid #ccc; border-radius:6px; padding:6px 10px; font-size:.85rem;">
+        <button type="submit"
+          style="padding:8px 20px; background:#257953; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:700; font-size:.85rem;">
+          アップロード
+        </button>
+        <button type="button" onclick="document.getElementById('importSection').style.display='none';"
+          style="padding:8px 14px; background:#fff; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-size:.85rem;">
+          閉じる
+        </button>
+      </div>
+    </form>
+    <div id="importResult" style="margin-top:12px; font-size:.85rem; display:none;"></div>
+  </div>
+
+  <!-- 統計バー -->
+  {% if patents %}
+  <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+    <span style="background:#e8f4fd; color:#1a6bb5; border-radius:6px; padding:4px 12px; font-size:.82rem; font-weight:700;">
+      合計 {{ stats.total }} 件
+    </span>
+    <span style="background:#effaf5; color:#257953; border-radius:6px; padding:4px 12px; font-size:.82rem;">
+      取得済 {{ stats.completed }}
+    </span>
+    <span style="background:#fffbeb; color:#946c00; border-radius:6px; padding:4px 12px; font-size:.82rem;">
+      未取得 {{ stats.pending }}
+    </span>
+    {% if stats.failed > 0 %}
+    <span style="background:#fff5f7; color:#cc0f35; border-radius:6px; padding:4px 12px; font-size:.82rem;">
+      失敗 {{ stats.failed }}
+    </span>
+    {% endif %}
+
+    {% if stats.fulltext > 0 %}
+    <span style="background:#f5f0ff; color:#6b3fa0; border-radius:6px; padding:4px 12px; font-size:.82rem;">
+      全文取得済 {{ stats.fulltext }}
+    </span>
+    {% endif %}
+
+    <div style="display:flex; gap:8px; margin-left:auto;">
+      {% if stats.pending > 0 or stats.failed > 0 %}
+      <button id="fetchAllBtn" onclick="fetchAll()"
+        style="padding:4px 16px; background:#e67e22; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:700;">
+        未取得 {{ stats.pending + stats.failed }} 件を一括取得
+      </button>
+      {% endif %}
+      {% if stats.need_fulltext > 0 %}
+      <button id="fetchFulltextAllBtn" onclick="fetchFulltextAll()"
+        style="padding:4px 16px; background:#6b3fa0; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:700;">
+        全文未取得 {{ stats.need_fulltext }} 件を一括取得
+      </button>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 一括取得進捗 -->
+  <div id="fetchAllProgress" style="display:none; background:#eff5fb; border:1px solid #b5d0f5; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:.85rem; color:#2366d1;"></div>
+  <!-- 全文一括取得進捗 -->
+  <div id="fetchFulltextAllProgress" style="display:none; background:#f9f5ff; border:1px solid #d4b8f5; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:.85rem; color:#6b3fa0;"></div>
+
+  <!-- テーブル -->
+  {% if patents %}
+  <div style="overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse; font-size:.82rem;">
+      <thead>
+        <tr style="background:#f0f4f8; border-bottom:2px solid #dde;">
+          <th style="padding:8px 10px; text-align:left; white-space:nowrap; width:110px;">出願番号</th>
+          <th style="padding:8px 10px; text-align:left;">発明の名称</th>
+          <th style="padding:8px 10px; text-align:left; width:140px;">出願人</th>
+          <th style="padding:8px 10px; text-align:left; width:90px;">出願日</th>
+          <th style="padding:8px 10px; text-align:left; width:160px;">IPC</th>
+          <th style="padding:8px 10px; text-align:left; width:100px;">Fターム</th>
+          <th style="padding:8px 10px; text-align:left; width:80px;">ステータス</th>
+          <th style="padding:8px 6px; width:80px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in patents %}
+        <tr style="border-bottom:1px solid #eee;" id="row-{{ p.id }}">
+          <td style="padding:7px 10px; white-space:nowrap;">
+            {% if p.jpp_url %}
+              <a href="{{ p.jpp_url }}" target="_blank" style="color:#2366d1; font-family:monospace; font-size:.8rem;">
+                {{ p.app_number_raw }}
+              </a>
+            {% else %}
+              <span style="font-family:monospace; font-size:.8rem;">{{ p.app_number_raw }}</span>
+            {% endif %}
+          </td>
+          <td style="padding:7px 10px;">
+            <a href="/jplatpat/{{ p.id }}" style="color:#333; text-decoration:none;">
+              {{ p.title[:60] }}{% if p.title|length > 60 %}…{% endif %}
+            </a>
+          </td>
+          <td style="padding:7px 10px; color:#555;">
+            {% if p.applicants %}{{ p.applicants[0] }}{% if p.applicants|length > 1 %} 他{% endif %}{% endif %}
+          </td>
+          <td style="padding:7px 10px; color:#555; white-space:nowrap;">{{ p.filing_date }}</td>
+          <td style="padding:7px 10px;">
+            {% for ipc in p.ipc_codes[:3] %}
+              <span style="background:#e8f4fd; color:#1a6bb5; border-radius:4px; padding:1px 6px; font-size:.75rem; margin-right:2px; font-family:monospace;">{{ ipc }}</span>
+            {% endfor %}
+            {% if p.ipc_codes|length > 3 %}<span style="color:#aaa; font-size:.75rem;">+{{ p.ipc_codes|length - 3 }}</span>{% endif %}
+            {% if not p.ipc_codes and p.fetch_status == 'completed' %}
+              <span style="color:#bbb; font-size:.75rem;">未取得</span>
+            {% endif %}
+          </td>
+          <td style="padding:7px 10px;">
+            {% if p.f_terms %}
+              <span style="color:#555; font-size:.78rem;">{{ p.f_terms|length }} 件</span>
+            {% else %}
+              <span style="color:#bbb; font-size:.78rem;">—</span>
+            {% endif %}
+          </td>
+          <td style="padding:7px 10px;">
+            {% if p.fetch_status == 'completed' %}
+              <span style="background:#effaf5; color:#257953; border-radius:4px; padding:2px 8px; font-size:.75rem; font-weight:700;">取得済</span>
+            {% elif p.fetch_status == 'fetching' %}
+              <span style="background:#eff5fb; color:#2366d1; border-radius:4px; padding:2px 8px; font-size:.75rem;">取得中</span>
+            {% elif p.fetch_status == 'failed' %}
+              <span style="background:#fff5f7; color:#cc0f35; border-radius:4px; padding:2px 8px; font-size:.75rem; font-weight:700;" title="{{ p.fetch_error }}">失敗</span>
+            {% else %}
+              <span style="background:#f5f5f5; color:#888; border-radius:4px; padding:2px 8px; font-size:.75rem;">未取得</span>
+            {% endif %}
+          </td>
+          <td style="padding:7px 6px; white-space:nowrap;">
+            {% if p.fetch_status != 'completed' %}
+            <button onclick="fetchOne({{ p.id }})"
+              style="padding:3px 10px; font-size:.75rem; background:#2366d1; color:#fff; border:none; border-radius:4px; cursor:pointer;">
+              取得
+            </button>
+            {% elif not p.has_full_text %}
+            <button onclick="fetchFulltextOne({{ p.id }}, this)"
+              style="padding:3px 10px; font-size:.75rem; background:#6b3fa0; color:#fff; border:none; border-radius:4px; cursor:pointer;">
+              全文取得
+            </button>
+            {% else %}
+            <span style="color:#6b3fa0; font-size:.75rem;" title="{{ p.full_text_fetched_at[:10] }}">全文✓</span>
+            {% endif %}
+            <button onclick="deleteOne({{ p.id }})"
+              style="padding:3px 8px; font-size:.75rem; background:#fff; color:#cc0f35; border:1px solid #f9b8c3; border-radius:4px; cursor:pointer; margin-left:2px;">
+              削除
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+  <div style="text-align:center; padding:60px 20px; color:#aaa;">
+    <div style="font-size:2rem; margin-bottom:12px;">📄</div>
+    <p>まだ特許が登録されていません。</p>
+    <p style="font-size:.85rem;">J-PlatPat Web で特許を検索し、CSV をエクスポートしてインポートしてください。</p>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+// CSV インポート
+document.getElementById('importForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  var fileInput = document.getElementById('csvFile');
+  if (!fileInput.files.length) { alert('ファイルを選択してください'); return; }
+
+  var formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+
+  var resultDiv = document.getElementById('importResult');
+  resultDiv.style.display = 'block';
+  resultDiv.style.cssText = 'margin-top:12px;font-size:.85rem;display:block;color:#2366d1;';
+  resultDiv.textContent = 'アップロード中...';
+
+  try {
+    var resp = await fetch('/jplatpat/import', { method: 'POST', body: formData });
+    var data = await resp.json();
+    if (data.ok) {
+      resultDiv.style.cssText = 'margin-top:12px;font-size:.85rem;display:block;background:#effaf5;color:#257953;border:1px solid #b5e8d0;border-radius:6px;padding:10px 14px;';
+      resultDiv.textContent = '✅ ' + data.added + ' 件を登録しました（スキップ: ' + data.skipped + ' 件）';
+      setTimeout(function() { location.reload(); }, 1200);
+    } else {
+      resultDiv.style.cssText = 'margin-top:12px;font-size:.85rem;display:block;background:#fff5f7;color:#cc0f35;border:1px solid #f9b8c3;border-radius:6px;padding:10px 14px;';
+      resultDiv.textContent = '⚠️ ' + (data.detail || JSON.stringify(data));
+    }
+  } catch(err) {
+    resultDiv.style.cssText = 'margin-top:12px;font-size:.85rem;display:block;background:#fff5f7;color:#cc0f35;border:1px solid #f9b8c3;border-radius:6px;padding:10px 14px;';
+    resultDiv.textContent = '通信エラー: ' + err.message;
+  }
+});
+
+// 1件取得
+async function fetchOne(id) {
+  var btn = event.target;
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    var resp = await fetch('/jplatpat/fetch/' + id, { method: 'POST' });
+    var data = await resp.json();
+    if (data.ok) {
+      location.reload();
+    } else {
+      alert('取得失敗: ' + data.error);
+      btn.disabled = false; btn.textContent = '取得';
+    }
+  } catch(e) {
+    alert('通信エラー: ' + e.message);
+    btn.disabled = false; btn.textContent = '取得';
+  }
+}
+
+// 一括取得
+async function fetchAll() {
+  var btn = document.getElementById('fetchAllBtn');
+  var prog = document.getElementById('fetchAllProgress');
+  btn.disabled = true; btn.textContent = '取得中...';
+  prog.style.display = 'block';
+  prog.textContent = '一括取得を開始しています... レート制限（10件/分）があるため時間がかかります。';
+
+  try {
+    var resp = await fetch('/jplatpat/fetch-all', { method: 'POST' });
+    var data = await resp.json();
+    prog.style.cssText = 'display:block;background:#effaf5;border:1px solid #b5e8d0;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#257953;';
+    prog.textContent = '✅ 完了: 成功 ' + data.succeeded + ' 件 / 失敗 ' + data.failed + ' 件';
+    setTimeout(function() { location.reload(); }, 1500);
+  } catch(e) {
+    prog.style.cssText = 'display:block;background:#fff5f7;border:1px solid #f9b8c3;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#cc0f35;';
+    prog.textContent = '通信エラー: ' + e.message;
+    btn.disabled = false;
+  }
+}
+
+// 全文取得（1件）
+async function fetchFulltextOne(id, btn) {
+  btn.disabled = true; btn.textContent = '取得中...';
+  try {
+    var resp = await fetch('/jplatpat/fetch-fulltext/' + id, { method: 'POST' });
+    var data = await resp.json();
+    if (data.ok) {
+      location.reload();
+    } else {
+      alert('全文取得失敗: ' + (data.error || 'unknown'));
+      btn.disabled = false; btn.textContent = '全文取得';
+    }
+  } catch(e) {
+    alert('通信エラー: ' + e.message);
+    btn.disabled = false; btn.textContent = '全文取得';
+  }
+}
+
+// 全文一括取得
+async function fetchFulltextAll() {
+  var btn = document.getElementById('fetchFulltextAllBtn');
+  var prog = document.getElementById('fetchFulltextAllProgress');
+  btn.disabled = true; btn.textContent = '取得中...';
+  prog.style.display = 'block';
+  prog.textContent = '全文一括取得を開始しています... Google Patents へのアクセスに時間がかかります。';
+
+  try {
+    var resp = await fetch('/jplatpat/fetch-fulltext-all', { method: 'POST' });
+    var data = await resp.json();
+    prog.style.cssText = 'display:block;background:#f5f0ff;border:1px solid #d4b8f5;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#6b3fa0;';
+    prog.textContent = '✅ 完了: 成功 ' + data.succeeded + ' 件 / 失敗 ' + data.failed + ' 件';
+    setTimeout(function() { location.reload(); }, 1500);
+  } catch(e) {
+    prog.style.cssText = 'display:block;background:#fff5f7;border:1px solid #f9b8c3;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#cc0f35;';
+    prog.textContent = '通信エラー: ' + e.message;
+    btn.disabled = false;
+  }
+}
+
+// 削除
+async function deleteOne(id) {
+  if (!confirm('このレコードを削除しますか？')) return;
+  var resp = await fetch('/api/jplatpat/' + id, { method: 'DELETE' });
+  var data = await resp.json();
+  if (data.ok) {
+    var row = document.getElementById('row-' + id);
+    if (row) row.remove();
+  }
+}
+</script>
+{% endblock %}

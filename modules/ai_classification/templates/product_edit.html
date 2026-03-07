@@ -537,11 +537,71 @@
           </form>
 
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-            <form method="post" action="/products/{{ product.id }}/external/request">
-              <button class="btn btn-primary" type="submit">外部AIへ判定依頼</button>
-            </form>
+            <button class="btn btn-primary" type="button" id="btnOpenReadiness">外部AIへ判定依頼</button>
             <button class="btn" type="button" onclick="location.reload();">最新結果を更新</button>
           </div>
+
+          <!-- ===== 判定依頼前チェックモーダル ===== -->
+          <div id="readinessModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.45); align-items:center; justify-content:center;">
+            <div style="background:#fff; border-radius:12px; width:min(680px,96vw); max-height:88vh; overflow-y:auto; padding:28px 32px; box-shadow:0 8px 32px rgba(0,0,0,.18);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+                <h3 style="margin:0; font-size:1.1rem; font-weight:700;">AI 判定依頼の前に確認</h3>
+                <button type="button" onclick="closeReadinessModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#888;">&times;</button>
+              </div>
+
+              <!-- ローディング -->
+              <div id="rdLoading" style="text-align:center; padding:32px 0; color:#888;">
+                <div style="font-size:1.5rem;">⏳</div>
+                <div style="margin-top:8px;">コンテキストを分析中...</div>
+              </div>
+
+              <!-- コンテンツ（ロード後） -->
+              <div id="rdContent" style="display:none;">
+
+                <!-- 充足度バナー -->
+                <div id="rdConfidenceBanner" style="border-radius:8px; padding:12px 16px; margin-bottom:18px; font-size:.9rem;"></div>
+
+                <!-- 判定に使用される情報 -->
+                <div id="rdEffectiveSection" style="margin-bottom:18px;">
+                  <p style="font-size:.82rem; font-weight:700; color:#444; margin-bottom:6px;">✅ 判定に使用される情報</p>
+                  <div id="rdEffectiveList" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                </div>
+
+                <!-- 不足フィールド -->
+                <div id="rdMissingSection" style="margin-bottom:18px; display:none;">
+                  <p style="font-size:.82rem; font-weight:700; color:#c0392b; margin-bottom:6px;">⚠️ 不足している情報</p>
+                  <div id="rdMissingList" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
+                </div>
+
+                <!-- 弱いフィールド -->
+                <div id="rdWeakSection" style="margin-bottom:18px; display:none;">
+                  <p style="font-size:.82rem; font-weight:700; color:#e67e22; margin-bottom:6px;">💡 情報の補強推奨</p>
+                  <div id="rdWeakList" style="margin-bottom:12px;"></div>
+                </div>
+
+                <!-- ヒアリング設問 / 追記フォーム -->
+                <div id="rdInterviewSection" style="display:none; background:#f8f9fa; border-radius:8px; padding:16px; margin-bottom:18px;">
+                  <p style="font-size:.85rem; font-weight:700; margin-bottom:12px;">📝 追加情報の入力（任意）</p>
+                  <div id="rdInterviewFields"></div>
+                </div>
+
+                <!-- 確認メッセージ -->
+                <div id="rdConfirmSummary" style="font-size:.88rem; color:#555; margin-bottom:20px; line-height:1.6;"></div>
+
+                <!-- アクションボタン -->
+                <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+                  <button type="button" onclick="closeReadinessModal()" style="padding:8px 20px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; font-family:inherit;">キャンセル</button>
+                  <button type="button" id="rdSubmitBtn" onclick="submitWithContext()"
+                    style="padding:8px 24px; border:none; border-radius:6px; background:#2366d1; color:#fff; font-weight:700; cursor:pointer; font-family:inherit;">
+                    このまま判定依頼する
+                  </button>
+                </div>
+
+                <div id="rdSubmitResult" style="margin-top:12px; font-size:.85rem; display:none;"></div>
+              </div>
+            </div>
+          </div>
+          <!-- ===== /判定依頼前チェックモーダル ===== -->
 
           <form method="post" action="/products/{{ product.id }}/external/manual">
             <div class="field">
@@ -1018,6 +1078,195 @@
       window.showLastCandidates = showLastCandidates;
       window.closeHsModal       = closeHsModal;
       window._applyCode         = _applyCode;
+    })();
+
+    // =====================================================================
+    // 判定依頼前チェックモーダル
+    // =====================================================================
+    (function() {
+      var PRODUCT_ID = {{ product.id }};
+      var _readinessData = null;
+
+      function _esc2(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+
+      function _confidenceStyle(hint) {
+        if (hint === 'high')   return { bg:'#effaf5', color:'#257953', border:'#b5e8d0', icon:'✅', label:'判定に必要な情報が揃っています' };
+        if (hint === 'medium') return { bg:'#fffbeb', color:'#946c00', border:'#f5e1a0', icon:'⚠️', label:'一部情報が不足していますが判定依頼できます' };
+        return { bg:'#fff5f7', color:'#cc0f35', border:'#f9b8c3', icon:'❌', label:'重要な情報が不足しています' };
+      }
+
+      function _importanceBadge(imp) {
+        if (imp === 'critical')   return '<span style="font-size:.68rem;background:#ffe8e8;color:#cc0f35;border-radius:4px;padding:1px 5px;margin-left:4px;">必須</span>';
+        if (imp === 'important')  return '<span style="font-size:.68rem;background:#fff3e0;color:#e65100;border-radius:4px;padding:1px 5px;margin-left:4px;">重要</span>';
+        return '';
+      }
+
+      function renderModal(data) {
+        _readinessData = data;
+        var cs = _confidenceStyle(data.confidence_hint);
+
+        // バナー
+        document.getElementById('rdConfidenceBanner').style.cssText =
+          'border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:.9rem;'
+          + 'background:' + cs.bg + ';color:' + cs.color + ';border:1px solid ' + cs.border + ';';
+        document.getElementById('rdConfidenceBanner').innerHTML =
+          '<strong>' + cs.icon + ' ' + cs.label + '</strong>';
+
+        // 有効フィールド
+        var effList = document.getElementById('rdEffectiveList');
+        effList.innerHTML = '';
+        if (data.effective_fields && data.effective_fields.length > 0) {
+          data.effective_fields.forEach(function(f) {
+            var chip = document.createElement('div');
+            chip.style.cssText = 'background:#f0f7ff;border:1px solid #cde;border-radius:6px;padding:4px 10px;font-size:.8rem;max-width:300px;';
+            chip.innerHTML = '<strong style="color:#2366d1;">' + _esc2(f.label) + '</strong>' + _importanceBadge(f.importance)
+              + '<br><span style="color:#555;font-size:.75rem;">' + _esc2(f.value) + '</span>';
+            effList.appendChild(chip);
+          });
+        } else {
+          effList.innerHTML = '<span style="color:#aaa;font-size:.82rem;">（なし）</span>';
+        }
+
+        // 不足フィールド
+        var missSec = document.getElementById('rdMissingSection');
+        var missList = document.getElementById('rdMissingList');
+        missList.innerHTML = '';
+        if (data.missing_fields && data.missing_fields.length > 0) {
+          missSec.style.display = 'block';
+          data.missing_fields.forEach(function(f) {
+            var chip = document.createElement('span');
+            chip.style.cssText = 'background:#fff5f7;border:1px solid #f9b8c3;border-radius:6px;padding:3px 10px;font-size:.8rem;color:#cc0f35;';
+            chip.textContent = f.label;
+            chip.innerHTML += _importanceBadge(f.importance);
+            missList.appendChild(chip);
+          });
+        } else {
+          missSec.style.display = 'none';
+        }
+
+        // 弱いフィールド
+        var weakSec = document.getElementById('rdWeakSection');
+        var weakList = document.getElementById('rdWeakList');
+        weakList.innerHTML = '';
+        if (data.weak_fields && data.weak_fields.length > 0) {
+          weakSec.style.display = 'block';
+          data.weak_fields.forEach(function(f) {
+            var box = document.createElement('div');
+            box.style.cssText = 'background:#fffbeb;border:1px solid #f5e1a0;border-radius:6px;padding:8px 12px;font-size:.8rem;margin-bottom:6px;';
+            box.innerHTML = '<strong style="color:#946c00;">' + _esc2(f.label) + '</strong>: '
+              + _esc2(f.value)
+              + (f.hint ? '<br><span style="color:#888;font-size:.75rem;">' + _esc2(f.hint) + '</span>' : '');
+            weakList.appendChild(box);
+          });
+        } else {
+          weakSec.style.display = 'none';
+        }
+
+        // ヒアリング設問 → 追記フォーム
+        var interviewSec = document.getElementById('rdInterviewSection');
+        var interviewFields = document.getElementById('rdInterviewFields');
+        interviewFields.innerHTML = '';
+        if (data.interview_questions && data.interview_questions.length > 0) {
+          interviewSec.style.display = 'block';
+
+          // 用途概要補記（最初の設問は必ず usage_supplement に対応）
+          var usageQ = data.interview_questions[0];
+          var usageGroup = document.createElement('div');
+          usageGroup.style.cssText = 'margin-bottom:14px;';
+          usageGroup.innerHTML = '<label style="font-size:.82rem;font-weight:700;display:block;margin-bottom:4px;">'
+            + _esc2(usageQ) + '</label>'
+            + '<textarea id="rdUsageSupplement" rows="3" style="width:100%;border:1px solid #ccc;border-radius:6px;padding:6px 10px;font-size:.83rem;font-family:inherit;resize:vertical;" placeholder="具体的な用途・技術仕様・需要家の業種などを記入してください"></textarea>';
+          interviewFields.appendChild(usageGroup);
+
+          // 残りの設問はテキスト表示（追記欄は usage_supplement にまとめる）
+          for (var i = 1; i < data.interview_questions.length; i++) {
+            var hint = document.createElement('p');
+            hint.style.cssText = 'font-size:.8rem;color:#666;margin-bottom:8px;padding-left:8px;border-left:3px solid #ddd;';
+            hint.textContent = data.interview_questions[i];
+            interviewFields.appendChild(hint);
+          }
+        } else {
+          interviewSec.style.display = 'none';
+        }
+
+        // 確認メッセージ
+        document.getElementById('rdConfirmSummary').textContent = data.confirm_summary || '';
+
+        // 表示切替
+        document.getElementById('rdLoading').style.display = 'none';
+        document.getElementById('rdContent').style.display = 'block';
+      }
+
+      function openReadinessModal() {
+        var modal = document.getElementById('readinessModal');
+        modal.style.display = 'flex';
+        document.getElementById('rdLoading').style.display = 'block';
+        document.getElementById('rdContent').style.display = 'none';
+        document.getElementById('rdSubmitResult').style.display = 'none';
+
+        fetch('/integrations/export-control/readiness/' + PRODUCT_ID)
+          .then(function(r) { return r.json(); })
+          .then(function(data) { renderModal(data); })
+          .catch(function(e) {
+            document.getElementById('rdLoading').innerHTML =
+              '<p style="color:#cc0f35;">分析に失敗しました。再度お試しください。</p>';
+          });
+      }
+
+      function closeReadinessModal() {
+        document.getElementById('readinessModal').style.display = 'none';
+      }
+
+      async function submitWithContext() {
+        var btn = document.getElementById('rdSubmitBtn');
+        var resultDiv = document.getElementById('rdSubmitResult');
+        btn.disabled = true;
+        btn.textContent = '依頼中...';
+        resultDiv.style.display = 'none';
+
+        var usageSuppEl = document.getElementById('rdUsageSupplement');
+        var extra = {};
+        if (usageSuppEl && usageSuppEl.value.trim()) {
+          extra.usage_supplement = usageSuppEl.value.trim();
+        }
+
+        try {
+          var resp = await fetch('/integrations/export-control/request/' + PRODUCT_ID, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(extra),
+          });
+          var data = await resp.json();
+          resultDiv.style.display = 'block';
+          if (data.ok) {
+            resultDiv.style.cssText = 'margin-top:12px;font-size:.85rem;display:block;background:#effaf5;color:#257953;border:1px solid #b5e8d0;border-radius:6px;padding:10px 14px;';
+            resultDiv.textContent = '✅ 判定依頼を送信しました。結果はWebhookで受信されます。';
+            setTimeout(function() { closeReadinessModal(); location.reload(); }, 1500);
+          } else {
+            resultDiv.style.cssText = 'margin-top:12px;font-size:.85rem;display:block;background:#fff5f7;color:#cc0f35;border:1px solid #f9b8c3;border-radius:6px;padding:10px 14px;';
+            resultDiv.textContent = '⚠️ ' + (data.detail || JSON.stringify(data));
+            btn.disabled = false;
+            btn.textContent = 'このまま判定依頼する';
+          }
+        } catch(e) {
+          resultDiv.style.cssText = 'margin-top:12px;font-size:.85rem;display:block;background:#fff5f7;color:#cc0f35;border:1px solid #f9b8c3;border-radius:6px;padding:10px 14px;';
+          resultDiv.textContent = '通信エラー: ' + e.message;
+          btn.disabled = false;
+          btn.textContent = 'このまま判定依頼する';
+        }
+      }
+
+      // モーダル外クリックで閉じる
+      document.getElementById('readinessModal').addEventListener('click', function(e) {
+        if (e.target === this) closeReadinessModal();
+      });
+
+      document.getElementById('btnOpenReadiness').addEventListener('click', openReadinessModal);
+
+      window.closeReadinessModal = closeReadinessModal;
+      window.submitWithContext   = submitWithContext;
     })();
     </script>
     <style>

@@ -1,5 +1,9 @@
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
+
+# プロジェクトルートの .env を参照（modules/patent_search/app/ から4階層上）
+_ROOT_ENV = Path(__file__).parent.parent.parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -33,11 +37,17 @@ class Settings(BaseSettings):
     # Export Configuration
     export_max_rows: int = 10000
 
+    # J-Platpat API (特許庁 特許情報取得API)
+    jplatpat_username: Optional[str] = None
+    jplatpat_password: Optional[str] = None
+    jplatpat_token_url: str = "https://ip-data.jpo.go.jp/auth/token"
+    jplatpat_base_url: str = "https://ip-data.jpo.go.jp"
+
     # Logging
     log_level: str = "INFO"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(_ROOT_ENV),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore"

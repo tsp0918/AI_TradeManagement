@@ -38,6 +38,13 @@ class Patent(Base, TimestampMixin):
     source_url: Mapped[Optional[str]] = mapped_column(String(1024))
     ingested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
+    # ── 特許ソース識別 ────────────────────────────────────────────────
+    # "synthetic"  : 合成（既存ダミーデータ）
+    # "jplatpat"   : J-PlatPat + Google Patents から取得した実特許
+    # "bigquery"   : BigQuery Google Patents 検索結果
+    source_type: Mapped[str] = mapped_column(String(16), default="synthetic", nullable=False, server_default="synthetic")
+    jplatpat_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # patent_search DB の id
+
     usecases: Mapped[List["PatentUsecase"]] = relationship(
         back_populates="patent",
         cascade="all, delete-orphan",

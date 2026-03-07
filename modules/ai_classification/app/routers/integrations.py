@@ -14,6 +14,7 @@ from ..database import get_db
 from ..models import Product
 from ..settings import settings
 from ..services.external_app_client import ExternalAppClient
+from ..services.context_builder import analyze_readiness, build_enriched_payload
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
@@ -69,29 +70,60 @@ def _wrap_payload(request_id: Any, payload_obj: Any) -> str:
     )
 
 
+class _ExtraInputs(BaseModel):
+    """判定依頼時にユーザーが追記した補足情報。"""
+    usage_supplement: Optional[str] = None   # 用途概要への追記
+    description:      Optional[str] = None   # 詳細説明の上書き
+    item_class:       Optional[str] = None
+    hs_code:          Optional[str] = None
+    eccn:             Optional[str] = None
+    country_of_origin: Optional[str] = None
+
+
+@router.get("/export-control/readiness/{product_id}")
+def get_export_control_readiness(product_id: int, db: Session = Depends(get_db)):
+    """
+    品目データの該非判定コンテキスト充足度を返す。
+    外部AI判定依頼ボタンを押す前のプレチェックモーダルで使用する。
+    """
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    readiness = analyze_readiness(product)
+    return {
+        "effective_fields":    readiness.effective_fields,
+        "missing_fields":      readiness.missing_fields,
+        "weak_fields":         readiness.weak_fields,
+        "interview_questions": readiness.interview_questions,
+        "confidence_hint":     readiness.confidence_hint,
+        "confirm_summary":     readiness.confirm_summary,
+    }
+
+
 @router.post("/export-control/request/{product_id}")
-async def request_export_control(product_id: int, db: Session = Depends(get_db)):
+async def request_export_control(
+    product_id: int,
+    extra: _ExtraInputs = Body(default_factory=_ExtraInputs),
+    db: Session = Depends(get_db),
+):
     """
     UI -> 外部AIへ判定依頼をPOSTする。
+    extra に追記情報が含まれる場合は product データとマージして送信する。
     外部AIが落ちていても UI が落ちないように queued を記録して返す。
     """
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    # context_builder でリッチなコンテキストを生成
+    enriched = build_enriched_payload(product, extra.model_dump(exclude_none=True))
+
     # 外部AI仕様（AI側申し送りに合わせる）
     payload: Dict[str, Any] = {
         "product_id": product.id,
         "code": product.code,
-        "name": product.name,
-        # description が最重要。NoneだとAI側が困るので空文字に寄せる。
-        "description": product.description or "",
-        "usage_summary": product.usage_summary or "",
-        "hs_code": product.hs_code,
-        "eccn": product.eccn,
-        "item_class": product.item_class,
-        "bom_json": product.bom_json,
-        "regulation_ai_raw": product.regulation_ai_raw,
+        **enriched,
         "callback_webhook": settings.PUBLIC_WEBHOOK_URL,  # UI側Webhook URL
         # 審査連鎖フィールド（R&D 由来の場合に自動付与）
         "source_module": "ai_classification",

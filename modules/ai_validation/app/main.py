@@ -31,6 +31,10 @@ async def _ensure_columns() -> None:
             ("parent_transaction_id", "INTEGER"),
             ("rnd_case_id",           "VARCHAR(64)"),
         ],
+        "patents": [
+            ("source_type",  "VARCHAR(16) NOT NULL DEFAULT 'synthetic'"),
+            ("jplatpat_id",  "INTEGER"),
+        ],
     }
     with engine.connect() as conn:
         inspector = sa_inspect(engine)

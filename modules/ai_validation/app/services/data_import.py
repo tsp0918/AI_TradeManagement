@@ -419,6 +419,10 @@ def import_patents_from_data(db: Session, items: List[Dict[str, Any]]) -> Dict[s
         # ipc_codes（list形式）または ipc_codes_raw（セミコロン区切り文字列）に対応
         ipc_raw = _to_ipc_raw(it.get("ipc_codes")) or _s(it.get("ipc_codes_raw")) or None
 
+        # source_type / jplatpat_id（実特許識別）
+        source_type = _s(it.get("source_type")) or "synthetic"
+        jplatpat_id = it.get("jplatpat_id")  # int or None
+
         obj = db.query(Patent).filter(Patent.publication_number == pub).first()
 
         if obj:
@@ -427,6 +431,12 @@ def import_patents_from_data(db: Session, items: List[Dict[str, Any]]) -> Dict[s
             obj.abstract = abstract
             obj.fulltext = fulltext
             obj.ipc_codes_raw = ipc_raw
+            # 実特許で上書き（合成→実特許への昇格を許可、逆は不可）
+            if source_type != "synthetic" or obj.source_type == "synthetic":
+                if hasattr(obj, "source_type"):
+                    obj.source_type = source_type
+            if jplatpat_id and hasattr(obj, "jplatpat_id"):
+                obj.jplatpat_id = jplatpat_id
             if hasattr(obj, "updated_at"):
                 obj.updated_at = now
             updated += 1
@@ -439,6 +449,8 @@ def import_patents_from_data(db: Session, items: List[Dict[str, Any]]) -> Dict[s
                 fulltext=fulltext,
                 ipc_codes_raw=ipc_raw,
                 ingested_at=now,
+                source_type=source_type,
+                jplatpat_id=jplatpat_id,
             )
             if hasattr(Patent, "created_at"):
                 kwargs["created_at"] = now
