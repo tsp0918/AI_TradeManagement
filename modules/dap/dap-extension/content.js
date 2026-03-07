@@ -1,6 +1,12 @@
 (async function () {
   const SERVER_BASE = "http://localhost:8010";
 
+  // チャットウィジェットを最優先で注入（DAP エンジンの初期化を待たない）
+  // engine.init() の後に注入していたため表示が遅れていた問題を修正
+  const _chatScript = document.createElement('script');
+  _chatScript.src = SERVER_BASE + '/static/chat-widget.js?v=' + Date.now();
+  document.head.appendChild(_chatScript);
+
   // 現在のタブのポートから app_key を自動選択
   const PORT_TO_APP = {
     "8000": "rd_risk_local",

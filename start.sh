@@ -46,6 +46,15 @@ if [[ "${1:-}" == "--stop" ]]; then
   exit 0
 fi
 
+# ── .env 読み込み（ANTHROPIC_API_KEY 等を環境変数に展開）──────────
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$SCRIPT_DIR/.env"
+  set +a
+  ok ".env を読み込みました"
+fi
+
 # ── 前提チェック ────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}═══════════════════════════════════════════════${RESET}"
@@ -98,6 +107,23 @@ if [[ "${1:-}" == "--dev" ]]; then
   info "開発モード (ホットリロード有効)"
 fi
 
+DAP_DIR="$SCRIPT_DIR/modules/dap"
+
+# ── DAP (port 8010) をバックグラウンドで起動 ────────────────────────
+# StaticFiles が相対パス "app/static" を使うため DAP_DIR に cd してから起動する
+# 再起動時に旧プロセスが残っていると "address already in use" で即終了するため事前に解放する
+_DAP_OLD=$(lsof -ti tcp:8010 2>/dev/null || true)
+if [[ -n "$_DAP_OLD" ]]; then
+  warn "ポート 8010 の既存プロセス (PID $_DAP_OLD) を停止します…"
+  kill "$_DAP_OLD" 2>/dev/null || true
+  sleep 1
+fi
+info "DAP をポート 8010 で起動します…"
+(cd "$DAP_DIR" && PYTHONPATH="$DAP_DIR:$PLATFORM_CORE" \
+  exec "$VENV/uvicorn" app.main:app \
+    --host 0.0.0.0 --port 8010) &
+ok "DAP 起動済み (PID $!)"
+
 if [[ $DEV_MODE -eq 1 ]]; then
   PYTHONPATH="$PLATFORM_CORE" \
     exec "$VENV/uvicorn" platform_core.main:app \
@@ -110,6 +136,7 @@ else
   info "全モジュール (Ollama 含む) は lifespan で自動起動されます"
   echo ""
   info "ブラウザでアクセス → http://localhost:${PLATFORM_PORT}"
+  info "DAP アシスタント → http://localhost:8010"
   echo ""
   PYTHONPATH="$PLATFORM_CORE" \
     exec "$VENV/uvicorn" platform_core.main:app \

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan, health_router
 
 from .db import Base, engine, get_db
-from .models import DapApp, DapPage, DapTarget, DapRule, DapIntervention, DapRelease, DapEvent
+from .models import DapApp, DapPage, DapTarget, DapRule, DapIntervention, DapRelease, DapEvent, DapChatConfig  # noqa: F401
 from .schemas import (
     AppCreate, PageCreate, TargetUpsert, RuleCreate, InterventionCreate,
     ReleaseCreate, PublishIn, PublishAutoIn, InterventionUpdate, PageUpdate, EventIn
@@ -20,6 +20,7 @@ from .schemas import (
 from .runtime_builder import build_runtime_config
 from .utils import stable_etag
 from .seed import seed_if_empty, ensure_new_apps
+from .routers import chat as chat_router
 
 MODULE = ModuleInfo(
     key="dap",
@@ -66,6 +67,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 app.include_router(health_router)
+app.include_router(chat_router.router)
 
 # ─────────────────── Admin UI ────────────────────────────────────────────────
 

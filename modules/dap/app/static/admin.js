@@ -1149,10 +1149,65 @@ function setActiveTab(tabId) {
   document.querySelector(`.tabBtn[data-tab="${tabId}"]`)?.classList.add("isActive");
 
   if (tabId === "tab-analytics") loadAnalytics();
+  if (tabId === "tab-chat-widget") loadChatWidgetConfigs();
 }
 
 // ============================================================
-// SECTION 14: Event Delegation (single listener pattern)
+// SECTION 14: Chat Widget Config
+// ============================================================
+
+async function loadChatWidgetConfigs() {
+  const container = document.getElementById("chatWidgetCards");
+  if (!container) return;
+  container.innerHTML = '<div class="analyticsEmpty">読み込み中…</div>';
+
+  let configs = [];
+  try {
+    configs = await api("/api/chat/app-configs");
+  } catch (e) {
+    container.innerHTML = `<div class="analyticsEmpty">読み込み失敗: ${e.message}</div>`;
+    return;
+  }
+
+  container.innerHTML = configs.map(cfg => `
+    <div class="chatWidgetCard" data-port="${cfg.port}">
+      <div class="chatWidgetCardHeader">
+        <span class="chatWidgetLabel">${cfg.label}</span>
+        <span class="chatPortBadge">:${cfg.port}</span>
+        <label class="chatToggle" title="${cfg.enabled ? '有効' : '無効'}">
+          <input type="checkbox" class="chatEnabledToggle" data-port="${cfg.port}" ${cfg.enabled ? "checked" : ""}>
+          <span class="chatToggleTrack"><span class="chatToggleThumb"></span></span>
+        </label>
+      </div>
+      <label class="formLabel" style="margin-top:12px;display:block;">プロンプト補足（任意）</label>
+      <textarea class="input chatPromptSupp" data-port="${cfg.port}" rows="3"
+        placeholder="例: このモジュールでは輸出管理担当者のみ使用します。品目コードは TS- 形式です。"
+        style="width:100%;resize:vertical;font-size:12px;">${cfg.prompt_supplement || ""}</textarea>
+      <button class="btnPrimary btnSm chatSaveBtn" data-port="${cfg.port}" style="margin-top:8px;">保存</button>
+    </div>
+  `).join("");
+
+  container.querySelectorAll(".chatSaveBtn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const port = btn.dataset.port;
+      const card = container.querySelector(`.chatWidgetCard[data-port="${port}"]`);
+      const enabled = card.querySelector(".chatEnabledToggle").checked ? 1 : 0;
+      const supplement = card.querySelector(".chatPromptSupp").value;
+      try {
+        await api(`/api/chat/app-configs/${port}`, {
+          method: "PUT",
+          body: JSON.stringify({ enabled, prompt_supplement: supplement }),
+        });
+        showToast(`ポート ${port} の設定を保存しました`);
+      } catch (e) {
+        showToast("保存に失敗しました: " + e.message, "error");
+      }
+    });
+  });
+}
+
+// ============================================================
+// SECTION 15: Event Delegation (single listener pattern)
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -1192,6 +1247,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Analytics reload
   document.getElementById("btnLoadAnalytics").addEventListener("click", loadAnalytics);
+
+  // Chat Widget reload
+  document.getElementById("btnReloadChatConfigs").addEventListener("click", loadChatWidgetConfigs);
 
   // Scenarios container — delegated click
   const container = document.getElementById("pagesContainer");

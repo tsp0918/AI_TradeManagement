@@ -129,3 +129,14 @@ class DapEvent(Base):
     context: Mapped[dict] = mapped_column(JSON, default=dict)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class DapChatConfig(Base):
+    """チャットウィジェットのモジュール別設定（有効/無効、プロンプト補足）"""
+    __tablename__ = "dap_chat_configs"
+
+    port: Mapped[str] = mapped_column(String(8), primary_key=True)
+    label: Mapped[str] = mapped_column(String(100), default="")
+    enabled: Mapped[int] = mapped_column(Integer, default=1)   # 1=有効 0=無効
+    prompt_supplement: Mapped[str] = mapped_column(String(2000), default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

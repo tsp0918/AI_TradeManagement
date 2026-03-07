@@ -39,6 +39,7 @@
       <button class="tabBtn isActive" data-tab="tab-scenarios">シナリオ</button>
       <button class="tabBtn" data-tab="tab-analytics">分析</button>
       <button class="tabBtn" data-tab="tab-recorder">レコーダー</button>
+      <button class="tabBtn" data-tab="tab-chat-widget">Chat Widget</button>
     </div>
 
     <!-- ===== SCENARIOS TAB ===== -->
@@ -90,6 +91,22 @@
           <li>登録したい要素をクリック → target_key を入力</li>
           <li>シナリオタブのターゲット一覧に反映 → <b>Publish</b></li>
         </ol>
+      </div>
+    </section>
+
+    <!-- ===== CHAT WIDGET TAB ===== -->
+    <section id="tab-chat-widget" class="tab">
+      <div class="analyticsCard">
+        <div class="analyticsHeader">
+          <div class="analyticsTitle">Chat Widget — モジュール別設定</div>
+          <button id="btnReloadChatConfigs" class="btnGhost btnSm">再読み込み</button>
+        </div>
+        <p style="font-size:12px;color:#6b88a8;margin:0 0 16px;">
+          各モジュールでチャットウィジェットの有効/無効と、Claude へのプロンプト補足を設定します。
+        </p>
+        <div id="chatWidgetCards" class="chatWidgetGrid">
+          <div class="analyticsEmpty">読み込み中…</div>
+        </div>
       </div>
     </section>
 
