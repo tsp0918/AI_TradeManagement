@@ -32,6 +32,8 @@ Thumbs.db
 # DB files
 *.db
 *.sqlite
+*.db-shm
+*.db-wal
 
 # Logs
 *.log
@@ -55,3 +57,8 @@ modules/*/uploads/
 # モジュール内 runtime data（DB は上記 *.db で除外済み）
 modules/*/data/
 modules/data/
+
+# プロジェクトルート 非管理ファイル
+index.html
+lp-blueprint.md
+data/*.pdf
