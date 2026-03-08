@@ -166,20 +166,37 @@ def enrich_eccn_nodes(
 ) -> int:
     """ECCN stub nodes を BIS CCL の情報で補強する。
 
+    サブ項目コード（例: 1C350(b)）は親コード（1C350）にフォールバックして補強する。
+
     Returns:
         補強したノード数
     """
+    import re as _re
+
     eccn_index = {e["eccn"]: e for e in eccn_entries}
     enriched = 0
     for node in nodes:
         if node.get("type") != "eccn":
             continue
         eccn = node.get("item_no", "") or node.get("id", "")
-        if eccn not in eccn_index:
+
+        # 1. 完全一致
+        entry = eccn_index.get(eccn)
+        sub_para = ""
+
+        # 2. フォールバック: 括弧付きサブ項目 "1C350(b)" → 親コード "1C350"
+        if not entry:
+            base_code = _re.sub(r'\([^)]*\)\s*$', '', eccn).strip()
+            entry = eccn_index.get(base_code)
+            if entry:
+                sub_para = eccn[len(base_code):].strip()  # "(b)" など
+
+        if not entry:
             continue
-        entry = eccn_index[eccn]
+
+        prefix = f"[{sub_para}] " if sub_para else ""
         if entry.get("label"):
-            node["description"] = entry["label"]
+            node["description"] = prefix + entry["label"]
         if entry.get("controls"):
             node["bis_controls"] = entry["controls"]
         if entry.get("description"):

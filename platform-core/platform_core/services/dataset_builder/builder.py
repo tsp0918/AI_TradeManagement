@@ -338,6 +338,25 @@ def build(
         except Exception:
             pass
 
+    # ── 6b-2. ECCN requirement_text サプリメント適用 ─────────
+    # scripts/enrich_eccn_nodes.py が生成した requirement_text を
+    # ビルド後も保持するため、サプリメントファイルから読み込んで適用する
+    _ECCN_SUPPLEMENT_PATH = _SOURCE_ROOT / "eccn" / "eccn_requirement_supplement.json"
+    eccn_supplement_count = 0
+    if _ECCN_SUPPLEMENT_PATH.exists():
+        try:
+            with open(_ECCN_SUPPLEMENT_PATH, encoding="utf-8") as _f:
+                _supplement = json.load(_f)
+            _supp_nodes = _supplement.get("nodes", {})
+            if _supp_nodes:
+                _eccn_node_map = {n["id"]: n for n in eccn_nodes}
+                for _eccn_id, _req_text in _supp_nodes.items():
+                    if _eccn_id in _eccn_node_map and _req_text:
+                        _eccn_node_map[_eccn_id]["requirement_text"] = _req_text
+                        eccn_supplement_count += 1
+        except Exception:
+            pass
+
     # ── 6c. Wassenaar nodes 生成 ──────────────────────────────
     wa_nodes: list[dict] = []
     wa_node_count = 0
