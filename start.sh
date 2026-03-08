@@ -37,7 +37,7 @@ if [[ "${1:-}" == "--stop" ]]; then
     warn "PID ファイルが見つかりません。手動で確認してください。"
   fi
   # モジュールポートを強制解放
-  for PORT in 8001 8002 8003 8004 8005 8010 11434; do
+  for PORT in 8001 8002 8003 8004 8005 8006 8010 11434; do
     PID_PORT=$(lsof -ti tcp:"$PORT" 2>/dev/null || true)
     if [[ -n "$PID_PORT" ]]; then
       kill "$PID_PORT" 2>/dev/null && info "ポート $PORT (PID $PID_PORT) を解放しました"

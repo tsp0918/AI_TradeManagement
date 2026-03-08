@@ -182,30 +182,39 @@ def _load_faiss_if_exists() -> Optional[Tuple[faiss.Index, List[Dict[str, Any]]]
 
 
 def _build_faiss_from_db(db: Session) -> Tuple[faiss.Index, List[Dict[str, Any]]]:
+    """
+    DB セッションを使うのはデータ読み込みのみ。
+    エンコード（CPU集中処理）はセッション外で実行することで
+    DB ロックを長時間保持しない。
+    """
+    # Step1: DB から必要データをプレーン Python に抽出（セッション利用はここまで）
+    patents: List[Patent] = db.query(Patent).all()
+    patent_data: List[Tuple[int, str]] = [
+        (p.id, _patent_to_text(p)) for p in patents
+    ]
+    # DB オブジェクトを保持しないよう即座に参照を解放
+    del patents
+
+    # 空テキストを除外
+    patent_data = [(pid, t) for pid, t in patent_data if t]
+
     model = _get_model()
 
-    patents: List[Patent] = db.query(Patent).all()
-    texts = [_patent_to_text(p) for p in patents]
-
-    # 空を弾く（念のため）
-    keep: List[Tuple[Patent, str]] = [(p, t) for p, t in zip(patents, texts) if t]
-    patents = [p for p, _ in keep]
-    texts = [t for _, t in keep]
-
-    if not patents:
-        # 空の index を返す
+    if not patent_data:
         dim = model.get_sentence_embedding_dimension()
-        index = faiss.IndexFlatIP(dim)
-        return index, []
+        return faiss.IndexFlatIP(dim), []
+
+    # Step2: セッション不要の純粋な ML 処理（ここで長時間かかっても DB はブロックしない）
+    ids = [pid for pid, _ in patent_data]
+    texts = [t for _, t in patent_data]
 
     emb = model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
     emb = np.asarray(emb, dtype="float32")
 
-    dim = emb.shape[1]
-    index = faiss.IndexFlatIP(dim)
+    index = faiss.IndexFlatIP(emb.shape[1])
     index.add(emb)
 
-    meta = [{"patent_id": p.id} for p in patents]
+    meta = [{"patent_id": pid} for pid in ids]
     return index, meta
 
 
