@@ -6,6 +6,13 @@
 <div class="page-hd">
   <h1>ウォッチリスト</h1>
   <p>照合対象となる懸念エンティティのリストです。</p>
+  <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <button id="sync-btn" onclick="syncSanctions()"
+      style="background:#2563eb;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:14px;">
+      制裁リスト同期 (OFAC / BIS)
+    </button>
+    <span id="sync-status" class="muted" style="font-size:13px;"></span>
+  </div>
 </div>
 
 <div class="card">
@@ -77,5 +84,33 @@ function filterRows() {
 }
 
 load();
+
+async function syncSanctions() {
+  const btn = document.getElementById("sync-btn");
+  const status = document.getElementById("sync-status");
+  btn.disabled = true;
+  btn.textContent = "同期中…";
+  status.textContent = "OFAC SDN XML を取得中（~34MB、1〜2分かかります）";
+  try {
+    const res = await fetch("/api/admin/sync-sanctions", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) {
+      status.textContent = "エラー: " + (data.detail || res.statusText);
+    } else {
+      const ofac = data.ofac_sdn_fetched ?? "?";
+      const bis  = data.bis_entity_fetched ?? "?";
+      const total = data.total_inserted ?? "?";
+      const faiss = data.faiss_ntotal ?? "?";
+      status.textContent =
+        `完了: OFAC ${ofac}件 + BIS ${bis}件 → 挿入 ${total}件（FAISS: ${faiss}件）`;
+      await load();
+    }
+  } catch (err) {
+    status.textContent = "通信エラー: " + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "制裁リスト同期 (OFAC / BIS)";
+  }
+}
 </script>
 {% endblock %}

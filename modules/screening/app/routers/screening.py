@@ -12,9 +12,12 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -179,6 +182,95 @@ async def deactivate_watchlist_entry(
         raise HTTPException(status_code=404, detail="Entry not found")
     entry.is_active = False
     return {"ok": True, "id": str(entry_id)}
+
+
+# ── 制裁リスト同期 ────────────────────────────────────────────────────────
+
+
+@router.post("/admin/sync-sanctions", status_code=status.HTTP_200_OK)
+async def sync_sanctions(
+    include_bis: bool = True,
+    bis_api_key: str = "DEMO_KEY",
+    db: AsyncSession = Depends(get_db),
+):
+    """OFAC SDN / BIS Entity List を公式ソースから取得してウォッチリストを同期する。
+
+    処理フロー:
+      1. 公式ソースから新エントリを取得
+      2. 同名ソース（ofac_sdn / bis_entity）の既存エントリを論理削除
+      3. 新エントリを一括挿入
+      4. FAISS インデックスを再構築
+    """
+    from sqlalchemy import update as sa_update
+
+    from app.services.sanctions_sync import fetch_bis_entity_list, fetch_ofac_sdn
+
+    result_stats: dict = {}
+    all_new: list[dict] = []
+    synced_sources: list[str] = []
+
+    # ── 1. データ取得 ─────────────────────────────────────────────────────
+    try:
+        ofac = fetch_ofac_sdn()
+        all_new.extend(ofac)
+        result_stats["ofac_sdn_fetched"] = len(ofac)
+        synced_sources.append("ofac_sdn")
+    except Exception as exc:
+        logger.error("OFAC SDN fetch failed: %s", exc)
+        result_stats["ofac_sdn_error"] = str(exc)
+
+    if include_bis:
+        try:
+            bis = fetch_bis_entity_list(api_key=bis_api_key)
+            all_new.extend(bis)
+            result_stats["bis_entity_fetched"] = len(bis)
+            synced_sources.append("bis_entity")
+        except Exception as exc:
+            logger.error("BIS Entity List fetch failed: %s", exc)
+            result_stats["bis_entity_error"] = str(exc)
+
+    if not all_new:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No entries fetched from any source",
+        )
+
+    # ── 2. 既存エントリを論理削除 ─────────────────────────────────────────
+    if synced_sources:
+        await db.execute(
+            sa_update(Watchlist)
+            .where(Watchlist.list_source.in_(synced_sources))
+            .values(is_active=False)
+        )
+
+    # ── 3. 新エントリを一括挿入 ────────────────────────────────────────────
+    new_entries = [
+        Watchlist(
+            list_source=e["list_source"],
+            entity_name=e["entity_name"],
+            aliases=e.get("aliases"),
+            address=e.get("address"),
+            country=e.get("country"),
+            source_id=e.get("source_id"),
+            reason=e.get("reason"),
+            risk_level=e.get("risk_level", "high"),
+            extra=e.get("extra"),
+        )
+        for e in all_new
+    ]
+    db.add_all(new_entries)
+    await db.commit()
+
+    # ── 4. FAISS 再構築 ────────────────────────────────────────────────────
+    all_result = await db.execute(
+        select(Watchlist).where(Watchlist.is_active == True)  # noqa: E712
+    )
+    faiss_service.rebuild(all_result.scalars().all())
+
+    result_stats["total_inserted"] = len(new_entries)
+    result_stats["faiss_ntotal"]   = faiss_service.ntotal()
+    logger.info("sync-sanctions complete: %s", result_stats)
+    return result_stats
 
 
 # ── FAISS インデックス管理 ──────────────────────────────────────────────────
