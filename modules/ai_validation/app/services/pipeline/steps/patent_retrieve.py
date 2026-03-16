@@ -1,287 +1,28 @@
 # app/services/pipeline/steps/patent_retrieve.py
+"""
+Layer B 静的 FAISS インデックス（US 特許チャンク）による patent retrieve ステップ。
+
+変更点（MiniLM 動的ビルド → e5-large 静的インデックス）:
+- モデル: intfloat/multilingual-e5-large (faiss_e5_service 経由、共有シングルトン)
+- インデックス: data/staging/layer_b.index (事前構築済み静的ファイル)
+- DB patents テーブルへの動的 FAISS ビルドは廃止
+- PatentRetrieval 書き込み: patent_id=None、publication_number / layer_b_faiss_id を記録
+- IPC コード・FEFTA 対応情報も evidence_json に保存
+"""
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
-
-import numpy as np
-import faiss
-from sentence_transformers import SentenceTransformer
+from typing import Any, Dict, List
 
 from sqlalchemy.orm import Session
-from sqlalchemy import inspect
 
-from app.db.models.patent import Patent
-from app.db.models.transaction import UsageRequirement
 from app.db.models.ai_run import PatentRetrieval
+from app.db.models.transaction import UsageRequirement
+from app.services.faiss_e5_service import LayerBHit, is_ready, search_layer_b, ntotal_layer_b
 
 
-# =========================
-# Config
-# =========================
-_MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-
-# モデルをグローバルキャッシュ（リクエスト毎の再ロードを防ぐ）
-_model: Optional[SentenceTransformer] = None
-
-
-def _get_model() -> SentenceTransformer:
-    global _model
-    if _model is None:
-        _model = SentenceTransformer(_MODEL_NAME)
-    return _model
-
-
-def _project_root() -> str:
-    here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.abspath(os.path.join(here, "..", "..", "..", ".."))
-
-
-def _faiss_dir() -> str:
-    return os.path.join(_project_root(), "data", "faiss")
-
-
-def _faiss_index_path() -> str:
-    return os.path.join(_faiss_dir(), "patents.index")
-
-
-def _faiss_meta_path() -> str:
-    return os.path.join(_faiss_dir(), "patents_meta.json")
-
-
-# =========================
-# Ingest helpers (patents.json -> DB)
-# =========================
-def _read_patents_json(path: str) -> List[Dict[str, Any]]:
-    with open(path, "r", encoding="utf-8") as f:
-        doc = json.load(f)
-    if isinstance(doc, list):
-        return doc
-    if isinstance(doc, dict) and isinstance(doc.get("items"), list):
-        return doc["items"]
-    raise ValueError("patents.json must be a list or {items:[...]} JSON")
-
-
-def _to_ipc_raw(v: Any) -> Optional[str]:
-    if v is None:
-        return None
-    if isinstance(v, str):
-        return v.strip()
-    if isinstance(v, list):
-        return ";".join([str(x).strip() for x in v if str(x).strip()])
-    return str(v).strip()
-
-
-def _upsert_patents_from_json(db: Session, json_path: str) -> Dict[str, int]:
-    items = _read_patents_json(json_path)
-
-    inserted = 0
-    updated = 0
-    now = datetime.utcnow()
-
-    for it in items:
-        pub = (it.get("publication_number") or it.get("pub_number") or "").strip()
-        if not pub:
-            continue
-
-        title = (it.get("title") or "").strip()
-        applicant = (it.get("applicant") or it.get("assignee") or "").strip()
-
-        # ★ ここが “usage_details” ずれ吸収ポイント
-        usage_detail = (
-            it.get("usage_detail")
-            or it.get("usage_details")
-            or it.get("abstract")
-            or it.get("description")
-            or ""
-        ).strip()
-
-        ipc_raw = _to_ipc_raw(it.get("ipc_codes") or it.get("ipc") or it.get("ipc_codes_raw"))
-
-        obj = db.query(Patent).filter(Patent.publication_number == pub).first()
-        if obj:
-            if hasattr(obj, "title"):
-                obj.title = title
-            if hasattr(obj, "applicant"):
-                obj.applicant = applicant
-            if hasattr(obj, "assignee"):
-                obj.assignee = applicant
-            if hasattr(obj, "usage_detail"):
-                obj.usage_detail = usage_detail
-            if hasattr(obj, "abstract"):
-                obj.abstract = usage_detail
-            if hasattr(obj, "description"):
-                obj.description = usage_detail
-            if hasattr(obj, "ipc_codes_raw"):
-                obj.ipc_codes_raw = ipc_raw
-            if hasattr(obj, "updated_at"):
-                obj.updated_at = now
-            updated += 1
-        else:
-            obj = Patent(publication_number=pub)
-            if hasattr(obj, "title"):
-                obj.title = title
-            if hasattr(obj, "applicant"):
-                obj.applicant = applicant
-            if hasattr(obj, "assignee"):
-                obj.assignee = applicant
-            if hasattr(obj, "usage_detail"):
-                obj.usage_detail = usage_detail
-            if hasattr(obj, "abstract"):
-                obj.abstract = usage_detail
-            if hasattr(obj, "description"):
-                obj.description = usage_detail
-            if hasattr(obj, "ipc_codes_raw"):
-                obj.ipc_codes_raw = ipc_raw
-            if hasattr(obj, "created_at"):
-                obj.created_at = now
-            if hasattr(obj, "updated_at"):
-                obj.updated_at = now
-            db.add(obj)
-            inserted += 1
-
-    return {"inserted": inserted, "updated": updated, "total_in_json": len(items)}
-
-
-# =========================
-# FAISS Index Builder / Loader
-# =========================
-def _patent_to_text(p: Patent) -> str:
-    parts: List[str] = []
-    for key in ["title", "usage_detail", "abstract", "description", "ipc_codes_raw"]:
-        if hasattr(p, key):
-            v = getattr(p, key)
-            if isinstance(v, str) and v.strip():
-                parts.append(v.strip())
-    # publication_number は識別子として軽く混ぜる程度
-    if hasattr(p, "publication_number") and getattr(p, "publication_number"):
-        parts.append(str(getattr(p, "publication_number")))
-    return "\n".join(parts).strip()
-
-
-def _ensure_faiss_dir() -> None:
-    d = _faiss_dir()
-    os.makedirs(d, exist_ok=True)
-
-
-def _load_faiss_if_exists() -> Optional[Tuple[faiss.Index, List[Dict[str, Any]]]]:
-    ip = _faiss_index_path()
-    mp = _faiss_meta_path()
-    if os.path.exists(ip) and os.path.exists(mp):
-        try:
-            index = faiss.read_index(ip)
-            with open(mp, "r", encoding="utf-8") as f:
-                meta = json.load(f)
-            if isinstance(meta, list):
-                return index, meta
-        except Exception:
-            return None
-    return None
-
-
-def _build_faiss_from_db(db: Session) -> Tuple[faiss.Index, List[Dict[str, Any]]]:
-    """
-    DB セッションを使うのはデータ読み込みのみ。
-    エンコード（CPU集中処理）はセッション外で実行することで
-    DB ロックを長時間保持しない。
-    """
-    # Step1: DB から必要データをプレーン Python に抽出（セッション利用はここまで）
-    patents: List[Patent] = db.query(Patent).all()
-    patent_data: List[Tuple[int, str]] = [
-        (p.id, _patent_to_text(p)) for p in patents
-    ]
-    # DB オブジェクトを保持しないよう即座に参照を解放
-    del patents
-
-    # 空テキストを除外
-    patent_data = [(pid, t) for pid, t in patent_data if t]
-
-    model = _get_model()
-
-    if not patent_data:
-        dim = model.get_sentence_embedding_dimension()
-        return faiss.IndexFlatIP(dim), []
-
-    # Step2: セッション不要の純粋な ML 処理（ここで長時間かかっても DB はブロックしない）
-    ids = [pid for pid, _ in patent_data]
-    texts = [t for _, t in patent_data]
-
-    emb = model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
-    emb = np.asarray(emb, dtype="float32")
-
-    index = faiss.IndexFlatIP(emb.shape[1])
-    index.add(emb)
-
-    meta = [{"patent_id": pid} for pid in ids]
-    return index, meta
-
-
-def _save_faiss(index: faiss.Index, meta: List[Dict[str, Any]]) -> None:
-    _ensure_faiss_dir()
-    faiss.write_index(index, _faiss_index_path())
-    with open(_faiss_meta_path(), "w", encoding="utf-8") as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
-
-
-def _get_or_build_faiss(db: Session, force_rebuild: bool = False) -> Tuple[faiss.Index, List[Dict[str, Any]]]:
-    if not force_rebuild:
-        loaded = _load_faiss_if_exists()
-        if loaded:
-            return loaded
-
-    index, meta = _build_faiss_from_db(db)
-    _save_faiss(index, meta)
-    return index, meta
-
-
-def _search_patents_faiss(
-    db: Session,
-    index: faiss.Index,
-    meta: List[Dict[str, Any]],
-    query: str,
-    top_k: int,
-) -> List[Tuple[Patent, float]]:
-    query = (query or "").strip()
-    if not query or index.ntotal == 0:
-        return []
-
-    model = _get_model()
-    qv = model.encode([query], normalize_embeddings=True, show_progress_bar=False)
-    qv = np.asarray(qv, dtype="float32")
-
-    D, I = index.search(qv, top_k)
-    scores = D[0].tolist()
-    ids = I[0].tolist()
-
-    patent_ids: List[int] = []
-    scored: List[Tuple[int, float]] = []
-    for idx, score in zip(ids, scores):
-        if idx < 0 or idx >= len(meta):
-            continue
-        pid = int(meta[idx]["patent_id"])
-        patent_ids.append(pid)
-        scored.append((pid, float(score)))
-
-    if not patent_ids:
-        return []
-
-    # DBからまとめて引いて順番保持
-    rows = db.query(Patent).filter(Patent.id.in_(patent_ids)).all()
-    row_map = {r.id: r for r in rows}
-
-    out: List[Tuple[Patent, float]] = []
-    for pid, score in scored:
-        p = row_map.get(pid)
-        if p:
-            out.append((p, score))
-    return out
-
-
-# =========================
-# Step entry
-# =========================
+# ── Step entry ────────────────────────────────────────────────────────────────
 def step_patent_retrieve(
     db: Session,
     transaction_id: int,
@@ -289,63 +30,82 @@ def step_patent_retrieve(
     params: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    - patents テーブルを参照して retrieval を作る
-    - patents が空なら data/patents.json を upsert して埋める
-    - FAISSで類似検索して上位Kを PatentRetrieval に格納
+    usage_requirements × Layer B (US 特許) を e5-large FAISS で検索。
+
+    - data/staging/layer_b.index を参照（静的、起動時プリロード済み）
+    - 各 usage_requirement をエンコードして上位 top_k 件を取得
+    - PatentRetrieval レコード: patent_id=None、publication_number / layer_b_faiss_id で識別
     """
+    top_k: int = max(int(params.get("top_k_patents_per_usage", 5)), 1)
 
-    # --- ensure patents are loaded ---
-    patents_json_path = str(params.get("patents_json_path") or "").strip()
-    if not patents_json_path:
-        patents_json_path = os.path.join(_project_root(), "data", "patents.json")
-
-    ingest_result = None
-    patent_count = db.query(Patent).count()
-
-    if patent_count == 0 and os.path.exists(patents_json_path):
-        ingest_result = _upsert_patents_from_json(db, patents_json_path)
+    # FAISS 未ロード時はスキップ（起動直後のウォームアップ中）
+    if not is_ready():
         db.commit()
-        patent_count = db.query(Patent).count()
+        return {
+            "step": "patent_retrieve",
+            "transaction_id": transaction_id,
+            "run_id": run_id,
+            "inserted": 0,
+            "note": "FAISS e5-large model not ready yet (warming up)",
+        }
 
-    # --- cleanup old rows for this run ---
+    # --- delete existing retrievals for this run ---
     db.query(PatentRetrieval).filter(PatentRetrieval.ai_run_id == run_id).delete(synchronize_session=False)
     db.flush()
 
-    usages = (
+    usages: List[UsageRequirement] = (
         db.query(UsageRequirement)
         .filter(UsageRequirement.transaction_id == transaction_id)
         .all()
     )
     if not usages:
         db.commit()
-        return {"step": "patent_retrieve", "inserted": 0, "note": "usage_requirements が0件"}
-
-    top_k = int(params.get("top_k_patents_per_usage", 5))
-
-    # FAISSをロード（なければDBから作って保存）
-    force_rebuild = bool(params.get("force_rebuild_faiss", False))
-    index, meta = _get_or_build_faiss(db, force_rebuild=force_rebuild)
+        return {
+            "step": "patent_retrieve",
+            "transaction_id": transaction_id,
+            "run_id": run_id,
+            "inserted": 0,
+            "note": "usage_requirements が0件のため検索なし",
+        }
 
     inserted = 0
+    now = datetime.utcnow()
+
     for u in usages:
-        q = (u.text or "").strip()
-        if not q:
+        qt = (u.text or "").strip()
+        if not qt:
             continue
 
-        results = _search_patents_faiss(db, index, meta, q, top_k=top_k)
+        hits: List[LayerBHit] = search_layer_b(qt, top_k=top_k)
 
-        # fallback（FAISSが空等のとき）
-        if not results:
-            candidates = db.query(Patent).limit(top_k).all()
-            results = [(p, 0.0) for p in candidates]
+        for hit in hits:
+            evidence = {
+                "usage_source": u.source,
+                "usage_text": qt[:500],
+                "layer_b_faiss_id": hit.faiss_id,
+                "publication_number": hit.publication_number,
+                "country_code": hit.country_code,
+                "ipc_codes": hit.ipc_codes,
+                "title": hit.title,
+                "abstract_snippet": hit.abstract[:500],
+                "fefta_items": hit.fefta_items,
+                "has_fefta_mapping": hit.has_fefta_mapping,
+                "scoring": {
+                    "method": "faiss_cosine(intfloat/multilingual-e5-large)",
+                    "top_k": top_k,
+                },
+            }
 
-        for p, score in results:
             pr = PatentRetrieval(
                 ai_run_id=run_id,
                 usage_requirement_id=u.id,
-                patent_id=p.id,
-                score=float(score),
-                why="faiss_embedding_search",
+                patent_id=None,
+                publication_number=hit.publication_number[:64] if hit.publication_number else None,
+                layer_b_faiss_id=hit.faiss_id,
+                score=float(hit.score),
+                why=json.dumps(evidence, ensure_ascii=False),
+                created_at=now,
+                updated_at=now,
             )
             db.add(pr)
             inserted += 1
@@ -356,11 +116,9 @@ def step_patent_retrieve(
         "step": "patent_retrieve",
         "transaction_id": transaction_id,
         "run_id": run_id,
-        "patent_count": patent_count,
-        "ingest": ingest_result,
+        "top_k": top_k,
         "inserted": inserted,
-        "patents_json_path": patents_json_path,
-        "faiss_index_path": _faiss_index_path(),
-        "faiss_meta_path": _faiss_meta_path(),
-        "note": "patents(DB) -> FAISS index -> retrieve topK by embedding similarity",
+        "usage_count": len(usages),
+        "layer_b_ntotal": ntotal_layer_b(),
+        "note": "FAISS cosine(intfloat/multilingual-e5-large, Layer B) で US 特許を検索",
     }
