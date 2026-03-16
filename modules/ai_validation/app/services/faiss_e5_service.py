@@ -1,26 +1,28 @@
 """
 faiss_e5_service.py
 ─────────────────────────────────────────────────────────────────────────────
-intfloat/multilingual-e5-large による Layer A / Layer B 静的 FAISS インデックス。
+intfloat/multilingual-e5-large による Layer A / B / C 静的 FAISS インデックス。
 
 設計方針:
-- モデルは 1 インスタンスのみ（メモリ ~2GB）、両レイヤー共有
+- モデルは 1 インスタンスのみ（メモリ ~2GB）、全レイヤー共有
 - Layer A: 外為法 + ECCN 規制テキスト (2,040 vec, dim=1024)
 - Layer B: US 特許チャンク (1,595 vec, dim=1024)
+- Layer C: HS コード (5,476 vec, dim=1024)  ← NEW
 - インデックスは data/staging/ にある事前構築済みファイルをロード（再構築しない）
 - クエリは必ず "query: {text}" プレフィックスを付与（e5-large 仕様）
+- Layer C が存在しない場合は警告のみ（A/B は通常通り使用可）
 
 公開インターフェース:
   preload()                       → 起動時に呼ぶ（main.py の on_startup）
   is_ready() -> bool              → ロード完了フラグ
   search_layer_a(query, top_k)    → List[LayerAHit]
   search_layer_b(query, top_k)    → List[LayerBHit]
+  search_layer_c(query, top_k, fefta_filter)  → List[LayerCHit]  ← NEW
 """
 from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -48,6 +50,8 @@ _LAYER_A_INDEX = _staging_dir() / "layer_a.index"
 _LAYER_A_META  = _staging_dir() / "layer_a_meta.json"
 _LAYER_B_INDEX = _staging_dir() / "layer_b.index"
 _LAYER_B_META  = _staging_dir() / "layer_b_meta.json"
+_LAYER_C_INDEX = _staging_dir() / "layer_c.index"
+_LAYER_C_META  = _staging_dir() / "layer_c_meta.json"
 
 # ── グローバルキャッシュ ──────────────────────────────────────────────────────
 _model: SentenceTransformer | None = None
@@ -55,6 +59,8 @@ _layer_a_index: faiss.Index | None = None
 _layer_a_records: list[dict[str, Any]] = []
 _layer_b_index: faiss.Index | None = None
 _layer_b_records: list[dict[str, Any]] = []
+_layer_c_index: faiss.Index | None = None
+_layer_c_records: list[dict[str, Any]] = []
 _ready: bool = False
 
 
@@ -82,6 +88,22 @@ class LayerBHit:
     title: str
     abstract: str
     fefta_items: list[str]
+    has_fefta_mapping: bool
+    embed_text: str
+
+
+@dataclass
+class LayerCHit:
+    score: float
+    faiss_id: int
+    hs_code: str
+    hs_version: str
+    description: str
+    chapter: str
+    heading: str
+    subheading: str
+    level: str              # heading / subheading
+    fefta_items: list[dict[str, Any]]   # [{"item_no": "7", "item_label": "..."}]
     has_fefta_mapping: bool
     embed_text: str
 
@@ -116,17 +138,39 @@ def _load_layer_b() -> tuple[faiss.Index, list[dict]]:
     return index, records
 
 
+def _load_layer_c() -> tuple[faiss.Index, list[dict]] | None:
+    """Layer C は optional。ファイルがなければ None を返す（警告のみ）。"""
+    if not _LAYER_C_INDEX.exists() or not _LAYER_C_META.exists():
+        logger.warning("Layer C files not found — HS search unavailable: %s", _LAYER_C_INDEX)
+        return None
+    index = faiss.read_index(str(_LAYER_C_INDEX))
+    meta = json.loads(_LAYER_C_META.read_text(encoding="utf-8"))
+    records = meta["records"] if isinstance(meta, dict) else meta
+    logger.info("Layer C loaded: ntotal=%d", index.ntotal)
+    return index, records
+
+
 def preload() -> None:
-    """起動時に呼ぶ。モデルと両インデックスをメモリにロードする。"""
-    global _layer_a_index, _layer_a_records, _layer_b_index, _layer_b_records, _ready
+    """起動時に呼ぶ。モデルと全インデックスをメモリにロードする。"""
+    global _layer_a_index, _layer_a_records
+    global _layer_b_index, _layer_b_records
+    global _layer_c_index, _layer_c_records
+    global _ready
     _load_model()
     _layer_a_index, _layer_a_records = _load_layer_a()
     _layer_b_index, _layer_b_records = _load_layer_b()
+    result_c = _load_layer_c()
+    if result_c is not None:
+        _layer_c_index, _layer_c_records = result_c
     _ready = True
 
 
 def is_ready() -> bool:
     return _ready
+
+
+def layer_c_available() -> bool:
+    return _layer_c_index is not None and _layer_c_index.ntotal > 0
 
 
 # ── エンコード ────────────────────────────────────────────────────────────────
@@ -218,9 +262,76 @@ def search_layer_b(query: str, top_k: int = 10) -> list[LayerBHit]:
     return hits
 
 
+def search_layer_c(
+    query: str,
+    top_k: int = 10,
+    fefta_filter: list[str] | None = None,
+) -> list[LayerCHit]:
+    """
+    Layer C（HS コード）をクエリで検索する。
+
+    Args:
+        query:         製品説明テキスト（日英どちらも可）
+        top_k:         返す件数
+        fefta_filter:  FEFTA 項番リスト。指定すると該当 item_no を持つ結果のみ返す。
+                       例: ["7", "10"] → 外為法7号・10号に対応する HS コードに絞り込む
+
+    Returns:
+        スコア降順の LayerCHit リスト。Layer C 未ロード時は空リスト。
+    """
+    if _layer_c_index is None or _layer_c_index.ntotal == 0:
+        logger.warning("Layer C index not ready (run scripts/build_layer_c.py)")
+        return []
+
+    query = (query or "").strip()
+    if not query:
+        return []
+
+    qv = _encode_query(query)
+    # fefta_filter がある場合は多めに取得してから絞り込む
+    fetch_k = min(top_k * 5 if fefta_filter else top_k, _layer_c_index.ntotal)
+    D, I = _layer_c_index.search(qv, fetch_k)
+
+    hits: list[LayerCHit] = []
+    for score, idx in zip(D[0].tolist(), I[0].tolist()):
+        if idx < 0 or idx >= len(_layer_c_records):
+            continue
+        r = _layer_c_records[idx]
+        fefta_items = r.get("fefta_items") or []
+
+        # fefta_filter による絞り込み
+        if fefta_filter:
+            item_nos = {str(f.get("item_no", "")) for f in fefta_items}
+            if not item_nos.intersection(set(fefta_filter)):
+                continue
+
+        hits.append(LayerCHit(
+            score=float(score),
+            faiss_id=int(r.get("faiss_id", idx)),
+            hs_code=str(r.get("hs_code", "")),
+            hs_version=str(r.get("hs_version", "")),
+            description=str(r.get("description", "")),
+            chapter=str(r.get("chapter", "")),
+            heading=str(r.get("heading", "")),
+            subheading=str(r.get("subheading", "")),
+            level=str(r.get("level", "")),
+            fefta_items=list(fefta_items),
+            has_fefta_mapping=bool(r.get("has_fefta_mapping", False)),
+            embed_text=str(r.get("embed_text", "")),
+        ))
+        if len(hits) >= top_k:
+            break
+
+    return hits
+
+
 def ntotal_layer_a() -> int:
     return _layer_a_index.ntotal if _layer_a_index else 0
 
 
 def ntotal_layer_b() -> int:
     return _layer_b_index.ntotal if _layer_b_index else 0
+
+
+def ntotal_layer_c() -> int:
+    return _layer_c_index.ntotal if _layer_c_index else 0
