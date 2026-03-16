@@ -403,6 +403,7 @@ def transaction_detail_page(
             "overall_risk": overall_risk,
             "overall_label": overall_label,
             "chain": chain,
+            "faiss_ready": getattr(request.app.state, "faiss_ready", False),
         },
     )
 
@@ -432,7 +433,12 @@ def run_pipeline_and_show(
     """
     ①〜④ pipelineを回し、最後に two_lists を作って詳細画面へ戻す
     """
-    # orchestrator側が threshold を受け取れるようにしておく（後述の修正も入れてください）
+    # e5-large モデルのプリロードが完了していない場合は実行を拒否
+    if not getattr(request.app.state, "faiss_ready", False):
+        raise HTTPException(
+            status_code=503,
+            detail="AI モデルをロード中です。起動後しばらく待ってから再実行してください（通常 20〜30 秒）。",
+        )
     run_until_matrix_match(db=db, transaction_id=transaction_id, threshold=threshold)
 
     # 最新 matrix_match run を引いて、その run_id を付けて詳細へ戻す

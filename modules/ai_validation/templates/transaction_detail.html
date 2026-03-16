@@ -4,6 +4,23 @@
 
 {% block content %}
 
+<!-- ===== FAISS ウォームアップ中バナー ===== -->
+{% if not faiss_ready %}
+<div id="faiss-loading-banner" style="
+  background:#1a2a3a; border-left:4px solid #f0a500; color:#f0c060;
+  padding:.6rem 1.2rem; margin-bottom:.8rem;
+  display:flex; align-items:center; gap:.8rem; font-size:.9rem;">
+  <span style="font-size:1.2rem; animation:spin 1.2s linear infinite; display:inline-block;">⟳</span>
+  <span>AI モデル（e5-large）をロード中です。通常 20〜30 秒で完了します。完了後に「AI解析を実行」が有効になります。</span>
+  <button onclick="location.reload()" style="
+    margin-left:auto; background:#f0a500; color:#000;
+    border:none; padding:.25rem .8rem; border-radius:4px; cursor:pointer; font-size:.82rem;">
+    更新
+  </button>
+</div>
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+{% endif %}
+
 <!-- ===== Section 1: ステータスバナー ===== -->
 <div class="status-banner status-banner-{{ overall_risk }}">
   <div class="status-left">
@@ -36,7 +53,15 @@
     <a class="btn btn-ghost btn-sm" href="/ui/transactions/{{ tx.id }}/export/pdf">↓ PDF</a>
     {% endif %}
     <form method="post" action="/ui/transactions/{{ tx.id }}/run?threshold=0.75" style="margin:0">
+      {% if faiss_ready %}
       <button class="btn btn-primary" type="submit">AI解析を実行</button>
+      {% else %}
+      <button class="btn btn-primary" type="button" disabled
+        title="AI モデルをロード中です。しばらくお待ちください。"
+        style="opacity:.45; cursor:not-allowed;">
+        ⟳ モデルロード中…
+      </button>
+      {% endif %}
     </form>
   </div>
 </div>
