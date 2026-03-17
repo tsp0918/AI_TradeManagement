@@ -9,6 +9,7 @@ from app.services.pipeline.steps.usage_extract import step_usage_extract
 from app.services.pipeline.steps.patent_retrieve import step_patent_retrieve
 from app.services.pipeline.steps.usage_expand import step_usage_expand
 from app.services.pipeline.steps.matrix_match import step_matrix_match
+from app.services.pipeline.steps.hs_suggest import step_hs_suggest
 
 
 def run_until_matrix_match(db: Session, transaction_id: int, threshold: float = 0.75) -> Dict[str, Any]:
@@ -52,9 +53,21 @@ def run_until_matrix_match(db: Session, transaction_id: int, threshold: float = 
         prompt_version="matrix_match_v2_fx",
     )
 
+    # Layer A hit item_no → Layer C HS コード提案（クロスレイヤー）
+    r5 = execute_step(
+        db=db,
+        transaction_id=transaction_id,
+        run_type=RunType.matrix_match,   # 既存 run_type を流用（専用 type 追加不要）
+        step_fn=step_hs_suggest,
+        params={"top_k_per_item": 5, "min_score": 0.50},
+        model_name="local",
+        prompt_version="hs_suggest_v1",
+    )
+
     return {
-        "usage_extract": r1,
+        "usage_extract":   r1,
         "patent_retrieve": r2,
-        "usage_expand": r3,
-        "matrix_match": r4,
+        "usage_expand":    r3,
+        "matrix_match":    r4,
+        "hs_suggest":      r5,
     }
