@@ -197,6 +197,29 @@ class HanteiAgent(BaseAgent):
 
         return result.to_dict()
 
+    async def start_session_with_history(self, initial_query: str) -> AgentResponse:
+        """
+        start_session_async のラッパー。
+        候補 domain_id と初回質問を context に同期してから返す。
+
+        start_session_async は候補を _current_candidates に設定するが
+        context.candidate_domain_ids には反映しないため、ここで同期する。
+        これにより:
+        - is_complete() が空リストを「未初期化」と誤検知しなくなる
+        - 初回質問も dialogue_history に記録される（answer 同期が正しく動く）
+        """
+        self._current_candidates = self.search_candidates(initial_query)
+        self._last_missing_attr = None
+        resp = await self.next_turn_async(user_input=None)
+
+        if isinstance(self.context, HanteiContext):
+            self.context.candidate_domain_ids = resp.candidates_remaining
+            if resp.question:
+                attr_key = resp.missing_attr.attr_key if resp.missing_attr else None
+                self.context.add_question_to_history(resp.question, attr_key)
+
+        return resp
+
     async def next_turn_with_history(
         self, user_input: Optional[str] = None
     ) -> AgentResponse:

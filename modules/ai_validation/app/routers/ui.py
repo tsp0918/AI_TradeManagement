@@ -413,6 +413,7 @@ def transaction_detail_page(
             "chain": chain,
             "faiss_ready": getattr(request.app.state, "faiss_ready", False),
             "hs_suggestions": hs_suggestions,
+            "platform_url": __import__("os").getenv("MODULE_PLATFORM_URL", "http://localhost:8000"),
         },
     )
 

@@ -159,7 +159,7 @@ async def start_session(req: StartSessionRequest) -> SessionResponse:
         except Exception:
             pass
 
-    resp = await agent.start_session_async(req.initial_query)
+    resp = await agent.start_session_with_history(req.initial_query)
 
     # セッションを保存
     _SESSION_STORE[session_id] = agent

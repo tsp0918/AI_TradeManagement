@@ -337,15 +337,27 @@
 
 <script>
 (function() {
-  const PLATFORM_URL = "http://localhost:8000";
+  const PLATFORM_URL = "{{ platform_url | default('http://localhost:8000') }}";
   let _sessionId = null;
   let _totalCandidates = 0;
 
-  function log(html, type) {
+  // LLM / API レスポンスを innerHTML に挿入する前に HTML エスケープ
+  function esc(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function log(text, type) {
     const el = document.getElementById("agent-log");
     const color = type === "agent" ? "#1e40af" : type === "system" ? "#6b7280" : "#166534";
     const prefix = type === "agent" ? "🤖" : type === "user" ? "👤" : "ℹ";
-    el.innerHTML += `<div style="margin-bottom:6px; color:${color}"><span style="font-weight:600;">${prefix}</span> ${html}</div>`;
+    // テキストをエスケープして改行だけ <br> に変換
+    const safeText = esc(text).replace(/\n/g, "<br>");
+    el.innerHTML += `<div style="margin-bottom:6px; color:${color}"><span style="font-weight:600;">${prefix}</span> ${safeText}</div>`;
     el.scrollTop = el.scrollHeight;
   }
 
@@ -360,15 +372,15 @@
     updateProgress(resp.candidates_count, _totalCandidates || resp.candidates_count);
 
     if (resp.question) {
-      let qhtml = resp.question.replace(/\n/g, "<br>");
+      // question は LLM 生成テキスト → log() 内で esc() 済み
+      let questionText = resp.question;
       if (resp.missing_attr) {
         const ma = resp.missing_attr;
-        let hint = "";
-        if (ma.unit) hint += ` 単位: <b>${ma.unit}</b>`;
-        if (ma.example) hint += ` 例: <code>${ma.example}</code>`;
-        qhtml += hint ? `<span class="muted" style="font-size:.78rem; margin-left:6px;">${hint}</span>` : "";
+        // unit / example はオントロジー定義の固定値なので esc() を適用
+        if (ma.unit)    questionText += `  [単位: ${ma.unit}]`;
+        if (ma.example) questionText += `  (例: ${ma.example})`;
       }
-      log(qhtml, "agent");
+      log(questionText, "agent");
       document.getElementById("agent-input-area").style.display = "flex";
       document.getElementById("agent-judge-area").style.display = "none";
       setTimeout(() => document.getElementById("agent-input").focus(), 50);
@@ -473,32 +485,34 @@
   };
 
   function renderJudgmentResult(r) {
+    // overall_status は enum 値で固定セット → ホワイトリスト引き当て
     const statusColor = {"controlled":"#be123c","not_controlled":"#166534","requires_review":"#854d0e","pending":"#6b7280"}[r.overall_status] || "#374151";
-    const statusLabel = {"controlled":"規制対象","not_controlled":"非規制","requires_review":"要確認","pending":"判定中"}[r.overall_status] || r.overall_status;
+    const statusLabel = {"controlled":"規制対象","not_controlled":"非規制","requires_review":"要確認","pending":"判定中"}[r.overall_status] || esc(r.overall_status);
     let html = `<div style="border:1.5px solid ${statusColor}; border-radius:10px; padding:14px 16px; background:#fafafa;">`;
     html += `<div style="font-weight:800; font-size:1rem; color:${statusColor}; margin-bottom:8px;">⚖ 判定結果: ${statusLabel}</div>`;
-    if (r.controlled_items.length) {
+    if (r.controlled_items && r.controlled_items.length) {
       html += `<div style="margin-bottom:6px;"><span style="font-size:.78rem; font-weight:700; color:#9ca3af;">規制対象項番</span><br>`;
-      r.controlled_items.forEach(id => { html += `<span class="chip chip-hit" style="margin-right:4px; margin-top:4px;">${id}</span>`; });
+      r.controlled_items.forEach(id => { html += `<span class="chip chip-hit" style="margin-right:4px; margin-top:4px;">${esc(id)}</span>`; });
       html += `</div>`;
     }
-    if (r.pending_items.length) {
+    if (r.pending_items && r.pending_items.length) {
       html += `<div style="margin-bottom:6px;"><span style="font-size:.78rem; font-weight:700; color:#9ca3af;">要確認項番</span><br>`;
-      r.pending_items.forEach(id => { html += `<span class="chip chip-maybe" style="margin-right:4px; margin-top:4px;">${id}</span>`; });
+      r.pending_items.forEach(id => { html += `<span class="chip chip-maybe" style="margin-right:4px; margin-top:4px;">${esc(id)}</span>`; });
       html += `</div>`;
     }
     if (r.summary) {
-      html += `<div style="margin-top:10px; font-size:.85rem; color:#374151; line-height:1.6; padding:8px 12px; background:#f0f9ff; border-radius:6px; border-left:3px solid #60a5fa;">${r.summary.replace(/\n/g,"<br>")}</div>`;
+      // LLM 生成テキストをエスケープ後、改行を <br> に変換
+      html += `<div style="margin-top:10px; font-size:.85rem; color:#374151; line-height:1.6; padding:8px 12px; background:#f0f9ff; border-radius:6px; border-left:3px solid #60a5fa;">${esc(r.summary).replace(/\n/g,"<br>")}</div>`;
     }
     if (r.reasons && r.reasons.length) {
       html += `<details style="margin-top:10px;"><summary style="font-size:.78rem; color:#6b7280; cursor:pointer; list-style:none;">判定根拠を確認する ▸</summary><ul style="margin-top:8px; padding-left:16px; font-size:.82rem; color:#374151;">`;
       r.reasons.forEach(reason => {
         const sc = {"controlled":"#be123c","not_controlled":"#166534","requires_review":"#854d0e"}[reason.status] || "#6b7280";
-        html += `<li style="margin-bottom:6px; color:${sc};"><b>${reason.title || reason.domain_id}</b>: ${reason.explanation || ""}</li>`;
+        html += `<li style="margin-bottom:6px; color:${sc};"><b>${esc(reason.title || reason.domain_id)}</b>: ${esc(reason.explanation || "")}</li>`;
       });
       html += `</ul></details>`;
     }
-    html += `<div style="margin-top:8px; font-size:.75rem; color:#9ca3af;">判定日時: ${r.judged_at}</div>`;
+    html += `<div style="margin-top:8px; font-size:.75rem; color:#9ca3af;">判定日時: ${esc(r.judged_at)}</div>`;
     html += `</div>`;
     return html;
   }
