@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
 
 # HuggingFace tokenizer のマルチプロセスを無効化（semaphore リークによるプロセス終了を防ぐ）
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -25,6 +24,8 @@ from fastapi.responses import RedirectResponse
 
 from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan
 
+import platform_core.services.faiss_e5_service as faiss_e5_svc
+
 from app.config import settings
 from app.routers import classify, search, ui
 from app.services import faiss_index
@@ -33,19 +34,12 @@ logger = logging.getLogger(__name__)
 
 
 async def _init_index() -> None:
-    """起動時に FAISS インデックスを構築する。データがなければスキップ。"""
-    hs_path = Path(settings.hs_data_path)
-    if not hs_path.exists():
-        logger.warning(
-            "HS データファイルが見つかりません: %s\n"
-            "data/ ディレクトリに hs2022_6digit.json を配置してサービスを再起動してください。",
-            hs_path,
-        )
-        return
+    """起動時に Layer C インデックスをメモリにロードする。"""
     try:
-        faiss_index.build(force=False)
+        faiss_e5_svc.preload(layers=frozenset({"c"}))
+        logger.info("Layer C loaded: ntotal=%d", faiss_index.ntotal())
     except Exception as exc:
-        logger.error("FAISSインデックス構築に失敗しました: %s", exc)
+        logger.error("Layer C ロードに失敗しました: %s", exc)
 
 
 MODULE = ModuleInfo(
@@ -83,7 +77,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "index_size": faiss_index.ntotal(),
-            "index_built": faiss_index._is_built(),
+            "index_built": faiss_index.is_built(),
         }
 
     return app

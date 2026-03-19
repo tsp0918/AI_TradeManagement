@@ -28,6 +28,7 @@ class RunType(str, enum.Enum):
     patent_retrieve = "patent_retrieve"
     usage_expand = "usage_expand"
     matrix_match = "matrix_match"
+    hs_suggest = "hs_suggest"
     explanation = "explanation"
 
 
@@ -75,43 +76,53 @@ class PatentRetrieval(Base, TimestampMixin):
     ai_run_id: Mapped[int] = mapped_column(ForeignKey("ai_runs.id", ondelete="CASCADE"), index=True)
 
     usage_requirement_id: Mapped[int] = mapped_column(ForeignKey("usage_requirements.id", ondelete="CASCADE"), index=True)
-    patent_id: Mapped[int] = mapped_column(ForeignKey("patents.id", ondelete="CASCADE"), index=True)
+    # Layer B 静的インデックス移行後は NULL（publication_number で識別）
+    patent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("patents.id", ondelete="SET NULL"), index=True, nullable=True)
+
+    # Layer B メタ識別子
+    publication_number: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    layer_b_faiss_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     score: Mapped[float] = mapped_column(Float, nullable=False)
     why: Mapped[Optional[str]] = mapped_column(Text)
 
     ai_run: Mapped["AiRun"] = relationship(back_populates="patent_retrievals")
     usage_requirement: Mapped["UsageRequirement"] = relationship(back_populates="patent_retrievals")
-    patent: Mapped["Patent"] = relationship(back_populates="retrievals")
+    patent: Mapped[Optional["Patent"]] = relationship(back_populates="retrievals")
 
     __table_args__ = (Index("ix_patent_retrievals_run_usage", "ai_run_id", "usage_requirement_id"),)
 
 
 class MatrixMatch(Base):
-    """
-    DB（matrix_matches）に合わせたモデル
-    """
     __tablename__ = "matrix_matches"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
     ai_run_id: Mapped[int] = mapped_column(ForeignKey("ai_runs.id", ondelete="CASCADE"), index=True)
-    matrix_rule_id: Mapped[int] = mapped_column(ForeignKey("matrix_rules.id", ondelete="CASCADE"), index=True)
+    # Layer A 静的インデックス移行後は NULL（layer_a_faiss_id / layer_a_item_no で識別）
+    matrix_rule_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("matrix_rules.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
     usage_requirement_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("usage_requirements.id", ondelete="CASCADE"),
         index=True,
         nullable=True,
     )
 
+    # Layer A メタ識別子
+    layer_a_faiss_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    layer_a_item_no: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    layer_a_source_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+
     match_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)  # core_hit / expanded_hit
     match_score: Mapped[float] = mapped_column(Float, nullable=False)
 
-    # DB側が NOT NULL のため必須
     decision: Mapped[str] = mapped_column(String(16), nullable=False, default="hit")
 
     evidence_json: Mapped[Optional[str]] = mapped_column(Text)
 
-    # ★ここが今回の本丸：DB側に updated_at NOT NULL があるならモデルにも持たせて必ず埋める
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -121,7 +132,7 @@ class MatrixMatch(Base):
     )
 
     ai_run: Mapped["AiRun"] = relationship(back_populates="matrix_matches")
-    usage_requirement: Mapped["UsageRequirement"] = relationship(back_populates="matrix_matches")
-    matrix_rule: Mapped["MatrixRule"] = relationship(back_populates="matches")
+    usage_requirement: Mapped[Optional["UsageRequirement"]] = relationship(back_populates="matrix_matches")
+    matrix_rule: Mapped[Optional["MatrixRule"]] = relationship(back_populates="matches")
 
     __table_args__ = (Index("ix_matrix_matches_run_rule", "ai_run_id", "matrix_rule_id"),)

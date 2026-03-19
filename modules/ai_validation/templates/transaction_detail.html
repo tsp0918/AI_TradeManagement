@@ -4,6 +4,23 @@
 
 {% block content %}
 
+<!-- ===== FAISS ウォームアップ中バナー ===== -->
+{% if not faiss_ready %}
+<div id="faiss-loading-banner" style="
+  background:#1a2a3a; border-left:4px solid #f0a500; color:#f0c060;
+  padding:.6rem 1.2rem; margin-bottom:.8rem;
+  display:flex; align-items:center; gap:.8rem; font-size:.9rem;">
+  <span style="font-size:1.2rem; animation:spin 1.2s linear infinite; display:inline-block;">⟳</span>
+  <span>AI モデル（e5-large）をロード中です。通常 20〜30 秒で完了します。完了後に「AI解析を実行」が有効になります。</span>
+  <button onclick="location.reload()" style="
+    margin-left:auto; background:#f0a500; color:#000;
+    border:none; padding:.25rem .8rem; border-radius:4px; cursor:pointer; font-size:.82rem;">
+    更新
+  </button>
+</div>
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+{% endif %}
+
 <!-- ===== Section 1: ステータスバナー ===== -->
 <div class="status-banner status-banner-{{ overall_risk }}">
   <div class="status-left">
@@ -36,7 +53,15 @@
     <a class="btn btn-ghost btn-sm" href="/ui/transactions/{{ tx.id }}/export/pdf">↓ PDF</a>
     {% endif %}
     <form method="post" action="/ui/transactions/{{ tx.id }}/run?threshold=0.75" style="margin:0">
+      {% if faiss_ready %}
       <button class="btn btn-primary" type="submit">AI解析を実行</button>
+      {% else %}
+      <button class="btn btn-primary" type="button" disabled
+        title="AI モデルをロード中です。しばらくお待ちください。"
+        style="opacity:.45; cursor:not-allowed;">
+        ⟳ モデルロード中…
+      </button>
+      {% endif %}
     </form>
   </div>
 </div>
@@ -561,6 +586,68 @@
     <div class="muted" style="padding:10px 0">マトリクス照合なし。</div>
     {% endif %}
 
+  </div>
+</details>
+{% endif %}
+
+<!-- ===== Section 4b: HS コード提案（クロスレイヤー: Layer A → C） ===== -->
+{% if hs_suggestions and hs_suggestions.available and hs_suggestions.by_item %}
+<details class="card detail-section" open>
+  <summary class="detail-summary">
+    <span>HSコード提案 <span class="badge" style="background:#0d6efd;color:#fff;font-size:11px;padding:2px 7px;border-radius:10px">Layer A → C</span></span>
+    <span class="muted small">{{ hs_suggestions.note }}</span>
+  </summary>
+  <div style="margin-top:12px">
+    <p class="muted small" style="margin-bottom:12px">
+      外為法該当の可能性がある規制項番ごとに、関連する HS コード候補を e5-large クロス検索で提案します。
+      HSコードはあくまで参考情報です。最終的なコード決定は専門家による確認をお願いします。
+    </p>
+    {% for item_no, item_data in hs_suggestions.by_item.items() %}
+    <div style="margin-bottom:20px; border-left:3px solid #0d6efd; padding-left:12px;">
+      <div style="font-weight:600; margin-bottom:6px; font-size:14px;">
+        外為法 <span style="color:#0d6efd">{{ item_no }}号</span>
+        <span class="muted" style="font-weight:normal; margin-left:8px;">{{ item_data.item_label }}</span>
+      </div>
+      {% if item_data.candidates %}
+      <table class="table" style="font-size:13px;">
+        <thead>
+          <tr>
+            <th style="width:90px">HSコード</th>
+            <th>品目説明</th>
+            <th style="width:60px">Chapter</th>
+            <th style="width:70px">類似度</th>
+            <th style="width:70px">FEFTA</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in item_data.candidates %}
+          <tr>
+            <td class="mono" style="font-weight:600; color:#0d6efd">{{ c.hs_code }}</td>
+            <td>{{ c.description[:90] }}{% if c.description|length > 90 %}…{% endif %}</td>
+            <td class="mono muted">{{ c.chapter }}</td>
+            <td>
+              <span style="
+                display:inline-block; padding:1px 6px; border-radius:4px; font-size:12px;
+                background:{%- if c.score >= 0.80 -%}#d1fae5{%- elif c.score >= 0.65 -%}#fef9c3{%- else -%}#f3f4f6{%- endif -%};
+                color:{%- if c.score >= 0.80 -%}#065f46{%- elif c.score >= 0.65 -%}#78350f{%- else -%}#374151{%- endif -%}
+              ">{{ "%.3f"|format(c.score) }}</span>
+            </td>
+            <td>
+              {% if c.has_fefta_mapping %}
+              <span style="color:#0d6efd; font-size:12px;">●</span>
+              {% else %}
+              <span class="muted" style="font-size:12px;">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="muted small">スコア閾値を満たす HS コード候補がありませんでした。</div>
+      {% endif %}
+    </div>
+    {% endfor %}
   </div>
 </details>
 {% endif %}

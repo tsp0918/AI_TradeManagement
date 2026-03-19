@@ -22,29 +22,159 @@ from app.db.session import engine
 
 
 async def _ensure_columns() -> None:
-    """SQLite 起動時カラム自動追加（Alembic 非適用環境向け）"""
+    """
+    起動時スキーマ管理（Alembic 非適用環境向け）。
+    Layer A/B 静的インデックス移行に伴うテーブル再作成と新規カラム追加を行う。
+    """
     from sqlalchemy import inspect as sa_inspect, text
 
-    needed: dict[str, list[tuple[str, str]]] = {
-        "transactions": [
-            ("source_module",         "VARCHAR(32)"),
-            ("parent_transaction_id", "INTEGER"),
-            ("rnd_case_id",           "VARCHAR(64)"),
-        ],
-    }
+    def _has_column(insp, table: str, col: str) -> bool:
+        try:
+            return any(c["name"] == col for c in insp.get_columns(table))
+        except Exception:
+            return False
+
+    def _col_is_nullable(insp, table: str, col: str) -> bool:
+        try:
+            for c in insp.get_columns(table):
+                if c["name"] == col:
+                    return c.get("nullable", True)
+        except Exception:
+            pass
+        return True
+
     with engine.connect() as conn:
-        inspector = sa_inspect(engine)
-        for table, cols in needed.items():
-            try:
-                existing = {c["name"] for c in inspector.get_columns(table)}
-            except Exception:
-                continue
-            for col_name, col_type in cols:
-                if col_name not in existing:
-                    conn.execute(text(
-                        f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}"
-                    ))
+        insp = sa_inspect(engine)
+
+        # ── matrix_matches: matrix_rule_id を nullable 化（テーブル再作成）──
+        if insp.has_table("matrix_matches") and not _col_is_nullable(insp, "matrix_matches", "matrix_rule_id"):
+            conn.execute(text("DROP TABLE IF EXISTS matrix_matches_new"))
+            conn.execute(text("""
+                CREATE TABLE matrix_matches_new (
+                    id                   INTEGER PRIMARY KEY,
+                    ai_run_id            INTEGER NOT NULL REFERENCES ai_runs(id) ON DELETE CASCADE,
+                    matrix_rule_id       INTEGER REFERENCES matrix_rules(id) ON DELETE SET NULL,
+                    usage_requirement_id INTEGER REFERENCES usage_requirements(id) ON DELETE CASCADE,
+                    layer_a_faiss_id     INTEGER,
+                    layer_a_item_no      VARCHAR(64),
+                    layer_a_source_type  VARCHAR(32),
+                    match_type           VARCHAR(32) NOT NULL,
+                    match_score          FLOAT NOT NULL,
+                    decision             VARCHAR(16) NOT NULL DEFAULT 'hit',
+                    evidence_json        TEXT,
+                    created_at           DATETIME NOT NULL,
+                    updated_at           DATETIME NOT NULL
+                )
+            """))
+            conn.execute(text("""
+                INSERT INTO matrix_matches_new
+                    (id, ai_run_id, matrix_rule_id, usage_requirement_id,
+                     match_type, match_score, decision, evidence_json,
+                     created_at, updated_at)
+                SELECT id, ai_run_id, matrix_rule_id, usage_requirement_id,
+                       match_type, match_score,
+                       COALESCE(decision, 'hit'),
+                       evidence_json,
+                       COALESCE(created_at, datetime('now')),
+                       COALESCE(updated_at, datetime('now'))
+                FROM matrix_matches
+            """))
+            conn.execute(text("DROP TABLE matrix_matches"))
+            conn.execute(text("ALTER TABLE matrix_matches_new RENAME TO matrix_matches"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_matrix_matches_ai_run_id ON matrix_matches(ai_run_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_matrix_matches_run_rule  ON matrix_matches(ai_run_id, matrix_rule_id)"))
+            # inspector を更新
+            insp = sa_inspect(engine)
+
+        # ── matrix_matches: Layer A 識別子カラム追加 ──────────────────────
+        insp = sa_inspect(engine)  # テーブル再作成後に必ず再取得
+        for col_name, col_type in [
+            ("layer_a_faiss_id",    "INTEGER"),
+            ("layer_a_item_no",     "VARCHAR(64)"),
+            ("layer_a_source_type", "VARCHAR(32)"),
+        ]:
+            if insp.has_table("matrix_matches") and not _has_column(insp, "matrix_matches", col_name):
+                try:
+                    conn.execute(text(f"ALTER TABLE matrix_matches ADD COLUMN {col_name} {col_type}"))
+                except Exception:
+                    pass  # 既に存在する場合は無視
+
+        # ── patent_retrievals: patent_id を nullable 化（テーブル再作成）──
+        if insp.has_table("patent_retrievals") and not _col_is_nullable(insp, "patent_retrievals", "patent_id"):
+            conn.execute(text("DROP TABLE IF EXISTS patent_retrievals_new"))
+            conn.execute(text("""
+                CREATE TABLE patent_retrievals_new (
+                    id                   INTEGER PRIMARY KEY,
+                    ai_run_id            INTEGER NOT NULL REFERENCES ai_runs(id) ON DELETE CASCADE,
+                    usage_requirement_id INTEGER NOT NULL REFERENCES usage_requirements(id) ON DELETE CASCADE,
+                    patent_id            INTEGER REFERENCES patents(id) ON DELETE SET NULL,
+                    publication_number   VARCHAR(64),
+                    layer_b_faiss_id     INTEGER,
+                    score                FLOAT NOT NULL,
+                    why                  TEXT,
+                    created_at           DATETIME NOT NULL,
+                    updated_at           DATETIME NOT NULL
+                )
+            """))
+            conn.execute(text("""
+                INSERT INTO patent_retrievals_new
+                    (id, ai_run_id, usage_requirement_id, patent_id,
+                     score, why, created_at, updated_at)
+                SELECT id, ai_run_id, usage_requirement_id, patent_id,
+                       score, why,
+                       COALESCE(created_at, datetime('now')),
+                       COALESCE(updated_at, datetime('now'))
+                FROM patent_retrievals
+            """))
+            conn.execute(text("DROP TABLE patent_retrievals"))
+            conn.execute(text("ALTER TABLE patent_retrievals_new RENAME TO patent_retrievals"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_patent_retrievals_ai_run_id  ON patent_retrievals(ai_run_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_patent_retrievals_run_usage  ON patent_retrievals(ai_run_id, usage_requirement_id)"))
+            insp = sa_inspect(engine)
+
+        # ── patent_retrievals: Layer B 識別子カラム追加 ────────────────────
+        insp = sa_inspect(engine)  # テーブル再作成後に必ず再取得
+        for col_name, col_type in [
+            ("publication_number", "VARCHAR(64)"),
+            ("layer_b_faiss_id",   "INTEGER"),
+        ]:
+            if insp.has_table("patent_retrievals") and not _has_column(insp, "patent_retrievals", col_name):
+                try:
+                    conn.execute(text(f"ALTER TABLE patent_retrievals ADD COLUMN {col_name} {col_type}"))
+                except Exception:
+                    pass  # 既に存在する場合は無視
+
+        # ── transactions: 既存追加カラム ──────────────────────────────────
+        if insp.has_table("transactions"):
+            existing_tx = {c["name"] for c in insp.get_columns("transactions")}
+            for col_name, col_type in [
+                ("source_module",         "VARCHAR(32)"),
+                ("parent_transaction_id", "INTEGER"),
+                ("rnd_case_id",           "VARCHAR(64)"),
+            ]:
+                if col_name not in existing_tx:
+                    conn.execute(text(f"ALTER TABLE transactions ADD COLUMN {col_name} {col_type}"))
+
         conn.commit()
+
+
+async def _preload_faiss_model() -> None:
+    """
+    e5-large モデルと Layer A/B FAISS インデックスを起動時にプリロードする。
+    完了まで 20〜30 秒かかるため app.state.faiss_ready フラグで管理する。
+    """
+    import logging
+    from app.services.faiss_e5_service import preload
+    logger = logging.getLogger(__name__)
+    app.state.faiss_ready = False
+    try:
+        logger.info("FAISS e5-large preload starting (may take 20-30s)...")
+        preload()
+        app.state.faiss_ready = True
+        logger.info("FAISS e5-large preload complete.")
+    except Exception as exc:
+        logger.error("FAISS preload failed: %s", exc)
+        app.state.faiss_ready = False
 
 
 MODULE = ModuleInfo(
@@ -59,16 +189,23 @@ MODULE = ModuleInfo(
     },
 )
 
+
+async def _on_startup() -> None:
+    await _ensure_columns()
+    await _preload_faiss_model()
+
+
 app = FastAPI(
     title="AI Validation (Trade Screening)",
     version="0.1.0",
-    lifespan=build_lifespan(MODULE, on_startup=_ensure_columns),
+    lifespan=build_lifespan(MODULE, on_startup=_on_startup),
 )
 
 app.add_middleware(AuditMiddleware, module_key="ai_validation")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 app.state.templates = templates
+app.state.faiss_ready = False  # preload 完了前のデフォルト
 
 app.include_router(health_router)
 app.include_router(ui_router)

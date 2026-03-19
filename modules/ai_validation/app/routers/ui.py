@@ -22,6 +22,7 @@ from app.db.models.ai_run import AiRun, RunType
 from app.db.models.integration import ExternalEvalRequest
 from app.services.pipeline.orchestrator import run_until_matrix_match
 from app.services.two_list import compute_two_lists
+from app.services.hs_suggestion import compute_hs_suggestions
 from app.services.export_report import build_csv, build_pdf
 
 router = APIRouter(tags=["ui"])
@@ -346,6 +347,7 @@ def transaction_detail_page(
     # 2リスト結果: run_id が指定されていない場合も latest_matrix_match があれば自動計算
     two_lists: Optional[Dict[str, Any]] = None
     two_lists_error: Optional[str] = None
+    hs_suggestions: Optional[Dict[str, Any]] = None
     effective_run_id = run_id if run_id is not None else (
         latest_matrix_match.id if latest_matrix_match else None
     )
@@ -354,6 +356,12 @@ def transaction_detail_page(
             two_lists = compute_two_lists(db=db, transaction_id=transaction_id, run_id=effective_run_id)
         except Exception as e:
             two_lists_error = str(e)
+        try:
+            hs_suggestions = compute_hs_suggestions(
+                db=db, transaction_id=transaction_id, run_id=effective_run_id
+            )
+        except Exception:
+            hs_suggestions = None
 
     # ハイライトテーブル用: 全マッチをカテゴリ付きでスコア降順ソート
     highlight_rows = []
@@ -403,6 +411,8 @@ def transaction_detail_page(
             "overall_risk": overall_risk,
             "overall_label": overall_label,
             "chain": chain,
+            "faiss_ready": getattr(request.app.state, "faiss_ready", False),
+            "hs_suggestions": hs_suggestions,
         },
     )
 
@@ -432,7 +442,12 @@ def run_pipeline_and_show(
     """
     ①〜④ pipelineを回し、最後に two_lists を作って詳細画面へ戻す
     """
-    # orchestrator側が threshold を受け取れるようにしておく（後述の修正も入れてください）
+    # e5-large モデルのプリロードが完了していない場合は実行を拒否
+    if not getattr(request.app.state, "faiss_ready", False):
+        raise HTTPException(
+            status_code=503,
+            detail="AI モデルをロード中です。起動後しばらく待ってから再実行してください（通常 20〜30 秒）。",
+        )
     run_until_matrix_match(db=db, transaction_id=transaction_id, threshold=threshold)
 
     # 最新 matrix_match run を引いて、その run_id を付けて詳細へ戻す
