@@ -274,6 +274,257 @@
   {% endif %}
 </div>
 
+<!-- ===== Section 2c: NeuroSymbolic 該非判定エージェント ===== -->
+<div class="card" style="margin-bottom:14px;" id="agent-card">
+  <div class="card-section-title">🤖 該非判定エージェント（NeuroSymbolic）</div>
+  <p style="font-size:.84rem; color:var(--muted); margin:0 0 12px;">
+    規制オントロジーと FAISS を組み合わせた対話型判定エージェントです。不明な属性を対話で確認し、最終判定レポートを生成します。
+  </p>
+
+  <!-- 起動ボタン / セッション未開始状態 -->
+  <div id="agent-start-area">
+    <button id="agent-start-btn" class="btn btn-primary" style="font-size:.84rem;"
+      onclick="agentStartSession({{ tx.id }})">
+      🚀 エージェント判定を開始
+    </button>
+    <span id="agent-start-hint" class="muted small" style="margin-left:10px;"></span>
+  </div>
+
+  <!-- 対話エリア（セッション開始後に表示） -->
+  <div id="agent-session-area" style="display:none; margin-top:12px;">
+    <!-- プログレスバー -->
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+      <span style="font-size:.78rem; color:var(--muted);">候補絞り込み:</span>
+      <div style="flex:1; background:#e5e7eb; border-radius:999px; height:6px;">
+        <div id="agent-progress-bar" style="background:#1a73e8; height:6px; border-radius:999px; width:100%; transition:width .4s;"></div>
+      </div>
+      <span id="agent-candidates-count" style="font-size:.78rem; color:var(--muted); min-width:60px;"></span>
+    </div>
+
+    <!-- 対話ログ -->
+    <div id="agent-log" style="
+      background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px;
+      padding:10px 14px; max-height:280px; overflow-y:auto;
+      font-size:.86rem; line-height:1.7; margin-bottom:10px;
+    "></div>
+
+    <!-- 入力エリア -->
+    <div id="agent-input-area" style="display:flex; gap:8px;">
+      <input id="agent-input" type="text" placeholder="回答を入力…"
+        style="flex:1; padding:8px 12px; border:1.5px solid #d1d5db; border-radius:8px; font-size:.87rem; outline:none;"
+        onkeydown="if(event.key==='Enter') agentSubmitAnswer()"
+      />
+      <button class="btn btn-primary" style="font-size:.84rem;" onclick="agentSubmitAnswer()">送信</button>
+    </div>
+
+    <!-- 判定ボタン（is_ready_for_judgment=true 時に表示） -->
+    <div id="agent-judge-area" style="display:none; margin-top:10px;">
+      <button class="btn" style="background:#166534; color:#fff; font-size:.84rem;" onclick="agentExecuteJudge()">
+        ⚖ 最終判定を実行
+      </button>
+      <span class="muted small" style="margin-left:10px;">必要情報が揃いました。最終判定を実行できます。</span>
+    </div>
+
+    <!-- 判定結果表示 -->
+    <div id="agent-result" style="display:none; margin-top:14px;"></div>
+
+    <!-- リセット -->
+    <div style="margin-top:10px; text-align:right;">
+      <button class="btn btn-ghost btn-sm" onclick="agentReset()">🔄 セッションをリセット</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const PLATFORM_URL = "http://localhost:8000";
+  let _sessionId = null;
+  let _totalCandidates = 0;
+
+  function log(html, type) {
+    const el = document.getElementById("agent-log");
+    const color = type === "agent" ? "#1e40af" : type === "system" ? "#6b7280" : "#166534";
+    const prefix = type === "agent" ? "🤖" : type === "user" ? "👤" : "ℹ";
+    el.innerHTML += `<div style="margin-bottom:6px; color:${color}"><span style="font-weight:600;">${prefix}</span> ${html}</div>`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function updateProgress(remaining, total) {
+    if (!total) return;
+    const pct = Math.round((remaining / total) * 100);
+    document.getElementById("agent-progress-bar").style.width = pct + "%";
+    document.getElementById("agent-candidates-count").textContent = `${remaining} / ${total} 件`;
+  }
+
+  function renderSessionResponse(resp) {
+    updateProgress(resp.candidates_count, _totalCandidates || resp.candidates_count);
+
+    if (resp.question) {
+      let qhtml = resp.question.replace(/\n/g, "<br>");
+      if (resp.missing_attr) {
+        const ma = resp.missing_attr;
+        let hint = "";
+        if (ma.unit) hint += ` 単位: <b>${ma.unit}</b>`;
+        if (ma.example) hint += ` 例: <code>${ma.example}</code>`;
+        qhtml += hint ? `<span class="muted" style="font-size:.78rem; margin-left:6px;">${hint}</span>` : "";
+      }
+      log(qhtml, "agent");
+      document.getElementById("agent-input-area").style.display = "flex";
+      document.getElementById("agent-judge-area").style.display = "none";
+      setTimeout(() => document.getElementById("agent-input").focus(), 50);
+    }
+
+    if (resp.is_ready_for_judgment) {
+      log("必要な情報がすべて揃いました。最終判定を実行できます。", "system");
+      document.getElementById("agent-input-area").style.display = "none";
+      document.getElementById("agent-judge-area").style.display = "block";
+    }
+  }
+
+  window.agentStartSession = async function(txId) {
+    const btn = document.getElementById("agent-start-btn");
+    const hint = document.getElementById("agent-start-hint");
+    btn.disabled = true;
+    hint.textContent = "FAISSで候補を検索中…";
+
+    try {
+      // Step 1: FAISS 候補を取得
+      const candResp = await fetch(`/decision/${txId}/faiss-candidates`);
+      const candData = await candResp.json();
+      const initialCandidates = candData.candidates || [];
+      hint.textContent = initialCandidates.length
+        ? `${initialCandidates.length} 件の候補を取得しました`
+        : "FAISS 未準備。全候補で検索します";
+
+      // Step 2: エージェントセッション開始
+      const startResp = await fetch(`${PLATFORM_URL}/agent/sessions`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          domain: "hantei",
+          initial_query: candData.query || "",
+          transaction_id: txId,
+          initial_candidates: initialCandidates.length ? initialCandidates : null,
+        }),
+      });
+      if (!startResp.ok) {
+        const err = await startResp.json();
+        throw new Error(err.detail || startResp.statusText);
+      }
+      const data = await startResp.json();
+      _sessionId = data.session_id;
+      _totalCandidates = data.candidates_count;
+
+      // UI 切り替え
+      document.getElementById("agent-start-area").style.display = "none";
+      document.getElementById("agent-session-area").style.display = "block";
+      log(`セッション開始 (ID: ${_sessionId.slice(0,8)}…)`, "system");
+      renderSessionResponse(data);
+
+    } catch (e) {
+      btn.disabled = false;
+      hint.textContent = "エラー: " + e.message;
+    }
+  };
+
+  window.agentSubmitAnswer = async function() {
+    if (!_sessionId) return;
+    const input = document.getElementById("agent-input");
+    const answer = input.value.trim();
+    if (!answer) return;
+    input.value = "";
+    log(answer, "user");
+
+    try {
+      const resp = await fetch(`${PLATFORM_URL}/agent/sessions/${_sessionId}/answer`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({answer}),
+      });
+      if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
+      renderSessionResponse(await resp.json());
+    } catch (e) {
+      log("エラー: " + e.message, "system");
+    }
+  };
+
+  window.agentExecuteJudge = async function() {
+    if (!_sessionId) return;
+    const btn = document.querySelector("#agent-judge-area button");
+    btn.disabled = true;
+    log("最終判定を実行中…", "system");
+
+    try {
+      const resp = await fetch(`${PLATFORM_URL}/agent/sessions/${_sessionId}/judge`, {
+        method: "POST",
+      });
+      if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
+      const result = await resp.json();
+
+      document.getElementById("agent-judge-area").style.display = "none";
+      const resultEl = document.getElementById("agent-result");
+      resultEl.style.display = "block";
+      resultEl.innerHTML = renderJudgmentResult(result);
+
+    } catch (e) {
+      btn.disabled = false;
+      log("判定エラー: " + e.message, "system");
+    }
+  };
+
+  function renderJudgmentResult(r) {
+    const statusColor = {"controlled":"#be123c","not_controlled":"#166534","requires_review":"#854d0e","pending":"#6b7280"}[r.overall_status] || "#374151";
+    const statusLabel = {"controlled":"規制対象","not_controlled":"非規制","requires_review":"要確認","pending":"判定中"}[r.overall_status] || r.overall_status;
+    let html = `<div style="border:1.5px solid ${statusColor}; border-radius:10px; padding:14px 16px; background:#fafafa;">`;
+    html += `<div style="font-weight:800; font-size:1rem; color:${statusColor}; margin-bottom:8px;">⚖ 判定結果: ${statusLabel}</div>`;
+    if (r.controlled_items.length) {
+      html += `<div style="margin-bottom:6px;"><span style="font-size:.78rem; font-weight:700; color:#9ca3af;">規制対象項番</span><br>`;
+      r.controlled_items.forEach(id => { html += `<span class="chip chip-hit" style="margin-right:4px; margin-top:4px;">${id}</span>`; });
+      html += `</div>`;
+    }
+    if (r.pending_items.length) {
+      html += `<div style="margin-bottom:6px;"><span style="font-size:.78rem; font-weight:700; color:#9ca3af;">要確認項番</span><br>`;
+      r.pending_items.forEach(id => { html += `<span class="chip chip-maybe" style="margin-right:4px; margin-top:4px;">${id}</span>`; });
+      html += `</div>`;
+    }
+    if (r.summary) {
+      html += `<div style="margin-top:10px; font-size:.85rem; color:#374151; line-height:1.6; padding:8px 12px; background:#f0f9ff; border-radius:6px; border-left:3px solid #60a5fa;">${r.summary.replace(/\n/g,"<br>")}</div>`;
+    }
+    if (r.reasons && r.reasons.length) {
+      html += `<details style="margin-top:10px;"><summary style="font-size:.78rem; color:#6b7280; cursor:pointer; list-style:none;">判定根拠を確認する ▸</summary><ul style="margin-top:8px; padding-left:16px; font-size:.82rem; color:#374151;">`;
+      r.reasons.forEach(reason => {
+        const sc = {"controlled":"#be123c","not_controlled":"#166534","requires_review":"#854d0e"}[reason.status] || "#6b7280";
+        html += `<li style="margin-bottom:6px; color:${sc};"><b>${reason.title || reason.domain_id}</b>: ${reason.explanation || ""}</li>`;
+      });
+      html += `</ul></details>`;
+    }
+    html += `<div style="margin-top:8px; font-size:.75rem; color:#9ca3af;">判定日時: ${r.judged_at}</div>`;
+    html += `</div>`;
+    return html;
+  }
+
+  window.agentReset = async function() {
+    if (_sessionId) {
+      try { await fetch(`${PLATFORM_URL}/agent/sessions/${_sessionId}`, {method: "DELETE"}); } catch(_) {}
+    }
+    _sessionId = null;
+    _totalCandidates = 0;
+    document.getElementById("agent-start-area").style.display = "block";
+    document.getElementById("agent-start-btn").disabled = false;
+    document.getElementById("agent-start-hint").textContent = "";
+    document.getElementById("agent-session-area").style.display = "none";
+    document.getElementById("agent-log").innerHTML = "";
+    document.getElementById("agent-result").style.display = "none";
+    document.getElementById("agent-result").innerHTML = "";
+    document.getElementById("agent-input").value = "";
+    document.getElementById("agent-judge-area").style.display = "none";
+    document.getElementById("agent-input-area").style.display = "flex";
+    document.getElementById("agent-progress-bar").style.width = "100%";
+    document.getElementById("agent-candidates-count").textContent = "";
+  };
+})();
+</script>
+
 <!-- ===== Section 3: 取引情報（折りたたみ） ===== -->
 <details class="card detail-section">
   <summary class="detail-summary">
