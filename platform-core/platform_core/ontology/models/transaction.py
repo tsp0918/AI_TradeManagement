@@ -126,7 +126,10 @@ class TransactionContext(BaseModel):
         """
         判定に十分な情報が揃ったか（エージェントが判定フェーズへ移行する条件）。
         基本: 候補が1件以下 or 対話ターン数が上限に達した場合。
+        空リスト（未設定）は「まだ候補が投入されていない」ため False を返す。
         """
+        if not self.candidate_domain_ids:  # 未初期化（セッション開始前）
+            return False
         if len(self.candidate_domain_ids) <= 1:
             return True
         if len(self.dialogue_history) >= 10:

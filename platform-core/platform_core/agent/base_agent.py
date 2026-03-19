@@ -220,15 +220,11 @@ class BaseAgent(ABC):
 
     # ── 共通ロジック ───────────────────────────────────────────────────────
 
-    def start_session(self, initial_query: str) -> AgentResponse:
-        """セッション開始: FAISS で候補を検索し、最初の質問を返す"""
+    async def start_session_async(self, initial_query: str) -> AgentResponse:
+        """セッション開始: 候補を検索し、最初の質問を返す"""
         self._current_candidates = self.search_candidates(initial_query)
         self._last_missing_attr  = None
-        # 同期的に最初のターンを実行（非同期は next_turn_async を使う）
-        import asyncio
-        return asyncio.get_event_loop().run_until_complete(
-            self.next_turn_async(user_input=None)
-        )
+        return await self.next_turn_async(user_input=None)
 
     async def next_turn_async(
         self, user_input: Optional[str] = None
@@ -249,7 +245,6 @@ class BaseAgent(ABC):
             self.context.update_attribute(
                 self._last_missing_attr.attr_key, user_input
             )
-            self.context.dialogue_history and self.context.dialogue_history[-1]  # type: ignore
             rule_result = self.ontology.apply_rules(
                 self.context, self._current_candidates
             )
