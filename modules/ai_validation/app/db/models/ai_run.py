@@ -28,6 +28,7 @@ class RunType(str, enum.Enum):
     patent_retrieve = "patent_retrieve"
     usage_expand = "usage_expand"
     matrix_match = "matrix_match"
+    hs_suggest = "hs_suggest"
     explanation = "explanation"
 
 

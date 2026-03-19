@@ -29,9 +29,9 @@ def _fmt_score(v: Any) -> str:
 
 def _category_label(cat: str) -> str:
     return {
-        "intersection": "両方一致",
-        "core_only":    "直接一致のみ",
-        "expanded_only": "特許示唆のみ",
+        "intersection": "★ 規制合致",
+        "core_only":    "直接一致",
+        "expanded_only": "用途関連",
     }.get(cat, cat)
 
 
@@ -85,9 +85,9 @@ def build_csv(
     w.writerow(["最終AI解析", run_at_str])
     w.writerow([
         "判定サマリー",
-        f"両方一致 {c.get('intersection', 0)} 件 / "
-        f"直接一致のみ {c.get('core_only', 0)} 件 / "
-        f"特許示唆のみ {c.get('expanded_only', 0)} 件",
+        f"★ 規制合致 {c.get('intersection', 0)} 件 / "
+        f"直接一致 {c.get('core_only', 0)} 件 / "
+        f"用途関連 {c.get('expanded_only', 0)} 件",
     ])
     w.writerow([])  # 空行
 
@@ -101,7 +101,7 @@ def build_csv(
         "最高判定",
         "最高スコア",
         "直接一致件数",
-        "特許示唆件数",
+        "用途関連件数",
         "主要一致語",
     ])
 
@@ -138,6 +138,74 @@ def build_csv(
 # PDF（WeasyPrint + Jinja2 テンプレート）
 # ──────────────────────────────────────────────
 
+def _extract_tx_summary(tx: Any) -> Dict[str, Any]:
+    """
+    Transaction から取引概要情報を抽出する。
+    - item_name / item_model : TransactionItem の品目名・型番
+    - core_usage             : source='core' の申告用途テキスト
+    - bom_items              : BOM 主要構成品（上位5件）
+    - source_module          : 登録元モジュール
+    """
+    import json as _json
+
+    item_name = ""
+    item_model = ""
+    bom_items: List[Dict[str, str]] = []
+    core_usage = ""
+
+    # TransactionItem（品目情報）
+    items = getattr(tx, "items", []) or []
+    if items:
+        first = items[0]
+        item_name  = getattr(first, "item_name", "") or ""
+        item_model = getattr(first, "item_model", "") or ""
+        spec_text  = getattr(first, "spec_text", "") or ""
+        # spec_text から bom_json を抽出（ai_classification が埋め込む形式）
+        try:
+            for line in spec_text.splitlines():
+                if line.startswith("bom_json:"):
+                    pass
+            # "bom_json:\n[{...}]" の形式を探してパース
+            import re
+            m = re.search(r"bom_json:\s*(\[.*?\])", spec_text, re.DOTALL)
+            if m:
+                raw = _json.loads(m.group(1))
+                for b in raw[:5]:
+                    if b.get("kind") == "material":
+                        bom_items.append({
+                            "code": b.get("component_code", ""),
+                            "name": b.get("component_name", ""),
+                            "desc": b.get("description", ""),
+                            "coo":  b.get("coo", ""),
+                        })
+        except Exception:
+            pass
+
+    # core UsageRequirement
+    urs = getattr(tx, "usage_requirements", []) or []
+    for ur in urs:
+        if getattr(ur, "source", "") == "core":
+            core_usage = (getattr(ur, "text", "") or "").strip()
+            break
+
+    _MODULE_LABEL = {
+        "ai_classification": "品目管理",
+        "rnd_assessment":    "R&D案件管理",
+        "manual":            "手動登録",
+    }
+    source_label = _MODULE_LABEL.get(
+        getattr(tx, "source_module", "") or "", getattr(tx, "source_module", "") or "不明"
+    )
+
+    return {
+        "item_name":    item_name,
+        "item_model":   item_model,
+        "core_usage":   core_usage,
+        "bom_items":    bom_items,
+        "source_label": source_label,
+    }
+
+
 def build_pdf(
     tx: Any,
     two_lists: Dict[str, Any],
@@ -154,6 +222,7 @@ def build_pdf(
 
     html_str = templates.get_template("report_pdf.html").render(
         tx=tx,
+        tx_summary=_extract_tx_summary(tx),
         two_lists=two_lists,
         counts=c,
         run_at_str=run_at_str,

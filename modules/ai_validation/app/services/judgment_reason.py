@@ -44,21 +44,26 @@ def make_judgment_reason(item: dict[str, Any], list_type: str) -> str:
         日本語の判定根拠テキスト
     """
     # カテゴリ表示文字列を組み立て
-    item_ids   = item.get("item_ids") or []
-    cat_label  = item.get("fefta_category_label") or ""
-    list_name  = item.get("list_name") or ""
-    eccn_refs  = item.get("eccn_refs") or []
+    item_ids    = item.get("item_ids") or []
+    cat_label   = item.get("fefta_category_label") or ""
+    list_name   = item.get("list_name") or ""
+    eccn_refs   = item.get("eccn_refs") or []
+    # Layer A 正式表記（two_list.py で生成済み）
+    formal_label = item.get("item_label") or ""
 
-    # "外為法 七の項（集積回路等）/ EL-7-19" 形式
-    category_parts: list[str] = []
-    if cat_label:
-        category_parts.append(f"外為法 {cat_label}の項")
-    if item_ids:
-        category_parts.append(f"（{' / '.join(item_ids[:2])}）")
-    elif list_name:
-        category_parts.append(f"（{list_name}）")
-
-    category_str = "".join(category_parts) if category_parts else _CATEGORY_NONE
+    # 正式表記がある場合はそのまま使用、なければ旧スキーマの組み立てにフォールバック
+    if formal_label and not cat_label:
+        category_str = formal_label
+    else:
+        # 旧スキーマ: "外為法 七の項（集積回路等）/ EL-7-19" 形式
+        category_parts: list[str] = []
+        if cat_label:
+            category_parts.append(f"外為法 {cat_label}の項")
+        if item_ids:
+            category_parts.append(f"（{' / '.join(item_ids[:2])}）")
+        elif list_name:
+            category_parts.append(f"（{list_name}）")
+        category_str = "".join(category_parts) if category_parts else _CATEGORY_NONE
 
     # テンプレート選択
     template = _REASON_TEMPLATES.get(list_type, _REASON_TEMPLATES["expanded_only"])

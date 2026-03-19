@@ -92,19 +92,23 @@ def compute_hs_suggestions(
         if not item_no:
             continue
 
-        # Layer A メタ（item_label）を取得
+        # Layer A メタ（item_label, article_no）を取得
         if item_no not in item_meta:
             try:
                 from platform_core.services import faiss_e5_service as svc
                 r = svc._layer_a_records[mm.layer_a_faiss_id] if mm.layer_a_faiss_id is not None else {}
                 item_meta[item_no] = {
-                    "item_label":  r.get("item_label", f"外為法 {item_no}号"),
+                    "item_label":  r.get("item_label", ""),
+                    "article_no":  r.get("article_no", ""),
                     "source_type": mm.layer_a_source_type or "",
+                    "eccn":        r.get("eccn", ""),
                 }
             except Exception:
                 item_meta[item_no] = {
-                    "item_label":  f"外為法 {item_no}号",
+                    "item_label":  "",
+                    "article_no":  "",
                     "source_type": mm.layer_a_source_type or "",
+                    "eccn":        "",
                 }
 
         # usage テキスト収集
@@ -147,11 +151,36 @@ def compute_hs_suggestions(
             if h.score >= min_score
         ]
 
-        meta = item_meta.get(item_no, {})
+        meta        = item_meta.get(item_no, {})
+        source_type = meta.get("source_type", "")
+        article_no  = meta.get("article_no", "")
+        item_label  = meta.get("item_label", "")
+        eccn_val    = meta.get("eccn", "")
+        # 正式な項番表記を生成
+        if source_type == "eccn":
+            eccn_code = eccn_val or item_no
+            formal = f"ECCN {eccn_code}" if eccn_code else (item_label or "ECCN")
+        elif source_type == "law" and article_no:
+            formal = f"輸出令第{item_no}項 貨物等省令第{article_no}条"
+            if item_label:
+                formal = f"{formal}（{item_label}）"
+        elif source_type == "parameter":
+            formal = f"輸出令第{item_no}項（運用通達・省令）"
+            if item_label:
+                formal = f"{formal}（{item_label}）"
+        elif source_type == "tsutatsu":
+            formal = f"輸出令第{item_no}項（通達）"
+            if item_label:
+                formal = f"{formal}（{item_label}）"
+        else:
+            formal = f"輸出令第{item_no}項"
+            if item_label:
+                formal = f"{formal}（{item_label}）"
         by_item[item_no] = {
-            "item_label": meta.get("item_label", f"外為法 {item_no}号"),
-            "regime":     _SOURCE_TYPE_TO_REGIME.get(meta.get("source_type", ""), "JP_FEFTA"),
-            "candidates": candidates,
+            "item_label":       formal,
+            "item_label_short": eccn_val or item_label or item_no,
+            "regime":           _SOURCE_TYPE_TO_REGIME.get(source_type, "JP_FEFTA"),
+            "candidates":       candidates,
         }
 
     return {

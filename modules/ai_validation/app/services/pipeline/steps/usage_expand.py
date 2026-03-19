@@ -83,10 +83,6 @@ def step_usage_expand(
             "note": f"score >= {min_patent_score} の PatentRetrieval が0件",
         }
 
-    # 対象 patent_id 一覧
-    patent_ids = [r.patent_id for r in retrievals]
-    patent_score_map = {r.patent_id: float(r.score) for r in retrievals}
-
     # ---- 既存の expanded UsageRequirement を削除して再作成 ----
     db.query(UsageRequirement).filter(
         UsageRequirement.transaction_id == transaction_id,
@@ -94,60 +90,82 @@ def step_usage_expand(
     ).delete(synchronize_session=False)
     db.flush()
 
-    # ---- patent_usecases から usecase_text を取得 ----
-    # Patent モデル経由で PatentUsecase を結合する
     from app.db.models.patent import PatentUsecase
 
     inserted = 0
     now = datetime.utcnow()
     seen_texts: set = set()
+    path_used = "none"
 
-    for patent_id in patent_ids:
-        patent_score = patent_score_map[patent_id]
+    # ---- Layer B FAISSメタ（abstract）をキャッシュ ----
+    _layer_b_abstract_cache: dict = {}
+    try:
+        from platform_core.services.faiss_e5_service import _layer_b_records
+        _layer_b_abstract_cache = {
+            int(r["faiss_id"]): r.get("abstract", "")
+            for r in _layer_b_records
+            if r.get("abstract")
+        }
+    except Exception:
+        pass
 
-        usecases: List[PatentUsecase] = (
-            db.query(PatentUsecase)
-            .filter(
-                PatentUsecase.patent_id == patent_id,
-                PatentUsecase.quality_score >= min_quality,
-            )
-            .order_by(desc(PatentUsecase.quality_score))
-            .all()
-        )
+    def _add_requirement(text: str, confidence: float) -> bool:
+        nonlocal inserted
+        if not text or inserted >= max_expanded:
+            return False
+        dedup_key = text[:80]
+        if dedup_key in seen_texts:
+            return False
+        seen_texts.add(dedup_key)
+        db.add(UsageRequirement(
+            transaction_id=transaction_id,
+            transaction_item_id=None,
+            source=UsageSource.expanded.value,
+            text=text,
+            normalized_text=None,
+            confidence=round(confidence, 4),
+            risk_tags=[],
+            created_by="ai",
+            created_at=now,
+            updated_at=now,
+        ))
+        inserted += 1
+        return True
 
-        for uc in usecases:
+    # ---- Path A: patent_id あり → patent_usecases ----
+    retrievals_with_id = [r for r in retrievals if r.patent_id is not None]
+    if retrievals_with_id:
+        path_used = "patent_usecases"
+        patent_score_map = {r.patent_id: float(r.score) for r in retrievals_with_id}
+        for ret in retrievals_with_id:
             if inserted >= max_expanded:
                 break
-
-            text = (getattr(uc, "usecase_text") or "").strip()
-            if not text:
-                continue
-
-            # 重複排除（先頭80文字で判定）
-            dedup_key = text[:80]
-            if dedup_key in seen_texts:
-                continue
-            seen_texts.add(dedup_key)
-
-            u = UsageRequirement(
-                transaction_id=transaction_id,
-                transaction_item_id=None,
-                source=UsageSource.expanded.value,
-                text=text,
-                normalized_text=(getattr(uc, "normalized_usecase_text") or None),
-                confidence=round(
-                    float(getattr(uc, "quality_score") or 0.0) * patent_score, 4
-                ),
-                risk_tags=[],
-                created_by="ai",
-                created_at=now,
-                updated_at=now,
+            usecases: List[PatentUsecase] = (
+                db.query(PatentUsecase)
+                .filter(
+                    PatentUsecase.patent_id == ret.patent_id,
+                    PatentUsecase.quality_score >= min_quality,
+                )
+                .order_by(desc(PatentUsecase.quality_score))
+                .all()
             )
-            db.add(u)
-            inserted += 1
+            for uc in usecases:
+                text = (getattr(uc, "usecase_text") or "").strip()
+                confidence = float(getattr(uc, "quality_score") or 0.0) * patent_score_map[ret.patent_id]
+                _add_requirement(text, confidence)
+                if inserted >= max_expanded:
+                    break
 
-        if inserted >= max_expanded:
-            break
+    # ---- Path B: patent_id なし (Layer B FAISS) → abstract をフォールバック ----
+    if inserted == 0:
+        path_used = "layer_b_abstract"
+        retrievals_layer_b = [r for r in retrievals if r.patent_id is None and r.layer_b_faiss_id is not None]
+        for ret in retrievals_layer_b:
+            if inserted >= max_expanded:
+                break
+            abstract = _layer_b_abstract_cache.get(int(ret.layer_b_faiss_id), "")
+            if abstract:
+                _add_requirement(abstract.strip(), float(ret.score))
 
     db.commit()
 
@@ -156,14 +174,15 @@ def step_usage_expand(
         "transaction_id": transaction_id,
         "run_id": run_id,
         "patent_retrieve_run_id": latest_patent_run.id,
-        "patents_used": len(patent_ids),
+        "patents_used": len(retrievals),
         "min_patent_score": min_patent_score,
         "min_quality_score": min_quality,
         "top_k_patents": top_k_patents,
         "max_expanded": max_expanded,
         "inserted": inserted,
+        "path_used": path_used,
         "note": (
-            f"PatentRetrieval 上位{len(patent_ids)}件の patent_usecases "
-            f"(quality>={min_quality}) から expanded UsageRequirement を {inserted} 件登録"
+            f"PatentRetrieval 上位{len(retrievals)}件 [{path_used}] から "
+            f"expanded UsageRequirement を {inserted} 件登録"
         ),
     }

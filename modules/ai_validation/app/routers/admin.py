@@ -13,6 +13,42 @@ from app.services.data_import import import_matrix_from_data, import_patents_fro
 router = APIRouter(tags=["admin"])
 
 
+@router.get("/admin/faiss/status")
+def faiss_status(request: Request):
+    """FAISS インデックスの現在状態を返す。"""
+    from platform_core.services.faiss_e5_service import (
+        is_ready, ntotal_layer_a, ntotal_layer_b, ntotal_layer_c
+    )
+    return {
+        "faiss_ready": getattr(request.app.state, "faiss_ready", False),
+        "is_ready_fn":  is_ready(),
+        "layer_a_ntotal": ntotal_layer_a(),
+        "layer_b_ntotal": ntotal_layer_b(),
+        "layer_c_ntotal": ntotal_layer_c(),
+    }
+
+
+@router.post("/admin/faiss/reload")
+async def faiss_reload(request: Request):
+    """FAISS インデックスを再ロードする（デバッグ / 起動失敗時の回復用）。"""
+    import asyncio
+    from platform_core.services.faiss_e5_service import preload
+    request.app.state.faiss_ready = False
+    try:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, preload)
+        request.app.state.faiss_ready = True
+        from platform_core.services.faiss_e5_service import ntotal_layer_a, ntotal_layer_b, ntotal_layer_c
+        return {
+            "ok": True,
+            "layer_a": ntotal_layer_a(),
+            "layer_b": ntotal_layer_b(),
+            "layer_c": ntotal_layer_c(),
+        }
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 def _render(request: Request, **ctx):
     templates = request.app.state.templates
     return templates.TemplateResponse("admin_import.html", {"request": request, **ctx})

@@ -60,6 +60,32 @@
   .info-label { color: #4a5568; font-weight: bold; }
   .info-value { color: #1a202c; }
 
+  /* ── 取引概要ブロック ── */
+  .tx-summary {
+    border: 1px solid #c5d3e8;
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    font-size: 8.5pt;
+    background: #fafcff;
+  }
+  .tx-summary-title {
+    font-size: 9pt;
+    font-weight: bold;
+    color: #1e3a5f;
+    border-bottom: 1px solid #c5d3e8;
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+  }
+  .tx-summary-row { display: flex; gap: 8px; margin-bottom: 5px; }
+  .tx-summary-label { color: #4a5568; font-weight: bold; min-width: 80px; flex-shrink: 0; }
+  .tx-summary-val   { color: #1a202c; }
+  .bom-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .bom-chip {
+    background: #e8eef7; border: 1px solid #b8c8e0; border-radius: 3px;
+    padding: 1px 7px; font-size: 7.5pt; color: #1e3a5f;
+  }
+
   /* ── 判定サマリーバッジ ── */
   .summary-bar {
     display: flex;
@@ -169,24 +195,75 @@
   <span class="info-value">{{ tx.screening_status or "未実施" }}</span>
 </div>
 
+<!-- ── 取引概要 ── -->
+{% if tx_summary.item_name or tx_summary.core_usage %}
+<div class="tx-summary">
+  <div class="tx-summary-title">取引概要</div>
+
+  {% if tx_summary.item_name %}
+  <div class="tx-summary-row">
+    <span class="tx-summary-label">品目名</span>
+    <span class="tx-summary-val">{{ tx_summary.item_name }}</span>
+  </div>
+  {% endif %}
+
+  {% if tx_summary.item_model %}
+  <div class="tx-summary-row">
+    <span class="tx-summary-label">型番・コード</span>
+    <span class="tx-summary-val">{{ tx_summary.item_model }}</span>
+  </div>
+  {% endif %}
+
+  {% if tx_summary.source_label %}
+  <div class="tx-summary-row">
+    <span class="tx-summary-label">登録元</span>
+    <span class="tx-summary-val">{{ tx_summary.source_label }}</span>
+  </div>
+  {% endif %}
+
+  {% if tx_summary.core_usage %}
+  <div class="tx-summary-row">
+    <span class="tx-summary-label">申告用途</span>
+    <span class="tx-summary-val">{{ tx_summary.core_usage[:300] }}{% if tx_summary.core_usage|length > 300 %}…{% endif %}</span>
+  </div>
+  {% endif %}
+
+  {% if tx_summary.bom_items %}
+  <div class="tx-summary-row">
+    <span class="tx-summary-label">主要構成品</span>
+    <span class="tx-summary-val">
+      <div class="bom-chips">
+        {% for b in tx_summary.bom_items %}
+        <span class="bom-chip">{{ b.name }}{% if b.coo %} ({{ b.coo }}){% endif %}</span>
+        {% endfor %}
+        {% if tx_summary.bom_items|length >= 5 %}
+        <span class="bom-chip" style="color:#9ca3af">…他</span>
+        {% endif %}
+      </div>
+    </span>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 <!-- ── 判定サマリー ── -->
 <div class="summary-bar">
   <div class="summary-badge badge-intersection">
     <span class="badge-number">{{ counts.intersection or 0 }}</span>
-    件<br>両方一致
+    件<br>★ 規制合致
   </div>
   <div class="summary-badge badge-core">
     <span class="badge-number">{{ counts.core_only or 0 }}</span>
-    件<br>直接一致のみ
+    件<br>直接一致
   </div>
   <div class="summary-badge badge-expanded">
     <span class="badge-number">{{ counts.expanded_only or 0 }}</span>
-    件<br>特許示唆のみ
+    件<br>用途関連
   </div>
   <div style="font-size:8pt; color:#4a5568; margin-left:8px; line-height:1.8">
-    <b>両方一致</b>: 申告用途・特許展開用途の両方で規制項目にヒット（最も確度が高い）<br>
-    <b>直接一致のみ</b>: 申告用途テキストが規制項目に直接ヒット<br>
-    <b>特許示唆のみ</b>: 関連特許から展開した用途でのみヒット（参考情報）
+    <b>★ 規制合致</b>: 申告用途・応用展開用途の両方で規制項目に一致（最も優先度が高い）<br>
+    <b>直接一致</b>: 申告用途テキストが規制項目の技術要件に直接一致<br>
+    <b>用途関連</b>: 本品目の応用展開用途から規制可能性が示唆（要精査）
   </div>
 </div>
 
@@ -196,9 +273,9 @@
 ════════════════════════════════════════════ -->
 {% set intersection_rows = two_lists.intersection %}
 <div class="section-title warn">
-  ★ 両方一致（Intersection）— {{ counts.intersection or 0 }} 件
+  ★ 規制合致 — {{ counts.intersection or 0 }} 件
   {% if counts.intersection and counts.intersection > 0 %}
-  ｜ 最も確度が高い規制ヒット。要確認。
+  ｜ 申告用途・応用展開用途の両方で一致。最も優先度が高い。要確認。
   {% else %}
   ｜ 該当なし
   {% endif %}
@@ -257,9 +334,9 @@
 ════════════════════════════════════════════ -->
 {% set core_only_rows = two_lists.core_only %}
 <div class="section-title">
-  直接一致のみ（Core Only）— {{ counts.core_only or 0 }} 件
+  直接一致 — {{ counts.core_only or 0 }} 件
   {% if counts.core_only and counts.core_only > 0 %}
-  ｜ 申告用途テキストが直接ヒット。詳細確認を推奨。
+  ｜ 申告用途テキストが規制項目の技術要件に直接一致。詳細確認を推奨。
   {% else %}
   ｜ 該当なし
   {% endif %}
@@ -309,8 +386,8 @@
 {% set exp_rows = two_lists.expanded_only %}
 {% set exp_top  = exp_rows[:10] %}
 <div class="section-title hint">
-  特許示唆のみ（Expanded Only）— {{ counts.expanded_only or 0 }} 件表示（上位10件）
-  ｜ 参考情報（非確定）
+  用途関連 — {{ counts.expanded_only or 0 }} 件表示（上位10件）
+  ｜ 本品目の応用展開用途から規制可能性が示唆（要精査）
 </div>
 
 {% if exp_top %}

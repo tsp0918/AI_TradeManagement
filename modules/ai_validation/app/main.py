@@ -48,6 +48,7 @@ async def _ensure_columns() -> None:
 
         # ── matrix_matches: matrix_rule_id を nullable 化（テーブル再作成）──
         if insp.has_table("matrix_matches") and not _col_is_nullable(insp, "matrix_matches", "matrix_rule_id"):
+            conn.execute(text("DROP TABLE IF EXISTS matrix_matches_new"))
             conn.execute(text("""
                 CREATE TABLE matrix_matches_new (
                     id                   INTEGER PRIMARY KEY,
@@ -86,16 +87,21 @@ async def _ensure_columns() -> None:
             insp = sa_inspect(engine)
 
         # ── matrix_matches: Layer A 識別子カラム追加 ──────────────────────
+        insp = sa_inspect(engine)  # テーブル再作成後に必ず再取得
         for col_name, col_type in [
             ("layer_a_faiss_id",    "INTEGER"),
             ("layer_a_item_no",     "VARCHAR(64)"),
             ("layer_a_source_type", "VARCHAR(32)"),
         ]:
             if insp.has_table("matrix_matches") and not _has_column(insp, "matrix_matches", col_name):
-                conn.execute(text(f"ALTER TABLE matrix_matches ADD COLUMN {col_name} {col_type}"))
+                try:
+                    conn.execute(text(f"ALTER TABLE matrix_matches ADD COLUMN {col_name} {col_type}"))
+                except Exception:
+                    pass  # 既に存在する場合は無視
 
         # ── patent_retrievals: patent_id を nullable 化（テーブル再作成）──
         if insp.has_table("patent_retrievals") and not _col_is_nullable(insp, "patent_retrievals", "patent_id"):
+            conn.execute(text("DROP TABLE IF EXISTS patent_retrievals_new"))
             conn.execute(text("""
                 CREATE TABLE patent_retrievals_new (
                     id                   INTEGER PRIMARY KEY,
@@ -127,12 +133,16 @@ async def _ensure_columns() -> None:
             insp = sa_inspect(engine)
 
         # ── patent_retrievals: Layer B 識別子カラム追加 ────────────────────
+        insp = sa_inspect(engine)  # テーブル再作成後に必ず再取得
         for col_name, col_type in [
             ("publication_number", "VARCHAR(64)"),
             ("layer_b_faiss_id",   "INTEGER"),
         ]:
             if insp.has_table("patent_retrievals") and not _has_column(insp, "patent_retrievals", col_name):
-                conn.execute(text(f"ALTER TABLE patent_retrievals ADD COLUMN {col_name} {col_type}"))
+                try:
+                    conn.execute(text(f"ALTER TABLE patent_retrievals ADD COLUMN {col_name} {col_type}"))
+                except Exception:
+                    pass  # 既に存在する場合は無視
 
         # ── transactions: 既存追加カラム ──────────────────────────────────
         if insp.has_table("transactions"):

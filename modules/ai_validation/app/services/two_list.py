@@ -181,13 +181,61 @@ def _layer_a_meta(faiss_id: Optional[int], item_no: Optional[str], source_type: 
         if faiss_id is not None and faiss_id < len(records):
             r = records[faiss_id]
             return {
-                "item_label": r.get("item_label", ""),
+                "item_label":  r.get("item_label", ""),
                 "source_name": r.get("source_name", ""),
+                "article_no":  r.get("article_no", ""),
                 "full_text":   r.get("full_text", ""),
+                "eccn":        r.get("eccn", ""),
             }
     except Exception:
         pass
-    return {"item_label": "", "source_name": "", "full_text": ""}
+    return {"item_label": "", "source_name": "", "article_no": "", "full_text": "", "eccn": ""}
+
+
+def _formal_item_label(item_no: str, article_no: str, source_type: str, item_label: str, eccn: str = "") -> str:
+    """正式な項番表記を生成する。
+
+    item_no の形式:
+      "7"     → 輸出令別表第1の第7の項
+      "外為令N" → 外国為替令第N条（輸出令とは別の法令）
+
+    例:
+      item_no="7",  source_type="law",  article_no="6"  → 輸出令第7項 貨物等省令第6条（電子部品・集積回路・半導体）
+      item_no="7",  source_type="parameter"             → 輸出令第7項（運用通達・省令）（電子部品・集積回路・半導体）
+      item_no="外為令6", source_type="law", article_no="18" → 外為令第6条 貨物等省令第18条
+    """
+    if source_type == "eccn":
+        eccn_code = eccn or item_no
+        if eccn_code:
+            return f"ECCN {eccn_code}"
+        return item_label or "ECCN"
+
+    if not item_no:
+        return item_label or "規制品目"
+
+    # item_no が「外為令N」形式 → 外国為替令（外為令）
+    if item_no.startswith("外為令"):
+        n = item_no[3:]  # "外為令6" → "6"
+        if source_type == "law" and article_no:
+            base = f"外為令第{n}条 貨物等省令第{article_no}条"
+        elif source_type == "parameter":
+            base = f"外為令第{n}条（運用通達・省令）"
+        else:
+            base = f"外為令第{n}条"
+    else:
+        # 純数字: 輸出令別表第1の項番
+        if source_type == "law" and article_no:
+            base = f"輸出令第{item_no}項 貨物等省令第{article_no}条"
+        elif source_type == "parameter":
+            base = f"輸出令第{item_no}項（運用通達・省令）"
+        elif source_type == "tsutatsu":
+            base = f"輸出令第{item_no}項（通達）"
+        else:
+            base = f"輸出令第{item_no}項"
+
+    if item_label:
+        return f"{base}（{item_label}）"
+    return base
 
 
 def _build_grouped_layer_a(
@@ -196,29 +244,39 @@ def _build_grouped_layer_a(
 ) -> Dict[str, Dict[str, Any]]:
     grouped: Dict[str, Dict[str, Any]] = {}
     for mm in matches:
-        item_no    = (mm.layer_a_item_no or "").strip()
+        item_no     = (mm.layer_a_item_no or "").strip()
         source_type = (mm.layer_a_source_type or "").strip()
-        faiss_id   = mm.layer_a_faiss_id
-        key        = f"LayerA::{item_no}::{source_type}"
+        faiss_id    = mm.layer_a_faiss_id
+        meta        = _layer_a_meta(faiss_id, item_no, source_type)
+        article_no  = meta.get("article_no", "")
+        eccn_val    = meta.get("eccn", "")
+        key         = f"LayerA::{item_no}::{source_type}::{article_no}::{eccn_val}"
 
         if key not in grouped:
-            meta = _layer_a_meta(faiss_id, item_no, source_type)
-            label     = meta["item_label"] or f"外為法 {item_no}号" if item_no else "規制品目"
-            list_name = _SOURCE_TYPE_TO_LIST.get(source_type, source_type)
-            regime    = _SOURCE_TYPE_TO_REGIME.get(source_type, "JP_FEFTA")
+            formal_label = _formal_item_label(item_no, article_no, source_type, meta["item_label"], eccn_val)
+            list_name    = _SOURCE_TYPE_TO_LIST.get(source_type, source_type)
+            regime       = _SOURCE_TYPE_TO_REGIME.get(source_type, "JP_FEFTA")
+            # ECCN の場合は eccn 値を item_ids に格納する
+            if source_type == "eccn" and eccn_val:
+                display_ids = [eccn_val]
+            else:
+                display_ids = [item_no] if item_no else []
             grouped[key] = {
                 "key":              key,
                 "regime":           regime,
                 "rule_id":          None,
                 "version":          None,
-                "item_ids":         [item_no] if item_no else [],
-                "item_label":       label,
+                "item_ids":         display_ids,
+                "item_label":       formal_label,
+                "item_label_short": eccn_val or meta["item_label"] or item_no,
+                "article_no":       article_no,
                 "list_name":        list_name,
                 "rule_summary":     (meta["full_text"] or "")[:160],
-                "title":            label,
+                "title":            formal_label,
                 # Layer A 固有
-                "layer_a_item_no":  item_no,
-                "layer_a_source_type": source_type,
+                "layer_a_item_no":       item_no,
+                "layer_a_source_type":   source_type,
+                "layer_a_article_no":    article_no,
                 "hits": {"core": [], "expanded": []},
                 "max_score":        None,
                 "best_decision":    None,
