@@ -1,7 +1,20 @@
-from google.cloud import bigquery
-from google.oauth2 import service_account
-from typing import List, Dict, Optional
+"""
+BigQuery Service — Google Patents Public Datasets への接続。
+
+修正点:
+    - query_job.result() を asyncio.to_thread() でスレッドプールへオフロード
+      （元の同期コードが asyncio イベントループをブロックしていた問題を解消）
+    - モジュールレベルシングルトン (get_bigquery_service) でリクエストごとの再初期化を回避
+    - is_configured() で認証情報の有無を確認（ネットワーク不要）
+    - GOOGLE_APPLICATION_CREDENTIALS の相対パスをモジュールルート基点で絶対パスに変換
+"""
+from __future__ import annotations
+
+import asyncio
 import os
+from pathlib import Path
+from typing import Dict, List, Optional
+
 from app.config import settings
 
 
@@ -9,29 +22,56 @@ class BigQueryService:
     """Service for interacting with Google Patents Public Datasets via BigQuery."""
 
     def __init__(self):
-        """Initialize BigQuery client with service account credentials."""
         self.dataset = settings.bigquery_dataset
         self.table = settings.bigquery_table
         self.client = None
+        self._configure_credentials()
         self._initialize_client()
 
-    def _initialize_client(self):
-        """Initialize BigQuery client with proper authentication."""
+    def _configure_credentials(self) -> None:
+        """
+        GOOGLE_APPLICATION_CREDENTIALS を解決する。
+        相対パスはモジュールルート基点で絶対パスに変換し、
+        google-auth が参照する環境変数に設定する。
+        """
+        creds_path = settings.google_application_credentials
+        if not creds_path:
+            return
+
+        path = Path(creds_path)
+        if not path.is_absolute():
+            module_root = Path(__file__).resolve().parents[3]
+            path = module_root / path
+
+        if path.exists():
+            os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", str(path))
+
+    def _initialize_client(self) -> None:
+        """BigQuery クライアントを初期化する（失敗しても None のまま続行）"""
         try:
-            if settings.google_application_credentials and os.path.exists(settings.google_application_credentials):
-                credentials = service_account.Credentials.from_service_account_file(
-                    settings.google_application_credentials
-                )
+            from google.cloud import bigquery
+            creds_env = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
+            if creds_env and Path(creds_env).exists():
+                from google.oauth2 import service_account
+                credentials = service_account.Credentials.from_service_account_file(creds_env)
                 self.client = bigquery.Client(
                     credentials=credentials,
-                    project=settings.gcp_project_id
+                    project=settings.gcp_project_id,
                 )
-            else:
-                # Fall back to application default credentials
+            elif settings.gcp_project_id:
+                # Application Default Credentials（GCE / Cloud Run 等）
                 self.client = bigquery.Client(project=settings.gcp_project_id)
         except Exception as e:
-            print(f"Warning: Failed to initialize BigQuery client: {e}")
+            print(f"[patent_search] BigQuery 初期化スキップ: {e}")
             self.client = None
+
+    # ─────────────────────────────────────────────────
+    # Helpers
+    # ─────────────────────────────────────────────────
+
+    def is_configured(self) -> bool:
+        """クライアントが初期化済みか（ネットワーク不要）"""
+        return self.client is not None
 
     def _build_query(
         self,
@@ -41,12 +81,11 @@ class BigQueryService:
         inventor: Optional[str] = None,
         applicant: Optional[str] = None,
         country: Optional[str] = None,
-        limit: int = 50
-    ) -> tuple[str, List[bigquery.ScalarQueryParameter]]:
-        """Build BigQuery SQL query with filters."""
+        limit: int = 50,
+    ) -> tuple[str, list]:
+        """SQL クエリとパラメータを構築する"""
+        from google.cloud import bigquery as bq
 
-        # Base query - using the correct schema for patents-public-data
-        # Note: Claims excluded to reduce query costs
         query = f"""
         SELECT
             publication_number,
@@ -61,10 +100,8 @@ class BigQueryService:
         FROM `{self.dataset}.{self.table}`
         WHERE 1=1
         """
+        parameters: list = []
 
-        parameters = []
-
-        # Keyword search in title and abstract
         if keywords:
             query += """
             AND (
@@ -72,28 +109,16 @@ class BigQueryService:
                 OR LOWER(abstract_localized[SAFE_OFFSET(0)].text) LIKE LOWER(@keywords)
             )
             """
-            parameters.append(
-                bigquery.ScalarQueryParameter("keywords", "STRING", f"%{keywords}%")
-            )
+            parameters.append(bq.ScalarQueryParameter("keywords", "STRING", f"%{keywords}%"))
 
-        # Date range filter (publication_date is stored as INT64 in YYYYMMDD format)
         if date_from:
-            # Convert YYYY-MM-DD to YYYYMMDD integer format
-            date_from_int = int(date_from.replace("-", ""))
             query += " AND publication_date >= @date_from"
-            parameters.append(
-                bigquery.ScalarQueryParameter("date_from", "INT64", date_from_int)
-            )
+            parameters.append(bq.ScalarQueryParameter("date_from", "INT64", int(date_from.replace("-", ""))))
 
         if date_to:
-            # Convert YYYY-MM-DD to YYYYMMDD integer format
-            date_to_int = int(date_to.replace("-", ""))
             query += " AND publication_date <= @date_to"
-            parameters.append(
-                bigquery.ScalarQueryParameter("date_to", "INT64", date_to_int)
-            )
+            parameters.append(bq.ScalarQueryParameter("date_to", "INT64", int(date_to.replace("-", ""))))
 
-        # Inventor filter
         if inventor:
             query += """
             AND EXISTS (
@@ -101,11 +126,8 @@ class BigQueryService:
                 WHERE LOWER(inv.name) LIKE LOWER(@inventor)
             )
             """
-            parameters.append(
-                bigquery.ScalarQueryParameter("inventor", "STRING", f"%{inventor}%")
-            )
+            parameters.append(bq.ScalarQueryParameter("inventor", "STRING", f"%{inventor}%"))
 
-        # Applicant/Assignee filter
         if applicant:
             query += """
             AND EXISTS (
@@ -113,27 +135,33 @@ class BigQueryService:
                 WHERE LOWER(asn.name) LIKE LOWER(@applicant)
             )
             """
-            parameters.append(
-                bigquery.ScalarQueryParameter("applicant", "STRING", f"%{applicant}%")
-            )
+            parameters.append(bq.ScalarQueryParameter("applicant", "STRING", f"%{applicant}%"))
 
-        # Country filter
         if country:
             query += " AND country_code = @country"
-            parameters.append(
-                bigquery.ScalarQueryParameter("country", "STRING", country.upper())
-            )
+            parameters.append(bq.ScalarQueryParameter("country", "STRING", country.upper()))
 
-        # Order by most recent first
         query += " ORDER BY publication_date DESC"
-
-        # Limit results
         query += " LIMIT @limit"
-        parameters.append(
-            bigquery.ScalarQueryParameter("limit", "INT64", min(limit, settings.max_results_limit))
-        )
+        parameters.append(bq.ScalarQueryParameter("limit", "INT64", min(limit, settings.max_results_limit)))
 
         return query, parameters
+
+    @staticmethod
+    def _yyyymmdd_to_iso(value) -> Optional[str]:
+        if not value:
+            return None
+        s = str(value)
+        return f"{s[:4]}-{s[4:6]}-{s[6:]}" if len(s) == 8 else None
+
+    def _sync_execute(self, query: str, job_config) -> list:
+        """同期 BigQuery 実行（スレッドプール内で呼ばれる）"""
+        query_job = self.client.query(query, job_config=job_config)
+        return list(query_job.result())  # ← ブロッキング IO
+
+    # ─────────────────────────────────────────────────
+    # Async API
+    # ─────────────────────────────────────────────────
 
     async def search_patents(
         self,
@@ -143,30 +171,23 @@ class BigQueryService:
         inventor: Optional[str] = None,
         applicant: Optional[str] = None,
         country: Optional[str] = None,
-        limit: int = None
-    ) -> Dict[str, any]:
+        limit: Optional[int] = None,
+    ) -> Dict:
         """
-        Search Google Patents using BigQuery.
+        Google Patents BigQuery を非同期検索する。
 
-        Args:
-            keywords: Search keywords
-            date_from: Start date (YYYY-MM-DD)
-            date_to: End date (YYYY-MM-DD)
-            inventor: Inventor name filter
-            applicant: Applicant/assignee name filter
-            country: Country code filter (e.g., 'US', 'JP', 'EP')
-            limit: Maximum number of results
-
-        Returns:
-            Dict with 'results' (list of patents) and 'count' (total results)
+        ブロッキング I/O（query_job.result()）を asyncio.to_thread() で
+        スレッドプールへオフロードし、イベントループをブロックしない。
         """
         if not self.client:
-            raise Exception("BigQuery client not initialized. Please check your GCP credentials.")
+            raise RuntimeError(
+                "BigQuery クライアントが初期化されていません。"
+                "GCP_PROJECT_ID と GOOGLE_APPLICATION_CREDENTIALS を確認してください。"
+            )
 
         if limit is None:
             limit = settings.default_results_limit
 
-        # Build query
         query, parameters = self._build_query(
             keywords=keywords,
             date_from=date_from,
@@ -174,101 +195,80 @@ class BigQueryService:
             inventor=inventor,
             applicant=applicant,
             country=country,
-            limit=limit
+            limit=limit,
         )
 
-        # Configure query job
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=parameters
-        )
+        from google.cloud import bigquery as bq
+        job_config = bq.QueryJobConfig(query_parameters=parameters)
 
         try:
-            # Execute query
-            query_job = self.client.query(query, job_config=job_config)
-            results = query_job.result()
-
-            # Process results
-            patents = []
-            for row in results:
-                # Extract inventor names
-                inventors = []
-                if row.inventor_harmonized:
-                    inventors = [inv.get('name', '') for inv in row.inventor_harmonized if inv.get('name')]
-
-                # Extract assignee names
-                assignees = []
-                if row.assignee_harmonized:
-                    assignees = [asn.get('name', '') for asn in row.assignee_harmonized if asn.get('name')]
-
-                # Convert YYYYMMDD integer to YYYY-MM-DD string
-                filing_date_str = None
-                if row.filing_date:
-                    date_str = str(row.filing_date)
-                    if len(date_str) == 8:
-                        filing_date_str = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
-
-                publication_date_str = None
-                if row.publication_date:
-                    date_str = str(row.publication_date)
-                    if len(date_str) == 8:
-                        publication_date_str = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
-
-                patent = {
-                    "source": "google_patents",
-                    "publication_number": row.publication_number,
-                    "title": row.title or "No title available",
-                    "abstract": row.abstract or "No abstract available",
-                    "description": row.description or "",
-                    "filing_date": filing_date_str,
-                    "publication_date": publication_date_str,
-                    "inventors": inventors,
-                    "assignees": assignees,
-                    "country_code": row.country_code,
-                    "url": f"https://patents.google.com/patent/{row.publication_number}"
-                }
-                patents.append(patent)
-
-            return {
-                "results": patents,
-                "count": len(patents),
-                "query": keywords
-            }
-
+            # ★ イベントループブロッキング修正: スレッドプールで実行
+            rows = await asyncio.to_thread(self._sync_execute, query, job_config)
         except Exception as e:
-            raise Exception(f"BigQuery search failed: {str(e)}")
+            raise RuntimeError(f"BigQuery 検索失敗: {e}") from e
+
+        patents = []
+        for row in rows:
+            inventors = [inv.get("name", "") for inv in (row.inventor_harmonized or []) if inv.get("name")]
+            assignees = [asn.get("name", "") for asn in (row.assignee_harmonized or []) if asn.get("name")]
+            patents.append({
+                "source": "google_patents",
+                "publication_number": row.publication_number,
+                "title": row.title or "No title available",
+                "abstract": row.abstract or "No abstract available",
+                "description": row.description or "",
+                "filing_date": self._yyyymmdd_to_iso(row.filing_date),
+                "publication_date": self._yyyymmdd_to_iso(row.publication_date),
+                "inventors": inventors,
+                "assignees": assignees,
+                "country_code": row.country_code,
+                "url": f"https://patents.google.com/patent/{row.publication_number}",
+            })
+
+        return {"results": patents, "count": len(patents), "query": keywords}
 
     async def check_connection(self) -> bool:
-        """Check if BigQuery connection is working."""
+        """BigQuery への疎通確認（ネットワークあり）"""
         if not self.client:
             return False
-
         try:
-            # Try a simple query
+            from google.cloud import bigquery as bq
+            job_config = bq.QueryJobConfig()
             query = f"SELECT 1 FROM `{self.dataset}.{self.table}` LIMIT 1"
-            query_job = self.client.query(query)
-            query_job.result()
+            await asyncio.to_thread(self._sync_execute, query, job_config)
             return True
         except Exception as e:
-            print(f"BigQuery connection check failed: {e}")
+            print(f"[patent_search] BigQuery 接続確認失敗: {e}")
             return False
 
-    def estimate_query_cost(self, query: str) -> Dict[str, any]:
-        """Estimate the cost of running a query (dry run)."""
+    def estimate_query_cost(self, query: str) -> Dict:
+        """クエリのコスト見積もり（ドライラン、同期）"""
         if not self.client:
-            return {"error": "Client not initialized"}
-
+            return {"error": "クライアント未初期化"}
         try:
-            job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
+            from google.cloud import bigquery as bq
+            job_config = bq.QueryJobConfig(dry_run=True, use_query_cache=False)
             query_job = self.client.query(query, job_config=job_config)
-
-            # Get bytes processed
-            bytes_processed = query_job.total_bytes_processed
-            gb_processed = bytes_processed / (1024 ** 3)
-
+            gb = query_job.total_bytes_processed / (1024 ** 3)
             return {
-                "bytes_processed": bytes_processed,
-                "gb_processed": round(gb_processed, 4),
-                "estimated_cost_usd": round(gb_processed * 0.005, 4)  # $5 per TB
+                "bytes_processed": query_job.total_bytes_processed,
+                "gb_processed": round(gb, 4),
+                "estimated_cost_usd": round(gb * 0.005, 4),
             }
         except Exception as e:
             return {"error": str(e)}
+
+
+# ─────────────────────────────────────────────────
+# モジュールレベルシングルトン
+# ─────────────────────────────────────────────────
+
+_bq_service: Optional[BigQueryService] = None
+
+
+def get_bigquery_service() -> BigQueryService:
+    """シングルトン BigQueryService を返す（リクエストごとに再生成しない）"""
+    global _bq_service
+    if _bq_service is None:
+        _bq_service = BigQueryService()
+    return _bq_service

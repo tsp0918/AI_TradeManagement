@@ -4,8 +4,31 @@ from typing import Optional
 
 from app.database import get_db
 from app.services.search_service import SearchService
+from app.services.bigquery_service import get_bigquery_service
+from app.config import settings
 
 router = APIRouter()
+
+
+@router.get("/search/status")
+async def bigquery_status():
+    """
+    BigQuery 接続ステータスを返す。
+    - configured: GCP 認証情報があり client が初期化済み
+    - reachable: BigQuery への実際の疎通確認が成功
+    """
+    svc = get_bigquery_service()
+    configured = svc.is_configured()
+    reachable = await svc.check_connection() if configured else False
+
+    return {
+        "configured": configured,
+        "reachable": reachable,
+        "project": settings.gcp_project_id or "(未設定)",
+        "dataset": settings.bigquery_dataset,
+        "table": settings.bigquery_table,
+        "credentials_path": settings.google_application_credentials or "(未設定)",
+    }
 
 
 @router.post("/search")

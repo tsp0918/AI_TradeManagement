@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
-from app.services.bigquery_service import BigQueryService
+from app.services.bigquery_service import get_bigquery_service
 from app.models.search_history import SearchHistory
 
 
@@ -12,7 +12,7 @@ class SearchService:
     """Service for orchestrating patent searches and managing search history."""
 
     def __init__(self):
-        self.bigquery_service = BigQueryService()
+        self.bigquery_service = get_bigquery_service()  # シングルトン利用（リクエストごとに再初期化しない）
 
     async def search(
         self,

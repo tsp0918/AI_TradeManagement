@@ -43,9 +43,9 @@ app.include_router(export.router, prefix="/api", tags=["Export"])
 
 @app.get("/api/health")
 async def health_check():
-    from app.services.bigquery_service import BigQueryService
+    from app.services.bigquery_service import get_bigquery_service
     from app.services.ollama_service import OllamaService
-    bq = await BigQueryService().check_connection()
+    bq = await get_bigquery_service().check_connection()
     ol = await OllamaService().check_connection()
     return {
         "status": "healthy",
