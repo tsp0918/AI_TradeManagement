@@ -8,6 +8,7 @@
 - /admin/*          管理 (tenants / users / modules)
 - /api/projects/*   案件管理 (Project / PatentLink)
 - /internal/*       内部 API (モジュール自動登録・モジュール間通信)
+- /api/metrics/*    成果評価メトリクス (クロスモジュール KPI)
 - /health           ヘルスチェック
 """
 
@@ -28,6 +29,7 @@ from platform_core.routers.projects import router as projects_router
 from platform_core.routers.ui import router as ui_router
 from platform_core.routers.ui import start_all_modules, stop_all_modules
 from platform_core.agent.router import router as agent_router
+from platform_core.routers.metrics import router as metrics_router
 
 _STATIC_DIR = pathlib.Path(__file__).parent / "static"
 
@@ -68,6 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(projects_router, prefix="/api/projects", tags=["projects"])
     app.include_router(internal_router)
     app.include_router(agent_router)
+    app.include_router(metrics_router)
 
     @app.get("/", include_in_schema=False)
     async def root():

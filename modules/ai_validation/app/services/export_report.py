@@ -206,6 +206,93 @@ def _extract_tx_summary(tx: Any) -> Dict[str, Any]:
     }
 
 
+def _build_executive_summary(two_lists: Dict[str, Any], tx: Any) -> Dict[str, Any]:
+    """
+    エグゼクティブサマリー用データを生成する。
+    - risk_level: HIGH / MEDIUM / LOW
+    - verdict_text: 判定文
+    - top_items: 上位3規制項目（intersection 優先）
+    - recommended_actions: 推奨アクションリスト
+    - overall_label: 総合ラベル（OUTPUT用）
+    """
+    c = two_lists.get("counts", {})
+    intersection = c.get("intersection", 0)
+    core_only    = c.get("core_only", 0)
+    expanded     = c.get("expanded_only", 0)
+
+    if intersection > 0:
+        risk_level = "HIGH"
+        overall_label = "要許可確認"
+        verdict_text = (
+            f"申告用途・応用展開用途の両面で {intersection} 件の規制合致が検出されました。"
+            " 輸出許可要否の確認が必要です。"
+        )
+        recommended_actions = [
+            "輸出許可要件（外為法 / EAR）の詳細確認",
+            "該当規制項番について安全保障貿易管理部門へ照会",
+            "取引先の最終需要者確認（EUC）実施",
+            "必要に応じ輸出許可申請の準備",
+        ]
+    elif core_only > 0:
+        risk_level = "MEDIUM"
+        overall_label = "要精査"
+        verdict_text = (
+            f"申告用途テキストが {core_only} 件の規制項目に直接一致しました。"
+            " 専門家による詳細精査を推奨します。"
+        )
+        recommended_actions = [
+            "一致規制項番のスペック要件と品目仕様の詳細照合",
+            "品目の技術パラメータ（性能値・閾値）確認",
+            "貿易管理担当者によるレビュー実施",
+        ]
+    else:
+        risk_level = "LOW"
+        overall_label = "低リスク"
+        verdict_text = (
+            "申告用途・応用展開用途において規制合致は検出されませんでした。"
+            f" 用途関連項目 {expanded} 件を参考情報として付録に掲載します。"
+        )
+        recommended_actions = [
+            "本判定結果をファイリングし輸出管理記録として保管",
+            "用途変更が生じた場合は再判定を実施",
+        ]
+
+    # 上位項目（intersection → core_only → expanded_only の優先順）
+    top_candidates: List[Dict[str, Any]] = []
+    for cat in ("intersection", "core_only", "expanded_only"):
+        for item in two_lists.get(cat, []):
+            top_candidates.append({**item, "_category": cat})
+            if len(top_candidates) >= 3:
+                break
+        if len(top_candidates) >= 3:
+            break
+
+    top_items = []
+    for item in top_candidates:
+        core_hits = (item.get("hits") or {}).get("core", [])
+        exp_hits  = (item.get("hits") or {}).get("expanded", [])
+        first     = (core_hits or exp_hits or [{}])[0]
+        matched   = first.get("matched_compact") or []
+        top_items.append({
+            "label":    _row_label(item),
+            "title":    (item.get("title") or "")[:50],
+            "category": _category_label(item["_category"]),
+            "score":    _fmt_score(item.get("max_score")),
+            "tokens":   matched[:4],
+        })
+
+    return {
+        "risk_level":           risk_level,
+        "overall_label":        overall_label,
+        "verdict_text":         verdict_text,
+        "recommended_actions":  recommended_actions,
+        "top_items":            top_items,
+        "intersection":         intersection,
+        "core_only":            core_only,
+        "expanded_only":        expanded,
+    }
+
+
 def build_pdf(
     tx: Any,
     two_lists: Dict[str, Any],
@@ -231,6 +318,7 @@ def build_pdf(
         category_label=_category_label,
         row_label=_row_label,
         fmt_score=_fmt_score,
+        executive_summary=_build_executive_summary(two_lists, tx),
     )
 
     pdf_bytes = HTML(string=html_str, base_url=None).write_pdf()

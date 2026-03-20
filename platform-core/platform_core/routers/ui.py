@@ -23,11 +23,12 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from platform_core.db.session import get_db
 from platform_core.models.module_registry import ModuleRegistry
+from platform_core.ontology.db.schema import AgentSessionORM
 
 router = APIRouter(prefix="/ui", tags=["ui"])
 
@@ -283,7 +284,7 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
-async def dashboard(request: Request):
+async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
     """案件ダッシュボード — ai_validation から直近案件を取得して表示。"""
     ai_validation_url = "http://localhost:8001"
     transactions: list[dict] = []
@@ -299,9 +300,30 @@ async def dashboard(request: Request):
     except Exception as exc:
         error = "AI該非判定モジュールに接続できません。起動しているか確認してください。"
 
+    # ── NeuroSymbolic エージェントセッション統計 ──
+    agent_stats: dict = {"active": 0, "ready": 0, "judged": 0, "abandoned": 0, "total": 0}
+    try:
+        rows = await db.execute(
+            select(AgentSessionORM.status, func.count(AgentSessionORM.id).label("cnt"))
+            .group_by(AgentSessionORM.status)
+        )
+        for status, cnt in rows.all():
+            agent_stats["total"] += cnt
+            if status == "active":
+                agent_stats["active"] = cnt
+            elif status == "ready_for_judgment":
+                agent_stats["ready"] = cnt
+            elif status == "judged":
+                agent_stats["judged"] = cnt
+            elif status == "abandoned":
+                agent_stats["abandoned"] = cnt
+    except Exception:
+        pass  # テーブル未作成でも画面は返す
+
     return templates.TemplateResponse(
         "dashboard.html",
-        {"request": request, "transactions": transactions, "error": error},
+        {"request": request, "transactions": transactions, "error": error,
+         "agent_stats": agent_stats},
     )
 
 

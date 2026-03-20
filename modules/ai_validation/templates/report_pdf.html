@@ -152,6 +152,85 @@
   .req-text  { color: #374151; font-size: 7.5pt; }
   .tokens    { font-size: 7pt; color: #374151; }
 
+  /* ── エグゼクティブサマリー ── */
+  .exec-summary {
+    border: 1.5px solid #c5d3e8;
+    border-radius: 5px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    background: #f8faff;
+    page-break-inside: avoid;
+  }
+  .exec-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #c5d3e8;
+  }
+  .exec-title {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #1e3a5f;
+    flex: 1;
+  }
+  .risk-badge {
+    font-size: 9pt;
+    font-weight: bold;
+    padding: 3px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .risk-HIGH   { background: #fef2f2; border: 1.5px solid #ef4444; color: #991b1b; }
+  .risk-MEDIUM { background: #fffbeb; border: 1.5px solid #f59e0b; color: #92400e; }
+  .risk-LOW    { background: #f0fdf4; border: 1.5px solid #22c55e; color: #166534; }
+  .exec-verdict {
+    font-size: 8.5pt;
+    color: #1a202c;
+    margin-bottom: 10px;
+    line-height: 1.6;
+  }
+  .exec-section-label {
+    font-size: 7.5pt;
+    font-weight: bold;
+    color: #4a5568;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    margin-bottom: 4px;
+  }
+  .exec-top-items {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .exec-item-chip {
+    border: 1px solid #b8c8e0;
+    border-radius: 4px;
+    padding: 4px 8px;
+    background: #e8eef7;
+    font-size: 7.5pt;
+  }
+  .exec-item-label { font-weight: bold; color: #1e3a5f; }
+  .exec-item-cat   { color: #6b7280; margin-left: 4px; font-size: 7pt; }
+  .exec-item-tokens { color: #374151; font-size: 7pt; }
+  .exec-actions { list-style: none; padding: 0; margin: 0; }
+  .exec-actions li {
+    font-size: 8pt;
+    color: #1a202c;
+    padding: 2px 0 2px 14px;
+    position: relative;
+  }
+  .exec-actions li::before {
+    content: "▶";
+    position: absolute;
+    left: 0;
+    color: #1e3a5f;
+    font-size: 6pt;
+    top: 4px;
+  }
+
   /* ── フッター ── */
   .doc-footer {
     margin-top: 20px;
@@ -193,6 +272,39 @@
   <span class="info-value">{{ tx.counterparty_name or "（未設定）" }}</span>
   <span class="info-label">スクリーニング</span>
   <span class="info-value">{{ tx.screening_status or "未実施" }}</span>
+</div>
+
+<!-- ── エグゼクティブサマリー ── -->
+{% set es = executive_summary %}
+<div class="exec-summary">
+  <div class="exec-header">
+    <span class="exec-title">エグゼクティブサマリー</span>
+    <span class="risk-badge risk-{{ es.risk_level }}">{{ es.overall_label }}</span>
+  </div>
+  <p class="exec-verdict">{{ es.verdict_text }}</p>
+
+  {% if es.top_items %}
+  <div class="exec-section-label">主要検出規制項目</div>
+  <div class="exec-top-items">
+    {% for item in es.top_items %}
+    <div class="exec-item-chip">
+      <span class="exec-item-label">{{ item.label }}</span>
+      <span class="exec-item-cat">{{ item.category }}</span><br>
+      <span class="exec-item-tokens">
+        {{ item.title[:35] }}{% if item.title|length > 35 %}…{% endif %}
+        {% if item.tokens %}｜{{ item.tokens|join(" / ") }}{% endif %}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="exec-section-label">推奨アクション</div>
+  <ul class="exec-actions">
+    {% for action in es.recommended_actions %}
+    <li>{{ action }}</li>
+    {% endfor %}
+  </ul>
 </div>
 
 <!-- ── 取引概要 ── -->
