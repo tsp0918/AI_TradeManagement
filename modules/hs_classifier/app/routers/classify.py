@@ -70,9 +70,8 @@ async def classify_item(request: ClassifyRequest, background_tasks: BackgroundTa
 @router.get("/index/status", response_model=IndexStatus)
 def index_status():
     """インデックスの現在状態を返す。"""
-    from pathlib import Path
-    from platform_core.services import faiss_e5_service as svc
-    staging = svc._staging_dir()
+    from platform_core.services.faiss_e5_service import get_staging_dir
+    staging = get_staging_dir()
     return IndexStatus(
         built=faiss_index.is_built(),
         index_size=faiss_index.ntotal(),

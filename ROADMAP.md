@@ -1,339 +1,360 @@
-# 開発ロードマップ & 現状整理
-# AI_TradeManagement — 2026-03-08 時点
+# 開発ロードマップ — AI_TradeManagement
+# 2026-03-21 更新（DAP 先輩コレーグ・ペルソナ追跡・ガイダンスUI全面実装）
 
-> 本ドキュメントは `ip_export_control_econ_security_reference.md` に定義された設計思想との対照として、
-> 現在の実装状況・不整合・優先度付き開発計画をまとめたものです。
-
----
-
-## 1. 現状スナップショット
-
-### 1-1. モジュール構成と安定性
-
-| モジュール | ポート | DB | NullPool+WAL | 安定性 | 備考 |
-|-----------|--------|-----|-------------|--------|------|
-| platform-core | 8000 | PostgreSQL | — | ✅ | 知識グラフ管理 |
-| ai_validation | 8001 | SQLite | **✅ 適用済** | ✅ | pipeline 正常動作確認済 |
-| ai_classification | 8002 | SQLite | **✅ 適用済** | ✅ | |
-| rnd_assessment | 8003 | SQLite | **✅ 適用済** | ✅ | |
-| patent_search | 8004 | SQLite(async) | **❌ 未適用** | ⚠️ | WAL未設定, locked リスク残存 |
-| screening | 8005 | PostgreSQL(async) | — | ✅ | |
-| hs_classifier | 8006 | — | — | ✅ | FAISS のみ |
-| dap | 8010 | SQLite | **❌ 未適用** | ⚠️ | NullPool/WAL なし, locked リスク |
-
-**即時対応が必要:** `dap` と `patent_search` の SQLite が旧来のデフォルトプールのまま。
-チャット利用が増えると DAP の `dap.db` が locked エラーを起こす。
+> 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
+> 2026-03-21 追加: DAP 先輩担当者モード（ペルソナ追跡・ワークフロー分析・ガイドバナー・
+> クロスモジュールガイドツアー）・全モジュールへの chat-widget.js 埋め込みを反映。
 
 ---
 
-### 1-2. 知識グラフ（control_nodes.json）の現状
+## 1. モジュール構成と安定性（2026-03-20 時点）
 
-**ビルド結果（2026-03-02 時点）: 788 ノード**
+| モジュール | ポート | DB | WAL | 安定性 | 最終更新 |
+|-----------|--------|-----|-----|--------|---------|
+| platform-core | 8000 | PostgreSQL | — | ✅ | FAISS e5-large 3レイヤー・知識グラフ・キャッチオールエンジン |
+| ai_validation | 8001 | SQLite | ✅ | ✅ | キャッチオールSection 4・PDF報告書・HAnteiAgent連携 |
+| ai_classification | 8002 | SQLite | ✅ | ✅ | HS Classifier Webhook連携・品目管理 |
+| rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出 |
+| patent_search | 8004 | SQLite | ✅ | ✅ | BigQuery連携・FAISS特許検索 |
+| screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング |
+| hs_classifier | 8006 | — | — | ✅ | Layer C FAISS（5,476ベクトル）・同期/非同期両対応 |
+| dap | 8010 | SQLite | ✅ | ✅ | 先輩担当者モード・ペルソナ追跡・ガイドバナー・全モジュール埋込済 |
 
-| regime | ノード数 | 補強状況 | 品質評価 |
-|--------|---------|---------|---------|
-| 外為法（fefta） | 191 | 168/191 XML補強済 | **◎ 高品質** |
-| EAR/ECCN（ear） | 84 | 13/84 PDF補強のみ | **△ 71件がスタブ** |
-| Wassenaar（wa） | 165 | PDF解析 | **○ 中品質** |
-| HS コード（hs） | 281 | 5,613件から近似抽出 | **△ 公式対照表なし** |
-| 特許（patent） | 67 | スタブのみ | **× 形式的な存在** |
-
-**最大の問題:** ECCN 84件のうち 71件が中身のないスタブ。
-AI 判定パイプラインの matrix_match ステップの FAISS 精度に直結する。
-
----
-
-### 1-3. データソース対応状況
-
-| データ | 入手状況 | 形式 | 課題 |
-|--------|---------|------|------|
-| 外為法・輸出貿易管理令 | ✅ XML取得済 | 構造化XML | 告示別表（省令）が未取得 |
-| ECCN/EAR (Part774) | ✅ PDF取得済 | PDF(非構造化) | pdfplumberで13件のみ抽出。残71件は手動or別手法必要 |
-| Wassenaar Arrangement | ✅ PDF取得済 | PDF(非構造化) | テキスト抽出品質を要検証 |
-| HS コード 2022 | ✅ JSON取得済 | 構造化JSON(5,613件) | 外為法との公式対照表が未入手 |
-| 特許 (synthetic) | ✅ 7,001件DB | SQLite | J-PlatPatで実データ補完中 |
-| 制裁リスト | ✅ JSON取得済 | 非公式データセット | 更新頻度・出典不明。OFAC/METI公式データに切替要 |
-| みなし輸出・省令 | ❌ 未取得 | PDF想定 | 外為法施行規則・経済産業省令が必要 |
-| 中国輸出管理法リスト | ❌ 未取得 | — | Section 2.4 の観点で将来必要 |
+**WAL対応状況（2026-03-08からの変更）**: DAP・patent_search とも WAL適用済みと確認。
+旧ROADMAPの「❌ 未適用」表記は誤りだった。技術的負債として残っていた当該項目はクローズ。
 
 ---
 
-### 1-4. 設計思想との不整合ポイント
+## 2. 実装済み機能サマリー
 
-**高-level vision（reference.md）vs 現実装のギャップ：**
+### 2-1. NeuroSymbolicアーキテクチャ基盤（platform-core）
 
-| 思想上の要件 | 現在の実装状況 | ギャップ規模 |
-|------------|-------------|------------|
-| 技術ライフサイクル追跡（R&D→特許→製品→輸出） | R&D→品目→AI判定の3段連鎖は実装済 | **小** (特許→JV段階が未接続) |
-| 4象限マッピング (主権価値×規制感度) | 未実装。個別判定のみ | **大** |
-| 3シナリオストレステスト | 未実装 | **大** |
-| クロスリファレンス (IPC↔ECCN↔HS) | 部分実装 (HS←→ECCN近似) | **中** |
-| C-Levelナラティブ出力 | 判定根拠テキストあり。チャットで補完 | **中** |
-| みなし輸出の人物スクリーニング | 未実装 | **大** |
-| 特許所有者の制裁リスト照合 | 未実装 | **中** |
-| Adversary adaptation モデリング | 未実装 | **大** (長期研究項目) |
-| 動的モニタリング (規制更新追跡) | 未実装 | **大** |
+| コンポーネント | ファイル | 状態 |
+|-------------|---------|------|
+| 知識グラフ（788ノード） | ontology/seed/control_nodes.json | ✅ 完成 |
+| HanteiAgent | agent/hantei_agent.py | ✅ 完成 |
+| AgentTools（FAISS呼出） | agent/tools.py | ✅ 完成 |
+| キャッチオールエンジン | ontology/rules/catchall_engine.py | ✅ 完成 |
+| FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ 2,040vec |
+| FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ 1,595vec |
+| FAISS Layer C（HSコード） | services/faiss_e5_service.py | ✅ 5,476vec |
 
----
-
-## 2. 緊急対応（明日から: Phase 0）
-
-**基盤安定化 — 開発を続ける前提条件**
-
-### P0-1: DAP の SQLite NullPool+WAL 対応 【最優先】
+### 2-2. キャッチオール規制エンジン
 
 ```
-対象: modules/dap/app/db.py
-内容: NullPool + WAL pragma 追加（ai_validation と同一パターン）
-理由: チャットウィジェット利用が増えると dap.db が locked エラーになる
-工数: 30分
+判定フロー（6ステップ・決定論的）:
+  Step 1: エンブレムト国チェック（E:1 → REQUIRES_PERMIT 即時）
+  Step 2: ホワイト国チェック（Country Group A:1〜A:6 → CLEAR）
+  Step 3: EAR Country Chart照合（13列× ECCN別エントリ）
+  Step 4: Red Flag 7項目チェック
+  Step 5: 総合スコアリング
+  Step 6: REQUIRES_PERMIT / REVIEW / CLEAR 判定
+
+テスト済みケース: KP（北朝鮮）= E:1確認→REQUIRES_PERMIT、US=ホワイト国→CLEAR、CN=D:1/D:3/D:4/D:5確認→REVIEW
 ```
 
-### P0-2: patent_search の SQLite WAL 対応
+### 2-3. ai_validation 判定フロー
 
 ```
-対象: modules/patent_search/app/database.py
-内容: async engine への WAL pragma 追加（async版は event listener ではなくconnect_args or 起動後PRAGMA）
-工数: 1時間
+Pipeline Steps:
+  usage_expand → matrix_match（Layer A FAISS） → dual_list_check
+  → patent_retrieve（Layer B FAISS） → catchall_assess（Step新規）
+  → export_control_evaluate → finalize
+
+Section 4（キャッチオール）: PDF/HTML報告書に出力済
+  - EARグループ・国チャート列・ホワイト国協定・Red Flag・推奨アクション
 ```
 
-### P0-3: パイプライン実行の長時間ブロック問題の解消
+### 2-4. hs_classifier Layer C統合
 
 ```
-問題: step_patent_retrieve.py が FAISS ビルド時に DB セッションを保持したまま
-      7,001件エンコードで30分超のセッション保持 → 外部からの書き込みがブロックされる
-解決策: FAISS ビルドをセッション外で実行（read→close→encode→reopen→write）
-工数: 2時間
+エンドポイント:
+  GET  /search      → 同期検索（Layer C FAISS）
+  POST /classify    → 非同期Webhook判定
+  GET  /hs/{code}   → HSコード詳細
+  GET  /index/status → インデックス状態確認
+
+ai_classification連携:
+  品目登録 → POST /classify → Webhook → product.hs_code_candidates更新
 ```
 
-### P0-4: 起動スクリプト整合性確認
+### 2-5. プレゼンテーション・コンテンツ
 
 ```
-対象: start.sh
-確認: 全モジュールが正しいポートで起動するか、PYTHONPATH が正しいか
-     DAP ポートが 8010 か 8011 か（現在 8011 で起動していた）
-工数: 1時間
+生成済み:
+  - Google Slides 8スライドデッキ（Slides API自動生成）
+  - デモ動画 Drive埋め込み
+  - 技術記事 × 2（外部インタビュー・オウンドメディア）
+  - slides_design.html（8スライドHTMLデザインシート）
 ```
 
 ---
 
-## 3. 短期ロードマップ（Phase 1: 〜2週間）
+## 3. 既知の不整合と対処（2026-03-20 修正済み）
 
-### P1-1: ECCN ノード補強【データ品質向上】
+| # | 種別 | 問題 | 対処 | ファイル |
+|---|------|------|------|---------|
+| 1 | **設定** | DAPがplatform-core configに未登録 | `module_dap_url`追加 | platform-core/config.py |
+| 2 | **設定** | hs_classifierがplatform-core configに未登録 | `module_hs_classifier_url`追加 | platform-core/config.py |
+| 3 | **設定** | patent_searchのデフォルトポートが8000（8004と不整合） | port=8004に修正 | modules/patent_search/app/config.py |
+| 4 | **結合** | hs_classifierがprivate `_staging_dir()`を直接参照 | 公開関数`get_staging_dir()`を追加し切替 | faiss_e5_service.py / classify.py |
+| 5 | **監視** | Layer C未ロード時に`ntotal=0`と表示され区別不可 | `layer_c_available`フィールドを追加 | ai_validation/routers/admin.py |
+
+---
+
+## 4. 優先開発計画（P0〜P2）
+
+### P0: 即時対応 — **2026-03-20 セッションで全項目完了**
+
+#### P0-1: ECCN ノード補強 ✅ 完了
 
 ```
-現状: 84件中 71件がスタブ（label のみ、内容なし）
-目標: 71件に requirement_text・parameters・説明文を補完
-手法:
-  A) BIS 公式 XML フィード（regulations.gov / BIS data feeds）の取得を試みる
-  B) ECCN PDF を章ごとに分割して pdfplumber で再処理
-  C) Claude API でバッチ補完（構造化出力）
-効果: matrix_match FAISS の精度向上（現在スタブ71件は検索にほぼ寄与しない）
+実施内容（2026-03-20）:
+  - 事前調査で「71件スタブ」は誤り → 実際は 5件のみスタブが残存
+  - 5件（1B001/1B102/1B118/1C002/1C010）に requirement_text を補完
+    → data/unified/control_nodes.json 更新
+  - ccl_eccn_entries_v8.json の同5件に full_text/items_controlled も補完
+  - Layer A embed_text は heading ベースで生成済み → 再構築不要
+
+結果: ECCN 84件全て requirement_text 充填完了
+```
+
+#### P0-2: 制裁リスト公式データソース切替 ✅ 実装済み確認
+
+```
+確認内容（2026-03-20）:
+  - sanctions_sync.py: OFAC SDN XML / BIS Entity List 取得済実装
+  - POST /api/admin/sync-sanctions: 完全実装（論理削除→挿入→FAISS再構築）
+  - UI: ウォッチリスト画面に「制裁リスト同期 (OFAC / BIS)」ボタン実装済
+  - scripts/fetch_sanctions_lists.py: standalone 取得スクリプト実装済
+
+残作業: 月次 cron の設定（macOS launchd or Linux cron）
+        → 初回インポートは UI ボタンで実行可能
+```
+
+#### P0-3: patent_retrieve セッションブロック解消 ✅ 解決済み確認
+
+```
+確認内容（2026-03-20）:
+  - step_patent_retrieve.py が静的 Layer B FAISS インデックスに移行済み
+  - 動的 FAISS ビルドは廃止されており、セッションブロック問題は解消済み
+  - orchestrator.py のフロー: usage_extract → patent_retrieve(静的FAISS) → ...
+```
+
+---
+
+### P1: 短期（〜2週間）
+
+#### P1-1: 外為法省令（告示別表）の取得・追加
+
+```
+現状: 輸出貿易管理令 XML 取得済だが省令（省令第49号等）が未取得
+目標: 外為法リスト項の技術パラメータ（数値閾値）を control_nodes に追加
+手法: e-Gov → PDF/XML → 構造化 → control_nodes.json 更新 → Layer A 再構築
 工数: 2〜3日
 ```
 
-### P1-2: 外為法省令（告示別表）の取得・追加
+#### P1-2: J-PlatPat → 知識グラフ IPC エッジ追加 ✅ 完了
 
 ```
-現状: 輸出貿易管理令XML は取得済だが、経済産業省令（省令第49号等）の
-      詳細技術パラメータが未取得
-目標: 外為法リスト項の技術パラメータ（数値要件）を control_nodes に追加
-手法: e-Gov からPDF/XMLで取得 → 構造化
-効果: AI判定の「なぜ規制対象か」の根拠精度が向上
-工数: 2〜3日
+実施内容（2026-03-20）:
+  - ipc_eccn_mapping.json（174 IPC サブクラス × 640マッピング）を活用
+  - 特許ノード 64/67件 に IPC→ECCN/FEFTA derived エッジを自動生成
+  - 追加エッジ: 996件（ipc_eccn_derived + ipc_fefta_derived）
+  - 信頼度 high/medium のみを採用（low は除外）
+  - control_nodes.json 更新・build_manifest 更新完了
+
+効果: HanteiAgent が特許→規制リストの関連性をグラフトラバーサルで参照可能に
 ```
 
-### P1-3: 制裁リストの公式データソース切替
+#### P1-3: HS ↔ 外為法 公式対照表整備
 
 ```
-現状: sanctions_screening_dataset.json（出典・更新日不明）
-目標: OFAC SDN リスト (XML公開) + METI End-User List への切替
-手法:
-  - OFAC: https://ofac.treasury.gov/system/files/sanctions/SDN.XML (公開)
-  - METI: EUL CSV/PDF（月次更新）
-  - 定期更新スクリプト作成
-効果: スクリーニングの信頼性・監査証跡の確保
-工数: 2日
+現状: 近似ルールベースマッピング
+目標: 公式「輸出令別表第一の関係HS番号一覧表」（METI/CISTEC）との照合
+方針:
+  A) CISTEC への問い合わせ・入手試行
+  B) 暫定: 外為法 XML の品目説明 × HS 説明のセマンティックマッチング
+工数: 1〜2日（暫定対応）
 ```
 
-### P1-4: J-PlatPat → 知識グラフ同期
+#### P1-4: DAP チャット × キャッチオールエンジン連携 ✅ 完了
 
 ```
-現状: ai_validation DB に 7,001件の特許。control_nodes の patent ノードは 67件のスタブ
-問題: patent_search で取得した実特許データが知識グラフに反映されていない
-目標: J-PlatPatで取得した特許（IPC コード付き）を control_nodes に反映し
-      IPC ↔ 外為法項 のエッジを自動生成
-工数: 2〜3日
-```
+実施内容（2026-03-20）:
+  1. GET /decision/{tx_id}/catchall-result エンドポイントを追加
+     → ai_validation/app/routers/decision.py
+  2. CatchallDetailTool を HanteiAgent tools に追加（4番目のツール）
+     → platform-core/platform_core/agent/tools.py
+  3. DAP システムプロンプトにキャッチオール6ステップフロー説明を追加
+     → modules/dap/app/routers/chat.py
 
-### P1-5: DAP チャットウィジェット — システムプロンプト強化
-
-```
-現状: 業務フロー全体像は記述済み。規制の具体的内容は未組み込み
-目標: ip_export_control_econ_security_reference.md の規制情報をシステムプロンプトに
-      コンパクトに組み込み（外為法体系、みなし輸出、セキュリティクリアランス等）
-効果: Claudeがより正確な規制アドバイスを提供できる
-工数: 1日
+効果: ユーザーが「この仕向地でキャッチオール規制が適用される理由は？」と
+      聞いた場合、エージェントが get_catchall_detail ツールで判定根拠を
+      参照して EAR Country Chart 列・Red Flag 数・推奨アクションを回答可能
 ```
 
 ---
 
-## 4. 中期ロードマップ（Phase 2: 〜2ヶ月）
+#### P1-5: DAP 先輩担当者モード 全面実装 ✅ 完了（2026-03-21）
 
-### P2-1: 4象限マッピング UI 【戦略機能の核心】
+```
+実施内容:
+
+■ バックエンド（modules/dap/app/routers/chat.py）
+  1. Intake Mode（ヒアリングモード）
+     - _INTAKE_TRIGGERS / _init_intake_state / _build_intake_system_prompt
+     - respond_intake ツール: intake_updates / risk_flags / gaps / action_plan
+     - _execute_action_plan → _create_transaction / _run_screening / _run_pipeline
+     - POST /api/transactions（ai_validation）を新規追加
+  2. User Persona Tracking
+     - _init_persona / _update_persona / _persona_context_str
+     - 専門用語スコア（_EXPERT_TERMS 20語）× ノービスシグナル（_NOVICE_SIGNALS 8パターン）
+       から業務レベル自動推定（unknown → novice / intermediate / expert）
+     - モジュール訪問カウント・知識ギャップ語句を session_data["persona"] に蓄積
+  3. Workflow Intelligence（_analyze_workflow_state）
+     - 前工程未実施ギャップ検出（_WORKFLOW_ORDER: 8003→8002→8001→8005）
+     - スクリーニング未実施警告 / 仕向国リスク警告 / ヒアリング未完了警告
+     - 各アラートに安定 guide_id 付与（重複表示防止）
+  4. ChatResponse 拡張
+     - guidance: list[dict]   → ステップ別ガイドツアー
+     - alert:    dict         → 自発的アラート
+     - persona_summary: dict  → ユーザー理解状態
+  5. respond ツール拡張
+     - guidance_steps（navigate/highlight/fill_hint/explain/watch）
+     - proactive_alert（risk_warning/workflow_gap/info）
+  6. /api/chat/greet エンドポイント（ページロード時プロアクティブ案内）
+     - ワークフローアラート → アラートバナーとして返却
+     - 初回訪問+過去履歴あり → 前工程への誘導
+     - ヒアリング中断 → 再開促進
+  7. /api/chat/event エンドポイント（行動トラッキング）
+     - page_view / guide_shown / guide_dismissed / button_click を記録
+     - shown_guides: セッション内同一ガイドの重複表示を排除
+  8. クロスモジュール会話継続（session_data 拡張）
+     - page_visits / actions_taken / shown_guides を session_data に追加
+
+■ フロントエンド（modules/dap/app/static/chat-widget.js）— 完全リライト v2
+  - アバター・ブランド: 🤖 AI アシスタント → 👔 先輩担当者 (DAP)
+  - アラートバナー: チャット外に自発的警告（severity色分け・30秒自動消去）
+  - ヒアリング進捗バー: 品目・仕向国・ターン数・リスクフラグをヘッダー下に表示
+  - guidance ステップ実行:
+      navigate  → クロスページ遷移（残りは sessionStorage に保存して再開）
+      highlight → ツールチップ付き要素ハイライト
+      fill_hint → フィールドヒントオーバーレイ（例文付き）
+      explain   → ガイダンスメッセージバブル
+      watch     → 次操作待ちインジケーター
+  - ガイド重複排止: sessionStorage + サーバー shown_guides の二重管理
+  - callGreet(): ページロード 1.8秒後にプロアクティブ案内
+  - trackEvent(): page_view を自動記録
+  - sendMessage() が全新フィールド（guidance/alert/intake_state/persona_summary）を取得
+
+■ 全モジュール埋め込み（chat-widget.js スクリプトタグ追加）
+  - modules/ai_validation/templates/base.html
+  - modules/ai_classification/templates/base.html
+  - modules/hs_classifier/app/templates/base.html
+  - modules/patent_search/app/templates/base.html
+  - modules/rnd_assessment/app/ui/templates/base.html
+  - modules/screening/app/templates/base.html
+
+■ ai_validation: POST /api/transactions 追加
+  - DAP ヒアリング完了後に JSON API 経由で案件を新規作成
+  - TransactionItem / UsageRequirement を自動生成
+  - source_module="dap" でトレーサビリティ確保
+
+設計思想: 「Claude Code でのやりとりが理想」に基づく先輩コレーグ体験
+  - ユーザーが気づいていないリスク・前工程ギャップを先回りして指摘
+  - 専門知識レベルに応じてトーン・深度を自動適応
+  - クロスモジュールで作業を誘導し、コンプライアンスアウトカムを最大化
+```
+
+---
+
+### P2: 中期（〜2ヶ月）
+
+#### P2-1: 4象限マッピング UI【戦略可視化の核心】
 
 ```
 概要: 技術主権価値（Y軸）× 規制感度（X軸）の2次元マップ
 実装:
-  - ai_classification の Product に sovereignty_score, regulation_score フィールド追加
-  - AI判定結果から regulation_score を自動算出（ECCN リスト命中度、外為法該当度）
-  - 品目管理の一覧画面に散布図ビュー追加（Chart.js or Plotly）
-  - ユーザーが sovereignty_score を入力（将来は自動推定）
-効果: 「要塞技術」「無防備な至宝」等の戦略分類が視覚化される
+  - ai_classification の Product に sovereignty_score, regulation_score 追加
+  - AI判定結果から regulation_score 自動算出（ECCN命中度・外為法該当度）
+  - 品目一覧画面に散布図ビュー追加（Chart.js or Plotly）
+効果: 「要塞技術」「無防備な至宝」等の戦略分類を視覚化
 ```
 
-### P2-2: HS コード ↔ 外為法 公式対照表の整備
+#### P2-2: みなし輸出スクリーニング（人物管理）
 
 ```
-問題: 現在は近似ルールベースマッピング。公式の「輸出令別表第一の関係HS番号一覧表」
-      （METI）が入手困難
-方針:
-  A) METI/CISTEC への問い合わせ・購入検討
-  B) 暫定: CISTEC 公開の品目分類ガイドから対照表を手作成
-  C) 長期: HS コードと IPC コードの相関から推論モデル構築
-```
-
-### P2-3: みなし輸出スクリーニング（人物管理）
-
-```
-概要: reference.md Section 2.1「みなし輸出の3カテゴリ」対応
+概要: 外為法「みなし輸出」3カテゴリへの対応
 実装:
-  - 研究者/従業員テーブル（国籍、居住年数、所属、二重雇用フラグ）
-  - 「この技術を提供する人物」チェック → みなし輸出該当性判定
+  - 研究者/従業員テーブル（国籍・居住年数・所属・二重雇用フラグ）
+  - 技術提供対象の人物 → みなし輸出該当性判定
   - rnd_assessment の需要者要件欄と連携
 ```
 
-### P2-4: 規制動向モニタリング
+#### P2-3: 規制動向モニタリング
 
 ```
 概要: Wassenaar 年次改正、BIS 中間規則、外為法改正の自動検知
 実装:
-  - 各規制機関の更新フィードをポーリング（月次）
+  - 各規制機関の更新フィード（月次ポーリング）
   - control_nodes の差分検出 → 管理者通知
-  - DAP で「規制更新あり」バナーを表示
+  - DAP で「規制更新あり」バナー表示
 ```
 
-### P2-5: 輸出判定根拠のPDF出力強化
+#### P2-4: 特許出願人の制裁リスト照合
 
 ```
-現状: 判定結果はUI表示のみ
-目標: 監査証跡として提出可能な判定報告書PDF
-内容: 品目情報、判定フロー、該当条文引用、スクリーニング結果、担当者署名欄
+概要: patent_search で取得した特許の出願人 → screening に自動照合
+実装:
+  - 特許メタデータの inventor/assignee → screening API 呼出
+  - 「制裁リスト関連出願人の特許」フラグ → ai_validation pipeline に連携
 ```
 
 ---
 
 ## 5. データソース開発方針
 
-### 外為法（FEFTA）
-
-```
-優先度: ★★★★★
-現状: 輸出貿易管理令 XML 取得済（191ノード、168補強）
-Next:
-  1. 経済産業省令（貨物等省令）の取得: e-Gov API or PDF
-     → 技術パラメータ（数値閾値）の構造化
-  2. 外国為替令（役務取引）の取得
-     → みなし輸出関連条文の追加
-  3. 経済安保推進法（特許非公開制度）の条文追加
-品質目標: 全191ノードにrequirement_text+parameters を充填
-```
-
-### ECCN/EAR（米国輸出管理）
-
-```
-優先度: ★★★★☆
-現状: PDF のみ、84ノード中71がスタブ
-Next:
-  1. BIS 公式 XML/JSONフィード調査（regulations.gov API）
-  2. pdfplumber の処理精度改善（章構造を正しく認識させる）
-  3. 不足71件を Claude API バッチ補完（Part774 テキストを入力）
-品質目標: 84ノード全て requirement_text 充填
-注意: EAR は定期改正（Oct 2022, Oct 2023等）。改正追跡の仕組みが必要
-```
-
-### HS コード
-
-```
-優先度: ★★★☆☆
-現状: hs2022_6digit.json（5,613件）→ control_nodes に281件を近似マッピング
-Next:
-  1. METI「輸出令別表第一の関係HS番号一覧表」の入手試行
-     （CISTEC会員向け資料。問い合わせ要）
-  2. 暫定: 外為法 XML の品目説明とHS説明のセマンティックマッチングで対照表生成
-  3. WCO HS 2022 改正（2022年施行）との整合性確認
-品質目標: 外為法項とHSコードの対応を信頼できる形で整備
-```
-
-### 特許
-
-```
-優先度: ★★★★☆
-現状: synthetic 7,001件 + J-PlatPat取得実特許（少数）
-     control_nodes の patent ノード: 67件（スタブ）
-Next:
-  1. J-PlatPat からのバッチ取得強化（半導体・先端材料・AI分野）
-     → IPC コード付き実特許 → control_nodes に反映
-  2. Google Patents API or Lens.org API での補完検討
-  3. IPC サブクラス ↔ 外為法項 のマッピングテーブル作成
-     （例: IPC H01L → 外為法 EL-7 半導体関連）
-  4. 特許出願人の制裁リスト照合機能
-品質目標: 特許 → 規制リスト のセマンティックブリッジを確立
-```
-
-### 制裁リスト（Screening）
-
-```
-優先度: ★★★★★
-現状: 非公式 JSON（出典・更新日不明）
-Next:
-  1. OFAC SDN/Consolidated List: 公式XML取得 (ofac.treasury.gov)
-  2. BIS Entity List: 公式CSV取得 (bis.doc.gov)
-  3. METI 外国ユーザーリスト: PDF解析または手動メンテ
-  4. EU Consolidated Sanctions List: 公式データ取得
-  5. 月次自動更新スクリプト作成
-品質目標: 公式データソースへの完全切替 + 自動更新
-```
+| データ | 優先度 | 現状 | 次のアクション |
+|--------|--------|------|-------------|
+| 外為法（FEFTA）省令 | ★★★★★ | 輸出貿易管理令のみ | e-Gov から省令 PDF 取得 → 構造化 |
+| ECCN/EAR Part774 | ★★★★☆ | 71件スタブ | pdfplumber 再処理 + Claude バッチ補完 |
+| 制裁リスト | ★★★★★ | 非公式 JSON | OFAC/BIS/METI 公式ソースへ移行 |
+| HS コード対照表 | ★★★☆☆ | 近似マッピング | CISTEC 問合せ、暫定はセマンティックマッチ |
+| 特許（J-PlatPat） | ★★★★☆ | 7,001件 synthetic | IPC コード付き実特許 → 知識グラフ同期 |
+| 中国輸出管理法リスト | ★★☆☆☆ | 未取得 | 長期: 将来的な規制拡張に備えて調査 |
+| みなし輸出・省令 | ★★★☆☆ | 未取得 | 外為法施行規則 PDF → 構造化 |
 
 ---
 
-## 6. 開発優先度マトリクス
+## 6. 知識グラフ品質評価（2026-03-21）
 
-```
-【緊急×重要】 ← 明日から取り組む
-  P0-1: DAP NullPool+WAL
-  P0-2: patent_search WAL
-  P0-3: patent_retrieve セッションブロック解消
-  P0-4: start.sh ポート整合性確認
-  P1-3: 制裁リスト公式化
+| regime | ノード数 | 補強状況 | 品質 |
+|--------|---------|---------|------|
+| 外為法（fefta） | 191 | 168/191 XML補強済 | **◎ 高品質** |
+| EAR/ECCN（ear） | 84 | 84/84 requirement_text 充填済 | **◎ 完成** |
+| Wassenaar（wa） | 165 | PDF解析 | **○ 中品質** |
+| HS コード（hs） | 281 | 近似マッピング | **△ P1-3で対処** |
+| 特許（patent） | 67 | 64/67 に 996 IPC→ECCN/FEFTA エッジ追加済 | **○ 中品質** |
 
-【重要・計画的に進める】
-  P1-1: ECCN ノード補強（判定精度直結）
-  P1-2: 外為法省令追加（判定根拠強化）
-  P1-4: J-PlatPat → 知識グラフ同期
-  P1-5: DAP システムプロンプト強化
-
-【戦略的・中期】
-  P2-1: 4象限マッピング UI（差別化機能）
-  P2-2: HS ↔ 外為法 公式対照表
-  P2-3: みなし輸出人物スクリーニング
-  P2-4: 規制動向モニタリング
-  P2-5: 判定報告書 PDF 出力
-```
+**現在の精度ボトルネック**: HS↔外為法公式対照表（P1-3）・外為法省令パラメータ（P1-1）
 
 ---
 
-## 7. システム全体稼働チェックリスト（毎回起動時）
+## 7. 技術的負債（2026-03-20 時点）
+
+| 問題 | 影響 | 優先度 |
+|------|------|--------|
+| ECCN 71件スタブ | matrix_match FAISS精度直結 | **P0-1** |
+| 制裁リスト非公式ソース | 審査結果の監査証跡として使用不可 | **P0-2** |
+| patent_retrieve セッションブロック | ai_validation pipeline の並行書込みブロック | **P0-3** |
+| HS↔外為法対照が近似 | HS分類の不確実性 | **P1-3** |
+| 特許→知識グラフ未同期 | 知識グラフの patent ノードがほぼ空 | **P1-2** |
+| みなし輸出チェック欠如 | コンプライアンスギャップ | **P2-2** |
+
+---
+
+## 8. システム起動・ヘルスチェック
 
 ```bash
 # 起動
@@ -349,27 +370,30 @@ curl -s http://localhost:8005/health  # screening
 curl -s http://localhost:8006/health  # hs_classifier
 curl -s http://localhost:8010/health  # dap
 
-# DB ロック確認（起動直後に実行）
+# FAISS インデックス状態確認
+curl -s http://localhost:8001/admin/faiss/status  # Layer A/B/C
+curl -s http://localhost:8006/index/status         # Layer C（hs_classifier）
+
+# DB ロック確認
 lsof | grep ".db$" | grep -v ".venv"
 ```
 
 ---
 
-## 8. 技術的負債・既知の問題
+## 9. ブランチ管理
 
-| 問題 | 影響範囲 | 根本原因 | 解決優先度 |
-|------|---------|---------|-----------|
-| DAP SQLite NullPool 未適用 | DAP全体 | db.py が旧実装 | **即時** |
-| patent_search WAL 未設定 | 特許検索 | async engine に pragma なし | 今週中 |
-| patent_retrieve セッション長時間保持 | ai_validation pipeline | FAISS build中にDBセッション開放しない | 今週中 |
-| ECCN 71件スタブ | AI判定精度 | PDF解析の限界 | 1週間以内 |
-| 制裁リスト非公式ソース | screening信頼性 | 公式フィード未整備 | 1週間以内 |
-| HS↔外為法対照が近似 | HS分類精度 | 公式対照表未入手 | 2週間以内 |
-| DAP ポート 8011 で起動 | 設定不整合 | run.sh の設定 | 今週中 |
-| 特許→知識グラフ未同期 | 知識グラフ品質 | J-PlatPatデータの反映なし | 2週間以内 |
-| みなし輸出チェック欠如 | コンプライアンス | 未実装 | 中期 |
+| ブランチ | 状態 | 用途 |
+|---------|------|------|
+| main | 安定 | リリースブランチ |
+| branch_faiss_modification | 7 commits ahead | Layer C FAISS 統合作業 |
+| branch_neurosymbolic | 42 files ahead | NeuroSymbolic基盤（未マージ） |
+
+**次のマージ推奨順序**:
+1. `branch_faiss_modification` → main（Layer C完成）
+2. `branch_neurosymbolic` → main（NeuroSymbolic基盤・キャッチオール・HanteiAgent）
+3. 統合後に P0 タスクを main で進める
 
 ---
 
-*作成: 2026-03-08*
+*更新: 2026-03-20*
 *担当: Takehiro Sato + Claude Sonnet 4.6*

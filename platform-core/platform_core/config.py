@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     module_rnd_assessment_url: str = "http://localhost:8003"
     module_patent_search_url: str = "http://localhost:8004"
     module_screening_url: str = "http://localhost:8005"
+    module_hs_classifier_url: str = "http://localhost:8006"
+    module_dap_url: str = "http://localhost:8010"
 
     @field_validator("jwt_secret_key")
     @classmethod

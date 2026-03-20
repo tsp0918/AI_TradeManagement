@@ -41,6 +41,14 @@
     {% if two_lists.counts.intersection > 0 %}
     <span id="dap-has-intersection" data-dap-field="intersection_found" style="display:none;">yes</span>
     {% endif %}
+    {% if two_lists.catchall_recommended %}
+    <a href="#sec-catchall"
+       style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px;
+              background:#0369a1; color:#fff; border-radius:999px; font-size:.78rem;
+              font-weight:700; text-decoration:none; white-space:nowrap;">
+      🛡️ キャッチオール判定 →
+    </a>
+    {% endif %}
     {% endif %}
   </div>
   <div class="status-right">
@@ -213,8 +221,15 @@
 </div>
 
 {% elif two_lists and two_lists.counts.total_unique_items == 0 %}
-<div class="card" style="padding:16px; color:var(--muted); font-size:.92rem">
-  マトリクス照合なし。用途テキストを具体的に入力して再実行してください。
+<div class="card" style="padding:16px; font-size:.92rem">
+  <span style="color:var(--muted);">マトリクス照合なし。用途テキストを具体的に入力して再実行してください。</span>
+  {% if two_lists.catchall_recommended %}
+  <div style="margin-top:10px; padding:10px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:.85rem; color:#1e40af;">
+    🛡️ <b>リスト規制への該当は検出されませんでした。</b>
+    下部のキャッチオール規制チェックリストで自己判定を完了してください。
+    <a href="#sec-catchall" style="margin-left:8px; font-weight:700;">→ 判定へ</a>
+  </div>
+  {% endif %}
 </div>
 {% elif not two_lists and not two_lists_error %}
 <div class="card" style="padding:16px; color:var(--muted); font-size:.92rem">
@@ -917,7 +932,293 @@
 </details>
 {% endif %}
 
-<!-- ===== Section 5: 実行履歴（折りたたみ） ===== -->
+<!-- ===== Section 5: キャッチオール自己判定 ===== -->
+{% if two_lists and two_lists.catchall_recommended %}
+<div id="sec-catchall" class="card detail-section" style="border-left:4px solid #0369a1;">
+
+  <!-- ヘッダー：なぜ必要か -->
+  <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;">
+    <div style="font-size:1.6rem; line-height:1;">🛡️</div>
+    <div>
+      <div style="font-weight:800; font-size:1rem; color:#0369a1; margin-bottom:4px;">
+        キャッチオール規制 自己判定（輸出令第4条・第4条の2）
+      </div>
+      <div style="font-size:.85rem; color:#374151; line-height:1.65;">
+        リスト規制（輸出令別表第1）への該当は検出されませんでした。<br>
+        しかし<b>キャッチオール規制</b>は、リスト規制対象外の品目でも
+        <b>仕向地・最終需要者・用途</b>によって輸出許可が必要になる場合があります。<br>
+        以下のチェックリストに回答し、自己判定を完了してください。
+      </div>
+    </div>
+  </div>
+
+  <!-- 前回判定結果（あれば） -->
+  {% if latest_catchall %}
+  {% set vmap = {
+    "requires_permit": ("🔴", "#be123c", "#fff1f2", "#fecdd3", "輸出許可申請 要確認"),
+    "caution":         ("🟡", "#854d0e", "#fffbeb", "#fde68a", "要注意（モニタリング継続）"),
+    "clear":           ("🟢", "#166534", "#dcfce7", "#86efac", "キャッチオール非該当（現時点）"),
+    "indeterminate":   ("⚪", "#374151", "#f3f4f6", "#e5e7eb", "判定不能"),
+  } %}
+  {% set vi = vmap.get(latest_catchall.verdict, ("⚪","#374151","#f3f4f6","#e5e7eb","不明")) %}
+  <details style="margin-bottom:16px;">
+    <summary style="cursor:pointer; font-size:.88rem; font-weight:700; color:#374151; padding:8px 12px;
+      background:{{ vi[2] }}; border:1px solid {{ vi[3] }}; border-radius:8px; list-style:none; display:flex; align-items:center; gap:8px;">
+      <span>{{ vi[0] }}</span>
+      <span>前回判定: {{ vi[4] }}</span>
+      <span class="muted small" style="margin-left:auto; font-weight:400;">
+        {{ latest_catchall.evaluated_at.strftime('%Y-%m-%d %H:%M') if latest_catchall.evaluated_at else "-" }}
+      </span>
+    </summary>
+    <div style="padding:12px; border:1px solid {{ vi[3] }}; border-top:none; border-radius:0 0 8px 8px; background:#fff; font-size:.85rem;">
+      {% if latest_catchall.judgment_json %}
+      {% set jd = latest_catchall.judgment_json %}
+      <div style="margin-bottom:8px; color:{{ vi[1] }}; font-weight:700;">{{ jd.get("verdict_detail","") }}</div>
+      {% if jd.get("recommended_actions") %}
+      <div style="font-size:.82rem; font-weight:600; color:#6b7280; margin-bottom:4px;">推奨アクション</div>
+      <ul style="margin:0; padding-left:18px; color:#374151; line-height:1.7;">
+        {% for a in jd.get("recommended_actions", []) %}
+        <li>{{ a }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if jd.get("reasons") %}
+      <div style="margin-top:10px; font-size:.82rem; font-weight:600; color:#6b7280; margin-bottom:4px;">判断根拠</div>
+      {% for r in jd.get("reasons", []) %}
+      <div style="font-size:.82rem; padding:4px 8px; background:#f9fafb; border-radius:4px; margin-bottom:3px; color:#374151;">
+        <b>{{ r.get("label","") }}</b>{% if r.get("detail") %} — {{ r.get("detail","")[:120] }}{% endif %}
+      </div>
+      {% endfor %}
+      {% endif %}
+      {% endif %}
+    </div>
+  </details>
+  {% endif %}
+
+  <!-- 入力フォーム -->
+  <form id="catchall-form" onsubmit="submitCatchall(event)">
+    <input type="hidden" name="transaction_id" value="{{ tx.id }}">
+
+    <!-- 仕向地情報 -->
+    <div style="margin-bottom:16px;">
+      <div class="label-sm" style="margin-bottom:8px;">仕向地・取引先情報</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:.85rem;">
+          <span style="font-weight:600;">仕向地（ISO alpha-2）</span>
+          <input id="ca-dest" type="text" placeholder="例: CN, RU, US" maxlength="2"
+            style="padding:6px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:.88rem; text-transform:uppercase;"
+            value="{{ tx.destination_country or '' }}">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:.85rem;">
+          <span style="font-weight:600;">最終需要者所在国（ISO alpha-2）</span>
+          <input id="ca-eu-country" type="text" placeholder="例: CN, KP" maxlength="2"
+            style="padding:6px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:.88rem; text-transform:uppercase;"
+            value="{{ tx.end_user_country or '' }}">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:.85rem;">
+          <span style="font-weight:600;">最終需要者名</span>
+          <input id="ca-eu-name" type="text" placeholder="エンドユーザー名"
+            style="padding:6px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:.88rem;"
+            value="{{ tx.end_user_name or '' }}">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:4px; font-size:.85rem;">
+          <span style="font-weight:600;">荷受人（Consignee）</span>
+          <input id="ca-consignee" type="text" placeholder="荷受人名"
+            style="padding:6px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:.88rem;">
+        </label>
+      </div>
+    </div>
+
+    <!-- インフォーム通知・EUC -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
+      <div>
+        <div style="font-size:.85rem; font-weight:700; margin-bottom:6px;">
+          経産省からのインフォーム通知を受領しましたか？
+        </div>
+        <div style="display:flex; gap:16px; font-size:.85rem;">
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+            <input type="radio" name="inform_received" value="true"> はい（受領済み）
+          </label>
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+            <input type="radio" name="inform_received" value="false" checked> いいえ
+          </label>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:.85rem; font-weight:700; margin-bottom:6px;">
+          最終需要者証明書（EUC）を取得しましたか？
+        </div>
+        <div style="display:flex; gap:16px; font-size:.85rem;">
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+            <input type="radio" name="euc_obtained" value="true"> はい（取得済み）
+          </label>
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+            <input type="radio" name="euc_obtained" value="false"> いいえ
+          </label>
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+            <input type="radio" name="euc_obtained" value="null" checked> 未確認
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Red Flag 7項目 -->
+    <div style="margin-bottom:16px;">
+      <div class="label-sm" style="margin-bottom:10px;">
+        Red Flag チェックリスト（METI 安全保障貿易管理ガイダンス準拠）
+      </div>
+      <div style="font-size:.82rem; color:#6b7280; margin-bottom:10px;">
+        各項目について「該当する（懸念あり）」かどうか回答してください。
+      </div>
+      {% set rf_items = [
+        ("rf1", "rf1_unknown_end_user", "RF-1", "取引相手・エンドユーザーの身元が不明または確認困難"),
+        ("rf2", "rf2_suspicious_end_use", "RF-2", "最終用途・最終需要者の説明が不自然・拒否・回避"),
+        ("rf3", "rf3_abnormal_price", "RF-3", "価格設定が不自然（市場価格と比べ過高または過低）"),
+        ("rf4", "rf4_unusual_payment", "RF-4", "支払い方法が不自然（現金・第三者経由・タックスヘイブン等）"),
+        ("rf5", "rf5_suspicious_routing", "RF-5", "輸送経路・包装・経由地の指定が不自然（懸念国経由・迂回ルート等）"),
+        ("rf6", "rf6_no_technical_knowledge", "RF-6", "品目の用途・技術的特性に関する知識が乏しい、または質問を回避"),
+        ("rf7", "rf7_concern_country_routing", "RF-7", "懸念国または懸念地域の中継業者・転売業者を経由する取引"),
+      ] %}
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        {% for rf_id, rf_key, rf_label, rf_desc in rf_items %}
+        <div style="padding:10px 12px; background:#f8fafc; border-radius:8px; border:1px solid #e5e7eb;">
+          <div style="display:flex; align-items:flex-start; gap:10px;">
+            <div style="flex:1;">
+              <span class="chip" style="background:#e0e7ff; color:#3730a3; font-size:.72rem; font-weight:700; margin-right:6px;">{{ rf_label }}</span>
+              <span style="font-size:.85rem; font-weight:600; color:#374151;">{{ rf_desc }}</span>
+            </div>
+            <div style="display:flex; gap:12px; flex-shrink:0; font-size:.85rem; margin-top:2px;">
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer; color:#dc2626;">
+                <input type="radio" name="{{ rf_key }}" value="true"> 該当
+              </label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer; color:#166534;">
+                <input type="radio" name="{{ rf_key }}" value="false" checked> 非該当
+              </label>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- 送信 -->
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button type="submit" id="ca-submit-btn"
+        style="background:#0369a1; color:#fff; border:none; padding:9px 22px;
+          border-radius:8px; font-size:.92rem; font-weight:700; cursor:pointer;">
+        自己判定を実行
+      </button>
+      <span id="ca-loading" style="display:none; color:#6b7280; font-size:.85rem;">判定中...</span>
+    </div>
+  </form>
+
+  <!-- 判定結果表示エリア -->
+  <div id="ca-result" style="display:none; margin-top:16px;"></div>
+</div>
+
+<script>
+async function submitCatchall(e) {
+  e.preventDefault();
+  const form = e.target;
+  const txId = form.querySelector('[name="transaction_id"]').value;
+
+  document.getElementById('ca-submit-btn').disabled = true;
+  document.getElementById('ca-loading').style.display = 'inline';
+
+  const rfKeys = [
+    'rf1_unknown_end_user','rf2_suspicious_end_use','rf3_abnormal_price',
+    'rf4_unusual_payment','rf5_suspicious_routing','rf6_no_technical_knowledge',
+    'rf7_concern_country_routing'
+  ];
+  const rfData = {};
+  rfKeys.forEach(k => {
+    const v = form.querySelector(`[name="${k}"]:checked`)?.value;
+    rfData[k] = v === 'true' ? true : v === 'false' ? false : null;
+  });
+
+  const informVal = form.querySelector('[name="inform_received"]:checked')?.value;
+  const eucVal = form.querySelector('[name="euc_obtained"]:checked')?.value;
+
+  const body = {
+    session_id: crypto.randomUUID(),
+    destination_country: (document.getElementById('ca-dest').value.trim().toUpperCase() || null),
+    end_user_country: (document.getElementById('ca-eu-country').value.trim().toUpperCase() || null),
+    end_user_name: (document.getElementById('ca-eu-name').value.trim() || null),
+    consignee_name: (document.getElementById('ca-consignee').value.trim() || null),
+    inform_received: informVal === 'true' ? true : informVal === 'false' ? false : null,
+    euc_obtained: eucVal === 'true' ? true : eucVal === 'false' ? false : null,
+    red_flags: rfData,
+  };
+
+  try {
+    const resp = await fetch(`/decision/${txId}/catchall-judgment`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.statusText);
+    renderCatchallResult(data.catchall_judgment);
+  } catch(err) {
+    document.getElementById('ca-result').innerHTML =
+      `<div style="color:#dc2626; padding:8px 12px; background:#fef2f2; border-radius:6px; font-size:.85rem;">エラー: ${err.message}</div>`;
+    document.getElementById('ca-result').style.display = 'block';
+  } finally {
+    document.getElementById('ca-submit-btn').disabled = false;
+    document.getElementById('ca-loading').style.display = 'none';
+  }
+}
+
+function renderCatchallResult(j) {
+  const verdictColors = {
+    requires_permit: {bg:'#fff1f2', border:'#fecdd3', text:'#be123c', icon:'🔴'},
+    caution:         {bg:'#fffbeb', border:'#fde68a', text:'#854d0e', icon:'🟡'},
+    clear:           {bg:'#dcfce7', border:'#86efac', text:'#166534', icon:'🟢'},
+    indeterminate:   {bg:'#f3f4f6', border:'#e5e7eb', text:'#374151', icon:'⚪'},
+  };
+  const c = verdictColors[j.verdict] || verdictColors.indeterminate;
+
+  let actionsHtml = '';
+  if (j.recommended_actions && j.recommended_actions.length) {
+    actionsHtml = `<div style="margin-top:12px;">
+      <div style="font-size:.8rem; font-weight:700; color:#6b7280; margin-bottom:4px;">推奨アクション</div>
+      <ul style="margin:0; padding-left:18px; font-size:.85rem; color:#374151; line-height:1.7;">
+        ${j.recommended_actions.map(a => `<li>${a}</li>`).join('')}
+      </ul>
+    </div>`;
+  }
+
+  let reasonsHtml = '';
+  if (j.reasons && j.reasons.length) {
+    reasonsHtml = `<div style="margin-top:12px;">
+      <div style="font-size:.8rem; font-weight:700; color:#6b7280; margin-bottom:4px;">判断根拠</div>
+      ${j.reasons.map(r =>
+        `<div style="font-size:.82rem; padding:4px 8px; background:#f9fafb; border-radius:4px; margin-bottom:3px; color:#374151;">
+          <b>${r.label}</b>${r.detail ? ' — ' + r.detail.slice(0, 120) : ''}
+        </div>`
+      ).join('')}
+    </div>`;
+  }
+
+  document.getElementById('ca-result').innerHTML = `
+    <div style="padding:14px 16px; background:${c.bg}; border:1.5px solid ${c.border}; border-radius:10px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="font-size:1.3rem;">${c.icon}</span>
+        <span style="font-size:1rem; font-weight:800; color:${c.text};">${j.verdict_label}</span>
+      </div>
+      <div style="font-size:.88rem; color:#374151; line-height:1.65;">${j.verdict_detail}</div>
+      ${actionsHtml}${reasonsHtml}
+    </div>
+    <div style="margin-top:8px; font-size:.78rem; color:#9ca3af; text-align:right;">
+      ページをリロードすると判定結果がヘッダーに反映されます。
+    </div>`;
+  document.getElementById('ca-result').style.display = 'block';
+  document.getElementById('ca-result').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+</script>
+{% endif %}
+
+<!-- ===== Section 6: 実行履歴（折りたたみ） ===== -->
 <details class="card detail-section">
   <summary class="detail-summary">
     <span>実行履歴（ai_runs）</span>

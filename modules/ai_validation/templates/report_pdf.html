@@ -536,6 +536,163 @@
 {% endif %}
 
 
+<!-- ═══════════════════════════════════════════
+     SECTION 4: キャッチオール自己判定
+     （リスト規制候補なし（LOW）の場合に表示）
+════════════════════════════════════════════ -->
+{% if catchall %}
+{% set ca = catchall %}
+{% set ca_verdict = ca.verdict %}
+
+<div class="section-title
+  {%- if ca_verdict == 'requires_permit' %} warn
+  {%- elif ca_verdict == 'caution' %} warn
+  {%- elif ca_verdict == 'clear' %} safe
+  {%- else %} hint
+  {%- endif %}">
+  キャッチオール自己判定（輸出令第4条）
+</div>
+
+<div class="exec-summary" style="
+  {%- if ca_verdict == 'requires_permit' %}border-color:#ef4444; background:#fef2f2;
+  {%- elif ca_verdict == 'caution' %}border-color:#f59e0b; background:#fffbeb;
+  {%- elif ca_verdict == 'clear' %}border-color:#22c55e; background:#f0fdf4;
+  {%- else %}border-color:#9ca3af; background:#f9fafb;
+  {%- endif %}">
+  <div class="exec-header">
+    <span class="exec-title" style="font-size:9pt">キャッチオール規制 自己判定結果</span>
+    <span class="risk-badge
+      {%- if ca_verdict == 'requires_permit' %} risk-HIGH
+      {%- elif ca_verdict == 'caution' %} risk-MEDIUM
+      {%- elif ca_verdict == 'clear' %} risk-LOW
+      {%- else %} risk-MEDIUM
+      {%- endif %}">{{ ca.verdict_label }}</span>
+  </div>
+
+  <p class="exec-verdict">{{ ca.verdict_detail }}</p>
+
+  <!-- 適用規定 -->
+  {% if ca.applicable_types %}
+  <div class="exec-section-label">適用規定</div>
+  <p style="font-size:8pt; color:#374151; margin-bottom:8px">
+    {% for t in ca.applicable_types %}
+    {%- if t == 'wmd' %}輸出令第4条（大量破壊兵器等キャッチオール）{% endif %}
+    {%- if t == 'conventional' %}・輸出令第4条の2（通常兵器キャッチオール）{% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
+
+  <!-- 仕向地情報 -->
+  <div class="exec-section-label">仕向地チェック</div>
+  <div style="font-size:8pt; color:#1a202c; margin-bottom:8px; display:flex; gap:12px; flex-wrap:wrap">
+    <span>
+      <b>仕向地:</b>
+      {{ ca.destination_country_name or ca.destination_country or "未確認" }}
+      {% if ca.destination_country %}（{{ ca.destination_country }}）{% endif %}
+    </span>
+    <span>
+      <b>外為法区分:</b>
+      {% if ca.is_whitelist_country %}
+        <span style="color:#1d4ed8; font-weight:bold">ホワイト国（別表第3の2）</span>
+      {% elif ca.is_concern_country %}
+        <span style="color:#b91c1c; font-weight:bold">懸念国（別表第3）{{ ca.destination_risk_level or "MEDIUM" }}</span>
+      {% else %}
+        <span style="color:#374151">一般国</span>
+      {% endif %}
+    </span>
+    {% if ca.ear_is_embargoed %}
+    <span>
+      <b>EAR:</b> <span style="color:#7f1d1d; font-weight:bold">E:1 禁輸国（テロ支援国家）</span>
+    </span>
+    {% endif %}
+  </div>
+
+  <!-- EAR Country Groups / Chart -->
+  {% if ca.ear_groups or ca.control_reasons %}
+  <div class="exec-section-label">EAR Country Groups / Country Chart（参考）</div>
+  <div style="font-size:7.5pt; color:#374151; margin-bottom:8px">
+    {% if ca.ear_groups %}
+    <div style="margin-bottom:4px">
+      <b>Country Groups:</b>
+      {% for g in ca.ear_groups %}
+      <span style="display:inline-block; background:{% if 'E:' in g %}#fee2e2{% elif 'D:' in g %}#fef9c3{% else %}#dbeafe{% endif %}; border-radius:3px; padding:1px 5px; margin:1px; font-size:7pt; font-weight:bold">{{ g }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if ca.control_reasons %}
+    {% set active_cr = ca.control_reasons.items() | selectattr('1') | list %}
+    {% if active_cr %}
+    <div style="margin-bottom:4px">
+      <b>Country Chart 制御列:</b>
+      {% set cr_labels = {
+        'ns1':'NS1（Wassenaar/国家安全保障）','ns2':'NS2（EAR99汎用）',
+        'mt':'MT（ミサイル技術）',
+        'np1':'NP1（核NSG Trigger）','np2':'NP2（核 Dual-Use）',
+        'cb1':'CB1（生化学AG Sch.1/2）','cb2':'CB2（生化学AG Sch.3）','cb3':'CB3（生化学汎用）',
+        'rs1':'RS1（地域安定/兵器）','rs2':'RS2（地域安定/汎用）',
+        'at1':'AT1（テロ支援E:1）','at2':'AT2（テロ対策軍用品）',
+        'fc1':'FC1（銃器条約）'
+      } %}
+      <ul style="margin:2px 0 0 14px; padding:0; list-style:disc">
+        {% for col, val in ca.control_reasons.items() %}{% if val %}
+        <li>{{ cr_labels.get(col, col.upper()) }}</li>
+        {% endif %}{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% endif %}
+    {% if ca.whitelist_agreements %}
+    <div>
+      <b>参加多国間体制:</b> {{ ca.whitelist_agreements | join(', ') }}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Red Flag サマリー -->
+  <div class="exec-section-label">Red Flag チェック（7項目）</div>
+  <div style="font-size:8pt; color:#1a202c; margin-bottom:8px">
+    {% if ca.red_flag_positive_count == 0 %}
+      <span style="color:#166534">Red Flag 検出なし（0/7）</span>
+    {% else %}
+      <span style="color:#b91c1c; font-weight:bold">Red Flag {{ ca.red_flag_positive_count }} 件検出</span>
+      {% if ca.red_flag_keys %}
+      <ul style="margin:4px 0 0 14px; padding:0; font-size:7.5pt; color:#78350f">
+        {% set rf_labels = {
+          'rf1_unknown_end_user':        'RF-1: エンドユーザーの身元が不明・確認困難',
+          'rf2_suspicious_end_use':      'RF-2: 最終用途の説明が不自然・拒否',
+          'rf3_abnormal_price':          'RF-3: 価格設定が不自然',
+          'rf4_unusual_payment':         'RF-4: 支払い方法が不自然',
+          'rf5_suspicious_routing':      'RF-5: 輸送経路・経由地が不自然',
+          'rf6_no_technical_knowledge':  'RF-6: 技術的知識が乏しい・質問を回避',
+          'rf7_concern_country_routing': 'RF-7: 懸念国・懸念地域経由の取引'
+        } %}
+        {% for k in ca.red_flag_keys %}
+        <li>{{ rf_labels.get(k, k) }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <!-- 推奨アクション -->
+  {% if ca.recommended_actions %}
+  <div class="exec-section-label">推奨アクション</div>
+  <ul class="exec-actions">
+    {% for action in ca.recommended_actions %}
+    <li>{{ action }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <p style="font-size:7pt; color:#9ca3af; margin-top:10px; border-top:1px solid #e5e7eb; padding-top:6px">
+    ※ 本キャッチオール判定は輸出令第4条（大量破壊兵器等キャッチオール）を主対象とした自己判定です。
+    最終的な輸出許可要否の判断は、必ず安全保障貿易管理担当者が行ってください。
+    判定日時: {{ ca.evaluated_at[:16] if ca.evaluated_at else "-" }}
+  </p>
+</div>
+{% endif %}
+
 <!-- ── フッター ── -->
 <div class="doc-footer">
   本レポートはAIによる補助的判定結果です。最終判断は貿易管理担当者が行ってください。

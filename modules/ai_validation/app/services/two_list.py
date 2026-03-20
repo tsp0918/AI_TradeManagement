@@ -394,6 +394,7 @@ def compute_two_lists(
             "intersection": [],
             "expanded_only": [],
             "core_only": [],
+            "catchall_recommended": True,
             "note": "matrix_matches が0件でした（用途要件と規制テキストが一致しない等）。",
         }
 
@@ -437,6 +438,8 @@ def compute_two_lists(
             except Exception:
                 item.setdefault("reason_text", "")
 
+    is_low = len(intersection) == 0 and len(core_only) == 0
+
     return {
         "transaction_id": transaction_id,
         "run_id": rid,
@@ -449,4 +452,5 @@ def compute_two_lists(
         "intersection":  intersection,
         "expanded_only": expanded_only,
         "core_only":     core_only,
+        "catchall_recommended": is_low,
     }

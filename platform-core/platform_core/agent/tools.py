@@ -148,6 +148,43 @@ class GetTransactionTool(AgentTool):
 
 
 # ─────────────────────────────────────────────────
+# CatchallDetailTool
+# ─────────────────────────────────────────────────
+
+class CatchallDetailTool(AgentTool):
+    """
+    指定トランザクションの最新キャッチオール判定結果を取得する。
+
+    「なぜキャッチオール規制が適用されるのか」「どの EAR Country Chart 列が
+    ヒットしているか」などのユーザー質問に答えるためにエージェントが使用する。
+
+    Context に transaction_id が必要。
+    結果は "catchall_result" として格納される。
+    """
+    name        = "get_catchall_detail"
+    description = (
+        "キャッチオール規制の判定結果詳細を取得する。"
+        "仕向地・EARグループ・Country Chart列・Red Flag数・推奨アクションを含む。"
+    )
+
+    async def execute(self, context: BaseContext, **kwargs) -> Any:
+        tx_id = getattr(context, "transaction_id", None)
+        if not tx_id:
+            return None
+
+        url = f"{_AI_VALIDATION_URL}/decision/{tx_id}/catchall-result"
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(url, headers=_INTERNAL_HEADER)
+            if resp.status_code == 404:
+                return None
+            resp.raise_for_status()
+            return resp.json()
+
+    def get_result_attr_key(self) -> Optional[str]:
+        return "catchall_result"
+
+
+# ─────────────────────────────────────────────────
 # デフォルトツールセット
 # ─────────────────────────────────────────────────
 
@@ -157,4 +194,5 @@ def default_tools() -> list[AgentTool]:
         RunValidationTool(),
         ScreeningTool(),
         GetTransactionTool(),
+        CatchallDetailTool(),
     ]

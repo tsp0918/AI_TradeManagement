@@ -48,6 +48,11 @@ def _staging_dir() -> Path:
     return project_root / "data" / "staging"
 
 
+def get_staging_dir() -> Path:
+    """data/staging/ の絶対パスを返す（公開 API）。"""
+    return _staging_dir()
+
+
 _LAYER_A_INDEX = _staging_dir() / "layer_a.index"
 _LAYER_A_META  = _staging_dir() / "layer_a_meta.json"
 _LAYER_B_INDEX = _staging_dir() / "layer_b.index"

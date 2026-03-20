@@ -20,6 +20,7 @@ from app.db.deps import get_db
 from app.db.models.transaction import Transaction, TransactionItem, UsageRequirement
 from app.db.models.ai_run import AiRun, RunType
 from app.db.models.integration import ExternalEvalRequest
+from app.db.models.catchall_assessment import CatchallAssessment
 from app.services.pipeline.orchestrator import run_until_matrix_match
 from app.services.two_list import compute_two_lists
 from app.services.hs_suggestion import compute_hs_suggestions
@@ -395,6 +396,14 @@ def transaction_detail_page(
 
     chain = _build_chain(db, tx)
 
+    # 最新のキャッチオール自己判定結果
+    latest_catchall = (
+        db.query(CatchallAssessment)
+        .filter(CatchallAssessment.transaction_id == transaction_id)
+        .order_by(desc(CatchallAssessment.id))
+        .first()
+    )
+
     templates = request.app.state.templates
     return templates.TemplateResponse(
         "transaction_detail.html",
@@ -413,6 +422,7 @@ def transaction_detail_page(
             "chain": chain,
             "faiss_ready": getattr(request.app.state, "faiss_ready", False),
             "hs_suggestions": hs_suggestions,
+            "latest_catchall": latest_catchall,
             "platform_url": __import__("os").getenv("MODULE_PLATFORM_URL", "http://localhost:8000"),
         },
     )
@@ -525,9 +535,27 @@ def export_pdf(
     two_lists = compute_two_lists(db=db, transaction_id=transaction_id, run_id=effective_run_id)
     run_at = latest.finished_at if latest else None
 
+    # 最新のキャッチオール自己判定をPDFに反映
+    latest_ca = (
+        db.query(CatchallAssessment)
+        .filter(CatchallAssessment.transaction_id == transaction_id)
+        .order_by(desc(CatchallAssessment.id))
+        .first()
+    )
+    catchall_judgment = None
+    if latest_ca and latest_ca.judgment_json:
+        try:
+            from platform_core.ontology.models.catchall import CatchallJudgment
+            catchall_judgment = CatchallJudgment(**latest_ca.judgment_json)
+        except Exception:
+            pass
+
     templates = request.app.state.templates
     try:
-        pdf_bytes = build_pdf(tx=tx, two_lists=two_lists, run_at=run_at, templates=templates)
+        pdf_bytes = build_pdf(
+            tx=tx, two_lists=two_lists, run_at=run_at,
+            templates=templates, catchall_judgment=catchall_judgment,
+        )
     except Exception as exc:
         logger.error("PDF generation failed for tx %d: %s", transaction_id, exc)
         raise HTTPException(status_code=500, detail=f"PDF生成エラー: {exc}")

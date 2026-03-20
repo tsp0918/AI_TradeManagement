@@ -3,14 +3,17 @@
 該非判定レポートの CSV / PDF 生成サービス。
 
   build_csv(tx, two_lists, run_at)  -> str (CSV テキスト)
-  build_pdf(tx, two_lists, run_at, templates) -> bytes (PDF バイナリ)
+  build_pdf(tx, two_lists, run_at, templates, catchall_judgment) -> bytes (PDF バイナリ)
 """
 from __future__ import annotations
 
 import csv
 import io
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from platform_core.ontology.models.catchall import CatchallJudgment
 
 # WeasyPrint は起動時ではなく、呼び出し時のみインポート（重いため）
 # from weasyprint import HTML  ← 下の build_pdf 内でインポート
@@ -298,14 +301,19 @@ def build_pdf(
     two_lists: Dict[str, Any],
     run_at: Optional[datetime],
     templates: Any,  # Jinja2 Templates (starlette)
+    catchall_judgment: Optional["CatchallJudgment"] = None,
 ) -> bytes:
     """
     Jinja2 で HTML を生成し WeasyPrint で PDF に変換して返す。
+
+    catchall_judgment が渡された場合、PDF 末尾にキャッチオール自己判定セクションを追加する。
     """
     from weasyprint import HTML  # 遅延インポート
 
     c = two_lists.get("counts", {})
     run_at_str = run_at.strftime("%Y-%m-%d %H:%M") if run_at else "-"
+
+    catchall_dict = catchall_judgment.to_dict() if catchall_judgment else None
 
     html_str = templates.get_template("report_pdf.html").render(
         tx=tx,
@@ -319,6 +327,7 @@ def build_pdf(
         row_label=_row_label,
         fmt_score=_fmt_score,
         executive_summary=_build_executive_summary(two_lists, tx),
+        catchall=catchall_dict,
     )
 
     pdf_bytes = HTML(string=html_str, base_url=None).write_pdf()

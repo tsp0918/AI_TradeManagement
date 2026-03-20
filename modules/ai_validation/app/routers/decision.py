@@ -1,6 +1,7 @@
 from typing import Optional, Dict, Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.deps import get_db
@@ -82,6 +83,142 @@ def get_two_lists(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class RedFlagInput(BaseModel):
+    rf1_unknown_end_user:        Optional[bool] = None
+    rf1_note:                    Optional[str]  = None
+    rf2_suspicious_end_use:      Optional[bool] = None
+    rf2_note:                    Optional[str]  = None
+    rf3_abnormal_price:          Optional[bool] = None
+    rf3_note:                    Optional[str]  = None
+    rf4_unusual_payment:         Optional[bool] = None
+    rf4_note:                    Optional[str]  = None
+    rf5_suspicious_routing:      Optional[bool] = None
+    rf5_note:                    Optional[str]  = None
+    rf6_no_technical_knowledge:  Optional[bool] = None
+    rf6_note:                    Optional[str]  = None
+    rf7_concern_country_routing: Optional[bool] = None
+    rf7_note:                    Optional[str]  = None
+
+
+class CatchallJudgmentRequest(BaseModel):
+    """POST /decision/{transaction_id}/catchall-judgment のリクエストボディ"""
+    session_id:          str
+    destination_country: Optional[str]  = None   # ISO alpha-2
+    end_user_name:       Optional[str]  = None
+    end_user_country:    Optional[str]  = None   # ISO alpha-2
+    consignee_name:      Optional[str]  = None
+    inform_received:     Optional[bool] = None
+    inform_note:         Optional[str]  = None
+    end_use_description: Optional[str]  = None
+    euc_obtained:        Optional[bool] = None
+    red_flags:           RedFlagInput   = RedFlagInput()
+    evaluator_note:      Optional[str]  = None
+
+
+@router.post("/{transaction_id}/catchall-judgment")
+def run_catchall_judgment(
+    transaction_id: int,
+    body: CatchallJudgmentRequest,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    キャッチオール規制（輸出令第4条）自己判定を実行する。
+
+    主な用途:
+      - FAISS Two-List の結果が LOW（リスト規制候補なし）の取引に対して呼び出す
+      - Red Flag 7項目 Y/N + 仕向地情報 + インフォーム通知有無を入力として受け取る
+      - 輸出令第4条（大量破壊兵器等キャッチオール）および
+        第4条の2（通常兵器キャッチオール）の該当性を Symbolic ルールで判定する
+    """
+    tx = db.get(Transaction, transaction_id)
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    try:
+        from platform_core.ontology.models.catchall import CatchallContext, RedFlagAnswers
+        from platform_core.ontology.rules.catchall_engine import evaluate_catchall
+        from app.db.models.catchall_assessment import CatchallAssessment
+
+        rf_data = body.red_flags.model_dump()
+        ctx = CatchallContext(
+            transaction_id=transaction_id,
+            session_id=body.session_id,
+            destination_country=body.destination_country,
+            end_user_name=body.end_user_name,
+            end_user_country=body.end_user_country,
+            consignee_name=body.consignee_name,
+            inform_received=body.inform_received,
+            inform_note=body.inform_note,
+            end_use_description=body.end_use_description,
+            euc_obtained=body.euc_obtained,
+            red_flags=RedFlagAnswers(**rf_data),
+            evaluator_note=body.evaluator_note,
+        )
+        judgment = evaluate_catchall(ctx)
+
+        # DB 保存
+        record = CatchallAssessment(
+            transaction_id=transaction_id,
+            session_id=body.session_id,
+            verdict=judgment.verdict.value,
+            verdict_label=judgment.verdict_label,
+            verdict_detail=judgment.verdict_detail,
+            destination_country=judgment.destination_country,
+            destination_risk_level=judgment.destination_risk_level.value if judgment.destination_risk_level else None,
+            is_concern_country=int(judgment.is_concern_country),
+            red_flag_positive_count=judgment.red_flag_positive_count,
+            judgment_json=judgment.to_dict(),
+            evaluated_at=judgment.evaluated_at,
+        )
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+
+        return {
+            "ok": True,
+            "transaction_id": transaction_id,
+            "assessment_id": record.id,
+            "catchall_judgment": judgment.to_dict(),
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{transaction_id}/catchall-result")
+def get_catchall_result(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """最新のキャッチオール判定結果を取得する（HanteiAgent / DAP チャット用）。"""
+    from sqlalchemy import desc
+    from app.db.models.catchall_assessment import CatchallAssessment
+
+    record = (
+        db.query(CatchallAssessment)
+        .filter(CatchallAssessment.transaction_id == transaction_id)
+        .order_by(desc(CatchallAssessment.id))
+        .first()
+    )
+    if not record:
+        return {"available": False, "transaction_id": transaction_id}
+
+    return {
+        "available": True,
+        "transaction_id": transaction_id,
+        "assessment_id": record.id,
+        "verdict": record.verdict,
+        "verdict_label": record.verdict_label,
+        "verdict_detail": record.verdict_detail,
+        "destination_country": record.destination_country,
+        "destination_risk_level": record.destination_risk_level,
+        "is_concern_country": bool(record.is_concern_country),
+        "red_flag_positive_count": record.red_flag_positive_count,
+        "evaluated_at": record.evaluated_at.isoformat() if record.evaluated_at else None,
+        "judgment": record.judgment_json,
+    }
 
 
 @router.post("/{transaction_id}/run-and-two-lists")
