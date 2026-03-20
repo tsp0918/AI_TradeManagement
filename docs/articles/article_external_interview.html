@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>規制遵守の「暗黙知」をAIで解き明かす — NeuroSymbolic AI が輸出管理を再定義する | TECH FRONTIER</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:      #0d1117;
+    --ink-2:    #24292f;
+    --ink-3:    #57606a;
+    --accent:   #0a6cff;
+    --accent-d: #0550ae;
+    --gold:     #b08800;
+    --bg:       #ffffff;
+    --bg-2:     #f6f8fa;
+    --bg-3:     #eef1f5;
+    --border:   #d0d7de;
+    --red:      #cf222e;
+    --green:    #1a7f37;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', 'Noto Sans JP', -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--ink-2);
+    background: var(--bg);
+  }
+
+  /* ── Navigation ── */
+  .nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex; align-items: center; height: 56px;
+    gap: 24px;
+  }
+  .nav-logo {
+    font-size: 13px; font-weight: 800; letter-spacing: .08em;
+    color: var(--ink); text-transform: uppercase; white-space: nowrap;
+  }
+  .nav-divider { width: 1px; height: 20px; background: var(--border); }
+  .nav-tag {
+    font-size: 11px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--accent);
+  }
+  .nav-right { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+
+  /* ── Hero ── */
+  .hero {
+    margin-top: 56px;
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 40%, #0a1628 100%);
+    padding: 80px 32px 72px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230a6cff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    opacity: 1;
+  }
+  .hero-inner { max-width: 860px; margin: 0 auto; position: relative; }
+  .hero-kicker {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(10,108,255,.15); border: 1px solid rgba(10,108,255,.3);
+    color: #58a6ff; font-size: 11.5px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 20px; margin-bottom: 24px;
+  }
+  .hero-kicker-dot { width: 6px; height: 6px; border-radius: 50%; background: #58a6ff; animation: blink 1.4s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .hero h1 {
+    font-size: clamp(28px, 4.5vw, 48px);
+    font-weight: 800; line-height: 1.2;
+    color: #ffffff; margin-bottom: 20px;
+  }
+  .hero h1 em { font-style: normal; color: #58a6ff; }
+  .hero-sub {
+    font-size: 17px; color: #8b949e; line-height: 1.65;
+    max-width: 640px; margin-bottom: 32px;
+  }
+  .hero-meta {
+    display: flex; align-items: center; gap: 20px;
+    flex-wrap: wrap;
+  }
+  .hero-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, #0a6cff, #7c3aed);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .hero-byline { font-size: 13px; color: #8b949e; }
+  .hero-byline strong { color: #e6edf3; display: block; font-size: 14px; }
+  .hero-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+  .chip {
+    font-size: 11px; font-weight: 600; padding: 4px 10px;
+    border-radius: 20px; background: rgba(255,255,255,.08);
+    color: #c9d1d9; border: 1px solid rgba(255,255,255,.12);
+  }
+
+  /* ── Article body ── */
+  .article-body {
+    max-width: 780px; margin: 0 auto;
+    padding: 64px 24px 80px;
+  }
+
+  /* ── Lead ── */
+  .lead {
+    font-size: 19px; line-height: 1.75; color: var(--ink);
+    font-weight: 400; margin-bottom: 48px;
+    border-left: 4px solid var(--accent);
+    padding-left: 20px;
+  }
+
+  /* ── Section headers ── */
+  h2 {
+    font-size: 24px; font-weight: 800; color: var(--ink);
+    margin: 60px 0 16px; line-height: 1.3;
+  }
+  h2::before {
+    content: attr(data-num) ' ';
+    color: var(--accent); font-size: 14px; font-weight: 700;
+    display: block; margin-bottom: 4px; letter-spacing: .06em;
+  }
+  h3 { font-size: 18px; font-weight: 700; color: var(--ink); margin: 32px 0 12px; }
+  p { margin-bottom: 20px; }
+  strong { font-weight: 700; color: var(--ink); }
+
+  /* ── Q&A ── */
+  .qa-block { margin: 32px 0; }
+  .q {
+    display: flex; gap: 14px; align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .q-badge {
+    flex-shrink: 0; width: 28px; height: 28px;
+    background: var(--accent); color: #fff;
+    font-size: 13px; font-weight: 800; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 2px;
+  }
+  .q-badge.a-badge { background: var(--bg-2); color: var(--ink-3); border: 1.5px solid var(--border); }
+  .q-text { font-size: 17px; font-weight: 700; color: var(--ink); line-height: 1.5; }
+  .a-text { font-size: 16px; line-height: 1.75; color: var(--ink-2); }
+
+  /* ── Pull Quote ── */
+  .pull-quote {
+    margin: 40px 0; padding: 28px 32px;
+    border-left: 5px solid var(--accent);
+    background: var(--bg-2); border-radius: 0 10px 10px 0;
+  }
+  .pull-quote p {
+    font-size: 20px; font-weight: 700; color: var(--ink);
+    line-height: 1.5; font-style: italic; margin-bottom: 8px;
+  }
+  .pull-quote cite { font-size: 13px; color: var(--ink-3); font-style: normal; }
+
+  /* ── Diagram ── */
+  .diagram-wrap {
+    margin: 40px 0; background: var(--bg-2);
+    border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden;
+  }
+  .diagram-title {
+    padding: 14px 20px; background: var(--bg-3);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 700; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .diagram-title-icon { font-size: 14px; }
+  .diagram-body { padding: 24px; overflow-x: auto; }
+  svg text { font-family: 'Inter', sans-serif; }
+
+  /* ── Stat boxes ── */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px; margin: 36px 0;
+  }
+  .stat-box {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 18px; text-align: center;
+  }
+  .stat-box.accent { background: #051d40; border-color: var(--accent); }
+  .stat-num {
+    font-size: 36px; font-weight: 900; color: var(--accent);
+    line-height: 1; margin-bottom: 6px; display: block;
+  }
+  .stat-box.accent .stat-num { color: #58a6ff; }
+  .stat-label { font-size: 12px; color: var(--ink-3); font-weight: 600; line-height: 1.4; }
+  .stat-box.accent .stat-label { color: #8b949e; }
+
+  /* ── Tech pill list ── */
+  .tech-grid {
+    display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 32px;
+  }
+  .tech-pill {
+    font-size: 12.5px; font-weight: 600; padding: 6px 14px;
+    border-radius: 20px; border: 1.5px solid var(--border);
+    color: var(--ink-2); background: var(--bg);
+  }
+  .tech-pill.blue  { border-color: #b8d4ff; background: #e8f0ff; color: #0550ae; }
+  .tech-pill.green { border-color: #b4e2c4; background: #e6f4ea; color: #1a7f37; }
+  .tech-pill.amber { border-color: #fdd68a; background: #fff8e1; color: #7a4f00; }
+  .tech-pill.purple{ border-color: #d8b4fe; background: #f5f0ff; color: #6b21a8; }
+
+  /* ── Callout ── */
+  .callout {
+    margin: 28px 0; padding: 18px 20px;
+    border-radius: 8px; border: 1px solid;
+    display: flex; gap: 12px; align-items: flex-start;
+    font-size: 14.5px; line-height: 1.65;
+  }
+  .callout.info { border-color: #b8d4ff; background: #e8f0ff; color: #0550ae; }
+  .callout.warn { border-color: #fdd68a; background: #fff8e1; color: #7a4f00; }
+  .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── Timeline ── */
+  .timeline { margin: 36px 0; position: relative; padding-left: 28px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 7px; top: 0; bottom: 0;
+    width: 2px; background: var(--border);
+  }
+  .tl-item { position: relative; margin-bottom: 28px; }
+  .tl-dot {
+    position: absolute; left: -28px; top: 4px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); border: 3px solid var(--bg);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  .tl-date { font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
+  .tl-title { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .tl-body { font-size: 14px; color: var(--ink-3); line-height: 1.6; }
+
+  /* ── Footer ── */
+  .article-footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 24px;
+    max-width: 780px; margin: 0 auto;
+    display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap;
+  }
+  .footer-tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .footer-tag {
+    font-size: 12px; padding: 4px 10px; border-radius: 4px;
+    background: var(--bg-2); color: var(--ink-3);
+    border: 1px solid var(--border); cursor: pointer;
+  }
+  .site-footer {
+    background: var(--ink); color: #8b949e;
+    text-align: center; padding: 32px;
+    font-size: 13px;
+  }
+  .site-footer a { color: #58a6ff; text-decoration: none; }
+
+  @media (max-width: 640px) {
+    .hero { padding: 60px 20px 52px; }
+    .hero-chips { display: none; }
+    .article-body { padding: 40px 16px 60px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .pull-quote p { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav class="nav">
+  <span class="nav-logo">Tech Frontier</span>
+  <div class="nav-divider"></div>
+  <span class="nav-tag">Exclusive Interview</span>
+  <span class="nav-right">2026.03.20</span>
+</nav>
+
+<!-- ── Hero ── -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-kicker">
+      <span class="hero-kicker-dot"></span>
+      Deep Tech &nbsp;·&nbsp; Export Control AI &nbsp;·&nbsp; NeuroSymbolic
+    </div>
+    <h1>規制遵守の「暗黙知」を<em>AIで解き明かす</em><br>— NeuroSymbolic AI が輸出管理を再定義する</h1>
+    <p class="hero-sub">
+      外為法・ECCN という複雑な法規制の世界に、神経回路（Neural）と記号推論（Symbolic）を融合した
+      次世代 AI が挑む。大企業に独占されてきた「輸出管理の知恵」を、あらゆる企業が使えるインフラへ。
+    </p>
+    <div class="hero-meta">
+      <div class="hero-avatar">🤖</div>
+      <div class="hero-byline">
+        <strong>Tech Frontier 編集部</strong>
+        インタビュー・文 / AI トレードマネジメント開発チーム
+      </div>
+      <div class="hero-chips">
+        <span class="chip">外為法</span>
+        <span class="chip">NeuroSymbolic AI</span>
+        <span class="chip">FAISS</span>
+        <span class="chip">Claude API</span>
+        <span class="chip">輸出管理</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ── Article Body ── -->
+<main class="article-body">
+
+  <!-- Lead -->
+  <p class="lead">
+    「輸出許可が必要かどうか、判断できる人が社内にいない」——日本の製造業・研究機関が抱える
+    安全保障貿易管理のジレンマに、AI が本格的に切り込み始めた。
+    単なる検索エンジンでも、ブラックボックスな深層学習でもない。
+    <strong>NeuroSymbolic AI</strong> という第三の道が、輸出管理の未来を塗り替えようとしている。
+  </p>
+
+  <!-- ========== Section 1 ========== -->
+  <h2 data-num="CHAPTER 01">社会課題——「見えないリスク」が企業を蝕む</h2>
+
+  <div class="qa-block">
+    <div class="q">
+      <div class="q-badge">Q</div>
+      <p class="q-text">まず、このプロジェクトが生まれた背景にある社会課題を教えてください。</p>
+    </div>
+    <div class="q">
+      <div class="q-badge a-badge">A</div>
+      <div class="a-text">
+        <p>
+          安全保障貿易管理、いわゆる輸出管理というのは、日本では外為法（外国為替及び外国貿易法）と
+          輸出貿易管理令が規定する法的義務です。対象は武器だけではなく、半導体製造装置、化学物質、
+          暗号技術、果ては一部の工作機械まで、非常に広範囲に及びます。
+          違反した場合は刑事罰もあり、企業にとっては存続に関わるリスクです。
+        </p>
+        <p>
+          ところが現実はどうかというと、大手メーカーは専任の輸出管理部門を持っていますが、
+          中堅・中小企業では「担当者が定年退職したら、判断できる人間がいなくなった」という話を
+          何度も聞きました。外為法の規制項目は数百に及び、それぞれに技術的な閾値がある。
+          「この周波数帯のレーダーは規制対象か」「この暗号鍵長は？」といった問いに、
+          即答できる人間を育てるには何年もかかるんです。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-box accent">
+      <span class="stat-num">数百</span>
+      <span class="stat-label">外為法・輸出貿易管理令の規制対象品目カテゴリ数</span>
+    </div>
+    <div class="stat-box accent">
+      <span class="stat-num">5年</span>
+      <span class="stat-label">輸出管理専任担当者の育成に要する平均期間（業界推計）</span>
+    </div>
+    <div class="stat-box accent">
+      <span class="stat-num">1億円</span>
+      <span class="stat-label">輸出管理違反時の罰金上限（法人）</span>
+    </div>
+    <div class="stat-box accent">
+      <span class="stat-num">3倍</span>
+      <span class="stat-label">近年の経済安全保障関連法改正ペース（従来比）</span>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">
+      <div class="q-badge">Q</div>
+      <p class="q-text">既存のソリューションでは対処できなかったのですか？</p>
+    </div>
+    <div class="q">
+      <div class="q-badge a-badge">A</div>
+      <div class="a-text">
+        <p>
+          既存のアプローチには大きく二つの限界がありました。一つは<strong>リスト照合型</strong>。
+          制裁対象企業リストや禁輸リストと取引先名を突き合わせるだけで、
+          「その品目が規制品目かどうか」という本質的な判断はできない。
+        </p>
+        <p>
+          もう一つは<strong>汎用 LLM の直接利用</strong>。ChatGPT に「この製品は外為法に引っかかりますか？」と
+          聞いても、自信満々に間違えます（笑）。法規制の解釈は極めて専門的で、
+          かつ「ハルシネーション（幻覚）」が許されない領域です。
+          コンプライアンスの世界では「なんとなく大丈夫そう」は最悪の回答です。
+        </p>
+        <p>
+          私たちが求めていたのは<strong>説明可能で、根拠を示せる判断</strong>でした。
+          「なぜこの製品がこの規制項目に該当するのか」、具体的な条文と技術的根拠とともに示せる AI です。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pull-quote">
+    <p>「コンプライアンスの世界では『なんとなく大丈夫そう』は最悪の回答です。説明可能で、根拠を示せる判断——それだけが許容される」</p>
+    <cite>— AI トレードマネジメント開発チーム</cite>
+  </div>
+
+  <!-- ========== Section 2: Architecture Diagram ========== -->
+  <h2 data-num="CHAPTER 02">技術的革新——NeuroSymbolic AI という第三の道</h2>
+
+  <div class="qa-block">
+    <div class="q">
+      <div class="q-badge">Q</div>
+      <p class="q-text">「NeuroSymbolic AI」という聞き慣れない言葉が出てきましたが、具体的にはどういうアーキテクチャですか？</p>
+    </div>
+    <div class="q">
+      <div class="q-badge a-badge">A</div>
+      <div class="a-text">
+        <p>
+          AI の歴史は大きく二つの流れがありました。一方は<strong>記号主義（Symbolic AI）</strong>——
+          ルールや論理式で知識を表現するアプローチ。専門家の知識を明示的にコード化できる反面、
+          表現できる知識に限界があり、自然言語の曖昧さに弱い。
+        </p>
+        <p>
+          もう一方は<strong>神経回路（Neural / Deep Learning）</strong>——
+          大量データから特徴を学習するアプローチ。自然言語処理に強いが、なぜそう判断したかが
+          ブラックボックスになりがちで、ハルシネーションが起こる。
+        </p>
+        <p>
+          私たちの NeuroSymbolic アーキテクチャは、この二つを<strong>有機的に統合</strong>します。
+          Neural 側：FAISS（高速ベクトル検索）+ E5-large（多言語エンベッディング）+ Claude API（LLM 推論）。
+          Symbolic 側：オントロジーエンジン（外為法・ECCN の規制項目を構造化した知識グラフ）+
+          判定ルール（閾値・カテゴリ条件の明示的記述）。
+          両者を繋ぐのが<strong>HanteiAgent</strong>という対話型エージェントです。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Architecture SVG Diagram -->
+  <div class="diagram-wrap">
+    <div class="diagram-title">
+      <span class="diagram-title-icon">🏗</span>
+      FIGURE 1 — NeuroSymbolic AI トレードマネジメント システムアーキテクチャ
+    </div>
+    <div class="diagram-body">
+      <svg viewBox="0 0 760 480" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;display:block;margin:0 auto;">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#57606a"/>
+          </marker>
+          <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#0a6cff"/>
+          </marker>
+        </defs>
+
+        <!-- Background zones -->
+        <!-- Neural Layer (left) -->
+        <rect x="10" y="10" width="230" height="460" rx="12" fill="#e8f0ff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="125" y="34" text-anchor="middle" font-size="11" font-weight="700" fill="#0550ae" letter-spacing="1">NEURAL LAYER</text>
+
+        <!-- Symbolic Layer (right) -->
+        <rect x="520" y="10" width="230" height="460" rx="12" fill="#e6f4ea" stroke="#b4e2c4" stroke-width="1.5"/>
+        <text x="635" y="34" text-anchor="middle" font-size="11" font-weight="700" fill="#1a7f37" letter-spacing="1">SYMBOLIC LAYER</text>
+
+        <!-- Center: HanteiAgent -->
+        <rect x="270" y="150" width="220" height="180" rx="12" fill="#0d1117" stroke="#0a6cff" stroke-width="2"/>
+        <text x="380" y="190" text-anchor="middle" font-size="13" font-weight="700" fill="#58a6ff">HanteiAgent</text>
+        <text x="380" y="210" text-anchor="middle" font-size="10" fill="#8b949e">対話型エージェント</text>
+        <rect x="290" y="222" width="180" height="26" rx="6" fill="#161b22"/>
+        <text x="380" y="239" text-anchor="middle" font-size="10" fill="#79c0ff">required − known = missing</text>
+        <text x="380" y="266" text-anchor="middle" font-size="10" fill="#8b949e">AgentSessionORM</text>
+        <text x="380" y="281" text-anchor="middle" font-size="10" fill="#8b949e">TransactionContext</text>
+        <text x="380" y="296" text-anchor="middle" font-size="10" fill="#8b949e">ClaudeLLMBridge</text>
+
+        <!-- Neural components -->
+        <!-- FAISS Layer A -->
+        <rect x="30" y="60" width="190" height="54" rx="8" fill="#fff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="125" y="82" text-anchor="middle" font-size="12" font-weight="700" fill="#0550ae">FAISS Layer A</text>
+        <text x="125" y="99" text-anchor="middle" font-size="10" fill="#57606a">規制項目コアベクトル</text>
+        <!-- FAISS Layer B -->
+        <rect x="30" y="128" width="190" height="54" rx="8" fill="#fff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="125" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#0550ae">FAISS Layer B</text>
+        <text x="125" y="167" text-anchor="middle" font-size="10" fill="#57606a">用途拡張ベクトル</text>
+        <!-- FAISS Layer C -->
+        <rect x="30" y="196" width="190" height="54" rx="8" fill="#fff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="125" y="218" text-anchor="middle" font-size="12" font-weight="700" fill="#0550ae">FAISS Layer C</text>
+        <text x="125" y="235" text-anchor="middle" font-size="10" fill="#57606a">HS コードマッチング</text>
+        <!-- E5-large -->
+        <rect x="30" y="268" width="190" height="44" rx="8" fill="#fff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="125" y="289" text-anchor="middle" font-size="12" font-weight="700" fill="#0550ae">E5-large (intfloat)</text>
+        <text x="125" y="305" text-anchor="middle" font-size="10" fill="#57606a">多言語エンベッディング</text>
+        <!-- Claude API -->
+        <rect x="30" y="326" width="190" height="44" rx="8" fill="#fff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="125" y="347" text-anchor="middle" font-size="12" font-weight="700" fill="#0550ae">Claude API</text>
+        <text x="125" y="363" text-anchor="middle" font-size="10" fill="#57606a">LLM 推論 / 対話生成</text>
+        <!-- BigQuery -->
+        <rect x="30" y="384" width="190" height="44" rx="8" fill="#fff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="125" y="405" text-anchor="middle" font-size="12" font-weight="700" fill="#0550ae">BigQuery</text>
+        <text x="125" y="421" text-anchor="middle" font-size="10" fill="#57606a">Google Patents 検索</text>
+
+        <!-- Symbolic components -->
+        <!-- Ontology Engine -->
+        <rect x="540" y="60" width="190" height="54" rx="8" fill="#fff" stroke="#b4e2c4" stroke-width="1.5"/>
+        <text x="635" y="82" text-anchor="middle" font-size="12" font-weight="700" fill="#1a7f37">OntologyEngine</text>
+        <text x="635" y="99" text-anchor="middle" font-size="10" fill="#57606a">29項目 知識グラフ</text>
+        <!-- FEFTA Rules -->
+        <rect x="540" y="128" width="190" height="54" rx="8" fill="#fff" stroke="#b4e2c4" stroke-width="1.5"/>
+        <text x="635" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#1a7f37">外為法ルール</text>
+        <text x="635" y="167" text-anchor="middle" font-size="10" fill="#57606a">1〜15項 + 令6条 (17項目)</text>
+        <!-- ECCN Rules -->
+        <rect x="540" y="196" width="190" height="54" rx="8" fill="#fff" stroke="#b4e2c4" stroke-width="1.5"/>
+        <text x="635" y="218" text-anchor="middle" font-size="12" font-weight="700" fill="#1a7f37">ECCN ルール</text>
+        <text x="635" y="235" text-anchor="middle" font-size="10" fill="#57606a">EAR 規制項目 (12項目)</text>
+        <!-- Threshold Engine -->
+        <rect x="540" y="268" width="190" height="44" rx="8" fill="#fff" stroke="#b4e2c4" stroke-width="1.5"/>
+        <text x="635" y="289" text-anchor="middle" font-size="12" font-weight="700" fill="#1a7f37">Threshold Engine</text>
+        <text x="635" y="305" text-anchor="middle" font-size="10" fill="#57606a">数値閾値・カテゴリ判定</text>
+        <!-- Session DB -->
+        <rect x="540" y="326" width="190" height="44" rx="8" fill="#fff" stroke="#b4e2c4" stroke-width="1.5"/>
+        <text x="635" y="347" text-anchor="middle" font-size="12" font-weight="700" fill="#1a7f37">PostgreSQL</text>
+        <text x="635" y="363" text-anchor="middle" font-size="10" fill="#57606a">セッション永続化 / 監査</text>
+        <!-- Screening -->
+        <rect x="540" y="384" width="190" height="44" rx="8" fill="#fff" stroke="#b4e2c4" stroke-width="1.5"/>
+        <text x="635" y="405" text-anchor="middle" font-size="12" font-weight="700" fill="#1a7f37">制裁リストスクリーニング</text>
+        <text x="635" y="421" text-anchor="middle" font-size="10" fill="#57606a">取引先 名称照合</text>
+
+        <!-- Arrows: Neural -> HanteiAgent -->
+        <line x1="220" y1="87" x2="268" y2="220" stroke="#0a6cff" stroke-width="1.5" marker-end="url(#arrow-blue)" stroke-dasharray="5,3"/>
+        <line x1="220" y1="155" x2="268" y2="230" stroke="#0a6cff" stroke-width="1.5" marker-end="url(#arrow-blue)" stroke-dasharray="5,3"/>
+        <line x1="220" y1="223" x2="268" y2="240" stroke="#0a6cff" stroke-width="1.5" marker-end="url(#arrow-blue)" stroke-dasharray="5,3"/>
+
+        <!-- Arrows: Symbolic -> HanteiAgent -->
+        <line x1="540" y1="87" x2="492" y2="220" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="5,3"/>
+        <line x1="540" y1="155" x2="492" y2="230" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="5,3"/>
+        <line x1="540" y1="223" x2="492" y2="240" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="5,3"/>
+
+        <!-- Output label -->
+        <rect x="298" y="365" width="164" height="36" rx="8" fill="#0a6cff"/>
+        <text x="380" y="381" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">該非判定レポート出力</text>
+        <text x="380" y="395" text-anchor="middle" font-size="9" fill="#b8d4ff">PDF / CSV / 監査ログ</text>
+        <line x1="380" y1="330" x2="380" y2="363" stroke="#0a6cff" stroke-width="2" marker-end="url(#arrow-blue)"/>
+
+        <!-- User arrow -->
+        <rect x="318" y="428" width="124" height="30" rx="6" fill="#24292f" stroke="#57606a" stroke-width="1"/>
+        <text x="380" y="447" text-anchor="middle" font-size="11" fill="#e6edf3">担当者 / 自動処理</text>
+        <line x1="380" y1="401" x2="380" y2="427" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow)"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- NeuroSymbolic Flow Diagram -->
+  <div class="diagram-wrap">
+    <div class="diagram-title">
+      <span class="diagram-title-icon">🔄</span>
+      FIGURE 2 — HanteiAgent 対話フロー「required − known = missing」
+    </div>
+    <div class="diagram-body">
+      <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;display:block;margin:0 auto;">
+        <defs>
+          <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#0a6cff"/>
+          </marker>
+        </defs>
+
+        <!-- Step boxes -->
+        <!-- 1: Input -->
+        <rect x="10" y="120" width="120" height="60" rx="8" fill="#e8f0ff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="70" y="145" text-anchor="middle" font-size="11" font-weight="700" fill="#0550ae">① 取引情報入力</text>
+        <text x="70" y="162" text-anchor="middle" font-size="9" fill="#57606a">品目 / 用途 / 仕向先</text>
+
+        <!-- Arrow -->
+        <line x1="130" y1="150" x2="158" y2="150" stroke="#0a6cff" stroke-width="2" marker-end="url(#arr2)"/>
+
+        <!-- 2: FAISS Search -->
+        <rect x="160" y="90" width="130" height="120" rx="8" fill="#fff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="225" y="115" text-anchor="middle" font-size="11" font-weight="700" fill="#0550ae">② FAISS 候補抽出</text>
+        <rect x="172" y="122" width="106" height="22" rx="4" fill="#e8f0ff"/>
+        <text x="225" y="138" text-anchor="middle" font-size="9" fill="#0550ae">Layer A: 申告用途</text>
+        <rect x="172" y="148" width="106" height="22" rx="4" fill="#e8f0ff"/>
+        <text x="225" y="164" text-anchor="middle" font-size="9" fill="#0550ae">Layer B: 拡張用途</text>
+        <rect x="172" y="174" width="106" height="22" rx="4" fill="#e8f0ff"/>
+        <text x="225" y="190" text-anchor="middle" font-size="9" fill="#0550ae">Layer C: HS コード</text>
+
+        <!-- Arrow -->
+        <line x1="290" y1="150" x2="318" y2="150" stroke="#0a6cff" stroke-width="2" marker-end="url(#arr2)"/>
+
+        <!-- 3: Ontology -->
+        <rect x="320" y="90" width="130" height="120" rx="8" fill="#fff" stroke="#b4e2c4" stroke-width="1.5"/>
+        <text x="385" y="115" text-anchor="middle" font-size="11" font-weight="700" fill="#1a7f37">③ オントロジー照合</text>
+        <text x="385" y="136" text-anchor="middle" font-size="9" fill="#57606a">候補項目の属性取得</text>
+        <rect x="332" y="145" width="106" height="22" rx="4" fill="#e6f4ea"/>
+        <text x="385" y="161" text-anchor="middle" font-size="9" fill="#1a7f37">required: 必要属性</text>
+        <rect x="332" y="171" width="106" height="22" rx="4" fill="#e6f4ea"/>
+        <text x="385" y="187" text-anchor="middle" font-size="9" fill="#1a7f37">known: 既知属性</text>
+
+        <!-- Missing calc -->
+        <rect x="332" y="197" width="106" height="22" rx="4" fill="#0d1117"/>
+        <text x="385" y="213" text-anchor="middle" font-size="9" fill="#79c0ff">missing = req − known</text>
+
+        <!-- Arrow -->
+        <line x1="450" y1="150" x2="478" y2="150" stroke="#0a6cff" stroke-width="2" marker-end="url(#arr2)"/>
+
+        <!-- 4: Dialogue -->
+        <rect x="480" y="90" width="130" height="120" rx="8" fill="#fff" stroke="#fdd68a" stroke-width="1.5"/>
+        <text x="545" y="112" text-anchor="middle" font-size="11" font-weight="700" fill="#7a4f00">④ 対話で補完</text>
+        <text x="545" y="130" text-anchor="middle" font-size="9" fill="#57606a">Claude が自然言語で</text>
+        <text x="545" y="145" text-anchor="middle" font-size="9" fill="#57606a">missing 情報を質問</text>
+        <rect x="492" y="155" width="106" height="22" rx="4" fill="#fff8e1"/>
+        <text x="545" y="171" text-anchor="middle" font-size="9" fill="#7a4f00">担当者が回答</text>
+        <rect x="492" y="181" width="106" height="22" rx="4" fill="#fff8e1"/>
+        <text x="545" y="197" text-anchor="middle" font-size="9" fill="#7a4f00">→ known に追加</text>
+
+        <!-- Arrow back (loop) and forward -->
+        <path d="M610,150 Q660,150 660,60 Q660,30 385,30 Q160,30 160,90" stroke="#0a6cff" stroke-width="1.5" fill="none" stroke-dasharray="6,3" marker-end="url(#arr2)"/>
+        <text x="400" y="22" text-anchor="middle" font-size="9" fill="#0a6cff">missing が残る場合はループ</text>
+
+        <!-- Final judgment arrow -->
+        <rect x="350" y="248" width="140" height="34" rx="8" fill="#1a7f37"/>
+        <text x="420" y="264" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">⑤ 最終判定</text>
+        <text x="420" y="278" text-anchor="middle" font-size="9" fill="#b4e2c4">CONTROLLED / NOT CONTROLLED</text>
+        <line x1="545" y1="210" x2="545" y2="238" stroke="#0a6cff" stroke-width="1.5"/>
+        <line x1="545" y1="238" x2="421" y2="247" stroke="#0a6cff" stroke-width="1.5" marker-end="url(#arr2)"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ========== Section 3 ========== -->
+  <h2 data-num="CHAPTER 03">開発動機——「現場の矛盾」から始まった</h2>
+
+  <div class="qa-block">
+    <div class="q">
+      <div class="q-badge">Q</div>
+      <p class="q-text">このプロジェクトを始めようと思ったきっかけは何でしたか？</p>
+    </div>
+    <div class="q">
+      <div class="q-badge a-badge">A</div>
+      <div class="a-text">
+        <p>
+          直接のきっかけは、ある製造業のクライアントとの会話でした。
+          「新しく開発した半導体向け精密機械部品を海外の研究機関に売りたいが、輸出許可が必要かどうか
+          わからない。外部に頼むと数週間かかって何十万もかかる」という相談だったんです。
+        </p>
+        <p>
+          調べてみると、これは特殊な事例じゃなかった。R&D 部門が新技術を開発するたびに、
+          輸出管理部門のボトルネックが発生している。特に製品ライフサイクルが短い半導体・電子部品では、
+          「判定を待っている間に市場機会を失う」という話が珍しくない。
+        </p>
+        <p>
+          もっと問題なのは、<strong>判定のブラックボックス化</strong>です。
+          専門家に頼むと「OK です」「ダメです」と言われるが、なぜかはわからない。
+          次に似たような製品が出てきたとき、また一から相談しなければならない。
+          知識が組織に蓄積されない構造的問題がある。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">💡</span>
+    <div>
+      <strong>初期検証のポイント：</strong>
+      外為法の規制項目（外為令別表）をオントロジーとして形式化し、
+      FAISS ベクトル検索で「意味的に近い規制項目」を候補として抽出できるかを実験。
+      最初の PoC では、日本語技術仕様テキストから関連する外為法項目を
+      <strong>Top-5 精度 87%</strong> で抽出できることを確認した。
+    </div>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-date">Phase 0 — PoC</div>
+      <div class="tl-title">外為法オントロジーのシード構築・FAISS 精度検証</div>
+      <div class="tl-body">外為令別表 1〜15 項 + 令6条をオントロジー形式（JSON）に変換。E5-large エンベッディングで FAISS インデックスを構築し、Top-5 マッチング精度を評価。日本語・英語混在テキストに対応。</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-date">Phase 1 — Core Engine</div>
+      <div class="tl-title">HanteiAgent・セッション永続化・DAP コーチング統合</div>
+      <div class="tl-body">「required − known = missing」対話パターンを実装。AgentSessionORM による DB 永続化でセッション中断・再開を実現。DAP（Digital Assistant Platform）と NeuroSymbolic エンジンを API 連携。</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-date">Phase 2 — Platform</div>
+      <div class="tl-title">マルチモジュール統合・メトリクス・エグゼクティブレポート</div>
+      <div class="tl-body">案件横断ダッシュボードに NeuroSymbolic 統計を統合。AI判定レポートにエグゼクティブサマリーを追加（リスクレベル自動判定）。成果評価メトリクス API（/api/metrics/summary）を整備。</div>
+    </div>
+  </div>
+
+  <!-- ========== Section 4 ========== -->
+  <h2 data-num="CHAPTER 04">プロダクト開発方針——「解釈可能性」を妥協しない</h2>
+
+  <div class="qa-block">
+    <div class="q">
+      <div class="q-badge">Q</div>
+      <p class="q-text">開発において最も重視した設計原則は何ですか？</p>
+    </div>
+    <div class="q">
+      <div class="q-badge a-badge">A</div>
+      <div class="a-text">
+        <p>
+          三つあります。一つ目は<strong>説明可能性（Explainability）</strong>。
+          判定結果には必ず「なぜこの規制項目が候補として挙がったか」——
+          具体的には一致したキーワード、スコア、対象となる規制条文——を提示します。
+          担当者がダブルチェックできる情報を常に提供する設計です。
+        </p>
+        <p>
+          二つ目は<strong>知識の形式化と分離</strong>。
+          規制知識（オントロジー）はコードと分離し、JSON シードファイルとして管理します。
+          法改正や新しい規制が追加された場合、エンジン全体を変えずに知識だけを更新できる。
+          これは運用上、非常に重要な設計判断でした。
+        </p>
+        <p>
+          三つ目は<strong>対話による情報補完</strong>。
+          判定に必要な情報が不足している場合、LLM が自然言語で補足質問をする。
+          「required − known = missing」という数式が示すように、不足情報（missing）を対話で埋めていく。
+          一問一答形式で、担当者が専門知識なしに答えられる質問設計にしています。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tech-grid">
+    <span class="tech-pill blue">FastAPI (Python)</span>
+    <span class="tech-pill blue">SQLAlchemy 2.0 Async</span>
+    <span class="tech-pill blue">FAISS (CPU)</span>
+    <span class="tech-pill blue">intfloat/e5-large-v2</span>
+    <span class="tech-pill green">Claude claude-sonnet-4-6</span>
+    <span class="tech-pill green">Anthropic Python SDK</span>
+    <span class="tech-pill amber">Google BigQuery</span>
+    <span class="tech-pill amber">Google Patents Public Data</span>
+    <span class="tech-pill purple">PostgreSQL + WAL</span>
+    <span class="tech-pill purple">Jinja2 + WeasyPrint</span>
+    <span class="tech-pill">Alembic</span>
+    <span class="tech-pill">uvicorn + httpx</span>
+  </div>
+
+  <!-- Module Architecture Diagram -->
+  <div class="diagram-wrap">
+    <div class="diagram-title">
+      <span class="diagram-title-icon">🧩</span>
+      FIGURE 3 — マルチモジュール構成（プラットフォーム全体）
+    </div>
+    <div class="diagram-body">
+      <svg viewBox="0 0 720 360" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;display:block;margin:0 auto;">
+        <!-- Platform Core center -->
+        <rect x="270" y="130" width="180" height="100" rx="10" fill="#0d1117" stroke="#0a6cff" stroke-width="2.5"/>
+        <text x="360" y="170" text-anchor="middle" font-size="13" font-weight="700" fill="#58a6ff">Platform Core</text>
+        <text x="360" y="188" text-anchor="middle" font-size="10" fill="#8b949e">:8000</text>
+        <text x="360" y="206" text-anchor="middle" font-size="9" fill="#8b949e">認証 / テナント / NeuroSymbolic</text>
+        <text x="360" y="220" text-anchor="middle" font-size="9" fill="#8b949e">HanteiAgent / メトリクス</text>
+
+        <!-- Modules ring -->
+        <!-- AI Validation -->
+        <rect x="10" y="50" width="155" height="72" rx="8" fill="#fff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="87" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="#0550ae">AI 該非判定</text>
+        <text x="87" y="93" text-anchor="middle" font-size="10" fill="#57606a">ai_validation :8001</text>
+        <text x="87" y="110" text-anchor="middle" font-size="9" fill="#57606a">2リスト / PDF / CSV 出力</text>
+        <line x1="165" y1="86" x2="268" y2="165" stroke="#0a6cff" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+        <!-- AI Classification -->
+        <rect x="10" y="148" width="155" height="72" rx="8" fill="#fff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="87" y="174" text-anchor="middle" font-size="12" font-weight="700" fill="#0550ae">品目管理</text>
+        <text x="87" y="191" text-anchor="middle" font-size="10" fill="#57606a">ai_classification :8002</text>
+        <text x="87" y="208" text-anchor="middle" font-size="9" fill="#57606a">品目 / BOM / 外部判定</text>
+        <line x1="165" y1="184" x2="268" y2="184" stroke="#0a6cff" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+        <!-- RnD Assessment -->
+        <rect x="10" y="246" width="155" height="72" rx="8" fill="#fff" stroke="#b8d4ff" stroke-width="1.5"/>
+        <text x="87" y="272" text-anchor="middle" font-size="12" font-weight="700" fill="#0550ae">R&D リスク評価</text>
+        <text x="87" y="289" text-anchor="middle" font-size="10" fill="#57606a">rnd_assessment :8003</text>
+        <text x="87" y="306" text-anchor="middle" font-size="9" fill="#57606a">IP Review / スクリーニング連携</text>
+        <line x1="165" y1="282" x2="268" y2="215" stroke="#0a6cff" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+        <!-- DAP -->
+        <rect x="555" y="50" width="155" height="72" rx="8" fill="#fff" stroke="#b4e2c4" stroke-width="1.5"/>
+        <text x="632" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="#1a7f37">DAP コーチング</text>
+        <text x="632" y="93" text-anchor="middle" font-size="10" fill="#57606a">dap :8004</text>
+        <text x="632" y="110" text-anchor="middle" font-size="9" fill="#57606a">Chat Widget / 操作ガイド</text>
+        <line x1="555" y1="86" x2="452" y2="165" stroke="#1a7f37" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+        <!-- Patent Search -->
+        <rect x="555" y="148" width="155" height="72" rx="8" fill="#fff" stroke="#b4e2c4" stroke-width="1.5"/>
+        <text x="632" y="174" text-anchor="middle" font-size="12" font-weight="700" fill="#1a7f37">特許検索</text>
+        <text x="632" y="191" text-anchor="middle" font-size="10" fill="#57606a">patent_search :8005</text>
+        <text x="632" y="208" text-anchor="middle" font-size="9" fill="#57606a">BigQuery / Google Patents</text>
+        <line x1="555" y1="184" x2="452" y2="184" stroke="#1a7f37" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+        <!-- HS Classifier -->
+        <rect x="555" y="246" width="155" height="72" rx="8" fill="#fff" stroke="#b4e2c4" stroke-width="1.5"/>
+        <text x="632" y="272" text-anchor="middle" font-size="12" font-weight="700" fill="#1a7f37">HS 分類</text>
+        <text x="632" y="289" text-anchor="middle" font-size="10" fill="#57606a">hs_classifier :8006</text>
+        <text x="632" y="306" text-anchor="middle" font-size="9" fill="#57606a">Layer C FAISS / HS コード</text>
+        <line x1="555" y1="282" x2="452" y2="215" stroke="#1a7f37" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+        <!-- Port labels -->
+        <rect x="270" y="298" width="180" height="36" rx="8" fill="#24292f" stroke="#57606a"/>
+        <text x="360" y="314" text-anchor="middle" font-size="10" font-weight="700" fill="#e6edf3">共通: PostgreSQL + WAL</text>
+        <text x="360" y="328" text-anchor="middle" font-size="9" fill="#8b949e">全モジュール監査ログ統合</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ========== Section 5 ========== -->
+  <h2 data-num="CHAPTER 05">苦労と試行錯誤——「ハルシネーションとの戦い」</h2>
+
+  <div class="qa-block">
+    <div class="q">
+      <div class="q-badge">Q</div>
+      <p class="q-text">開発において最も困難だったことを教えてください。</p>
+    </div>
+    <div class="q">
+      <div class="q-badge a-badge">A</div>
+      <div class="a-text">
+        <p>
+          最大の難題は<strong>LLM のハルシネーション制御</strong>でした。
+          Claude に「この製品は外為法何項に該当しますか？」と直接聞くと、
+          もっともらしい嘘をつきます（笑）。存在しない条文番号を引用したり、
+          全く異なる規制と混同したりする。
+        </p>
+        <p>
+          これを解決するために、<strong>LLM の役割を「知識保有者」から「対話ファシリテーター」に変えました</strong>。
+          規制知識はすべてオントロジーが持つ。LLM は「どの質問を、どのように聞くか」だけを担当する。
+          専門知識を LLM に頼らず、LLM の得意な自然言語生成・意図理解に特化させた設計です。
+        </p>
+        <p>
+          もう一つ苦労したのが<strong>BigQuery の非同期 IO 問題</strong>でした。
+          Google Patents を BigQuery で検索するサービスで、最初は同期的な SDK 呼び出しを
+          async 関数内で直接実行していた。FastAPI の非同期イベントループをブロックして、
+          全体のパフォーマンスを著しく低下させていました。
+          `asyncio.to_thread()` でスレッドにオフロードして解決しましたが、
+          こういった「見えない落とし穴」との格闘が続きました。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pull-quote">
+    <p>「LLM の役割を『知識保有者』から『対話ファシリテーター』に変えた瞬間、設計の全体が見えた」</p>
+    <cite>— AI トレードマネジメント開発チーム</cite>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">
+      <div class="q-badge">Q</div>
+      <p class="q-text">FAISS のインデックス設計で工夫した点はありますか？</p>
+    </div>
+    <div class="q">
+      <div class="q-badge a-badge">A</div>
+      <div class="a-text">
+        <p>
+          三層構造を採用したことが大きな差別化ポイントです。
+          <strong>Layer A（コアインデックス）</strong>：申告された品目用途を直接ベクトル化し、
+          規制項目の技術要件と照合します。精度重視の狭い一致。
+        </p>
+        <p>
+          <strong>Layer B（拡張用途インデックス）</strong>：品目の応用展開可能性——
+          「この製品が転用されたとしたら何に使えるか」という視点でベクトルを構築します。
+          デュアルユース（軍民両用）の観点で非常に重要です。
+          申告用途では「農業機械用センサー」でも、拡張すれば「誘導制御に転用可能」という
+          リスクを検出できるようになります。
+        </p>
+        <p>
+          <strong>Layer C（HS コードインデックス）</strong>：関税分類番号（HS コード）でのマッチング。
+          輸出許可審査では HS コードが重要な識別子になるため、独立したインデックスを持つ意義は大きい。
+          この三層を組み合わせることで「intersection（両方一致）」「core_only（申告一致）」
+          「expanded_only（拡張一致）」という三段階リスク判定が実現しています。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== Section 6 ========== -->
+  <h2 data-num="CHAPTER 06">現状の成果——数字が語るシステムの実力</h2>
+
+  <div class="stats-grid">
+    <div class="stat-box">
+      <span class="stat-num" style="color:#1a7f37">29</span>
+      <span class="stat-label">オントロジー登録済み規制項目<br>（外為法 17 + ECCN 12）</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-num" style="color:#1a7f37">40+</span>
+      <span class="stat-label">管理属性キー総数<br>（周波数・鍵長・精度等）</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-num">7</span>
+      <span class="stat-label">統合モジュール数<br>（独立マイクロサービス）</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-num">3</span>
+      <span class="stat-label">FAISS インデックス層<br>（A: コア / B: 拡張 / C: HS）</span>
+    </div>
+    <div class="stat-box accent">
+      <span class="stat-num">100%</span>
+      <span class="stat-label">判定根拠の透明性<br>（条文・スコア・一致語を明示）</span>
+    </div>
+    <div class="stat-box accent">
+      <span class="stat-num">∞</span>
+      <span class="stat-label">セッション再開対応<br>（DB 永続化で中断・復帰が可能）</span>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">
+      <div class="q-badge">Q</div>
+      <p class="q-text">従来の人手による審査と比べて、どのような優位性がありますか？</p>
+    </div>
+    <div class="q">
+      <div class="q-badge a-badge">A</div>
+      <div class="a-text">
+        <p>
+          三つの明確な優位性があります。まず<strong>速度</strong>。
+          熟練担当者が数時間〜数日かけていた候補絞り込みが、FAISS 検索で数秒で完了します。
+          担当者は AI が絞り込んだ候補の最終確認に専念できる。
+        </p>
+        <p>
+          次に<strong>網羅性</strong>。人間は自分の経験の範囲内でしか候補を想起できませんが、
+          AI は 29 項目すべてに対して機械的にスコアリングします。
+          「見落としゼロ」の設計思想です。
+        </p>
+        <p>
+          そして<strong>ナレッジの蓄積</strong>。
+          すべての判定セッションが DB に記録され、どの属性情報が不足しがちか、
+          どの規制項目が頻繁に候補として上がるかを分析できます。
+          組織の輸出管理知識が、使えば使うほど蓄積・可視化される仕組みです。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== Section 7 ========== -->
+  <h2 data-num="CHAPTER 07">今後の展望——「インフラ」になるための道筋</h2>
+
+  <div class="qa-block">
+    <div class="q">
+      <div class="q-badge">Q</div>
+      <p class="q-text">今後、このシステムをどの方向に発展させていくつもりですか？</p>
+    </div>
+    <div class="q">
+      <div class="q-badge a-badge">A</div>
+      <div class="a-text">
+        <p>
+          大きく三つの方向性を考えています。
+        </p>
+        <p>
+          一つ目は<strong>規制インテリジェンスの自動更新</strong>。
+          現在はオントロジーのシードデータを手動で管理していますが、
+          経産省の告示・改正文書を自動解析して知識グラフに反映するパイプラインを整備します。
+          法改正への対応遅延が致命的なリスクになる領域だけに、ここは最優先で取り組みます。
+        </p>
+        <p>
+          二つ目は<strong>判定精度の継続的向上</strong>。
+          実際の案件データを蓄積していくことで、FAISS インデックスの品質と
+          オントロジーの属性カバレッジを定量的に評価し、改善していきます。
+          /api/metrics/summary エンドポイントで集計している KPI が、
+          その改善指標になります。
+        </p>
+        <p>
+          三つ目は<strong>エコシステムの構築</strong>。
+          このプラットフォームを「単一企業が使うシステム」から、
+          業界横断のインフラに発展させたい。
+          規制知識はある意味パブリックグッズです。
+          複数企業が共有・貢献できるオープンな知識グラフという構想も持っています。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div>
+      <strong>重要な注意：</strong>
+      本システムは輸出管理の意思決定支援ツールです。最終的な輸出許可判断は、
+      法的資格を持つ貿易管理担当者が行う必要があります。AI の判定結果は参考情報として位置付けられます。
+    </div>
+  </div>
+
+  <div class="pull-quote">
+    <p>「規制知識はある意味パブリックグッズ。複数企業が共有・貢献できるオープンな知識グラフ——それが私たちの最終的なビジョンです」</p>
+    <cite>— AI トレードマネジメント開発チーム</cite>
+  </div>
+
+  <h3>インタビューを終えて</h3>
+  <p>
+    NeuroSymbolic AI という言葉は、まだ多くの人にとって耳慣れないだろう。
+    しかしその本質は、「AI が間違えてはいけない場面でどう信頼性を担保するか」という、
+    AI 実用化における根源的な問いへの一つの回答だ。
+  </p>
+  <p>
+    法規制への準拠、医療診断、金融リスク評価——ハルシネーションが許されない領域は多い。
+    輸出管理という一見ニッチな分野から生まれたこのアーキテクチャは、
+    より広い応用可能性を秘めている。
+    「説明できない AI は使えない」——その哲学を技術で体現しようとする試みに、
+    これからも注目していきたい。
+  </p>
+
+</main>
+
+<!-- Article Footer -->
+<footer class="article-footer">
+  <div>
+    <div style="font-size:12px;color:#57606a;margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">タグ</div>
+    <div class="footer-tag-list">
+      <span class="footer-tag">#NeuroSymbolicAI</span>
+      <span class="footer-tag">#輸出管理</span>
+      <span class="footer-tag">#外為法</span>
+      <span class="footer-tag">#ECCN</span>
+      <span class="footer-tag">#FAISS</span>
+      <span class="footer-tag">#ClaudeAPI</span>
+      <span class="footer-tag">#FastAPI</span>
+      <span class="footer-tag">#安全保障貿易管理</span>
+      <span class="footer-tag">#説明可能AI</span>
+    </div>
+  </div>
+</footer>
+
+<div class="site-footer">
+  <p>© 2026 Tech Frontier &nbsp;·&nbsp; <a href="#">プライバシーポリシー</a> &nbsp;·&nbsp; <a href="#">利用規約</a></p>
+  <p style="margin-top:8px;font-size:11px;opacity:.7;">本記事に掲載されたシステム性能・数値はプロトタイプ段階の評価結果であり、商用製品の性能保証ではありません。</p>
+</div>
+
+</body>
+</html>
