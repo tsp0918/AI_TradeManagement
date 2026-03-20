@@ -1,5 +1,268 @@
 [
   {
+    "item_no": "1",
+    "source_type": "law",
+    "article_no": "1",
+    "eccn": "",
+    "title": "輸出令第1項 貨物等省令第1条（武器・弾薬・軍用車両等）",
+    "short_label": "1項 武器",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 98,
+        "description": "武器・弾薬・軍用装備品としての直接使用",
+        "controlled_values": ["military", "weapons", "dual_use_military"],
+        "excluded_values": ["civilian", "research"],
+        "example": "civilian / military / weapons"
+      },
+      {
+        "attr_key": "end_user_type",
+        "label": "需要者種別",
+        "priority": 95,
+        "description": "軍・警察・政府以外への武器供給は原則禁止",
+        "controlled_values": ["military_org"],
+        "excluded_values": ["commercial"],
+        "example": "military_org / government / commercial"
+      },
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 90,
+        "description": "武器禁輸国への輸出は全面禁止",
+        "controlled_values": ["KP", "IR", "SY", "CU", "RU", "BY", "SD"],
+        "excluded_values": [],
+        "example": "US / KP / JP"
+      }
+    ]
+  },
+  {
+    "item_no": "2",
+    "source_type": "law",
+    "article_no": "2",
+    "eccn": "",
+    "title": "輸出令第2項 貨物等省令第2条（化学兵器・生物兵器原料）",
+    "short_label": "2項 化学・生物",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "substance_concentration_pct",
+        "label": "物質含有量",
+        "unit": "%",
+        "operator": ">=",
+        "controlled_value": 30.0,
+        "priority": 92,
+        "description": "規制対象物質を30%以上含む混合物は規制対象",
+        "example": "35.0"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "substance_type",
+        "label": "物質種別",
+        "priority": 95,
+        "description": "化学兵器・生物兵器原料に該当する物質かどうか",
+        "controlled_values": ["cw_precursor", "bw_agent", "cw_agent"],
+        "excluded_values": [],
+        "example": "industrial_chemical / cw_precursor / pharmaceutical"
+      },
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 88,
+        "description": "化学兵器・生物兵器製造目的への使用",
+        "controlled_values": ["weapons", "military"],
+        "excluded_values": [],
+        "example": "civilian / weapons / research"
+      }
+    ]
+  },
+  {
+    "item_no": "3",
+    "source_type": "law",
+    "article_no": "3",
+    "eccn": "",
+    "title": "輸出令第3項 貨物等省令第3条（核関連物資）",
+    "short_label": "3項 核関連",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "radiation_resistance_gy",
+        "label": "放射線耐性",
+        "unit": "Gy",
+        "operator": ">=",
+        "controlled_value": 50000.0,
+        "priority": 88,
+        "description": "50,000Gy以上の放射線耐性は核施設用途を示唆",
+        "example": "100000"
+      },
+      {
+        "attr_key": "neutron_flux_per_cm2s",
+        "label": "中性子束",
+        "unit": "n/cm²/s",
+        "operator": ">=",
+        "controlled_value": 1e10,
+        "priority": 85,
+        "description": "高中性子束環境での使用は核関連用途の指標",
+        "example": "5e10"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 90,
+        "description": "核兵器・核施設への使用可能性",
+        "controlled_values": ["nuclear_weapons", "nuclear_facility", "military"],
+        "excluded_values": [],
+        "example": "medical / nuclear_facility / research"
+      }
+    ]
+  },
+  {
+    "item_no": "4",
+    "source_type": "law",
+    "article_no": "4",
+    "eccn": "",
+    "title": "輸出令第4項 貨物等省令第4条（ロケット・宇宙関連）",
+    "short_label": "4項 ロケット",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "thrust_kn",
+        "label": "推力",
+        "unit": "kN",
+        "operator": ">=",
+        "controlled_value": 3.0,
+        "priority": 88,
+        "description": "3kN以上の推力を持つロケットエンジンは規制対象",
+        "example": "5.0"
+      },
+      {
+        "attr_key": "range_km",
+        "label": "射程距離",
+        "unit": "km",
+        "operator": ">=",
+        "controlled_value": 300.0,
+        "priority": 90,
+        "description": "300km以上の射程は弾道ミサイルに相当するため規制対象",
+        "example": "500"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 85,
+        "description": "ミサイル・弾道兵器への転用可能性",
+        "controlled_values": ["military", "weapons", "ballistic_missile"],
+        "excluded_values": ["civilian_space", "research"],
+        "example": "civilian_space / military / research"
+      }
+    ]
+  },
+  {
+    "item_no": "5",
+    "source_type": "law",
+    "article_no": "5",
+    "eccn": "",
+    "title": "輸出令第5項 貨物等省令第5条（航空機・同部品）",
+    "short_label": "5項 航空機",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "max_speed_mach",
+        "label": "最大速度",
+        "unit": "Mach",
+        "operator": ">=",
+        "controlled_value": 0.7,
+        "priority": 88,
+        "description": "マッハ0.7以上の飛行速度を持つ航空機は軍転用リスク",
+        "example": "0.85"
+      },
+      {
+        "attr_key": "ceiling_altitude_m",
+        "label": "実用上昇限度",
+        "unit": "m",
+        "operator": ">=",
+        "controlled_value": 15000.0,
+        "priority": 82,
+        "description": "15,000m以上の実用上昇限度を持つ航空機・エンジン",
+        "example": "20000"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 90,
+        "description": "軍用航空機・無人機（UAV）への転用",
+        "controlled_values": ["military", "weapons", "uav_military"],
+        "excluded_values": ["civilian", "commercial_aviation"],
+        "example": "civilian / military / commercial_aviation"
+      },
+      {
+        "attr_key": "aircraft_category",
+        "label": "航空機カテゴリ",
+        "priority": 85,
+        "description": "軍用・偵察・攻撃用途の航空機かどうか",
+        "controlled_values": ["military_aircraft", "uav", "armed_drone"],
+        "excluded_values": ["commercial_airliner", "private_aircraft"],
+        "example": "commercial_airliner / military_aircraft / uav"
+      }
+    ]
+  },
+  {
+    "item_no": "6",
+    "source_type": "law",
+    "article_no": "6",
+    "eccn": "",
+    "title": "輸出令第6項 貨物等省令第6条（電子計算機）",
+    "short_label": "6項 コンピューター",
+    "concern_level": "medium",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "processing_speed_gflops",
+        "label": "演算処理速度",
+        "unit": "GFLOPS",
+        "operator": ">=",
+        "controlled_value": 6000.0,
+        "priority": 88,
+        "description": "6,000GFLOPS以上の計算機（HPC）は兵器設計・核開発に転用可能",
+        "example": "10000"
+      },
+      {
+        "attr_key": "memory_bandwidth_gbs",
+        "label": "メモリ帯域幅",
+        "unit": "GB/s",
+        "operator": ">=",
+        "controlled_value": 500.0,
+        "priority": 80,
+        "description": "高帯域メモリを持つシステムはAI・暗号解析への転用リスク",
+        "example": "900"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 82,
+        "description": "ハイパフォーマンスコンピューターの規制国への輸出",
+        "controlled_values": ["CN", "RU", "KP", "IR"],
+        "excluded_values": ["US", "JP", "KR", "AU"],
+        "example": "CN / US / JP"
+      }
+    ]
+  },
+  {
     "item_no": "7",
     "source_type": "law",
     "article_no": "6",
@@ -85,170 +348,54 @@
     ]
   },
   {
-    "item_no": "外為令6",
+    "item_no": "8",
     "source_type": "law",
-    "article_no": "18",
+    "article_no": "8",
     "eccn": "",
-    "title": "外為令第6条 貨物等省令第18条（武器・軍事用品）",
-    "short_label": "外為令6条 武器",
-    "concern_level": "high",
+    "title": "輸出令第8項 貨物等省令第8条（通信機器・暗号装置）",
+    "short_label": "8項 通信・暗号",
+    "concern_level": "medium",
     "layer_a_faiss_ids": [],
-    "thresholds": [],
-    "non_numeric_attrs": [
+    "thresholds": [
       {
-        "attr_key": "end_use_type",
-        "label": "最終用途",
-        "priority": 95,
-        "description": "武器・軍事用途への使用可能性を確認（最重要）",
-        "controlled_values": ["military", "weapons", "dual_use_military"],
-        "excluded_values": ["civilian", "research"],
-        "example": "civilian / military / weapons"
+        "attr_key": "encryption_key_bits",
+        "label": "暗号鍵長",
+        "unit": "bits",
+        "operator": ">=",
+        "controlled_value": 56.0,
+        "priority": 85,
+        "description": "56ビット以上の暗号鍵を使用する暗号装置は規制対象",
+        "example": "256"
       },
       {
-        "attr_key": "end_user_type",
-        "label": "需要者種別",
-        "priority": 90,
-        "description": "軍・軍関連機関への供給は外為令6条の対象",
-        "controlled_values": ["military_org"],
-        "excluded_values": ["commercial", "research_inst"],
-        "example": "commercial / military_org / government"
+        "attr_key": "transmission_frequency_ghz",
+        "label": "送信周波数",
+        "unit": "GHz",
+        "operator": ">=",
+        "controlled_value": 31.8,
+        "priority": 78,
+        "description": "31.8GHz以上の通信機器（軍用周波数帯）",
+        "example": "40.0"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "crypto_function",
+        "label": "暗号機能",
+        "priority": 82,
+        "description": "諜報・軍事通信向けの暗号機能の有無",
+        "controlled_values": ["military_crypto", "classified_comm"],
+        "excluded_values": ["commercial_ssl", "public_key_general"],
+        "example": "commercial_ssl / military_crypto / vpn"
       },
       {
         "attr_key": "destination_country",
         "label": "仕向国",
-        "priority": 85,
-        "description": "武器禁輸国・懸念国への輸出",
-        "controlled_values": ["KP", "IR", "SY", "CU", "RU", "BY"],
+        "priority": 75,
+        "description": "暗号規制国への輸出",
+        "controlled_values": ["KP", "IR", "SY", "CU"],
         "excluded_values": [],
         "example": "CN / KP / US"
-      }
-    ]
-  },
-  {
-    "item_no": "2",
-    "source_type": "law",
-    "article_no": "2",
-    "eccn": "",
-    "title": "輸出令第2項 貨物等省令第2条（化学兵器・生物兵器原料）",
-    "short_label": "2項 化学・生物",
-    "concern_level": "high",
-    "layer_a_faiss_ids": [],
-    "thresholds": [
-      {
-        "attr_key": "substance_concentration_pct",
-        "label": "物質含有量",
-        "unit": "%",
-        "operator": ">=",
-        "controlled_value": 30.0,
-        "priority": 92,
-        "description": "規制対象物質を30%以上含む混合物は規制対象",
-        "example": "35.0"
-      }
-    ],
-    "non_numeric_attrs": [
-      {
-        "attr_key": "substance_type",
-        "label": "物質種別",
-        "priority": 95,
-        "description": "化学兵器・生物兵器原料に該当する物質かどうか",
-        "controlled_values": ["cw_precursor", "bw_agent", "cw_agent"],
-        "excluded_values": [],
-        "example": "industrial_chemical / cw_precursor / pharmaceutical"
-      },
-      {
-        "attr_key": "end_use_type",
-        "label": "最終用途",
-        "priority": 88,
-        "description": "化学兵器・生物兵器製造目的への使用",
-        "controlled_values": ["weapons", "military"],
-        "excluded_values": [],
-        "example": "civilian / weapons / research"
-      }
-    ]
-  },
-  {
-    "item_no": "3",
-    "source_type": "law",
-    "article_no": "3",
-    "eccn": "",
-    "title": "輸出令第3項 貨物等省令第3条（核関連物資）",
-    "short_label": "3項 核関連",
-    "concern_level": "high",
-    "layer_a_faiss_ids": [],
-    "thresholds": [
-      {
-        "attr_key": "radiation_resistance_gy",
-        "label": "放射線耐性",
-        "unit": "Gy",
-        "operator": ">=",
-        "controlled_value": 5e4,
-        "priority": 88,
-        "description": "50,000Gy以上の放射線耐性は核施設用途を示唆",
-        "example": "100000"
-      },
-      {
-        "attr_key": "neutron_flux_per_cm2s",
-        "label": "中性子束",
-        "unit": "n/cm²/s",
-        "operator": ">=",
-        "controlled_value": 1e10,
-        "priority": 85,
-        "description": "高中性子束環境での使用は核関連用途の指標",
-        "example": "5e10"
-      }
-    ],
-    "non_numeric_attrs": [
-      {
-        "attr_key": "end_use_type",
-        "label": "最終用途",
-        "priority": 90,
-        "description": "核兵器・核施設への使用可能性",
-        "controlled_values": ["nuclear_weapons", "nuclear_facility", "military"],
-        "excluded_values": [],
-        "example": "medical / nuclear_facility / research"
-      }
-    ]
-  },
-  {
-    "item_no": "4",
-    "source_type": "law",
-    "article_no": "4",
-    "eccn": "",
-    "title": "輸出令第4項 貨物等省令第4条（ロケット・宇宙関連）",
-    "short_label": "4項 ロケット",
-    "concern_level": "high",
-    "layer_a_faiss_ids": [],
-    "thresholds": [
-      {
-        "attr_key": "thrust_kn",
-        "label": "推力",
-        "unit": "kN",
-        "operator": ">=",
-        "controlled_value": 3.0,
-        "priority": 88,
-        "description": "3kN以上の推力を持つロケットエンジンは規制対象",
-        "example": "5.0"
-      },
-      {
-        "attr_key": "range_km",
-        "label": "射程距離",
-        "unit": "km",
-        "operator": ">=",
-        "controlled_value": 300.0,
-        "priority": 90,
-        "description": "300km以上の射程は弾道ミサイルに相当するため規制対象",
-        "example": "500"
-      }
-    ],
-    "non_numeric_attrs": [
-      {
-        "attr_key": "end_use_type",
-        "label": "最終用途",
-        "priority": 85,
-        "description": "ミサイル・弾道兵器への転用可能性",
-        "controlled_values": ["military", "weapons", "ballistic_missile"],
-        "excluded_values": ["civilian_space", "research"],
-        "example": "civilian_space / military / research"
       }
     ]
   },
@@ -292,6 +439,196 @@
         "controlled_values": ["military", "naval"],
         "excluded_values": ["civilian", "commercial_fishing"],
         "example": "civilian / naval / commercial_fishing"
+      }
+    ]
+  },
+  {
+    "item_no": "10",
+    "source_type": "law",
+    "article_no": "10",
+    "eccn": "",
+    "title": "輸出令第10項 貨物等省令第10条（センサー・レーザー）",
+    "short_label": "10項 センサー・レーザー",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "laser_peak_power_w",
+        "label": "レーザーピーク出力",
+        "unit": "W",
+        "operator": ">=",
+        "controlled_value": 1.0,
+        "priority": 88,
+        "description": "1W以上のレーザーは兵器・妨害装置への転用リスク",
+        "example": "5.0"
+      },
+      {
+        "attr_key": "angular_resolution_mrad",
+        "label": "角度分解能",
+        "unit": "mrad",
+        "operator": "<=",
+        "controlled_value": 1.0,
+        "priority": 82,
+        "description": "1mrad以下の高解像度センサーは精密誘導兵器に使用",
+        "example": "0.5"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "sensor_type",
+        "label": "センサー種別",
+        "priority": 85,
+        "description": "軍事用途のセンサー（赤外線・レーダー・ライダー等）",
+        "controlled_values": ["military_radar", "thermal_imaging_military", "laser_rangefinder"],
+        "excluded_values": ["consumer_camera", "industrial_sensor"],
+        "example": "industrial_sensor / military_radar / thermal_imaging_military"
+      },
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 80,
+        "description": "精密誘導・目標識別等の軍事用途",
+        "controlled_values": ["military", "weapons"],
+        "excluded_values": ["civilian", "research"],
+        "example": "civilian / military / research"
+      }
+    ]
+  },
+  {
+    "item_no": "11",
+    "source_type": "law",
+    "article_no": "11",
+    "eccn": "",
+    "title": "輸出令第11項 貨物等省令第11条（航法装置・慣性装置）",
+    "short_label": "11項 航法装置",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "navigation_accuracy_m",
+        "label": "測位精度",
+        "unit": "m",
+        "operator": "<=",
+        "controlled_value": 1.0,
+        "priority": 90,
+        "description": "1m以下の測位精度を持つ航法装置は精密誘導兵器への転用リスク",
+        "example": "0.1"
+      },
+      {
+        "attr_key": "gyro_drift_deg_per_hour",
+        "label": "ジャイロドリフト",
+        "unit": "deg/h",
+        "operator": "<=",
+        "controlled_value": 0.03,
+        "priority": 88,
+        "description": "ドリフト0.03deg/h以下の慣性航法装置（INS）は弾道ミサイル誘導に転用可",
+        "example": "0.01"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 85,
+        "description": "精密誘導兵器・弾道ミサイルへの搭載",
+        "controlled_values": ["military", "weapons", "ballistic_missile"],
+        "excluded_values": ["commercial_aviation", "marine_navigation"],
+        "example": "commercial_aviation / military / marine_navigation"
+      }
+    ]
+  },
+  {
+    "item_no": "12",
+    "source_type": "law",
+    "article_no": "12",
+    "eccn": "",
+    "title": "輸出令第12項 貨物等省令第12条（海洋・宇宙推進）",
+    "short_label": "12項 推進装置",
+    "concern_level": "medium",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "specific_impulse_s",
+        "label": "比推力",
+        "unit": "s",
+        "operator": ">=",
+        "controlled_value": 400.0,
+        "priority": 80,
+        "description": "比推力400s以上の推進系は宇宙・長距離ミサイル転用リスク",
+        "example": "450"
+      },
+      {
+        "attr_key": "exhaust_velocity_ms",
+        "label": "排気速度",
+        "unit": "m/s",
+        "operator": ">=",
+        "controlled_value": 4000.0,
+        "priority": 75,
+        "description": "排気速度4,000m/s以上のエンジンは高性能推進系",
+        "example": "4500"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "propulsion_type",
+        "label": "推進方式",
+        "priority": 78,
+        "description": "固体・液体・イオン推進等の種別確認",
+        "controlled_values": ["solid_rocket", "liquid_rocket", "ion_thruster"],
+        "excluded_values": ["conventional_marine_engine"],
+        "example": "solid_rocket / marine_diesel / ion_thruster"
+      }
+    ]
+  },
+  {
+    "item_no": "13",
+    "source_type": "law",
+    "article_no": "13",
+    "eccn": "",
+    "title": "輸出令第13項 貨物等省令第13条（材料加工機器・工作機械）",
+    "short_label": "13項 工作機械",
+    "concern_level": "medium",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "positioning_accuracy_um",
+        "label": "位置決め精度",
+        "unit": "μm",
+        "operator": "<=",
+        "controlled_value": 6.0,
+        "priority": 85,
+        "description": "6μm以下の位置決め精度を持つ工作機械は兵器部品加工に転用可",
+        "example": "2.0"
+      },
+      {
+        "attr_key": "max_rotation_rpm",
+        "label": "最大回転数",
+        "unit": "rpm",
+        "operator": ">=",
+        "controlled_value": 20000.0,
+        "priority": 78,
+        "description": "20,000rpm以上の高速回転機は精密部品・タービン加工に転用",
+        "example": "30000"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "machine_tool_type",
+        "label": "工作機械種別",
+        "priority": 82,
+        "description": "CNC複合加工機・研削盤等の精密加工機械",
+        "controlled_values": ["cnc_multi_axis", "precision_grinder", "wire_edm"],
+        "excluded_values": ["general_lathe", "manual_drill"],
+        "example": "cnc_multi_axis / general_lathe / wire_edm"
+      },
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 75,
+        "description": "兵器・核・ミサイル部品の製造への使用",
+        "controlled_values": ["military", "weapons", "nuclear_facility"],
+        "excluded_values": ["civilian_manufacturing"],
+        "example": "civilian_manufacturing / military / research"
       }
     ]
   },
@@ -344,6 +681,204 @@
         "controlled_values": ["military", "weapons", "aerospace_military"],
         "excluded_values": ["sports", "civilian"],
         "example": "aerospace_military / sports / civilian"
+      }
+    ]
+  },
+  {
+    "item_no": "15",
+    "source_type": "law",
+    "article_no": "15",
+    "eccn": "",
+    "title": "輸出令第15項 貨物等省令第15条（化学製品・製造装置）",
+    "short_label": "15項 化学製造",
+    "concern_level": "medium",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "flow_rate_m3_per_hour",
+        "label": "処理流量",
+        "unit": "m³/h",
+        "operator": ">=",
+        "controlled_value": 0.5,
+        "priority": 78,
+        "description": "0.5m³/h以上の化学反応装置は大量生産に転用可能",
+        "example": "1.0"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "chemical_process_type",
+        "label": "化学プロセス種別",
+        "priority": 82,
+        "description": "腐食性・毒性物質処理が可能な材質・設計",
+        "controlled_values": ["cw_capable", "toxic_gas_handling", "precursor_synthesis"],
+        "excluded_values": ["food_processing", "pharmaceutical_general"],
+        "example": "pharmaceutical_general / cw_capable / food_processing"
+      },
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 75,
+        "description": "化学兵器原料の大量合成への転用",
+        "controlled_values": ["weapons", "military"],
+        "excluded_values": ["civilian", "pharmaceutical"],
+        "example": "pharmaceutical / military / civilian"
+      }
+    ]
+  },
+  {
+    "item_no": "外為令6",
+    "source_type": "law",
+    "article_no": "18",
+    "eccn": "",
+    "title": "外為令第6条 貨物等省令第18条（武器・軍事用品）",
+    "short_label": "外為令6条 武器",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 95,
+        "description": "武器・軍事用途への使用可能性を確認（最重要）",
+        "controlled_values": ["military", "weapons", "dual_use_military"],
+        "excluded_values": ["civilian", "research"],
+        "example": "civilian / military / weapons"
+      },
+      {
+        "attr_key": "end_user_type",
+        "label": "需要者種別",
+        "priority": 90,
+        "description": "軍・軍関連機関への供給は外為令6条の対象",
+        "controlled_values": ["military_org"],
+        "excluded_values": ["commercial", "research_inst"],
+        "example": "commercial / military_org / government"
+      },
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 85,
+        "description": "武器禁輸国・懸念国への輸出",
+        "controlled_values": ["KP", "IR", "SY", "CU", "RU", "BY"],
+        "excluded_values": [],
+        "example": "CN / KP / US"
+      }
+    ]
+  },
+  {
+    "item_no": "",
+    "source_type": "eccn",
+    "article_no": "",
+    "eccn": "0A001",
+    "title": "ECCN 0A001（軍用小火器・火器部品）",
+    "short_label": "0A001 軍用火器",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 98,
+        "description": "軍用・戦闘用途への直接使用",
+        "controlled_values": ["military", "weapons"],
+        "excluded_values": ["civilian", "law_enforcement_general"],
+        "example": "military / weapons / law_enforcement"
+      },
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 92,
+        "description": "EAR AT規制国・武器禁輸国",
+        "controlled_values": ["KP", "IR", "SY", "CU"],
+        "excluded_values": ["US"],
+        "example": "US / KP / IR"
+      }
+    ]
+  },
+  {
+    "item_no": "",
+    "source_type": "eccn",
+    "article_no": "",
+    "eccn": "1C001",
+    "title": "ECCN 1C001（化学兵器前駆体・特殊材料）",
+    "short_label": "1C001 化学前駆体",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "substance_concentration_pct",
+        "label": "規制物質濃度",
+        "unit": "%",
+        "operator": ">=",
+        "controlled_value": 10.0,
+        "priority": 88,
+        "description": "EAR 1C001: 前駆体化学物質の濃度10%以上",
+        "example": "25.0"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "substance_type",
+        "label": "物質種別",
+        "priority": 92,
+        "description": "CWC スケジュール物質・前駆体への該当性",
+        "controlled_values": ["schedule_1", "schedule_2", "schedule_3", "cw_precursor"],
+        "excluded_values": ["general_industrial_chemical"],
+        "example": "general_industrial_chemical / schedule_2 / cw_precursor"
+      },
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 85,
+        "description": "化学兵器懸念国",
+        "controlled_values": ["KP", "IR", "SY"],
+        "excluded_values": ["US", "JP", "KR", "AU", "GB"],
+        "example": "JP / SY / IR"
+      }
+    ]
+  },
+  {
+    "item_no": "",
+    "source_type": "eccn",
+    "article_no": "",
+    "eccn": "2B001",
+    "title": "ECCN 2B001（数値制御工作機械・加工機器）",
+    "short_label": "2B001 CNC工作機械",
+    "concern_level": "medium",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "positioning_accuracy_um",
+        "label": "位置決め精度",
+        "unit": "μm",
+        "operator": "<=",
+        "controlled_value": 6.0,
+        "priority": 85,
+        "description": "EAR 2B001: 6μm以下の位置決め精度を持つCNC工作機械",
+        "example": "2.0"
+      },
+      {
+        "attr_key": "simultaneous_axes",
+        "label": "同時制御軸数",
+        "unit": "axes",
+        "operator": ">=",
+        "controlled_value": 5.0,
+        "priority": 80,
+        "description": "5軸以上の同時制御工作機械は精密部品加工に転用可",
+        "example": "5"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 78,
+        "description": "精密加工機械の規制国への輸出",
+        "controlled_values": ["CN", "RU", "KP", "IR"],
+        "excluded_values": ["US", "JP", "DE", "KR"],
+        "example": "CN / JP / RU"
       }
     ]
   },
@@ -408,6 +943,279 @@
         "controlled_values": ["CN", "RU", "KP", "IR"],
         "excluded_values": [],
         "example": "CN / US / KR"
+      }
+    ]
+  },
+  {
+    "item_no": "",
+    "source_type": "eccn",
+    "article_no": "",
+    "eccn": "4A003",
+    "title": "ECCN 4A003（高性能コンピューター・HPC）",
+    "short_label": "4A003 HPC",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "processing_speed_gflops",
+        "label": "演算処理速度",
+        "unit": "GFLOPS",
+        "operator": ">=",
+        "controlled_value": 6000.0,
+        "priority": 92,
+        "description": "EAR 4A003: 6,000GFLOPS以上のコンピューターは核・兵器設計転用リスク",
+        "example": "10000"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 88,
+        "description": "HPCの規制国（特に中国・ロシア・北朝鮮）への輸出",
+        "controlled_values": ["CN", "RU", "KP", "IR"],
+        "excluded_values": ["US", "JP", "KR", "AU", "GB", "DE"],
+        "example": "CN / US / JP"
+      },
+      {
+        "attr_key": "end_use_type",
+        "label": "最終用途",
+        "priority": 85,
+        "description": "核シミュレーション・兵器設計への転用",
+        "controlled_values": ["nuclear_facility", "military", "weapons_design"],
+        "excluded_values": ["commercial_cloud", "research_academic"],
+        "example": "commercial_cloud / nuclear_facility / research_academic"
+      }
+    ]
+  },
+  {
+    "item_no": "",
+    "source_type": "eccn",
+    "article_no": "",
+    "eccn": "5A002",
+    "title": "ECCN 5A002（暗号装置・情報セキュリティ機器）",
+    "short_label": "5A002 暗号装置",
+    "concern_level": "medium",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "encryption_key_bits",
+        "label": "暗号鍵長",
+        "unit": "bits",
+        "operator": ">=",
+        "controlled_value": 56.0,
+        "priority": 85,
+        "description": "EAR 5A002: 56ビット以上の対称鍵暗号装置",
+        "example": "256"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "crypto_function",
+        "label": "暗号機能",
+        "priority": 82,
+        "description": "軍事・政府用途の通信暗号化機能",
+        "controlled_values": ["military_crypto", "classified_comm", "sigint"],
+        "excluded_values": ["mass_market_ssl", "banking_crypto"],
+        "example": "mass_market_ssl / military_crypto / banking_crypto"
+      },
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 78,
+        "description": "暗号規制国への輸出",
+        "controlled_values": ["KP", "IR", "CU", "SY"],
+        "excluded_values": ["US", "JP"],
+        "example": "JP / KP / US"
+      }
+    ]
+  },
+  {
+    "item_no": "",
+    "source_type": "eccn",
+    "article_no": "",
+    "eccn": "5E002",
+    "title": "ECCN 5E002（暗号・情報セキュリティの技術）",
+    "short_label": "5E002 暗号技術",
+    "concern_level": "medium",
+    "layer_a_faiss_ids": [],
+    "thresholds": [],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "technology_type",
+        "label": "技術種別",
+        "priority": 82,
+        "description": "暗号アルゴリズム・プロトコルの設計技術",
+        "controlled_values": ["crypto_design_tech", "sigint_tech"],
+        "excluded_values": ["public_crypto_standard", "open_source_crypto"],
+        "example": "open_source_crypto / crypto_design_tech"
+      },
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 75,
+        "description": "暗号技術の移転規制国",
+        "controlled_values": ["KP", "IR", "CU"],
+        "excluded_values": ["US", "JP", "KR"],
+        "example": "JP / KP / US"
+      }
+    ]
+  },
+  {
+    "item_no": "",
+    "source_type": "eccn",
+    "article_no": "",
+    "eccn": "6A002",
+    "title": "ECCN 6A002（光学センサー・赤外線センサー）",
+    "short_label": "6A002 光センサー",
+    "concern_level": "medium",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "angular_resolution_mrad",
+        "label": "角度分解能",
+        "unit": "mrad",
+        "operator": "<=",
+        "controlled_value": 1.0,
+        "priority": 85,
+        "description": "EAR 6A002: 1mrad以下の光学センサーは精密誘導・偵察に転用",
+        "example": "0.3"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "sensor_type",
+        "label": "センサー種別",
+        "priority": 82,
+        "description": "焦点面アレイ・赤外線検知器等の軍事転用可能センサー",
+        "controlled_values": ["focal_plane_array", "ir_detector_military", "hyperspectral"],
+        "excluded_values": ["consumer_camera", "industrial_vision"],
+        "example": "industrial_vision / focal_plane_array / consumer_camera"
+      },
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 78,
+        "description": "光センサー規制国",
+        "controlled_values": ["CN", "RU", "KP", "IR"],
+        "excluded_values": ["US", "JP", "KR"],
+        "example": "JP / CN / US"
+      }
+    ]
+  },
+  {
+    "item_no": "",
+    "source_type": "eccn",
+    "article_no": "",
+    "eccn": "7A001",
+    "title": "ECCN 7A001（航法装置・慣性航法装置）",
+    "short_label": "7A001 航法装置",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "navigation_accuracy_m",
+        "label": "測位精度",
+        "unit": "m",
+        "operator": "<=",
+        "controlled_value": 100.0,
+        "priority": 90,
+        "description": "EAR 7A001: 100m以下の精度の航法装置は精密誘導転用リスク",
+        "example": "10.0"
+      },
+      {
+        "attr_key": "gyro_drift_deg_per_hour",
+        "label": "ジャイロドリフト",
+        "unit": "deg/h",
+        "operator": "<=",
+        "controlled_value": 0.1,
+        "priority": 88,
+        "description": "0.1deg/h以下のジャイロはINS精密誘導に使用",
+        "example": "0.01"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 85,
+        "description": "精密航法装置の規制国",
+        "controlled_values": ["CN", "RU", "KP", "IR"],
+        "excluded_values": ["US", "JP", "KR", "AU"],
+        "example": "JP / CN / KP"
+      }
+    ]
+  },
+  {
+    "item_no": "",
+    "source_type": "eccn",
+    "article_no": "",
+    "eccn": "9A004",
+    "title": "ECCN 9A004（宇宙システム・宇宙機器）",
+    "short_label": "9A004 宇宙",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [
+      {
+        "attr_key": "delta_v_m_per_s",
+        "label": "ΔV（速度増分）",
+        "unit": "m/s",
+        "operator": ">=",
+        "controlled_value": 1000.0,
+        "priority": 88,
+        "description": "EAR 9A004: ΔV 1,000m/s以上の宇宙推進系はICBM転用リスク",
+        "example": "3000"
+      }
+    ],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "space_vehicle_type",
+        "label": "宇宙機種別",
+        "priority": 85,
+        "description": "軍用衛星・偵察衛星・弾道ミサイル誘導システムへの転用",
+        "controlled_values": ["military_satellite", "reconnaissance_sat", "icbm_guidance"],
+        "excluded_values": ["civilian_comsat", "earth_observation_civil"],
+        "example": "civilian_comsat / military_satellite / earth_observation_civil"
+      },
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 88,
+        "description": "宇宙システムの規制国",
+        "controlled_values": ["CN", "RU", "KP", "IR"],
+        "excluded_values": ["US", "JP", "KR", "AU", "GB"],
+        "example": "US / CN / KP"
+      }
+    ]
+  },
+  {
+    "item_no": "",
+    "source_type": "eccn",
+    "article_no": "",
+    "eccn": "9E001",
+    "title": "ECCN 9E001（航空機・宇宙技術）",
+    "short_label": "9E001 航空宇宙技術",
+    "concern_level": "high",
+    "layer_a_faiss_ids": [],
+    "thresholds": [],
+    "non_numeric_attrs": [
+      {
+        "attr_key": "technology_type",
+        "label": "技術種別",
+        "priority": 88,
+        "description": "軍用航空エンジン・ステルス技術・誘導システムの設計技術",
+        "controlled_values": ["military_engine_tech", "stealth_tech", "guidance_tech", "space_propulsion_tech"],
+        "excluded_values": ["commercial_aviation_general"],
+        "example": "commercial_aviation_general / military_engine_tech / stealth_tech"
+      },
+      {
+        "attr_key": "destination_country",
+        "label": "仕向国",
+        "priority": 85,
+        "description": "航空宇宙技術移転規制国",
+        "controlled_values": ["CN", "RU", "KP", "IR"],
+        "excluded_values": ["US", "JP", "KR", "AU", "GB", "DE"],
+        "example": "JP / CN / US"
       }
     ]
   }
