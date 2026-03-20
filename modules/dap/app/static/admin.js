@@ -1161,15 +1161,23 @@ async function loadChatWidgetConfigs() {
   if (!container) return;
   container.innerHTML = '<div class="analyticsEmpty">読み込み中…</div>';
 
-  let configs = [];
+  let configs = [], templates = [];
   try {
-    configs = await api("/api/chat/app-configs");
+    [configs, templates] = await Promise.all([
+      api("/api/chat/app-configs"),
+      api("/api/chat/coaching-templates").catch(() => []),
+    ]);
   } catch (e) {
     container.innerHTML = `<div class="analyticsEmpty">読み込み失敗: ${e.message}</div>`;
     return;
   }
 
-  container.innerHTML = configs.map(cfg => `
+  // port → template name マップ
+  const tmplMap = Object.fromEntries(templates.map(t => [t.port, t.name]));
+
+  container.innerHTML = configs.map(cfg => {
+    const hasTmpl = !!tmplMap[cfg.port];
+    return `
     <div class="chatWidgetCard" data-port="${cfg.port}">
       <div class="chatWidgetCardHeader">
         <span class="chatWidgetLabel">${cfg.label}</span>
@@ -1179,14 +1187,20 @@ async function loadChatWidgetConfigs() {
           <span class="chatToggleTrack"><span class="chatToggleThumb"></span></span>
         </label>
       </div>
-      <label class="formLabel" style="margin-top:12px;display:block;">プロンプト補足（任意）</label>
-      <textarea class="input chatPromptSupp" data-port="${cfg.port}" rows="3"
+      ${hasTmpl ? `
+      <div style="margin-top:8px;padding:6px 8px;background:#1a2e4a;border-radius:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span style="font-size:11px;color:#64b5f6;">💡 ${tmplMap[cfg.port]}</span>
+        <button class="chatApplyTmplBtn btnGhost btnSm" data-port="${cfg.port}" style="font-size:10px;padding:2px 8px;">テンプレートを適用</button>
+      </div>` : ""}
+      <label class="formLabel" style="margin-top:12px;display:block;">コーチングプロンプト補足</label>
+      <textarea class="input chatPromptSupp" data-port="${cfg.port}" rows="5"
         placeholder="例: このモジュールでは輸出管理担当者のみ使用します。品目コードは TS- 形式です。"
-        style="width:100%;resize:vertical;font-size:12px;">${cfg.prompt_supplement || ""}</textarea>
+        style="width:100%;resize:vertical;font-size:11px;line-height:1.5;">${cfg.prompt_supplement || ""}</textarea>
       <button class="btnPrimary btnSm chatSaveBtn" data-port="${cfg.port}" style="margin-top:8px;">保存</button>
-    </div>
-  `).join("");
+    </div>`;
+  }).join("");
 
+  // 保存ボタン
   container.querySelectorAll(".chatSaveBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const port = btn.dataset.port;
@@ -1204,6 +1218,30 @@ async function loadChatWidgetConfigs() {
       }
     });
   });
+
+  // テンプレート適用ボタン（モジュール個別）
+  container.querySelectorAll(".chatApplyTmplBtn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const port = btn.dataset.port;
+      try {
+        await api(`/api/chat/app-configs/${port}/apply-template`, { method: "POST" });
+        showToast(`ポート ${port} にテンプレートを適用しました`);
+        await loadChatWidgetConfigs();
+      } catch (e) {
+        showToast("適用に失敗しました: " + e.message, "error");
+      }
+    });
+  });
+}
+
+async function applyAllCoachingTemplates() {
+  try {
+    const result = await api("/api/chat/app-configs/apply-all-templates", { method: "POST" });
+    showToast(`全 ${result.applied_ports.length} モジュールにテンプレートを適用しました`);
+    await loadChatWidgetConfigs();
+  } catch (e) {
+    showToast("一括適用に失敗しました: " + e.message, "error");
+  }
 }
 
 // ============================================================
@@ -1250,6 +1288,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Chat Widget reload
   document.getElementById("btnReloadChatConfigs").addEventListener("click", loadChatWidgetConfigs);
+
+  // Chat Widget: 全テンプレート一括適用
+  document.getElementById("btnApplyAllTemplates")?.addEventListener("click", applyAllCoachingTemplates);
 
   // Scenarios container — delegated click
   const container = document.getElementById("pagesContainer");

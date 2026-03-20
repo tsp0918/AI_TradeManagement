@@ -592,6 +592,152 @@ _CONFIG_PORTS: list[dict] = [
 ]
 
 
+
+# ── モジュール別コーチングプロンプト・テンプレート ────────────────────────────
+_COACHING_TEMPLATES: dict[str, dict] = {
+    "8001": {
+        "name": "AI 該非判定 — 審査フォーカス",
+        "prompt_supplement": (
+            "このモジュールでは AI 該非判定が主要業務です。以下を重点的にサポートしてください:\n"
+            "1. 判定ステータスの解釈: intersection=黄（優先確認）/ core_only=青（リストヒット）/ expanded_only=灰（低リスク）\n"
+            "2. スクリーニング実行前に取引先の英語正式法人名を確認するよう促してください\n"
+            "3. 判定結果が CONTROLLED の場合は「経産省への許可申請 or 輸出禁止」を案内してください\n"
+            "4. NeuroSymbolic 該非判定エージェントを使うと対話形式で外為法・EAR 該当性を確認できることを教えてください\n"
+            "5. 案件の作成から CSV 出力までの5ステップを明確に案内してください"
+        ),
+    },
+    "8002": {
+        "name": "品目管理 — 用途記述フォーカス",
+        "prompt_supplement": (
+            "品目管理では「用途概要の記述品質」が AI 判定精度に直結します:\n"
+            "1. 用途概要には「工程・装置・性能・最終使用地」の4要素が揃っているか確認してください\n"
+            "   不足している要素があれば具体的に補足を促してください\n"
+            "2. HS コード判定（port 8006）と連携していることを案内し、判定前に HS コードが正しいか確認するよう促してください\n"
+            "3. 品目コードは EAR ECCN or 輸出令項番に対応させてください\n"
+            "4. 同一品目を複数の取引に使う場合は品目マスタの再利用を案内してください"
+        ),
+    },
+    "8003": {
+        "name": "R&D リスク管理 — プロファイル入力フォーカス",
+        "prompt_supplement": (
+            "R&D リスク管理では「用途要件」と「需要者要件」プロファイルが最重要です:\n"
+            "1. 用途要件の入力補助: 工程（どのような製造・研究プロセスか）/ 装置（使用する機器・設備）/ "
+            "性能（スペック・能力値）/ 最終使用地（工場・研究所の国・地域）\n"
+            "2. 需要者要件: 法人名（英語正式表記）/ 所在地 / 第三者への技術提供の有無\n"
+            "3. AI 審査が完了したら「品目管理へ登録」でシームレスにワークフローを継続できることを案内\n"
+            "4. みなし輸出（国内の非居住者への技術提供）も規制対象である点を適宜案内してください"
+        ),
+    },
+    "8004": {
+        "name": "特許検索 — 技術調査フォーカス",
+        "prompt_supplement": (
+            "特許検索モジュールでは先行技術調査・競合特許分析が主目的です:\n"
+            "1. 検索クエリは技術用語を英語で入力すると精度が向上します\n"
+            "2. 経済安全保障推進法の特許出願非公開制度（2024年施行）: "
+            "安全保障上重要な技術は外国出願前に政府審査が必要。特許検索中に該当可能性を発見した場合は法務部門への確認を促す\n"
+            "3. 検索結果の「類似度スコア」が 0.8 以上は高関連性とみてください\n"
+            "4. 特許出願前に競合特許との重複がないか確認する重要性を伝えてください"
+        ),
+    },
+    "8005": {
+        "name": "スクリーニング — 制裁チェックフォーカス",
+        "prompt_supplement": (
+            "スクリーニングでは制裁リストへの正確なマッチングが重要です:\n"
+            "1. 企業名は英語正式法人名で入力（例: Huawei Technologies Co., Ltd.）\n"
+            "2. 結果の読み方: match=確定ヒット（取引中止）/ possible_match=確認必要（法務相談）/ no_match=問題なし\n"
+            "3. BIS 50%ルール: SDN 指定企業が 50%以上保有する企業も同等の制裁対象\n"
+            "4. スクリーニングは取引のたびに実行が必要（リストは随時更新される）\n"
+            "5. OFAC SDN・BIS Entity List・METI 外国ユーザーリスト・EU 統合制裁リストの4リストを照合していることを伝える"
+        ),
+    },
+    "8006": {
+        "name": "HS コード判定 — 分類精度フォーカス",
+        "prompt_supplement": (
+            "HS コード判定では正確な品目分類が輸出申告と規制判定の基礎となります:\n"
+            "1. 品目説明は具体的な材質・機能・用途を含めると精度が向上します\n"
+            "2. 6桁（国際共通）と10桁（日本固有の細分類）の違いを案内してください\n"
+            "3. HS コードは輸出令別表第1の項番（外為法規制）とは別体系ですが、"
+            "判定の参考情報として AI 該非判定モジュールに連携されます\n"
+            "4. 疑義がある場合は税関への事前分類照会を案内してください"
+        ),
+    },
+    "8000": {
+        "name": "プラットフォーム — 全体ナビゲーション",
+        "prompt_supplement": (
+            "プラットフォームのトップ画面では全体フローの案内が主目的です:\n"
+            "1. 標準ワークフロー: R&D審査(8003) → 品目管理(8002) → AI該非判定(8001) → スクリーニング(8005)\n"
+            "2. 新規案件は R&D リスク管理から始めることを推奨してください\n"
+            "3. NeuroSymbolic 該非判定エージェントは AI 該非判定モジュール(8001)の取引詳細から起動できます\n"
+            "4. 各モジュールが連携してデータを共有していることを説明してください"
+        ),
+    },
+}
+
+
+@router.get("/api/chat/coaching-templates")
+def get_coaching_templates() -> list:
+    """モジュール別コーチングプロンプト・テンプレート一覧を返す"""
+    return [
+        {
+            "port": port,
+            "name": tmpl["name"],
+            "prompt_supplement": tmpl["prompt_supplement"],
+        }
+        for port, tmpl in _COACHING_TEMPLATES.items()
+    ]
+
+
+@router.post("/api/chat/app-configs/{port}/apply-template")
+def apply_coaching_template(port: str, db: Session = Depends(get_db)) -> dict:
+    """指定ポートのデフォルトコーチングテンプレートを適用する"""
+    tmpl = _COACHING_TEMPLATES.get(port)
+    if not tmpl:
+        raise HTTPException(status_code=404, detail=f"port {port} のテンプレートがありません")
+
+    from datetime import datetime as _dt
+    cfg = db.query(DapChatConfig).filter(DapChatConfig.port == port).one_or_none()
+    if cfg:
+        cfg.prompt_supplement = tmpl["prompt_supplement"]
+        cfg.enabled = 1
+        cfg.updated_at = _dt.utcnow()
+    else:
+        label = next((m["label"] for m in _CONFIG_PORTS if m["port"] == port), "")
+        cfg = DapChatConfig(
+            port=port,
+            label=label,
+            enabled=1,
+            prompt_supplement=tmpl["prompt_supplement"],
+        )
+        db.add(cfg)
+    db.commit()
+    return {"ok": True, "port": port, "template_name": tmpl["name"]}
+
+
+@router.post("/api/chat/app-configs/apply-all-templates")
+def apply_all_coaching_templates(db: Session = Depends(get_db)) -> dict:
+    """全モジュールにデフォルトコーチングテンプレートを一括適用する"""
+    from datetime import datetime as _dt
+    applied = []
+    for port, tmpl in _COACHING_TEMPLATES.items():
+        cfg = db.query(DapChatConfig).filter(DapChatConfig.port == port).one_or_none()
+        if cfg:
+            cfg.prompt_supplement = tmpl["prompt_supplement"]
+            cfg.enabled = 1
+            cfg.updated_at = _dt.utcnow()
+        else:
+            label = next((m["label"] for m in _CONFIG_PORTS if m["port"] == port), "")
+            cfg = DapChatConfig(
+                port=port,
+                label=label,
+                enabled=1,
+                prompt_supplement=tmpl["prompt_supplement"],
+            )
+            db.add(cfg)
+        applied.append(port)
+    db.commit()
+    return {"ok": True, "applied_ports": applied}
+
+
 @router.get("/api/chat/app-configs")
 def get_chat_app_configs(db: Session = Depends(get_db)) -> list:
     """モジュール別チャットウィジェット設定を一覧で返す"""
