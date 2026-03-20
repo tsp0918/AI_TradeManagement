@@ -106,7 +106,7 @@ def ui_root():
 # -----------------------------
 @router.get("/cases")
 def cases_list(request: Request, db: Session = Depends(get_db)):
-    cases = crud.list_cases(db, tenant_id="tenant-demo")
+    cases = crud.list_cases(db)  # テナントフィルタなし（デモ環境では全件表示）
     enriched = []
     for case in cases:
         latest = crud.get_latest_profile(db, case.case_id)

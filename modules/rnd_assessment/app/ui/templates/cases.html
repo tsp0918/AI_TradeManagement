@@ -43,9 +43,14 @@
             onmouseout="this.style.background=''">
           <td style="padding:14px 16px; border-bottom:1px solid var(--border);">
             <div style="font-weight:600; color:var(--text-h);">{{ case.title }}</div>
-            {% if case.description %}
-            <div style="font-size:.78rem; color:var(--muted); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:300px;">{{ case.description }}</div>
-            {% endif %}
+            <div style="display:flex; align-items:center; gap:6px; margin-top:3px;">
+              {% if case.tenant_id != "tenant-demo" %}
+              <span style="font-size:.7rem; padding:1px 6px; border-radius:10px; background:#f3e8ff; color:#6b21a8; border:1px solid #d8b4fe; white-space:nowrap;">{{ case.tenant_id }}</span>
+              {% endif %}
+              {% if case.description %}
+              <span style="font-size:.78rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:280px;">{{ case.description }}</span>
+              {% endif %}
+            </div>
           </td>
           <td style="padding:14px 16px; border-bottom:1px solid var(--border); text-align:center;">
             {% if prof %}
