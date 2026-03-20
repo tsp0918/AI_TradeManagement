@@ -17,12 +17,15 @@ from pathlib import Path
 from typing import Any, Optional
 
 import anthropic
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import DapChatConfig
+
+_PLATFORM_URL = os.environ.get("MODULE_PLATFORM_URL", "http://localhost:8000")
 
 # .env フォールバック（start.sh 経由でない単体起動時に ANTHROPIC_API_KEY を補完）
 try:
@@ -246,6 +249,14 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
   actions: [{{"type": "highlight", "target": "品目管理へ登録"}}]
   choices: [{{"label": "品目管理に移動", "message": "品目管理（8002）でやること一覧を教えてください"}}, {{"label": "登録後の流れ", "message": "品目管理登録後にAI該非判定を依頼するにはどうしますか"}}]
 
+【NeuroSymbolic 該非判定エージェント（重要機能）】
+- ユーザーが「該非判定エージェント」「NeuroSymbolicエージェント」「対話形式の判定」「AI質問形式で判定」などと言った場合は、
+  actions に {{"type": "start_agent", "target": "", "initial_query": "<品目の説明>", "transaction_id": <番号またはnull>}} を含める
+- initial_query には品目名・仕様・用途などユーザーが述べた情報をそのまま渡す
+- transaction_id はコンテキストから判断できる場合のみ数値で設定（不明な場合は省略）
+- start_agent を含む場合、reply はエージェント起動の説明（「NeuroSymbolicエージェントを起動します。対話形式で外為法・EAR該非判定を行います」など）にする
+- エージェントが起動すると、以降の返答は直接エージェントから来る（Claude を通さない）
+
 【ルール】
 - reply: マークダウン禁止（**や# など使わない）。100字以内の口語体日本語。
 - actions: 「画面上のボタン・リンク」リストの要素が該当する場合は必ず含める。target は完全一致。
@@ -256,6 +267,67 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 
 
 # ── エンドポイント ────────────────────────────────────────────────────
+async def _call_agent_answer(agent_session_id: str, message: str) -> dict:
+    """platform-core の agent API に回答を送信し、次の質問または判定完了を返す"""
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(
+            f"{_PLATFORM_URL}/agent/sessions/{agent_session_id}/answer",
+            json={"answer": message},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def _call_agent_judge(agent_session_id: str) -> dict:
+    """最終判定を実行する"""
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(
+            f"{_PLATFORM_URL}/agent/sessions/{agent_session_id}/judge",
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def _start_agent_session(initial_query: str, transaction_id: Optional[int] = None) -> dict:
+    """platform-core にエージェントセッションを開始する"""
+    payload: dict[str, Any] = {"initial_query": initial_query}
+    if transaction_id is not None:
+        payload["transaction_id"] = transaction_id
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(
+            f"{_PLATFORM_URL}/agent/sessions",
+            json=payload,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+def _format_agent_turn(agent_resp: dict) -> tuple[str, list[dict]]:
+    """
+    agent API レスポンスをチャット用 reply + choices に変換する。
+    戻り値: (reply, choices)
+    """
+    if agent_resp.get("is_ready_for_judgment"):
+        reply = (
+            "必要な情報が揃いました。最終判定を実行します。"
+            f"（絞り込み候補: {agent_resp.get('candidates_count', 0)}件）"
+        )
+        choices = [
+            {"label": "判定を実行",     "message": "__hantei_execute_judge__"},
+            {"label": "エージェント終了", "message": "__hantei_cancel__"},
+        ]
+    else:
+        question = agent_resp.get("question", "次の質問を確認中...")
+        count = agent_resp.get("candidates_count", "?")
+        reply = f"{question}（候補 {count}件）"
+        choices = [
+            {"label": "わからない",     "message": "よくわかりません。一般的な回答を教えてください"},
+            {"label": "該当なし",       "message": "該当しません"},
+            {"label": "エージェント終了", "message": "__hantei_cancel__"},
+        ]
+    return reply, choices
+
+
 @router.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -279,6 +351,73 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     session_data: dict = {}
     if req.session_id:
         session_data = _get_session(req.session_id)
+
+    # ── NeuroSymbolic エージェントモード ────────────────────────────────────
+    agent_session_id: Optional[str] = session_data.get("hantei_agent_session_id")
+    if agent_session_id:
+        message = req.message.strip()
+
+        # キャンセル
+        if message == "__hantei_cancel__":
+            session_data["hantei_agent_session_id"] = None
+            if req.session_id:
+                _save_session(req.session_id, session_data)
+            return ChatResponse(
+                reply="NeuroSymbolic 該非判定エージェントを終了しました。",
+                actions=[],
+                choices=[
+                    {"label": "新規判定",     "message": "新しい品目で該非判定エージェントを起動したい"},
+                    {"label": "通常操作へ戻る", "message": "次にすることを教えてください"},
+                ],
+            )
+
+        try:
+            if message == "__hantei_execute_judge__":
+                judge_data = await _call_agent_judge(agent_session_id)
+                session_data["hantei_agent_session_id"] = None
+                if req.session_id:
+                    _save_session(req.session_id, session_data)
+                status = judge_data.get("overall_status", "pending")
+                summary = judge_data.get("summary", "")
+                controlled = ", ".join(judge_data.get("controlled_items", [])) or "なし"
+                reply = (
+                    f"判定完了。総合ステータス: {status}。"
+                    f"規制対象項番: {controlled}。"
+                    f"{summary[:100] if summary else ''}"
+                )
+                choices = [
+                    {"label": "判定詳細を確認", "message": "判定結果の詳細を教えてください"},
+                    {"label": "新規判定",       "message": "新しい品目で該非判定エージェントを起動したい"},
+                ]
+                return ChatResponse(reply=reply, actions=[], choices=choices)
+
+            # 通常回答転送
+            agent_resp = await _call_agent_answer(agent_session_id, message)
+            reply, choices = _format_agent_turn(agent_resp)
+
+            if req.session_id:
+                history_buf = session_data.get("history", [])
+                history_buf.append({"role": "user", "content": message})
+                history_buf.append({"role": "assistant", "content": reply})
+                session_data["history"] = history_buf[-_SESSION_MAX_HISTORY:]
+                _save_session(req.session_id, session_data)
+
+            return ChatResponse(reply=reply, actions=[], choices=choices)
+
+        except httpx.HTTPError as e:
+            # エージェント API エラー: エージェントモードを解除して通常モードへ
+            session_data["hantei_agent_session_id"] = None
+            if req.session_id:
+                _save_session(req.session_id, session_data)
+            return ChatResponse(
+                reply=f"エージェント接続エラーが発生しました。通常モードに戻ります。（{e}）",
+                actions=[],
+                choices=[
+                    {"label": "再起動",         "message": "該非判定エージェントをもう一度起動したい"},
+                    {"label": "通常操作を続ける", "message": "次にすることを教えてください"},
+                ],
+            )
+    # ── エージェントモードここまで ───────────────────────────────────────────
 
     history = session_data.get("history") or req.history
     history = list(history)[-_SESSION_MAX_HISTORY:]
@@ -319,9 +458,11 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
                     "items": {
                         "type": "object",
                         "properties": {
-                            "type":   {"type": "string", "enum": ["highlight", "fill_field"]},
-                            "target": {"type": "string", "description": "対象要素のテキスト（interactive_elements のラベルと完全一致）"},
+                            "type":   {"type": "string", "enum": ["highlight", "fill_field", "start_agent"]},
+                            "target": {"type": "string", "description": "対象要素のテキスト（interactive_elements のラベルと完全一致）。start_agent の場合は空文字列でよい"},
                             "value":  {"type": "string", "description": "fill_field 時に転記する値"},
+                            "initial_query": {"type": "string", "description": "start_agent 時: NeuroSymbolic 該非判定エージェントへの初期クエリ（品目・取引の説明）"},
+                            "transaction_id": {"type": "integer", "description": "start_agent 時: 紐付ける Transaction ID（ai_validation モジュール）"},
                         },
                         "required": ["type", "target"],
                     },
@@ -377,6 +518,36 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     if not reply_text:
         reply_text = next((b.text for b in resp.content if hasattr(b, "text")), "")
         result_choices = default_choices
+
+    # ── start_agent action 検出: エージェントセッションを開始 ─────────────────
+    start_agent_action = next(
+        (a for a in result_actions if a.get("type") == "start_agent"), None
+    )
+    if start_agent_action and req.session_id:
+        initial_query = start_agent_action.get("initial_query", req.message)
+        tx_id_raw = start_agent_action.get("transaction_id")
+        tx_id = int(tx_id_raw) if tx_id_raw else None
+        try:
+            agent_start = await _start_agent_session(initial_query, transaction_id=tx_id)
+            new_agent_session_id = agent_start["session_id"]
+            session_data["hantei_agent_session_id"] = new_agent_session_id
+
+            # エージェントの最初の質問を reply に差し込む
+            first_q = agent_start.get("question", "")
+            count = agent_start.get("candidates_count", "?")
+            if first_q:
+                reply_text = (
+                    f"NeuroSymbolic 該非判定エージェントを起動しました。"
+                    f"（候補 {count}件で絞り込み開始）\n\n{first_q}"
+                )
+            result_actions = [a for a in result_actions if a.get("type") != "start_agent"]
+            result_choices = [
+                {"label": "わからない",     "message": "よくわかりません。一般的な回答を教えてください"},
+                {"label": "該当なし",       "message": "該当しません"},
+                {"label": "エージェント終了", "message": "__hantei_cancel__"},
+            ]
+        except httpx.HTTPError:
+            reply_text += "（エージェント起動に失敗しました。後でもう一度お試しください）"
 
     # セッションに保存
     if req.session_id:
