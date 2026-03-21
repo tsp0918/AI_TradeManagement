@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% block title %}戦略マップ — 4象限分析{% endblock %}
+{% block nav_map %} active{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+  <div>
+    <h1 style="font-size:1.35rem; font-weight:800; margin:0 0 4px;">戦略マップ — 4象限分析</h1>
+    <p style="color:#6b7280; font-size:.85rem; margin:0;">
+      X軸: 規制感度 / Y軸: 技術主権価値。各ドットをクリックしてスコアを設定できます。
+    </p>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <button onclick="recalcAll()" class="btn btn-sm" style="font-size:.8rem;">
+      🔄 規制スコア一括再計算
+    </button>
+  </div>
+</div>
+
+<!-- 凡例 -->
+<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
+  <span style="padding:4px 12px; border-radius:20px; font-size:.78rem; font-weight:700;
+               background:#fee2e2; border:1px solid #fca5a5; color:#991b1b;">
+    🔴 要塞技術（高主権・高規制）
+  </span>
+  <span style="padding:4px 12px; border-radius:20px; font-size:.78rem; font-weight:700;
+               background:#dbeafe; border:1px solid #93c5fd; color:#1e40af;">
+    🔵 戦略資産（高主権・低規制）
+  </span>
+  <span style="padding:4px 12px; border-radius:20px; font-size:.78rem; font-weight:700;
+               background:#fef9c3; border:1px solid #fde047; color:#854d0e;">
+    🟡 コンプライアンス負荷（低主権・高規制）
+  </span>
+  <span style="padding:4px 12px; border-radius:20px; font-size:.78rem; font-weight:700;
+               background:#f3f4f6; border:1px solid #d1d5db; color:#6b7280;">
+    ⚪ 標準品目（低主権・低規制）
+  </span>
+  <span style="padding:4px 12px; border-radius:20px; font-size:.78rem;
+               background:#fff; border:1px dashed #9ca3af; color:#6b7280;">
+    △ = AI推定値（未設定）
+  </span>
+</div>
+
+<!-- メインレイアウト -->
+<div style="display:flex; gap:16px; align-items:flex-start;">
+
+  <!-- チャートエリア -->
+  <div class="card" style="flex:1; min-width:0; padding:20px;">
+    <canvas id="quadrantChart" style="width:100%; max-height:520px;"></canvas>
+    <div id="noDataMsg" style="display:none; text-align:center; padding:40px; color:#9ca3af; font-size:.9rem;">
+      品目データがありません。品目一覧から品目を登録してください。
+    </div>
+  </div>
+
+  <!-- サイドパネル -->
+  <div class="card" id="sidePanel" style="width:300px; flex-shrink:0; display:none; padding:16px;">
+    <div id="sidePanelContent"></div>
+  </div>
+
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  var allProducts = [];
+  var chartInstance = null;
+
+  // ── 象限カラー ──────────────────────────────────────────────────
+  function quadrantColor(x, y, alpha) {
+    var highX = x >= 50, highY = y >= 50;
+    if (highY &&  highX) return 'rgba(239,68,68,'   + alpha + ')';   // 要塞技術: 赤
+    if (highY && !highX) return 'rgba(59,130,246,'  + alpha + ')';   // 戦略資産: 青
+    if (!highY && highX) return 'rgba(234,179,8,'   + alpha + ')';   // コンプライアンス負荷: 黄
+    return                      'rgba(156,163,175,' + alpha + ')';   // 標準品目: グレー
+  }
+
+  function quadrantLabel(x, y) {
+    var highX = x >= 50, highY = y >= 50;
+    if (highY &&  highX) return '要塞技術';
+    if (highY && !highX) return '戦略資産';
+    if (!highY && highX) return 'コンプライアンス負荷';
+    return '標準品目';
+  }
+
+  // ── 象限背景プラグイン ───────────────────────────────────────────
+  var quadrantPlugin = {
+    id: 'quadrantBg',
+    beforeDraw: function (chart) {
+      var ca = chart.chartArea;
+      var ctx = chart.ctx;
+      var xS = chart.scales.x, yS = chart.scales.y;
+      var midX = xS.getPixelForValue(50);
+      var midY = yS.getPixelForValue(50);
+
+      // 戦略資産 (左上: 青)
+      ctx.fillStyle = 'rgba(219,234,254,0.35)';
+      ctx.fillRect(ca.left, ca.top, midX - ca.left, midY - ca.top);
+      // 要塞技術 (右上: 赤)
+      ctx.fillStyle = 'rgba(254,226,226,0.35)';
+      ctx.fillRect(midX, ca.top, ca.right - midX, midY - ca.top);
+      // 標準品目 (左下: グレー)
+      ctx.fillStyle = 'rgba(243,244,246,0.35)';
+      ctx.fillRect(ca.left, midY, midX - ca.left, ca.bottom - midY);
+      // コンプライアンス負荷 (右下: 黄)
+      ctx.fillStyle = 'rgba(254,249,195,0.35)';
+      ctx.fillRect(midX, midY, ca.right - midX, ca.bottom - midY);
+
+      // 中央十字線
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(midX, ca.top);
+      ctx.lineTo(midX, ca.bottom);
+      ctx.moveTo(ca.left, midY);
+      ctx.lineTo(ca.right, midY);
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  // ── ラベルプラグイン ─────────────────────────────────────────────
+  var labelPlugin = {
+    id: 'quadrantLabels',
+    afterDraw: function (chart) {
+      var ca = chart.chartArea;
+      var ctx = chart.ctx;
+      var midX = chart.scales.x.getPixelForValue(50);
+      var midY = chart.scales.y.getPixelForValue(50);
+      ctx.save();
+      ctx.font = '600 11px DM Sans, Hiragino Sans, sans-serif';
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.textAlign = 'left';
+      ctx.fillText('← 戦略資産', ca.left + 8, ca.top + 18);
+      ctx.textAlign = 'right';
+      ctx.fillText('要塞技術 →', ca.right - 8, ca.top + 18);
+      ctx.textAlign = 'left';
+      ctx.fillText('← 標準品目', ca.left + 8, ca.bottom - 8);
+      ctx.textAlign = 'right';
+      ctx.fillText('コンプライアンス負荷 →', ca.right - 8, ca.bottom - 8);
+      ctx.restore();
+    }
+  };
+
+  // ── チャート構築 ────────────────────────────────────────────────
+  function buildChart(products) {
+    var confirmed = products.filter(function (p) { return p.sovereignty_score !== null; });
+    var estimated = products.filter(function (p) { return p.sovereignty_score === null; });
+
+    var confirmedPts = confirmed.map(function (p) {
+      return { x: p.regulation_score, y: p.sovereignty_score, product: p };
+    });
+    var estimatedPts = estimated.map(function (p) {
+      return { x: p.regulation_score, y: p.sovereignty_score_estimate, product: p };
+    });
+
+    var datasets = [
+      {
+        label: '主権スコア確定',
+        data: confirmedPts,
+        backgroundColor: confirmedPts.map(function (pt) { return quadrantColor(pt.x, pt.y, 0.85); }),
+        borderColor:     confirmedPts.map(function (pt) { return quadrantColor(pt.x, pt.y, 1.0); }),
+        borderWidth: 1.5, pointRadius: 9, pointHoverRadius: 12,
+        pointStyle: 'circle',
+      },
+      {
+        label: '主権スコア（AI推定）',
+        data: estimatedPts,
+        backgroundColor: estimatedPts.map(function (pt) { return quadrantColor(pt.x, pt.y, 0.4); }),
+        borderColor:     estimatedPts.map(function (pt) { return quadrantColor(pt.x, pt.y, 0.7); }),
+        borderWidth: 1.5, pointRadius: 8, pointHoverRadius: 11,
+        pointStyle: 'triangle',
+      },
+    ];
+
+    var canvas = document.getElementById('quadrantChart');
+
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
+
+    chartInstance = new Chart(canvas, {
+      type: 'scatter',
+      data: { datasets: datasets },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 12 }, boxWidth: 14 } },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var p = ctx.raw.product;
+                var isEst = p.sovereignty_score === null;
+                return [
+                  p.name + ' (' + p.code + ')',
+                  '規制感度: ' + ctx.raw.x,
+                  '技術主権: ' + ctx.raw.y + (isEst ? ' ※推定' : ''),
+                  p.eccn ? 'ECCN: ' + p.eccn : '',
+                ].filter(Boolean);
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            min: 0, max: 100,
+            title: { display: true, text: '規制感度 →', font: { size: 12, weight: '700' } },
+            grid: { color: 'rgba(0,0,0,0.06)' },
+          },
+          y: {
+            min: 0, max: 100,
+            title: { display: true, text: '技術主権価値 →', font: { size: 12, weight: '700' } },
+            grid: { color: 'rgba(0,0,0,0.06)' },
+          },
+        },
+        onClick: function (event, elements) {
+          if (!elements || !elements.length) { closeSidePanel(); return; }
+          var el = elements[0];
+          var pt = chartInstance.data.datasets[el.datasetIndex].data[el.index];
+          openSidePanel(pt.product);
+        },
+      },
+      plugins: [quadrantPlugin, labelPlugin],
+    });
+  }
+
+  // ── データ読み込み ─────────────────────────────────────────────
+  async function loadChart() {
+    try {
+      var resp = await fetch('/api/products/quadrant-data');
+      allProducts = await resp.json();
+    } catch (e) {
+      console.error('quadrant data fetch error', e);
+      return;
+    }
+
+    if (!allProducts.length) {
+      document.getElementById('quadrantChart').style.display = 'none';
+      document.getElementById('noDataMsg').style.display = 'block';
+      return;
+    }
+
+    buildChart(allProducts);
+  }
+
+  // ── サイドパネル ────────────────────────────────────────────────
+  function closeSidePanel() {
+    document.getElementById('sidePanel').style.display = 'none';
+  }
+
+  function openSidePanel(p) {
+    var isEst = p.sovereignty_score === null;
+    var displayScore = isEst ? p.sovereignty_score_estimate : p.sovereignty_score;
+    var ql = quadrantLabel(p.regulation_score, displayScore);
+    var qlColor = {
+      '要塞技術': '#991b1b',
+      '戦略資産': '#1e40af',
+      'コンプライアンス負荷': '#854d0e',
+      '標準品目': '#6b7280',
+    }[ql] || '#374151';
+
+    document.getElementById('sidePanelContent').innerHTML = [
+      '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">',
+        '<div>',
+          '<div style="font-size:.95rem; font-weight:800; line-height:1.3;">', escHtml(p.name), '</div>',
+          '<div style="font-size:.75rem; color:#6b7280; margin-top:3px;">', escHtml(p.code), ' / ECCN: ', escHtml(p.eccn || '—'), '</div>',
+        '</div>',
+        '<span style="padding:3px 9px; border-radius:12px; font-size:.72rem; font-weight:700;',
+              ' background:', qlColor + '22; color:', qlColor, '; border:1px solid ', qlColor + '44; flex-shrink:0;">', ql, '</span>',
+      '</div>',
+
+      '<div style="margin-bottom:14px;">',
+        '<div style="font-size:.78rem; color:#6b7280; font-weight:600; margin-bottom:4px;">規制感度スコア: <strong style="color:#1f2937;">', p.regulation_score, '</strong></div>',
+        '<div style="background:#f3f4f6; border-radius:4px; height:8px; overflow:hidden;">',
+          '<div style="height:100%; border-radius:4px; background:', quadrantColor(p.regulation_score, 50, 1), '; width:', p.regulation_score, '%;"></div>',
+        '</div>',
+      '</div>',
+
+      '<form id="sovForm">',
+        '<div style="font-size:.78rem; font-weight:700; margin-bottom:4px; color:#374151;">技術主権スコア',
+          isEst ? ' <span style="font-size:.7rem; color:#9ca3af; font-weight:400;">(AI推定: ' + p.sovereignty_score_estimate + ')</span>' : '',
+        '</div>',
+        '<input type="range" id="sovSlider" min="0" max="100" step="1" value="', displayScore, '"',
+          ' style="width:100%; accent-color:#3b82f6;" oninput="document.getElementById(\'sovVal\').textContent=this.value;">',
+        '<div style="display:flex; justify-content:space-between; font-size:.75rem; color:#9ca3af; margin-bottom:10px;">',
+          '<span>低</span><strong id="sovVal" style="color:#1f2937;">', displayScore, '</strong><span>高</span>',
+        '</div>',
+        '<div style="margin-bottom:10px;">',
+          '<label style="font-size:.78rem; font-weight:700; color:#374151;">根拠メモ</label>',
+          '<textarea id="sovNote" rows="3" style="width:100%; margin-top:4px; font-size:.8rem; padding:6px 8px;',
+            ' border:1px solid #e5e7eb; border-radius:6px; resize:vertical; font-family:inherit;">', escHtml(p.sovereignty_note || ''), '</textarea>',
+        '</div>',
+        '<div style="display:flex; gap:8px;">',
+          '<button type="button" onclick="saveSov(', p.id, ')" class="btn btn-primary btn-sm" style="font-size:.8rem;">保存</button>',
+          '<a href="', escHtml(p.edit_url), '" class="btn btn-sm" style="font-size:.8rem;" target="_blank">詳細編集 →</a>',
+          '<button type="button" onclick="closeSidePanel()" class="btn btn-sm" style="font-size:.8rem; margin-left:auto;">✕</button>',
+        '</div>',
+      '</form>',
+    ].join('');
+
+    document.getElementById('sidePanel').style.display = 'block';
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── 保存 ────────────────────────────────────────────────────────
+  window.saveSov = async function (productId) {
+    var score = document.getElementById('sovSlider').value;
+    var note  = document.getElementById('sovNote').value;
+    var fd = new FormData();
+    fd.append('sovereignty_score', score);
+    fd.append('sovereignty_note', note);
+    try {
+      var resp = await fetch('/products/' + productId + '/sovereignty', { method: 'POST', body: fd });
+      if (!resp.ok) throw new Error('save failed');
+      var p = allProducts.find(function (x) { return x.id === productId; });
+      if (p) { p.sovereignty_score = parseFloat(score); p.sovereignty_note = note; }
+      await loadChart();
+      // サイドパネルを再表示
+      var updated = allProducts.find(function (x) { return x.id === productId; });
+      if (updated) openSidePanel(updated);
+    } catch (e) {
+      alert('保存に失敗しました: ' + e.message);
+    }
+  };
+
+  window.closeSidePanel = closeSidePanel;
+
+  // ── 一括再計算 ──────────────────────────────────────────────────
+  window.recalcAll = async function () {
+    try {
+      var resp = await fetch('/api/products/recalculate-all-scores', { method: 'POST' });
+      var data = await resp.json();
+      alert(data.updated + ' 件の規制スコアを再計算しました。');
+      await loadChart();
+    } catch (e) {
+      alert('再計算に失敗しました: ' + e.message);
+    }
+  };
+
+  // ── 初期化 ──────────────────────────────────────────────────────
+  loadChart();
+
+})();
+</script>
+{% endblock %}
