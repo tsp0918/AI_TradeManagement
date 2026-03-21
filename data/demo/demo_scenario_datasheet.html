@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI_TradeManagement — デモシナリオ データシート</title>
+<style>
+  /* ═══ Reset & Base ═══ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Meiryo', sans-serif;
+    font-size: 11pt;
+    line-height: 1.7;
+    color: #1a1a1a;
+    background: #fff;
+  }
+
+  /* ═══ Print Layout ═══ */
+  @page {
+    size: A4;
+    margin: 18mm 16mm 18mm 16mm;
+  }
+  @media print {
+    body { font-size: 9.5pt; }
+    .no-print { display: none !important; }
+    .page-break { page-break-before: always; }
+    .avoid-break { page-break-inside: avoid; }
+    h2 { page-break-before: always; }
+    h2.no-break { page-break-before: auto; }
+  }
+
+  /* ═══ Cover ═══ */
+  .cover {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 40px;
+    border: 3px solid #1e3a5f;
+  }
+  .cover-logo { font-size: 13pt; color: #666; letter-spacing: 0.15em; margin-bottom: 24px; }
+  .cover-title { font-size: 22pt; font-weight: 700; color: #1e3a5f; margin-bottom: 12px; line-height: 1.4; }
+  .cover-sub { font-size: 12pt; color: #555; margin-bottom: 40px; }
+  .cover-meta { font-size: 10pt; color: #888; border-top: 1px solid #ddd; padding-top: 20px; width: 100%; }
+  .cover-scenario-list {
+    background: #f0f4f9;
+    border-left: 4px solid #1e3a5f;
+    padding: 20px 28px;
+    text-align: left;
+    margin: 32px 0;
+    border-radius: 0 6px 6px 0;
+    width: 100%;
+  }
+  .cover-scenario-list h3 { color: #1e3a5f; font-size: 11pt; margin-bottom: 12px; }
+  .cover-scenario-list ol { padding-left: 20px; }
+  .cover-scenario-list li { margin-bottom: 8px; }
+
+  /* ═══ Section Headers ═══ */
+  h1 { font-size: 18pt; color: #1e3a5f; border-bottom: 3px solid #1e3a5f; padding-bottom: 8px; margin: 32px 0 20px; }
+  h2 {
+    font-size: 14pt;
+    color: #fff;
+    background: #1e3a5f;
+    padding: 10px 16px;
+    margin: 40px 0 20px;
+    border-radius: 4px;
+  }
+  h3 { font-size: 11pt; color: #1e3a5f; border-left: 4px solid #1e3a5f; padding: 4px 10px; margin: 24px 0 12px; }
+  h4 { font-size: 10pt; color: #333; margin: 16px 0 8px; font-weight: 600; }
+
+  /* ═══ Scenario Badge ═══ */
+  .scenario-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    padding: 16px 20px;
+    border-radius: 6px;
+  }
+  .scenario-header.s1 { background: #fef3c7; border-left: 5px solid #f59e0b; }
+  .scenario-header.s2 { background: #dbeafe; border-left: 5px solid #2563eb; }
+  .scenario-header.s3 { background: #dcfce7; border-left: 5px solid #16a34a; }
+  .scenario-badge {
+    font-size: 22pt;
+    font-weight: 800;
+    line-height: 1;
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+  .scenario-info h2 {
+    margin: 0;
+    font-size: 13pt;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    color: #1a1a1a;
+  }
+  .scenario-info p { font-size: 10pt; color: #555; margin-top: 4px; }
+  .module-tag {
+    display: inline-block;
+    font-size: 8.5pt;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 6px;
+    margin-top: 4px;
+  }
+  .tag-rnd { background: #fde68a; color: #92400e; }
+  .tag-ai-class { background: #bfdbfe; color: #1e40af; }
+  .tag-ai-val { background: #bbf7d0; color: #14532d; }
+  .tag-port { background: #e5e7eb; color: #374151; }
+
+  /* ═══ Copy-paste Blocks ═══ */
+  .field-block {
+    margin-bottom: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .field-label {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: #fff;
+    background: #475569;
+    padding: 4px 12px;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .field-label .req { color: #fca5a5; font-size: 7.5pt; }
+  .field-label .opt { color: #94a3b8; font-size: 7.5pt; }
+  .field-value {
+    padding: 10px 14px;
+    background: #f8fafc;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 9.5pt;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #0f172a;
+    border-left: 3px solid #cbd5e1;
+  }
+  .field-value.long { min-height: 60px; }
+  .field-value.highlight { background: #fffbeb; border-left-color: #f59e0b; }
+  .field-value.warning { background: #fff1f2; border-left-color: #e11d48; }
+
+  /* ═══ Steps ═══ */
+  .steps { counter-reset: step-counter; }
+  .step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    align-items: flex-start;
+  }
+  .step-num {
+    counter-increment: step-counter;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #1e3a5f;
+    color: #fff;
+    font-size: 11pt;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-content { flex: 1; }
+  .step-content h4 { margin: 0 0 6px; font-size: 10pt; }
+  .step-note {
+    font-size: 8.5pt;
+    color: #666;
+    background: #f1f5f9;
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-top: 6px;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* ═══ URL Box ═══ */
+  .url-box {
+    background: #0f172a;
+    color: #34d399;
+    font-family: monospace;
+    font-size: 10pt;
+    padding: 8px 16px;
+    border-radius: 6px;
+    margin: 12px 0;
+    letter-spacing: 0.03em;
+  }
+
+  /* ═══ Alert / Risk Boxes ═══ */
+  .alert {
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin: 12px 0;
+    font-size: 9.5pt;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .alert-icon { font-size: 14pt; flex-shrink: 0; line-height: 1.3; }
+  .alert.danger { background: #fff1f2; border: 1px solid #fca5a5; color: #7f1d1d; }
+  .alert.warn { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+  .alert.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; }
+  .alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; }
+
+  /* ═══ Expected Result ═══ */
+  .expected {
+    border: 2px dashed #16a34a;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin: 16px 0;
+    background: #f0fdf4;
+  }
+  .expected h4 { color: #15803d; margin-bottom: 8px; }
+  .expected ul { padding-left: 18px; }
+  .expected li { margin-bottom: 4px; font-size: 9.5pt; }
+
+  /* ═══ Table ═══ */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 9pt; }
+  th { background: #1e3a5f; color: #fff; padding: 6px 10px; text-align: left; }
+  td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .td-code { font-family: monospace; font-size: 8.5pt; }
+  .td-warn { color: #b91c1c; font-weight: 600; }
+  .td-ok { color: #15803d; }
+
+  /* ═══ Divider ═══ */
+  hr { border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }
+
+  /* ═══ Footer ═══ */
+  .footer { font-size: 8pt; color: #94a3b8; text-align: center; margin-top: 32px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ COVER ═══════════ -->
+<div class="cover">
+  <div class="cover-logo">AI_TradeManagement Platform</div>
+  <div class="cover-title">デモシナリオ<br>データシート</div>
+  <div class="cover-sub">UI操作用コピーペーストデータ集</div>
+
+  <div class="cover-scenario-list">
+    <h3>収録シナリオ</h3>
+    <ol>
+      <li><strong>シナリオ 1</strong>｜R&D案件起案 — 対中国リスク半導体共同研究プロジェクト<br>
+          <small>モジュール: rnd_assessment（http://localhost:8003）</small></li>
+      <li><strong>シナリオ 2</strong>｜品目登録 — CMPスラリー材料のHSコード付番 &amp; EAR判定<br>
+          <small>モジュール: ai_classification（http://localhost:8002）</small></li>
+      <li><strong>シナリオ 3</strong>｜輸出審査 — 半導体メモリデバイスのキャッチオール確認 &amp; 正規審査<br>
+          <small>モジュール: ai_validation（http://localhost:8001）</small></li>
+    </ol>
+  </div>
+
+  <div class="cover-meta">
+    作成日: 2026-03-21 ｜ AI_TradeManagement v1.0 ｜ 社内限 — デモ用途のみ
+  </div>
+</div>
+
+<!-- ═══════════ SCENARIO 1 ═══════════ -->
+<div class="page-break">
+<div class="scenario-header s1">
+  <div class="scenario-badge">01</div>
+  <div class="scenario-info">
+    <h2>R&amp;D案件起案 — 対中国リスク半導体共同研究プロジェクト</h2>
+    <p>
+      <span class="module-tag tag-rnd">R&amp;D Assessment</span>
+      <span class="module-tag tag-port">http://localhost:8003</span>
+    </p>
+  </div>
+</div>
+
+<div class="alert danger avoid-break">
+  <div class="alert-icon">🚨</div>
+  <div>
+    <strong>デモ想定リスク要因</strong>：中国軍民融合（MCF）政策下の研究機関との共同研究。
+    研究者が人民解放軍関連機関との二重雇用を持ち、アクセス対象技術（3B001）は
+    外為法・EAR双方の規制対象。キャッチオール規制・みなし輸出チェックが連動する想定。
+  </div>
+</div>
+
+<h3>1-A｜R&amp;D案件の新規作成</h3>
+<div class="url-box">http://localhost:8003/ui/cases/new</div>
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>「新規案件を作成」ボタンをクリック</h4>
+      <div class="step-note">トップページ右上、または案件一覧右上ボタン</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>案件タイトルを入力</h4>
+      <div class="field-block">
+        <div class="field-label">案件タイトル <span class="req">※必須</span></div>
+        <div class="field-value">次世代3nm FinFET プロセス開発 — 深圳半導体先端研究院との共同研究</div>
+      </div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>用途要件（使用目的の説明）を入力</h4>
+      <div class="field-block">
+        <div class="field-label">用途要件（use_requirements） <span class="req">※重要</span></div>
+        <div class="field-value long">本プロジェクトは、3nmノード世代のFinFETプロセス技術を対象とした日中共同研究開発である。深圳半導体先端研究院（SSARI：Shenzhen Semiconductor Advanced Research Institute）と共同で、CMPプロセス最適化・エッチング選択比向上・多層配線技術の改良を行う。
+
+対象技術には半導体製造装置の制御ソフトウェア・プロセスレシピ・装置設計仕様が含まれる。研究成果は双方が非独占的に活用することを前提とし、成果の一部を学術論文として公表する予定。
+
+なお、SSARIは中国科学技術部の傘下機関であり、軍民融合（MCF）政策に基づく国防関連プロジェクトへの参画実績を有する。</div>
+      </div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>需要者要件（エンドユーザー）を入力</h4>
+      <div class="field-block">
+        <div class="field-label">需要者要件（end_user_requirements） <span class="req">※重要</span></div>
+        <div class="field-value long">最終的な研究成果の需要者は深圳半導体先端研究院（SSARI）および中国国内半導体メーカー（CXMT等）を想定。
+
+SSARIは中国国家集積回路産業投資基金（ビッグファンド）からの出資を受けており、軍事応用を含む幅広い用途への技術転用が懸念される。また、同院の理事会メンバーに国防科工委（COSTIND）OBが複数名含まれる。提供技術が軍事エンドユーザーに流れる可能性を否定できない。</div>
+      </div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>開示要件（技術移転の内容）を入力</h4>
+      <div class="field-block">
+        <div class="field-label">開示要件（disclosure_requirements） <span class="req">※重要</span></div>
+        <div class="field-value long">開示予定の技術情報:
+・CMPプロセスレシピ（研磨圧力・回転数・スラリー流量・温度プロファイル）
+・エッチング選択比データ（Si/SiO2/SiN）および条件最適化ノウハウ
+・半導体製造装置（スパッタリング装置・CVD装置）の改良制御アルゴリズム
+・次世代3nm FinFET構造設計パラメータおよびシミュレーション結果
+
+上記技術は外為法別表第一第3項（電子部品・集積回路）および ECCN 3B001（半導体製造装置）に該当する可能性があり、経済産業大臣許可が必要となる場合がある。</div>
+      </div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>「リスク評価を実行」ボタンをクリックして AI 評価を取得</h4>
+      <div class="step-note">⚡ AI評価が完了すると「リスクレベル」が赤/オレンジ/緑で表示される</div>
+    </div>
+  </div>
+</div>
+
+<div class="expected avoid-break">
+  <h4>期待される評価結果</h4>
+  <ul>
+    <li>総合リスクレベル: <strong>HIGH（要許可）</strong></li>
+    <li>技術リスク: 高（3nm FinFETプロセス = ECCN 3B001 / 外為法EL-3該当）</li>
+    <li>需要者リスク: 高（MCF政策下機関・軍民融合）</li>
+    <li>規制リスク: 高（キャッチオール規制 CN=D:1/D:3/D:4/D:5）</li>
+    <li>推奨アクション: 経済産業省への許可申請、MITI事前相談の実施</li>
+  </ul>
+</div>
+
+<hr>
+
+<h3>1-B｜みなし輸出リスク人物の登録</h3>
+<div class="url-box">http://localhost:8003/ui/personnel/new?case_id=（案件ID）</div>
+
+<div class="alert warn avoid-break">
+  <div class="alert-icon">⚠️</div>
+  <div>案件詳細画面の「人物を登録」ボタンから遷移するか、上記URLの case_id を実際の案件IDに置換して直接アクセス</div>
+</div>
+
+<div class="field-block avoid-break">
+  <div class="field-label">氏名 <span class="req">※必須</span></div>
+  <div class="field-value">王 建国（WANG Jianguo）</div>
+</div>
+<div class="field-block avoid-break">
+  <div class="field-label">役割（role）</div>
+  <div class="field-value">researcher</div>
+</div>
+<div class="field-block">
+  <div class="field-label">所属組織（affiliation）</div>
+  <div class="field-value">深圳半導体先端研究院（SSARI）材料科学部 上級研究員</div>
+</div>
+<div class="field-block">
+  <div class="field-label">国籍（nationality）<small>ISO 3166-1 alpha-2</small> <span class="req">※必須</span></div>
+  <div class="field-value warning">CN</div>
+</div>
+<div class="field-block">
+  <div class="field-label">現在の居住国（residence_country）</div>
+  <div class="field-value warning">CN</div>
+</div>
+<div class="field-block">
+  <div class="field-label">日本在留年数（years_in_japan）</div>
+  <div class="field-value">0</div>
+</div>
+<div class="field-block">
+  <div class="field-label">二重雇用フラグ（dual_employment_flag）</div>
+  <div class="field-value warning">チェックON（二重雇用あり）</div>
+</div>
+<div class="field-block">
+  <div class="field-label">二重雇用先名称（dual_employer_name）</div>
+  <div class="field-value warning">国防科技工業委員会（COSTIND）関連研究機関</div>
+</div>
+<div class="field-block">
+  <div class="field-label">二重雇用先国（dual_employer_country）</div>
+  <div class="field-value warning">CN</div>
+</div>
+<div class="field-block">
+  <div class="field-label">アクセス対象 ECCN（tech_access_eccn）</div>
+  <div class="field-value">3B001</div>
+</div>
+<div class="field-block">
+  <div class="field-label">アクセス対象 外為法項番（tech_access_fefta）</div>
+  <div class="field-value">EL-3（電子部品・集積回路）</div>
+</div>
+<div class="field-block">
+  <div class="field-label">みなし輸出カテゴリ（deemed_export_category）</div>
+  <div class="field-value highlight">A（軍事・WMD関連エンドユーザー / 要許可判断）</div>
+</div>
+<div class="field-block">
+  <div class="field-label">備考（note）</div>
+  <div class="field-value">過去3年以内に人民解放軍系プロジェクト（「強軍計画」関連）への参画歴あり。LinkedIn プロフィールに記載なし（独自調査による）。在留資格は研究者ビザ（技人国）申請予定。</div>
+</div>
+
+<div class="expected">
+  <h4>期待される判定結果</h4>
+  <ul>
+    <li>みなし輸出リスク: <strong>HIGH</strong>（カテゴリA + 二重雇用 + CN在居）</li>
+    <li>案件詳細画面に赤い警告バナーで当該人物が表示</li>
+    <li>DAP先輩担当者が「みなし輸出許可申請を検討してください」とプロアクティブアラート</li>
+  </ul>
+</div>
+</div>
+
+<!-- ═══════════ SCENARIO 2 ═══════════ -->
+<div class="page-break">
+<div class="scenario-header s2">
+  <div class="scenario-badge">02</div>
+  <div class="scenario-info">
+    <h2>品目登録 — CMPスラリー材料のHSコード付番 &amp; EAR判定</h2>
+    <p>
+      <span class="module-tag tag-ai-class">AI Classification</span>
+      <span class="module-tag tag-port">http://localhost:8002</span>
+    </p>
+  </div>
+</div>
+
+<div class="alert info avoid-break">
+  <div class="alert-icon">ℹ️</div>
+  <div>
+    <strong>シナリオ概要</strong>：半導体製造のCMP（化学機械研磨）工程で使用するスラリー材料を品目登録し、
+    AIによるHSコード付番とECCN推定を実施。原料の一部に米国原産品（Cabot社製コロイダルシリカ）が含まれており、
+    EARのde minimis基準および再輸出規制の確認が必要なシーンを想定。
+  </div>
+</div>
+
+<h3>2-A｜新規品目の登録</h3>
+<div class="url-box">http://localhost:8002/products/new　または　http://localhost:8002/products → 「新規登録」ボタン</div>
+
+<div class="field-block avoid-break">
+  <div class="field-label">品目コード（code） <span class="req">※必須・ユニーク</span></div>
+  <div class="field-value">CMP-SL-2026-001</div>
+</div>
+<div class="field-block">
+  <div class="field-label">品目名（name） <span class="req">※必須</span></div>
+  <div class="field-value">CMPスラリー（次世代3nm向け シリカ系・タングステン/銅CMP対応）</div>
+</div>
+<div class="field-block">
+  <div class="field-label">品目説明（description） <span class="req">※AI判定に直接影響</span></div>
+  <div class="field-value long">半導体ウエハ平坦化工程（CMP: Chemical Mechanical Planarization）用水系研磨スラリー。次世代3nmノード FinFET製造プロセスに対応。
+
+【主成分】
+・コロイダルシリカ砥粒（粒径30nm, 高純度 99.999%）：米国 Cabot Microelectronics 社製
+・酸化剤：過酸化水素（H2O2, 30%）
+・pH調整剤：水酸化カリウム（KOH）
+・分散剤：ポリアクリル酸（PAA）
+・腐食防止剤：ベンゾトリアゾール（BTA）
+・溶媒：超純水（UPW, 比抵抗18.2 MΩ·cm）
+
+【用途】
+層間絶縁膜（SiO2）、タングステンプラグ（W）、銅配線（Cu）の各CMP工程に適用可能。研磨速度 SiO2 300nm/min 以上を達成。
+
+【規格】
+金属不純物 &lt; 5ppb、粒径均一性 CV &lt; 10%、pH 10.5 ± 0.2</div>
+</div>
+<div class="field-block">
+  <div class="field-label">品目クラス（item_class）</div>
+  <div class="field-value">化学品 / Chemical</div>
+</div>
+<div class="field-block">
+  <div class="field-label">用途サマリー（usage_summary）</div>
+  <div class="field-value">半導体製造ライン CMP 工程（SiO2/W/Cu）用スラリー。3nm世代FinFET向け。深圳半導体先端研究院へのサンプル提供を予定。</div>
+</div>
+<div class="field-block">
+  <div class="field-label">原産国（country_of_origin）</div>
+  <div class="field-value">JP（調合・完成品製造）/ US（コロイダルシリカ原料由来）</div>
+</div>
+<div class="field-block">
+  <div class="field-label">BOM（部品表）JSON ※オプション — 下記2-Bを参照</div>
+  <div class="field-value">後から CSV インポート or JSON 入力</div>
+</div>
+
+<div class="steps" style="margin-top: 20px;">
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>上記フィールドを入力して「保存」</h4>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>品目詳細画面 → 「AI判定（HSコード）」ボタンをクリック</h4>
+      <div class="step-note">モーダルが開き、HS候補5件 + 推定ECCN + 外為法項番が表示される</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>モーダルの結果を確認 → 適切な候補の「反映」ボタンをクリック</h4>
+      <div class="step-note">HSコードと推定ECCNが品目フォームに自動入力される（EAR99は転記しない設計）</div>
+    </div>
+  </div>
+</div>
+
+<div class="expected avoid-break">
+  <h4>期待されるHS判定結果（AI）</h4>
+  <ul>
+    <li>rank 1: <strong>HS 3824.99</strong> — Chemical preparations not elsewhere specified / ECCN 1C350（化学混合品）</li>
+    <li>rank 2: <strong>HS 3824.40</strong> — Prepared additives for cements / または類似品</li>
+    <li>rank 3: <strong>HS 2811.22</strong> — Silicon dioxide / ECCN EAR99</li>
+    <li>※ 手動確定推奨: <strong>HS 3824.9991</strong>（化学調製品 NEC） ECCN 1C350 要確認</li>
+  </ul>
+</div>
+
+<div class="alert warn avoid-break">
+  <div class="alert-icon">⚠️</div>
+  <div>
+    <strong>EAR de minimis 注意点</strong>：本品は米国原産コロイダルシリカ（Cabot社）を25%含有。
+    EAR §734.4 de minimis 例外は25%超で非適用となるため、中国向け再輸出には
+    EAR ライセンス審査が必要な可能性がある（特に AT列・CC列の確認要）。
+  </div>
+</div>
+
+<hr>
+
+<h3>2-B｜原料BOM（部品表）データ</h3>
+<p style="font-size: 9.5pt; margin-bottom: 12px;">
+  添付CSVファイル: <code>data/demo/cmp_slurry_bom.csv</code> を参照。以下はキーエントリの抜粋。
+</p>
+
+<table class="avoid-break">
+  <thead>
+    <tr>
+      <th>部品番号</th>
+      <th>原料名</th>
+      <th>製造者</th>
+      <th>原産国</th>
+      <th>含有量</th>
+      <th>HSコード</th>
+      <th>ECCN</th>
+      <th>備考</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="td-code">BOM-001</td>
+      <td>コロイダルシリカ砥粒</td>
+      <td>Cabot Microelectronics</td>
+      <td class="td-warn">US</td>
+      <td>25.0%</td>
+      <td class="td-code">2811.22</td>
+      <td class="td-code">EAR99</td>
+      <td>de minimis 基準注意</td>
+    </tr>
+    <tr>
+      <td class="td-code">BOM-002</td>
+      <td>過酸化水素（30%）</td>
+      <td>三菱ガス化学</td>
+      <td class="td-ok">JP</td>
+      <td>5.0%</td>
+      <td class="td-code">2847.00</td>
+      <td class="td-warn">1C350</td>
+      <td>CWC Schedule 3 注意</td>
+    </tr>
+    <tr>
+      <td class="td-code">BOM-003</td>
+      <td>水酸化カリウム</td>
+      <td>BASF SE</td>
+      <td class="td-ok">DE</td>
+      <td>0.5%</td>
+      <td class="td-code">2815.20</td>
+      <td class="td-code">EAR99</td>
+      <td>pH調整剤</td>
+    </tr>
+    <tr>
+      <td class="td-code">BOM-004</td>
+      <td>ポリアクリル酸（PAA）</td>
+      <td>Lubrizol</td>
+      <td class="td-warn">US</td>
+      <td>0.8%</td>
+      <td class="td-code">3906.10</td>
+      <td class="td-code">EAR99</td>
+      <td>分散剤</td>
+    </tr>
+    <tr>
+      <td class="td-code">BOM-005</td>
+      <td>ベンゾトリアゾール</td>
+      <td>上海精化科技</td>
+      <td class="td-warn">CN</td>
+      <td>0.1%</td>
+      <td class="td-code">2933.99</td>
+      <td class="td-code">EAR99</td>
+      <td>中国産原料 使用量極少</td>
+    </tr>
+    <tr>
+      <td class="td-code">BOM-006</td>
+      <td>クエン酸三アンモニウム</td>
+      <td>Merck KGaA</td>
+      <td class="td-ok">DE</td>
+      <td>0.3%</td>
+      <td class="td-code">2918.15</td>
+      <td class="td-code">EAR99</td>
+      <td>キレート剤</td>
+    </tr>
+    <tr>
+      <td class="td-code">BOM-007</td>
+      <td>超純水（UPW）</td>
+      <td>自社製造</td>
+      <td class="td-ok">JP</td>
+      <td>68.3%</td>
+      <td class="td-code">2851.00</td>
+      <td class="td-code">N/A</td>
+      <td>溶媒</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="alert danger avoid-break" style="margin-top: 20px;">
+  <div class="alert-icon">🚩</div>
+  <div>
+    <strong>Red Flag チェックポイント</strong>
+    <ul style="margin-top: 6px; padding-left: 16px;">
+      <li>US原産品（BOM-001, BOM-004）の合計含有比率が <strong>25.8%</strong> — EAR de minimis（25%）を超過</li>
+      <li>BOM-002（過酸化水素）は CWC Schedule 3 物質（1C350）— 輸出数量・用途確認必須</li>
+      <li>仕向地が CN の場合、AT列・CC列・EI列の確認が必要</li>
+      <li>BOM-005 中国産原料 → サプライチェーンリスク（制裁リスト照合推奨）</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════ SCENARIO 3 ═══════════ -->
+<div class="page-break">
+<div class="scenario-header s3">
+  <div class="scenario-badge">03</div>
+  <div class="scenario-info">
+    <h2>輸出審査 — 半導体メモリデバイスのキャッチオール確認 &amp; 正規審査</h2>
+    <p>
+      <span class="module-tag tag-ai-val">AI Validation</span>
+      <span class="module-tag tag-port">http://localhost:8001</span>
+    </p>
+  </div>
+</div>
+
+<div class="alert info avoid-break">
+  <div class="alert-icon">ℹ️</div>
+  <div>
+    <strong>シナリオ概要</strong>：LPDDR5 16Gb DRAMメモリデバイスの中国向け輸出について、
+    キャッチオール規制の適用可否を確認し、正規審査フローを実施する。
+    仕向地（中国）はD:1/D:3/D:4/D:5グループに属するため、キャッチオール判定が
+    高確率で「REQUIRES_PERMIT」または「REVIEW」となる想定。
+  </div>
+</div>
+
+<h3>3-A｜審査案件の新規作成（ai_classification から連携）</h3>
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>品目管理（http://localhost:8002）で品目「LPDDR5 16Gb DRAM チップ」を確認・事前登録</h4>
+      <div class="step-note">既に登録済みであれば品目詳細画面を開く</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>品目詳細画面 → 「AI審査に起案」ボタンをクリック</h4>
+      <div class="step-note">自動的に ai_validation（http://localhost:8001）に審査案件が作成され、連携IDが付与される</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>または ai_validation に直接アクセスして手動作成</h4>
+      <div class="url-box" style="font-size: 9pt;">http://localhost:8001/ui/transactions/new</div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<h3>3-B｜審査案件の品目情報入力</h3>
+<div class="url-box">http://localhost:8001/ui/transactions/new　または　API 経由で自動連携</div>
+
+<div class="field-block avoid-break">
+  <div class="field-label">審査案件タイトル（title） <span class="req">※必須</span></div>
+  <div class="field-value">LPDDR5 16Gb DRAM チップ 対中国向け輸出審査（深圳科技集団）</div>
+</div>
+
+<div class="field-block">
+  <div class="field-label">品目名（item_name）</div>
+  <div class="field-value">LPDDR5 16Gb DRAM メモリチップ（7nm/10nm世代）</div>
+</div>
+
+<div class="field-block">
+  <div class="field-label">品目説明（item_description） <span class="req">※AI審査精度に直接影響</span></div>
+  <div class="field-value long">低電力DDR5規格（LPDDR5）準拠のDRAMメモリデバイス。7nm〜10nmノード先端プロセスで製造。
+
+【仕様】
+・容量: 16Gb（16ギガビット）
+・動作電圧: 1.05V（VDDQ）/ 1.8V（VDD）
+・最大データレート: 6,400 Mbps/pin（LPDDR5-6400）
+・バス幅: ×16（16ビットパラレル）
+・パッケージ: FBGA 200ball, 0.5mmピッチ
+・動作温度範囲: -40°C〜+105°C（AEC-Q100 Grade 2相当）
+
+【応用分野】
+スマートフォン・5G通信基地局制御システム・AI推論エッジデバイス・自律走行システム・軍用グレード通信端末（MILSPEC準拠版あり）
+
+【HSコード】: 854232（その他のメモリ）
+【ECCN推定】: 4A994（一般PCメモリ）または 3A001（先端プロセス品の場合）</div>
+</div>
+
+<div class="field-block">
+  <div class="field-label">用途サマリー（usage_requirements）</div>
+  <div class="field-value long">深圳科技集団有限公司が5G通信基地局の制御システム用メモリとして調達。年間100万個の供給を予定。
+
+設置場所: 中国新疆ウイグル自治区における通信インフラ整備プロジェクト（「デジタル新疆」関連）への機器供給を含む。
+
+顧客より書面確認済みの最終用途は「民生用5G基地局」だが、新疆への設置という地域的リスク、および深圳科技集団の軍事部門（防衛事業部）との取引実績から、軍用転用の可能性を要確認。</div>
+</div>
+
+<hr>
+
+<h3>3-C｜取引先（カウンターパーティ）情報の追加</h3>
+<div class="step-note" style="margin-bottom: 16px; display: flex; gap: 8px; background: #f1f5f9; padding: 8px 12px; border-radius: 4px; font-size: 9pt;">
+  <span>📌</span>
+  <span>審査案件作成後、案件詳細画面の「取引先を追加」または「スクリーニング」セクションから入力</span>
+</div>
+
+<div class="field-block avoid-break">
+  <div class="field-label">取引先名（counterparty_name）</div>
+  <div class="field-value warning">深圳科技集団有限公司（Shenzhen Tech Group Co., Ltd.）</div>
+</div>
+<div class="field-block">
+  <div class="field-label">仕向地（destination_country）ISO 3166-1 alpha-2</div>
+  <div class="field-value warning">CN</div>
+</div>
+
+<div class="alert danger avoid-break">
+  <div class="alert-icon">🚨</div>
+  <div>
+    <strong>制裁リストスクリーニング必須</strong>：「深圳科技集団」は架空名称だが、
+    デモでは制裁リスト照合（http://localhost:8005）を実行し、照合ログを審査証跡として記録する。
+    実際の審査では OFAC SDN / BIS Entity List / 外為法の告示リスト全件との照合が必要。
+  </div>
+</div>
+
+<hr>
+
+<h3>3-D｜AI 審査の実行とキャッチオール確認</h3>
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>審査案件詳細画面 → 「AI審査を実行」ボタンをクリック</h4>
+      <div class="step-note">HanteiAgent が起動し、Pipeline（usage_expand → matrix_match → dual_list_check → patent_retrieve → catchall_assess → finalize）が順次実行される。完了まで数十秒〜数分。</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>審査結果レポートを確認</h4>
+      <div class="step-note">判定結果・ECCN・外為法項番・キャッチオール6ステップ判定・Red Flag数が表示される</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>「PDFレポートをダウンロード」でレポートを保存</h4>
+      <div class="step-note">Section 1（品目概要）〜 Section 4（キャッチオール）の4章構成で出力</div>
+    </div>
+  </div>
+</div>
+
+<div class="expected avoid-break">
+  <h4>期待される AI 審査結果</h4>
+  <ul>
+    <li>ECCN 推定: <strong>4A994</strong>（一般 DRAM）または <strong>3A001</strong>（7nm先端品の場合）</li>
+    <li>外為法: <strong>EL-3（電子部品・集積回路）</strong>該当可能性</li>
+    <li>キャッチオール判定: <strong>REQUIRES_PERMIT または REVIEW</strong><br>
+        理由: CN は D:1/D:3/D:4/D:5 Country Group → AT列/CC列 が関連 ECCN で規制</li>
+    <li>Red Flag: 新疆への設置・軍用グレード仕様・MCF関連顧客 = 複数該当</li>
+    <li>推奨アクション: 経済産業大臣許可申請 / 包括許可の適用可否確認</li>
+  </ul>
+</div>
+
+<div class="alert warn avoid-break">
+  <div class="alert-icon">⚠️</div>
+  <div>
+    <strong>DAP（先輩担当者）からのプロアクティブアラート</strong>（自動表示想定）：
+    「本案件は仕向地 CN / 新疆関連プロジェクトで高リスクです。スクリーニング完了前の
+    審査申請はできません。まず取引先スクリーニング（http://localhost:8005）を実施してください。」
+  </div>
+</div>
+
+<hr>
+
+<h3>3-E｜審査レポート出力確認ポイント</h3>
+
+<table class="avoid-break">
+  <thead>
+    <tr>
+      <th>レポートセクション</th>
+      <th>確認内容</th>
+      <th>デモで期待される値</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Section 1｜品目情報</td>
+      <td>品目名・説明・HS コード・ECCN</td>
+      <td>HS 854232 / ECCN 4A994 or 3A001</td>
+    </tr>
+    <tr>
+      <td>Section 2｜マトリクス判定</td>
+      <td>外為法別表第一 該当項番</td>
+      <td>EL-3（電子部品・集積回路）</td>
+    </tr>
+    <tr>
+      <td>Section 3｜デュアルリスト照合</td>
+      <td>制裁リスト / Entity List 照合結果</td>
+      <td>クリア or 要確認フラグ</td>
+    </tr>
+    <tr>
+      <td>Section 4｜キャッチオール</td>
+      <td>6ステップ判定 / Red Flag 数</td>
+      <td>REQUIRES_PERMIT / Red Flag 3件以上</td>
+    </tr>
+    <tr>
+      <td>推奨アクション</td>
+      <td>許可申請要否・包括許可適用可否</td>
+      <td>個別許可申請を推奨</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════ APPENDIX ═══════════ -->
+<div class="page-break">
+<h1 class="no-break">付録：システム起動確認 &amp; アクセス先一覧</h1>
+
+<h3>モジュール一覧</h3>
+<table>
+  <thead>
+    <tr><th>モジュール</th><th>URL</th><th>用途</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>platform-core</td><td class="td-code">http://localhost:8000</td><td>ダッシュボード・知識グラフ・規制動向</td></tr>
+    <tr><td>ai_validation</td><td class="td-code">http://localhost:8001</td><td>輸出審査・AI判定・PDFレポート ← シナリオ3</td></tr>
+    <tr><td>ai_classification</td><td class="td-code">http://localhost:8002</td><td>品目管理・HSコード判定・ECCN ← シナリオ2</td></tr>
+    <tr><td>rnd_assessment</td><td class="td-code">http://localhost:8003</td><td>R&amp;D案件・みなし輸出 ← シナリオ1</td></tr>
+    <tr><td>patent_search</td><td class="td-code">http://localhost:8004</td><td>特許検索（J-PlatPat フォールバック）</td></tr>
+    <tr><td>screening</td><td class="td-code">http://localhost:8005</td><td>制裁リストスクリーニング（OFAC/BIS）</td></tr>
+    <tr><td>hs_classifier</td><td class="td-code">http://localhost:8006</td><td>HSコード FAISS 分類エンジン（内部API）</td></tr>
+    <tr><td>dap</td><td class="td-code">http://localhost:8010</td><td>先輩担当者 AI アシスタント</td></tr>
+  </tbody>
+</table>
+
+<h3 style="margin-top: 24px;">起動コマンド</h3>
+<div class="field-block">
+  <div class="field-label">一括起動（start.sh）</div>
+  <div class="field-value">cd /Users/takehirosato/Desktop/AI_TradeManagement
+./start.sh</div>
+</div>
+<div class="field-block">
+  <div class="field-label">ヘルスチェック（全モジュール）</div>
+  <div class="field-value">for port in 8000 8001 8002 8003 8004 8005 8006 8010; do
+  echo -n "Port $port: "; curl -sf http://localhost:$port/health | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','ok'))" 2>/dev/null || echo "NG"
+done</div>
+</div>
+
+<h3 style="margin-top: 24px;">デモフロー推奨順序</h3>
+<div class="steps">
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>シナリオ 1：R&amp;D案件起案（localhost:8003）</h4>
+      <div class="step-note">R&amp;Dプロジェクトのリスク評価 → みなし輸出人物登録 → HIGH判定を確認</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>シナリオ 2：品目登録 + HSコードAI判定（localhost:8002）</h4>
+      <div class="step-note">CMPスラリー品目登録 → AIによるHSコード候補表示 → ECCN確認 → 反映ボタンで確定</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>シナリオ 3：輸出審査 + キャッチオール確認（localhost:8001）</h4>
+      <div class="step-note">品目管理から審査起案 → 取引先追加 → AI審査実行 → PDFレポートダウンロード</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num"></div>
+    <div class="step-content">
+      <h4>DAP アシスタントの動作確認（各モジュール画面右下 チャットボタン）</h4>
+      <div class="step-note">プロアクティブアラート・ワークフローギャップ検出・クロスモジュール誘導を確認</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  AI_TradeManagement デモシナリオ データシート｜作成: 2026-03-21｜社内限 / For Demo Use Only<br>
+  本書のデータはデモ目的のフィクションです。実在の企業・人物・案件とは一切関係ありません。
+</div>
+</div>
+
+</body>
+</html>
