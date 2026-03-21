@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}{{ person.name }} — みなし輸出スクリーニング{% endblock %}
+{% block nav_personnel %} active{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/ui/personnel">みなし輸出</a> &rsaquo; {{ person.name }}
+</div>
+<div class="page-hd" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h1>{{ person.name }}</h1>
+    {% if person.role or person.affiliation %}
+    <p class="sub">{{ person.role or "" }}{% if person.role and person.affiliation %} ／ {% endif %}{{ person.affiliation or "" }}</p>
+    {% endif %}
+  </div>
+  <div style="display:flex;gap:10px;flex-shrink:0;">
+    <form method="post" action="/ui/personnel/{{ person.personnel_id }}/screen">
+      <button type="submit" class="btn btn-ghost btn-sm">再スクリーニング</button>
+    </form>
+    <form method="post" action="/ui/personnel/{{ person.personnel_id }}/delete"
+          onsubmit="return confirm('この人物を削除しますか？')">
+      <button type="submit" class="btn btn-sm" style="background:#fee2e2;color:#991b1b;border:1.5px solid #fecaca;">削除</button>
+    </form>
+  </div>
+</div>
+
+<!-- リスクバナー -->
+{% set risk = person.deemed_export_risk %}
+{% if risk == "high" %}
+<div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span style="font-size:2rem;">🚨</span>
+    <div>
+      <div style="font-size:1.1rem;font-weight:800;color:#991b1b;">高リスク — 即時エスカレーション必要</div>
+      <div style="font-size:.85rem;color:#7f1d1d;margin-top:4px;">安全保障輸出管理担当者へ報告し、技術提供前に輸出許可を確認してください。</div>
+    </div>
+  </div>
+</div>
+{% elif risk == "medium" %}
+<div style="background:#fffbeb;border:2px solid #fde68a;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span style="font-size:2rem;">⚠️</span>
+    <div>
+      <div style="font-size:1.1rem;font-weight:800;color:#92400e;">中リスク — 確認フォーム提出が必要</div>
+      <div style="font-size:.85rem;color:#78350f;margin-top:4px;">みなし輸出確認フォームを提出し、技術提供の範囲・内容を書面化してください。</div>
+    </div>
+  </div>
+</div>
+{% elif risk == "low" %}
+<div style="background:#eff6ff;border:2px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+  <span style="font-size:1.4rem;">🔵</span>
+  <div style="font-size:.9rem;color:#1e40af;">低リスク — 在留証明書の確認と技術提供の記録保管が必要です。</div>
+</div>
+{% elif risk == "none" %}
+<div style="background:#d1fae5;border:2px solid #a7f3d0;border-radius:12px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+  <span style="font-size:1.4rem;">✅</span>
+  <div style="font-size:.9rem;color:#065f46;">みなし輸出リスクなし — 現時点で特段の管理措置は不要です。</div>
+</div>
+{% endif %}
+
+<div class="g2" style="align-items:start;">
+  <!-- 左: スクリーニング結果 -->
+  <div>
+    <div class="card">
+      <div class="card-title">🔍 スクリーニング結果</div>
+      {% if person.screened_at %}
+      <div class="kv" style="margin-bottom:16px;">
+        <span class="k">判定カテゴリ</span>
+        <span class="v">
+          {% if person.deemed_export_category %}
+            <strong>カテゴリ {{ person.deemed_export_category }}</strong>
+            <span style="font-size:.78rem;color:var(--muted);margin-left:8px;">
+              {% if person.deemed_export_category == 'A' %}国籍リスク{% elif person.deemed_export_category == 'B' %}二重雇用リスク{% elif person.deemed_export_category == 'C' %}非居住者リスク{% endif %}
+            </span>
+          {% else %}
+            <span style="color:var(--muted);">該当カテゴリなし</span>
+          {% endif %}
+        </span>
+        <span class="k">リスクレベル</span>
+        <span class="v">
+          {% if risk == "high" %}<span style="font-weight:800;color:#dc2626;">高 (HIGH)</span>
+          {% elif risk == "medium" %}<span style="font-weight:800;color:#d97706;">中 (MEDIUM)</span>
+          {% elif risk == "low" %}<span style="font-weight:700;color:#2563eb;">低 (LOW)</span>
+          {% elif risk == "none" %}<span style="font-weight:700;color:#059669;">なし (NONE)</span>
+          {% else %}<span style="color:var(--muted);">未判定</span>{% endif %}
+        </span>
+        <span class="k">スクリーニング日時</span>
+        <span class="v">{{ person.screened_at.strftime('%Y-%m-%d %H:%M') if person.screened_at else "—" }}</span>
+      </div>
+
+      {% if reasons %}
+      <div style="font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">判定理由</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;">
+        {% for reason in reasons %}
+        <li style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:.85rem;color:var(--text);">
+          ⚠ {{ reason }}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p style="font-size:.85rem;color:var(--muted);">判定理由なし</p>
+      {% endif %}
+
+      {% else %}
+      <p style="color:var(--muted);font-size:.85rem;">まだスクリーニングが実行されていません。</p>
+      <form method="post" action="/ui/personnel/{{ person.personnel_id }}/screen" style="margin-top:12px;">
+        <button type="submit" class="btn btn-primary btn-sm">スクリーニング実行</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 右: 属性情報 -->
+  <div>
+    <div class="card">
+      <div class="card-title">🌍 国籍・在留情報</div>
+      <div class="kv">
+        <span class="k">国籍</span>
+        <span class="v">
+          {% if person.nationality %}
+            <span class="badge {% if person.nationality in ['KP','IR','SY','CU'] %}badge-primary{% elif person.nationality in ['RU','BY','CN'] %}badge-dis{% else %}badge-meta{% endif %}">{{ person.nationality }}</span>
+            {% if person.nationality in ['KP','IR','SY','CU'] %}
+              <span style="font-size:.75rem;color:#dc2626;margin-left:6px;">輸出禁止国</span>
+            {% elif person.nationality in ['RU','BY','CN'] %}
+              <span style="font-size:.75rem;color:#d97706;margin-left:6px;">重点審査国</span>
+            {% endif %}
+          {% else %}—{% endif %}
+        </span>
+        <span class="k">居住国</span>
+        <span class="v">{{ person.residence_country or "—" }}</span>
+        <span class="k">在日年数</span>
+        <span class="v">
+          {% if person.years_in_japan is not none %}
+            {{ "%.1f"|format(person.years_in_japan) }} 年
+            {% if person.years_in_japan < 5 %}
+              <span style="font-size:.75rem;color:#d97706;margin-left:4px;">(5年未満 → カテゴリC)</span>
+            {% endif %}
+          {% else %}—{% endif %}
+        </span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏢 二重雇用状況</div>
+      <div class="kv">
+        <span class="k">兼職フラグ</span>
+        <span class="v">
+          {% if person.dual_employment_flag %}
+            <span class="chip" style="background:#fef3c7;color:#92400e;">あり</span>
+          {% else %}
+            <span style="color:var(--muted);">なし</span>
+          {% endif %}
+        </span>
+        {% if person.dual_employment_flag %}
+        <span class="k">兼職先</span>
+        <span class="v">{{ person.dual_employer_name or "—" }}</span>
+        <span class="k">兼職先国</span>
+        <span class="v">{{ person.dual_employer_country or "—" }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔒 技術アクセス</div>
+      <div class="kv">
+        <span class="k">ECCN</span>
+        <span class="v"><code>{{ person.tech_access_eccn or "—" }}</code></span>
+        <span class="k">外為法項番</span>
+        <span class="v"><code>{{ person.tech_access_fefta or "—" }}</code></span>
+      </div>
+    </div>
+
+    {% if person.note %}
+    <div class="card">
+      <div class="card-title">📝 備考</div>
+      <p style="font-size:.85rem;white-space:pre-wrap;">{{ person.note }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

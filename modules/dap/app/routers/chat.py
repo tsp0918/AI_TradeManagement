@@ -362,6 +362,27 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
                 "action_hint": "「スクリーニングを実行」と話しかけると手順を案内します",
             })
 
+    # 規制動向モニタリング — 未読の warn/danger 変更をアラート化
+    try:
+        import httpx as _httpx
+        r = _httpx.get("http://localhost:8000/api/regulatory/changes?limit=3", timeout=2)
+        if r.status_code == 200:
+            reg_changes = r.json().get("changes", [])
+            for rc in reg_changes:
+                sev = rc.get("severity", "info")
+                if sev not in ("warn", "danger"):
+                    continue
+                guide_id = f"reg_change:{rc.get('id')}"
+                alerts.append({
+                    "type":        "regulatory_update",
+                    "severity":    sev,
+                    "guide_id":    guide_id,
+                    "message":     rc.get("title", "規制動向に変更があります"),
+                    "action_hint": "「規制変更の詳細を教えて」と話しかけると内容を案内します",
+                })
+    except Exception:
+        pass  # platform-core 未起動時は無視
+
     return {"stage": stage, "gap_modules": gap_modules, "proactive_alerts": alerts}
 
 

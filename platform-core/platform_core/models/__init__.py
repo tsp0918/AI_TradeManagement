@@ -12,6 +12,7 @@ from platform_core.models.project import Project
 from platform_core.models.project_patent_link import ProjectPatentLink
 from platform_core.models.tenant import Tenant
 from platform_core.models.user import AuthProvider, User, UserModulePermission, UserRole
+from platform_core.models.regulatory_change import RegulatoryChange  # noqa: F401
 
 __all__ = [
     "Tenant",
@@ -27,4 +28,5 @@ __all__ = [
     "Project",
     "ProjectPatentLink",
     "Item",
+    "RegulatoryChange",
 ]

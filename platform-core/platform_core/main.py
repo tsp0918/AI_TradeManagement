@@ -31,6 +31,7 @@ from platform_core.routers.ui import start_all_modules, stop_all_modules
 from platform_core.agent.router import router as agent_router
 from platform_core.routers.metrics import router as metrics_router
 from platform_core.routers.faiss_search import router as faiss_search_router
+from platform_core.routers.regulatory import router as regulatory_router
 
 _STATIC_DIR = pathlib.Path(__file__).parent / "static"
 
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
     app.include_router(agent_router)
     app.include_router(metrics_router)
     app.include_router(faiss_search_router)
+    app.include_router(regulatory_router)
 
     @app.get("/", include_in_schema=False)
     async def root():

@@ -23,6 +23,8 @@ from app.services.template_renderer import render_use_text, render_end_user_text
 from app.services.scoring import score_demo
 
 from app.models.rd_case import RDCaseProfiles, RDAssessments
+from app.models.personnel import Personnel
+from app.services.deemed_export import run_screening as _run_deemed_screening
 
 AI_VALIDATION_BASE = "http://localhost:8001"
 SCREENING_BASE = "http://localhost:8005"
@@ -797,3 +799,122 @@ def promote_to_item(
         )
 
     return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest?promoted=1", status_code=303)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# みなし輸出スクリーニング (Personnel)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.get("/personnel")
+def personnel_list(request: Request, db: Session = Depends(get_db)):
+    """人物一覧（みなし輸出管理対象者）"""
+    persons = db.query(Personnel).order_by(Personnel.created_at.desc()).all()
+    # 案件IDから案件タイトルをマップ
+    case_ids = {p.case_id for p in persons if p.case_id}
+    from app.crud.rd_case import get_case
+    case_map = {cid: get_case(db, cid) for cid in case_ids}
+    return templates.TemplateResponse(
+        "personnel.html",
+        {"request": request, "persons": persons, "case_map": case_map},
+    )
+
+
+@router.get("/personnel/new")
+def personnel_new(request: Request, case_id: Optional[str] = None, db: Session = Depends(get_db)):
+    cases = db.query(RDCaseProfiles.__class__).all() if False else []
+    from app.crud import rd_case as rd_crud
+    cases = rd_crud.list_cases(db)
+    return templates.TemplateResponse(
+        "personnel_new.html",
+        {"request": request, "cases": cases, "selected_case_id": case_id},
+    )
+
+
+@router.post("/personnel/new")
+def personnel_create(
+    request: Request,
+    case_id:               Optional[str]   = Form(None),
+    tenant_id:             Optional[str]   = Form(None),
+    name:                  str             = Form(...),
+    role:                  Optional[str]   = Form(None),
+    affiliation:           Optional[str]   = Form(None),
+    nationality:           Optional[str]   = Form(None),
+    residence_country:     Optional[str]   = Form(None),
+    years_in_japan:        Optional[str]   = Form(None),
+    dual_employment_flag:  Optional[str]   = Form(None),
+    dual_employer_name:    Optional[str]   = Form(None),
+    dual_employer_country: Optional[str]   = Form(None),
+    tech_access_eccn:      Optional[str]   = Form(None),
+    tech_access_fefta:     Optional[str]   = Form(None),
+    note:                  Optional[str]   = Form(None),
+    db: Session = Depends(get_db),
+):
+    def _float(v: Optional[str]) -> Optional[float]:
+        if not v or not v.strip():
+            return None
+        try:
+            return float(v.strip())
+        except ValueError:
+            return None
+
+    person = Personnel(
+        case_id               = case_id or None,
+        tenant_id             = tenant_id or None,
+        name                  = name.strip(),
+        role                  = role or None,
+        affiliation           = affiliation or None,
+        nationality           = (nationality or "").strip().upper() or None,
+        residence_country     = (residence_country or "").strip().upper() or None,
+        years_in_japan        = _float(years_in_japan),
+        dual_employment_flag  = dual_employment_flag is not None,
+        dual_employer_name    = dual_employer_name or None,
+        dual_employer_country = (dual_employer_country or "").strip().upper() or None,
+        tech_access_eccn      = tech_access_eccn or None,
+        tech_access_fefta     = tech_access_fefta or None,
+        note                  = note or None,
+    )
+    db.add(person)
+    db.commit()
+    db.refresh(person)
+    # 登録直後に自動スクリーニング実行
+    _run_deemed_screening(person)
+    db.commit()
+    return RedirectResponse(url="/ui/personnel", status_code=303)
+
+
+@router.get("/personnel/{personnel_id}")
+def personnel_detail(personnel_id: str, request: Request, db: Session = Depends(get_db)):
+    person = db.query(Personnel).filter_by(personnel_id=personnel_id).first()
+    if not person:
+        raise HTTPException(status_code=404, detail="person not found")
+    import json as _json
+    reasons = []
+    if person.deemed_export_reason:
+        try:
+            reasons = _json.loads(person.deemed_export_reason)
+        except Exception:
+            reasons = [person.deemed_export_reason]
+    return templates.TemplateResponse(
+        "personnel_detail.html",
+        {"request": request, "person": person, "reasons": reasons},
+    )
+
+
+@router.post("/personnel/{personnel_id}/screen")
+def personnel_screen(personnel_id: str, db: Session = Depends(get_db)):
+    person = db.query(Personnel).filter_by(personnel_id=personnel_id).first()
+    if not person:
+        raise HTTPException(status_code=404, detail="person not found")
+    _run_deemed_screening(person)
+    db.commit()
+    return RedirectResponse(url=f"/ui/personnel/{personnel_id}", status_code=303)
+
+
+@router.post("/personnel/{personnel_id}/delete")
+def personnel_delete(personnel_id: str, db: Session = Depends(get_db)):
+    person = db.query(Personnel).filter_by(personnel_id=personnel_id).first()
+    if not person:
+        raise HTTPException(status_code=404, detail="person not found")
+    db.delete(person)
+    db.commit()
+    return RedirectResponse(url="/ui/personnel", status_code=303)
