@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import json
 from datetime import datetime
+from typing import Optional
 
 import pandas as pd
 from fastapi import (
@@ -1192,13 +1193,17 @@ def get_hs_status(product_id: int, db: Session = Depends(get_db)):
 def apply_hs_code(
     product_id: int,
     hs_code: str = Form(...),
+    eccn: Optional[str] = Form(default=""),
+    fefta_ref: Optional[str] = Form(default=""),
     db: Session = Depends(get_db),
 ):
-    """HS判定候補から選択したコードを product.hs_code に反映する。"""
+    """HS判定候補から選択したコード・ECCN・外為法項番を product に反映する。"""
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
     product.hs_code = hs_code.strip()
+    if eccn and eccn.strip():
+        product.eccn = eccn.strip()
     db.commit()
     return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
