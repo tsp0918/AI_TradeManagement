@@ -24,9 +24,18 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+# macOS でのスレッド競合による SIGSEGV を防ぐ
+# HuggingFace tokenizer のマルチプロセス fork を無効化し、
+# PyTorch/OpenMP のスレッド数を 1 に固定する
+if sys.platform == "darwin":
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+    os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 import faiss
 import numpy as np
@@ -121,6 +130,12 @@ def _load_model() -> SentenceTransformer:
     if _model is None:
         logger.info("Loading model: %s", _MODEL_NAME)
         _model = SentenceTransformer(_MODEL_NAME)
+        if sys.platform == "darwin":
+            try:
+                import torch
+                torch.set_num_threads(1)
+            except Exception:
+                pass
         logger.info("Model loaded (dim=%d)", _model.get_sentence_embedding_dimension())
     return _model
 
