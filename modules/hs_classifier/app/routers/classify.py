@@ -1,10 +1,12 @@
-"""POST /classify — HS コード判定（非同期）、GET /index/status"""
+"""POST /classify — HS コード判定（非同期）、POST /classify/sync — 同期判定、GET /index/status"""
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.models.schemas import (
@@ -18,6 +20,15 @@ from app.services import classifier, faiss_index, webhook
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["classify"])
+
+
+class ClassifySyncRequest(BaseModel):
+    """同期判定リクエスト（callback_url 不要）。"""
+    item_id: str
+    item_name: str
+    item_description: str
+    additional_keywords: list[str] = Field(default_factory=list)
+    top_k: int = Field(default=5, ge=1, le=20)
 
 _MODEL_NAME = "intfloat/multilingual-e5-large"
 _DATASET_VERSION = "HS2022 (Layer C / e5-large)"
@@ -65,6 +76,44 @@ async def classify_item(request: ClassifyRequest, background_tasks: BackgroundTa
         request_id=request.request_id,
         message=f"Classification task queued (index_size={faiss_index.ntotal()})",
     )
+
+
+@router.post("/classify/sync", response_model=ClassifyResult)
+async def classify_item_sync(request: ClassifySyncRequest):
+    """品目情報を受け取り、HSコード判定を同期実行して結果を直接返す（webhook 不要）。"""
+    if not faiss_index.is_built():
+        raise HTTPException(
+            status_code=503,
+            detail="Layer C インデックスが未ロードです。サービス起動直後は少し待ってから再試行してください。",
+        )
+    req_id = str(uuid.uuid4())
+    # ClassifyRequest 互換オブジェクトを構築（callback_url はダミー）
+    cr = ClassifyRequest(
+        request_id=req_id,
+        item_id=request.item_id,
+        item_name=request.item_name,
+        item_description=request.item_description,
+        additional_keywords=request.additional_keywords,
+        top_k=request.top_k,
+        callback_url="http://localhost/noop",
+    )
+    try:
+        candidates = classifier.classify(cr)
+        return ClassifyResult(
+            request_id=req_id,
+            item_id=request.item_id,
+            status="completed",
+            classified_at=datetime.now(timezone.utc),
+            results=candidates,
+            model_info=ModelInfo(
+                embedding_model=_MODEL_NAME,
+                dataset_version=_DATASET_VERSION,
+                index_size=faiss_index.ntotal(),
+            ),
+        )
+    except Exception as exc:
+        logger.exception("同期判定エラー: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/index/status", response_model=IndexStatus)

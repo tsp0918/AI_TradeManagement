@@ -28,6 +28,8 @@ async def bigquery_status():
         "dataset": settings.bigquery_dataset,
         "table": settings.bigquery_table,
         "credentials_path": settings.google_application_credentials or "(未設定)",
+        "fallback": "jplatpat" if not configured else None,
+        "note": "BigQuery 未設定のため J-PlatPat API にフォールバックします" if not configured else None,
     }
 
 

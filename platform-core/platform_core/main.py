@@ -12,6 +12,8 @@
 - /health           ヘルスチェック
 """
 
+import asyncio
+import logging
 import pathlib
 from contextlib import asynccontextmanager
 
@@ -33,15 +35,38 @@ from platform_core.routers.metrics import router as metrics_router
 from platform_core.routers.faiss_search import router as faiss_search_router
 from platform_core.routers.regulatory import router as regulatory_router
 
+logger = logging.getLogger(__name__)
 _STATIC_DIR = pathlib.Path(__file__).parent / "static"
+_REG_CHECK_INTERVAL = 24 * 3600  # 24時間ごと
+
+
+async def _regulatory_scheduler() -> None:
+    """バックグラウンド: 24時間ごとに規制動向チェックを実行する。"""
+    from platform_core.db.session import AsyncSessionLocal
+    from platform_core.routers.regulatory import _check_egov, _check_bis
+
+    await asyncio.sleep(60)  # 起動直後は少し待つ
+    while True:
+        try:
+            async with AsyncSessionLocal() as session:
+                egov = await _check_egov(session)
+                bis = await _check_bis(session)
+                await session.commit()
+                logger.info("Scheduled RegMonitor: egov=%d bis=%d", egov, bis)
+        except Exception as exc:
+            logger.warning("Scheduled RegMonitor failed: %s", exc)
+        await asyncio.sleep(_REG_CHECK_INTERVAL)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 全モジュールを並行起動 (fire-and-forget)
     start_all_modules()
+    # 規制動向スケジューラー起動
+    _sched_task = asyncio.create_task(_regulatory_scheduler())
     yield
-    # 終了時: 全モジュールサブプロセスを停止
+    # 終了時: スケジューラー・モジュールサブプロセスを停止
+    _sched_task.cancel()
     stop_all_modules()
 
 

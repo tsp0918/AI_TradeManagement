@@ -315,6 +315,35 @@
   </div>
 </div>
 
+<!-- ── 規制動向アラート ── -->
+{% if reg_alerts %}
+<div style="background:#fffbeb; border:1.5px solid #fde68a; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+    <span style="font-size:12px; font-weight:700; color:#92400e;">⚠ 規制動向アラート — 未確認 {{ reg_alerts|length }} 件</span>
+    <a href="http://localhost:8000/api/regulatory/changes" target="_blank"
+       style="font-size:10.5px; color:#1d4ed8; font-weight:600;">一覧 →</a>
+  </div>
+  {% for rc in reg_alerts %}
+  <div style="display:flex; align-items:flex-start; gap:8px; padding:7px 0; border-top:1px solid #fde68a;">
+    <span style="font-size:11px; margin-top:1px;">{% if rc.severity == 'danger' %}🚨{% else %}⚠{% endif %}</span>
+    <div style="flex:1; min-width:0;">
+      <div style="font-size:11.5px; font-weight:600; color:#2C1E12; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ rc.title }}">
+        {{ rc.title[:80] }}{% if rc.title|length > 80 %}…{% endif %}
+      </div>
+      <div style="font-size:10px; color:#9C8A78; margin-top:2px;">{{ rc.source }} ／ {{ rc.detected_at }}</div>
+    </div>
+    {% if rc.source_url %}
+    <a href="{{ rc.source_url }}" target="_blank"
+       style="font-size:10px; color:#1d4ed8; white-space:nowrap; font-weight:600; flex-shrink:0;">詳細 →</a>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <div style="margin-top:8px; font-size:10px; color:#9C8A78;">
+    既読にするには <a href="http://localhost:8000/api/regulatory/changes" target="_blank" style="color:#1d4ed8;">規制動向API</a> より dismiss を実行してください。
+  </div>
+</div>
+{% endif %}
+
 <!-- ── エラーバナー ── -->
 {% if error %}
 <div class="error-banner">⚠ {{ error }}</div>

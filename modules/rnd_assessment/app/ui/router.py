@@ -171,10 +171,17 @@ def case_detail(case_id: str, request: Request, db: Session = Depends(get_db)):
             .limit(1)
         ).first()
         enriched_profiles.append({"profile": p, "assessment": latest_a})
+    # みなし輸出: この案件に紐付いた人物一覧
+    personnel = db.scalars(
+        select(Personnel)
+        .where(Personnel.case_id == case_id)
+        .order_by(Personnel.created_at.desc())
+    ).all()
     return templates.TemplateResponse("case_detail.html", {
         "request": request,
         "case": case,
         "enriched_profiles": enriched_profiles,
+        "personnel": personnel,
     })
 
 
