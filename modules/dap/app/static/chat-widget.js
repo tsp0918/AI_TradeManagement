@@ -439,6 +439,40 @@
     .dap-fill-hint-label { color: rgba(0,212,255,0.85); font-weight: 600; margin-bottom: 3px; }
     .dap-fill-hint-example { color: #5A6478; font-size: 10px; margin-top: 3px; font-style: italic; }
 
+    /* ── スポットライトオーバーレイ ── */
+    #dap-spotlight-overlay {
+      position: fixed; inset: 0; z-index: 999990;
+      pointer-events: none; opacity: 0;
+      transition: opacity 0.35s ease;
+    }
+    #dap-spotlight-overlay.is-visible { opacity: 1; pointer-events: auto; }
+    #dap-spotlight-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+    }
+    #dap-spotlight-tooltip {
+      position: fixed; z-index: 999995;
+      background: #0D1220; border: 1.5px solid rgba(0,212,255,0.65);
+      color: #D0D8EC; font-size: 13px; line-height: 1.6;
+      padding: 10px 14px; border-radius: 10px; max-width: 280px;
+      box-shadow: 0 6px 28px rgba(0,0,0,0.6);
+      font-family: 'DM Sans','Hiragino Sans',sans-serif;
+      opacity: 0; transform: translateY(-6px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+    #dap-spotlight-tooltip.is-visible { opacity: 1; transform: translateY(0); }
+    #dap-spotlight-dismiss {
+      position: fixed; z-index: 999996;
+      bottom: 32px; left: 50%; transform: translateX(-50%);
+      padding: 9px 26px; border-radius: 24px;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3);
+      color: #fff; font-size: 13px; font-family: 'DM Sans','Hiragino Sans',sans-serif;
+      cursor: pointer; backdrop-filter: blur(6px);
+      opacity: 0; transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    #dap-spotlight-dismiss.is-visible { opacity: 1; pointer-events: auto; }
+
     /* ── 確認ボタン（ルーキー向けペース制御）── */
     .dap-guidance-ack-btn {
       display: block; margin: 10px 0 4px 34px;
@@ -531,6 +565,23 @@
     </div>
   `;
   root.appendChild(panel);
+
+  // ── スポットライトオーバーレイ DOM ────────────────────────────────
+  const spotlightOverlay = document.createElement('div');
+  spotlightOverlay.id = 'dap-spotlight-overlay';
+  const spotlightCanvas = document.createElement('canvas');
+  spotlightCanvas.id = 'dap-spotlight-canvas';
+  spotlightOverlay.appendChild(spotlightCanvas);
+  const spotlightTooltip = document.createElement('div');
+  spotlightTooltip.id = 'dap-spotlight-tooltip';
+  spotlightOverlay.appendChild(spotlightTooltip);
+  const spotlightDismiss = document.createElement('button');
+  spotlightDismiss.id = 'dap-spotlight-dismiss';
+  spotlightDismiss.textContent = '確認しました ✓';
+  spotlightOverlay.appendChild(spotlightDismiss);
+  document.body.appendChild(spotlightOverlay);
+  var _spotlightTimer = null;
+  var _spotlightResolve = null;
 
   // ── 要素参照 ──────────────────────────────────────────────────────
   const msgsEl       = panel.querySelector('#dap-chat-msgs');
@@ -672,18 +723,97 @@
     return tip;
   }
 
+  /**
+   * スポットライトモーダルで該当要素を強調する。
+   * 背景をグレーアウト（Canvas）し、対象要素のみ切り抜いて浮かび上がらせる。
+   * @returns {Promise} dismiss ボタン押下 or タイムアウトで resolve
+   */
   function highlightElementWithTooltip(target, tooltipText, durationMs) {
     const el = findInteractiveElement(target);
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    const prev = el.style.cssText;
-    el.style.outline = '2px solid #00D4FF';
-    el.style.outlineOffset = '3px';
-    el.style.boxShadow = '0 0 12px rgba(0,212,255,0.4)';
-    el.style.transition = 'outline 0.3s, box-shadow 0.3s';
-    const dur = durationMs || 6000;
-    setTimeout(function () { el.style.cssText = prev; }, dur);
-    if (tooltipText) showTooltipNear(el, tooltipText, dur);
+    if (!el) return Promise.resolve();
+
+    return new Promise(function (resolve) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // スクロール完了を待ってから描画
+      setTimeout(function () {
+        var dur = durationMs || 7000;
+        var rect = el.getBoundingClientRect();
+        var pad = 12;
+        var rx = rect.left - pad;
+        var ry = rect.top - pad;
+        var rw = rect.width + pad * 2;
+        var rh = rect.height + pad * 2;
+        var borderR = 10;
+
+        // Canvas でグレーアウト + 切り抜き穴
+        var cvs = spotlightCanvas;
+        cvs.width  = window.innerWidth;
+        cvs.height = window.innerHeight;
+        var ctx = cvs.getContext('2d');
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+        ctx.fillStyle = 'rgba(0,0,0,0.62)';
+        ctx.fillRect(0, 0, cvs.width, cvs.height);
+        // 切り抜き（composite destination-out）
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.moveTo(rx + borderR, ry);
+        ctx.lineTo(rx + rw - borderR, ry);
+        ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + borderR);
+        ctx.lineTo(rx + rw, ry + rh - borderR);
+        ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - borderR, ry + rh);
+        ctx.lineTo(rx + borderR, ry + rh);
+        ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - borderR);
+        ctx.lineTo(rx, ry + borderR);
+        ctx.quadraticCurveTo(rx, ry, rx + borderR, ry);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        // 切り抜き周囲にシアンのグロー
+        ctx.strokeStyle = 'rgba(0,212,255,0.85)';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#00D4FF';
+        ctx.shadowBlur = 18;
+        ctx.stroke();
+
+        // ツールチップ配置（切り抜き枠の下、または上）
+        if (tooltipText) {
+          spotlightTooltip.textContent = tooltipText;
+          var tipTop = ry + rh + 14;
+          if (tipTop + 80 > window.innerHeight) tipTop = ry - 80;
+          var tipLeft = rx;
+          if (tipLeft + 290 > window.innerWidth) tipLeft = window.innerWidth - 295;
+          spotlightTooltip.style.top  = tipTop + 'px';
+          spotlightTooltip.style.left = tipLeft + 'px';
+          spotlightTooltip.style.display = 'block';
+          setTimeout(function () { spotlightTooltip.classList.add('is-visible'); }, 50);
+        }
+
+        // オーバーレイ表示
+        spotlightOverlay.classList.add('is-visible');
+        setTimeout(function () { spotlightDismiss.classList.add('is-visible'); }, 300);
+
+        var done = false;
+        function dismiss() {
+          if (done) return;
+          done = true;
+          spotlightDismiss.classList.remove('is-visible');
+          spotlightTooltip.classList.remove('is-visible');
+          setTimeout(function () {
+            spotlightOverlay.classList.remove('is-visible');
+            var c = spotlightCanvas.getContext('2d');
+            c.clearRect(0, 0, spotlightCanvas.width, spotlightCanvas.height);
+          }, 350);
+          if (_spotlightTimer) { clearTimeout(_spotlightTimer); _spotlightTimer = null; }
+          resolve();
+        }
+
+        _spotlightTimer = setTimeout(dismiss, dur);
+        spotlightDismiss.onclick = dismiss;
+        // オーバーレイ自体をクリックしても閉じる（ただし切り抜き部分は pass-through）
+        spotlightCanvas.onclick = dismiss;
+      }, 350);
+    });
   }
 
   function showFillHintNear(target, hint, example) {
@@ -758,9 +888,10 @@
           break;
         case 'highlight':
           appendGuidanceMsg('👆 ' + step.message);
-          await sleep(1200);  // メッセージを読む時間（600ms → 1200ms）
-          highlightElementWithTooltip(step.target, step.tooltip, 7000);  // ハイライト時間延長
-          await sleep(4500);  // 確認する時間（2000ms → 4500ms）
+          await sleep(1200);  // メッセージを読む時間
+          // スポットライトモーダル — dismiss or タイムアウトまで await
+          await highlightElementWithTooltip(step.target, step.tooltip, 7000);
+          await sleep(400);   // フェードアウト完了待ち
           break;
         case 'fill_hint':
           appendGuidanceMsg('📝 ' + step.message);
