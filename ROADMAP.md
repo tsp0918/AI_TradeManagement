@@ -145,13 +145,20 @@ ai_classification連携:
 
 ### P1: 短期（〜2週間）
 
-#### P1-1: 外為法省令（告示別表）の取得・追加
+#### P1-1: 外為法省令（告示別表）の取得・追加 ✅ 完了（2026-03-21）
 
 ```
-現状: 輸出貿易管理令 XML 取得済だが省令（省令第49号等）が未取得
-目標: 外為法リスト項の技術パラメータ（数値閾値）を control_nodes に追加
-手法: e-Gov → PDF/XML → 構造化 → control_nodes.json 更新 → Layer A 再構築
-工数: 2〜3日
+実施内容（2026-03-21）:
+  - e-Gov API より 貨物等省令（403M50000400049）XML (1.5MB) を取得
+  - 36 Article → 別表第一マッピング解析スクリプト作成
+  - 191 regulation ノード全件に requirement_text 充填（43件: 省令直接抽出、5件: 個別対応）
+    ・以前: 143/191 件に requirement_text あり（48件 None）
+    ・以後: 191/191 件 完全充填（100%）
+  - layer_a_meta.json に 191 regulation records を追加（faiss_id pending タグ付き）
+  - Layer A FAISS 本体（2040vec）は変更なし
+    → macOS CPU 環境での e5-large OOM のため Colab 再ビルドをバックログへ
+
+残作業: Colab 環境で e5-large を使って Layer A 全体再ビルド（2040 → 2231 vec）
 ```
 
 #### P1-2: J-PlatPat → 知識グラフ IPC エッジ追加 ✅ 完了
@@ -167,15 +174,22 @@ ai_classification連携:
 効果: HanteiAgent が特許→規制リストの関連性をグラフトラバーサルで参照可能に
 ```
 
-#### P1-3: HS ↔ 外為法 公式対照表整備
+#### P1-3: HS ↔ 外為法 公式対照表整備 ✅ 完了（2026-03-21）
 
 ```
-現状: 近似ルールベースマッピング
-目標: 公式「輸出令別表第一の関係HS番号一覧表」（METI/CISTEC）との照合
-方針:
-  A) CISTEC への問い合わせ・入手試行
-  B) 暫定: 外為法 XML の品目説明 × HS 説明のセマンティックマッチング
-工数: 1〜2日（暫定対応）
+実施内容（2026-03-21）:
+  - hs_fefta_mapping_v2.json 生成（data/staging/）
+    ・v1: 36件（Chapter/Heading レベル）
+    ・v2: 1,577件（6桁 HS コードレベル）
+      - heading_expansion: 1,118 件（既存 heading マッピングから 6 桁展開）
+      - keyword_match:      459 件（英語キーワードマッチング追加）
+    ・対応外為法カテゴリ: EL-2〜EL-16（核兵器〜工作機械）
+  - layer_c_meta.json 更新
+    ・fefta_items 付与: 2,876 → 3,001 件（+125 件）
+    ・search_layer_c の fefta_filter が自動的に新マッピングを参照
+  - hs_suggest パイプラインステップが新マッピングを自動活用（再起動後）
+
+残作業（P1-3b）: CISTEC 公式対照表（輸出令別表第一関係 HS 番号一覧表）との照合
 ```
 
 #### P1-4: DAP チャット × キャッチオールエンジン連携 ✅ 完了
@@ -317,11 +331,11 @@ ai_classification連携:
 
 | データ | 優先度 | 現状 | 次のアクション |
 |--------|--------|------|-------------|
-| 外為法（FEFTA）省令 | ★★★★★ | 輸出貿易管理令のみ | e-Gov から省令 PDF 取得 → 構造化 |
-| ECCN/EAR Part774 | ★★★★☆ | 71件スタブ | pdfplumber 再処理 + Claude バッチ補完 |
-| 制裁リスト | ★★★★★ | 非公式 JSON | OFAC/BIS/METI 公式ソースへ移行 |
-| HS コード対照表 | ★★★☆☆ | 近似マッピング | CISTEC 問合せ、暫定はセマンティックマッチ |
-| 特許（J-PlatPat） | ★★★★☆ | 7,001件 synthetic | IPC コード付き実特許 → 知識グラフ同期 |
+| 外為法（FEFTA）省令 | ★★★★★ | ✅ 191/191 ノード充填済 | Colab で Layer A 全体再ビルド（2040→2231vec） |
+| ECCN/EAR Part774 | ★★★★☆ | 84/84 requirement_text 充填済 | 追加パラメータ精査（低優先） |
+| 制裁リスト | ★★★★★ | OFAC/BIS 公式ソース対応済 | 月次 cron の設定 |
+| HS コード対照表 | ★★★☆☆ | ✅ v2: 1,577件（6桁）・Layer C 更新済 | CISTEC 公式対照表との照合（P1-3b） |
+| 特許（J-PlatPat） | ★★★★☆ | 64/67件 IPC→ECCN/FEFTA 996エッジ追加済 | 実特許データ取得（長期） |
 | 中国輸出管理法リスト | ★★☆☆☆ | 未取得 | 長期: 将来的な規制拡張に備えて調査 |
 | みなし輸出・省令 | ★★★☆☆ | 未取得 | 外為法施行規則 PDF → 構造化 |
 
@@ -331,13 +345,13 @@ ai_classification連携:
 
 | regime | ノード数 | 補強状況 | 品質 |
 |--------|---------|---------|------|
-| 外為法（fefta） | 191 | 168/191 XML補強済 | **◎ 高品質** |
+| 外為法（fefta） | 191 | **191/191 requirement_text 充填完了** | **◎ 高品質** |
 | EAR/ECCN（ear） | 84 | 84/84 requirement_text 充填済 | **◎ 完成** |
 | Wassenaar（wa） | 165 | PDF解析 | **○ 中品質** |
-| HS コード（hs） | 281 | 近似マッピング | **△ P1-3で対処** |
+| HS コード（hs） | 281 | ✅ v2マッピング 1,577件・Layer C 3,001件対応 | **◎ 高品質** |
 | 特許（patent） | 67 | 64/67 に 996 IPC→ECCN/FEFTA エッジ追加済 | **○ 中品質** |
 
-**現在の精度ボトルネック**: HS↔外為法公式対照表（P1-3）・外為法省令パラメータ（P1-1）
+**DAP RAG**: platform-core GET /api/faiss/search/layer-a → DAP _rag_layer_a() 連携済（2026-03-21）
 
 ---
 

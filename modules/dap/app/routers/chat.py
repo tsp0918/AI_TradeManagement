@@ -149,6 +149,57 @@ class ChatConfigUpdate(BaseModel):
     prompt_supplement: str = ""
 
 
+# ── RAG: FAISS Layer A クエリ ──────────────────────────────────────────────────
+
+_RAG_TRIGGER_TERMS = frozenset([
+    "ECCN", "外為法", "輸出令", "別表", "規制", "該非", "キャッチオール",
+    "リスト規制", "EAR", "BIS", "みなし輸出", "技術的パラメータ", "数値閾値",
+    "控制", "Wassenaar", "デュアルユース", "許可要件", "条件", "仕様",
+])
+
+_RAG_MIN_SCORE = 0.60
+_RAG_TOP_K = 4
+
+
+async def _rag_layer_a(message: str) -> str:
+    """
+    メッセージに規制関連ワードが含まれる場合、platform-core の FAISS Layer A を検索し、
+    関連規制テキストのスニペットを返す。
+
+    返値は system prompt に注入する文字列（空の場合はスキップ）。
+    """
+    if not any(t in message for t in _RAG_TRIGGER_TERMS):
+        return ""
+
+    url = f"{_PLATFORM_URL}/api/faiss/search/layer-a"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, params={"q": message[:200], "top_k": _RAG_TOP_K})
+        if resp.status_code != 200:
+            return ""
+        data = resp.json()
+    except Exception:
+        return ""
+
+    hits = data.get("hits", [])
+    if not hits:
+        return ""
+
+    lines = []
+    for h in hits:
+        if h.get("score", 0) < _RAG_MIN_SCORE:
+            continue
+        title = h.get("title") or h.get("item_no") or ""
+        text = h.get("full_text", "")[:150]
+        src = h.get("source_type", "")
+        lines.append(f"・[{src}] {title}: {text}")
+
+    if not lines:
+        return ""
+
+    return "【関連規制データベース参照】\n" + "\n".join(lines[:3])
+
+
 # ── User Persona Tracking ─────────────────────────────────────────────────────
 _EXPERT_TERMS = frozenset([
     "ECCN", "外為法", "EAR", "みなし輸出", "キャッチオール", "BIS", "OFAC",
@@ -642,6 +693,10 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 
     task_block = f"\n【進行中のタスク】\n{current_task}" if current_task else ""
 
+    # RAG context from Layer A FAISS (injected by chat() when regulation terms detected)
+    rag_block = ctx.get("_rag_context", "")
+    rag_section = f"\n\n{rag_block}" if rag_block else ""
+
     return f"""あなたは輸出管理コンプライアンス業務の AI アシスタントです。
 ユーザーが今この画面で何をしようとしているかを理解し、業務フローの文脈に沿って行動まで完結させてください。
 
@@ -724,7 +779,7 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 {persona_ctx if persona_ctx else "（セッション開始直後 — 慎重にレベルを把握しながら対応する）"}
 
 【ワークフロー状況】
-{workflow_ctx if workflow_ctx else "（問題なし）"}
+{workflow_ctx if workflow_ctx else "（問題なし）"}{rag_section}
 
 【行動指針】
 - ユーザーの発言から「最終的にやりたいこと」を推測し、そのゴールへの最短経路を案内する
@@ -1114,6 +1169,11 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
 
     ctx["_persona_str"]    = _persona_context_str(persona, session_data)
     ctx["_workflow_alerts"] = workflow_alert_str
+
+    # RAG: Layer A 検索（規制関連質問のみ）
+    rag_context = await _rag_layer_a(req.message)
+    if rag_context:
+        ctx["_rag_context"] = rag_context
 
     # role の正規化
     valid_roles = {"user", "assistant"}
