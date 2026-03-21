@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import re
 from datetime import datetime
 
 import httpx
@@ -36,8 +37,10 @@ _FED_REGISTER_API = "https://www.federalregister.gov/api/v1/documents.json"
 _BIS_AGENCY_ID    = "bureau-of-industry-and-security"
 _EAR_KEYWORDS     = [
     "Export Administration Regulations", "Entity List",
-    "Commerce Control List", "export control", "EAR",
+    "Commerce Control List", "export control",
 ]
+# "EAR" は単語境界付きで別途チェック（search/clearance 等の誤マッチを防ぐ）
+_EAR_WORD_RE = re.compile(r'\bear\b', re.IGNORECASE)
 
 
 def _sha256(text: str) -> str:
@@ -186,8 +189,12 @@ async def _check_bis(db: AsyncSession) -> int:
         title    = rule.get("title", "")
         pub_date = rule.get("publication_date", "")
 
-        text_blob = (title + " " + (rule.get("abstract") or "")).lower()
-        if not any(kw.lower() in text_blob for kw in _EAR_KEYWORDS):
+        text_blob = title + " " + (rule.get("abstract") or "")
+        text_lower = text_blob.lower()
+        if not (
+            any(kw.lower() in text_lower for kw in _EAR_KEYWORDS)
+            or _EAR_WORD_RE.search(text_blob)
+        ):
             continue
 
         content_hash = _sha256(f"bis_rule:{doc_no}")
@@ -197,7 +204,7 @@ async def _check_bis(db: AsyncSession) -> int:
         if existing.scalar_one_or_none():
             continue
 
-        sev = "warn" if "entity list" in text_blob else "info"
+        sev = "warn" if "entity list" in text_lower else "info"
         change = RegulatoryChange(
             source        = "bis_federal_register",
             change_type   = "new_rule",
