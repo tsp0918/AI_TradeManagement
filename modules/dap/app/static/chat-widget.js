@@ -438,6 +438,19 @@
     }
     .dap-fill-hint-label { color: rgba(0,212,255,0.85); font-weight: 600; margin-bottom: 3px; }
     .dap-fill-hint-example { color: #5A6478; font-size: 10px; margin-top: 3px; font-style: italic; }
+
+    /* ── 確認ボタン（ルーキー向けペース制御）── */
+    .dap-guidance-ack-btn {
+      display: block; margin: 10px 0 4px 34px;
+      padding: 8px 22px; border-radius: 22px;
+      background: linear-gradient(135deg, #00D4FF 0%, #0099CC 100%);
+      color: #0A0E1A; border: none; font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      transition: transform 0.15s, opacity 0.15s;
+      animation: dap-tooltip-in 0.25s ease;
+    }
+    .dap-guidance-ack-btn:hover:not(:disabled) { transform: scale(1.04); }
+    .dap-guidance-ack-btn:disabled { opacity: 0.4; cursor: default; }
   `;
   document.head.appendChild(style);
 
@@ -735,32 +748,34 @@
           if (step.url) {
             // 残りのステップを保存してからナビゲート
             savePendingGuidance(steps, i + 1);
-            appendGuidanceMsg('📍 ' + (step.message || step.url + ' に移動します...'));
-            await sleep(800);
+            appendGuidanceMsg('📍 ' + (step.message || '次のページに移動します'));
+            await sleep(1800);  // メッセージを読む時間
+            appendGuidanceMsg('移動先でも続きをご案内しますので、慌てなくて大丈夫です 👍');
+            await waitForUserAck('ページを開く →', 30000);  // ユーザーが準備できたら
             window.location.href = step.url;
             return;  // ページ遷移するのでここで終わり
           }
           break;
         case 'highlight':
           appendGuidanceMsg('👆 ' + step.message);
-          await sleep(600);
-          highlightElementWithTooltip(step.target, step.tooltip, 5000);
-          await sleep(2000);
+          await sleep(1200);  // メッセージを読む時間（600ms → 1200ms）
+          highlightElementWithTooltip(step.target, step.tooltip, 7000);  // ハイライト時間延長
+          await sleep(4500);  // 確認する時間（2000ms → 4500ms）
           break;
         case 'fill_hint':
           appendGuidanceMsg('📝 ' + step.message);
-          await sleep(600);
+          await sleep(1200);  // メッセージを読む時間（600ms → 1200ms）
           showFillHintNear(step.target, step.hint || step.message, step.example);
-          await sleep(2000);
+          await sleep(4000);  // 入力を確認する時間（2000ms → 4000ms）
           break;
         case 'explain':
           appendGuidanceMsg(step.message);
-          await sleep(1200);
+          await sleep(2800);  // 説明を読む時間（1200ms → 2800ms）
           break;
         case 'watch':
           appendGuidanceMsg('⏳ ' + step.message);
-          if (step.target) highlightElementWithTooltip(step.target, step.tooltip, 8000);
-          await sleep(1500);
+          if (step.target) highlightElementWithTooltip(step.target, step.tooltip, 10000);  // ハイライト延長
+          await sleep(4000);  // 操作待ち時間（1500ms → 4000ms）
           break;
       }
     }
@@ -768,6 +783,32 @@
   }
 
   function sleep(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+
+  /**
+   * ルーキー向けペース制御: ボタンを表示してクリック待ち
+   * @param {string} label   ボタンラベル
+   * @param {number} autoMs  自動進行するまでの ms（0 = 無制限）
+   */
+  function waitForUserAck(label, autoMs) {
+    return new Promise(function (resolve) {
+      var btn = document.createElement('button');
+      btn.className = 'dap-guidance-ack-btn';
+      btn.textContent = label || '準備OK →';
+      msgsEl.appendChild(btn);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+      var done = false;
+      function finish() {
+        if (done) return;
+        done = true;
+        btn.disabled = true;
+        btn.style.opacity = '0.4';
+        setTimeout(function () { if (btn.parentNode) btn.remove(); }, 400);
+        resolve();
+      }
+      btn.addEventListener('click', finish);
+      if (autoMs > 0) setTimeout(finish, autoMs);
+    });
+  }
 
   function appendGuidanceMsg(text) {
     const wrap = document.createElement('div');
@@ -892,14 +933,18 @@
   // Step 2: クロスページ guidance ペンディングチェック
   const pendingGuidance = loadPendingGuidance();
   if (pendingGuidance && pendingGuidance.steps) {
-    // 少し待ってからチャットを開いて再開
+    // ページが落ち着いてから（2.5秒後）チャットを開く
     setTimeout(function () {
       openPanel();
-      appendMsg('bot', '👔 前のページからの手順を続けます。');
+      appendMsg('bot', '👔 新しいページに移動しました。まずページの内容をざっと確認してみてください。');
+      // 1.5秒後に「続ける」ボタンを表示 — ユーザーが準備できたら案内を再開
       setTimeout(function () {
-        executeGuidanceSteps(pendingGuidance.steps, pendingGuidance.from || 0);
-      }, 500);
-    }, 1000);
+        appendMsg('bot', '準備ができたら下のボタンを押してください。焦らなくて大丈夫です！');
+        waitForUserAck('続ける →', 60000).then(function () {
+          executeGuidanceSteps(pendingGuidance.steps, pendingGuidance.from || 0);
+        });
+      }, 1500);
+    }, 2500);
   }
 
   // Step 3: 既存セッション確認 + greet
