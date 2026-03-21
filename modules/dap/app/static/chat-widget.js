@@ -153,6 +153,40 @@
   }
   function isGuideShown(id) { return id && getShownGuides().has(id); }
 
+  // ── ページ行動トラッカー（再訪問・ユーザー操作検知）──────────────
+  var _pageKey = (window.location.port || '80') + ':' + window.location.pathname;
+  var _userEngaged = false;  // ページ読み込み後5秒以内にユーザーが自分で操作したか
+
+  function getPageVisits() {
+    try { return JSON.parse(localStorage.getItem('dap_page_visits') || '{}'); }
+    catch (e) { return {}; }
+  }
+  /** ページ訪問を記録し、前回までの訪問数を返す（0 = 初回）*/
+  function recordPageVisit() {
+    try {
+      var visits = getPageVisits();
+      var prev = visits[_pageKey] || { count: 0 };
+      visits[_pageKey] = { count: prev.count + 1, last: Date.now() };
+      localStorage.setItem('dap_page_visits', JSON.stringify(visits));
+      return prev.count;
+    } catch (e) { return 0; }
+  }
+  function isReturningVisitor() {
+    var v = getPageVisits()[_pageKey];
+    return v && v.count > 0;
+  }
+
+  // 5秒以内のユーザー能動操作（クリック・スクロール・キー入力）を検知
+  function _onUserEngaged() { _userEngaged = true; }
+  document.addEventListener('click',   _onUserEngaged, { capture: true, passive: true });
+  document.addEventListener('scroll',  _onUserEngaged, { capture: true, passive: true });
+  document.addEventListener('keydown', _onUserEngaged, { capture: true, passive: true });
+  setTimeout(function () {
+    document.removeEventListener('click',   _onUserEngaged, { capture: true });
+    document.removeEventListener('scroll',  _onUserEngaged, { capture: true });
+    document.removeEventListener('keydown', _onUserEngaged, { capture: true });
+  }, 5000);
+
   // ── クロスページ guidance ペンディング ─────────────────────────
   function savePendingGuidance(steps, fromStep) {
     try { sessionStorage.setItem('dap_pending_guidance', JSON.stringify({ steps, from: fromStep })); }
@@ -1091,13 +1125,16 @@
         </div>`;
       }
 
-      // Step 4: プロアクティブ greet（1.8秒後、チャットが閉じている間だけ）
+      // Step 4: プロアクティブ greet（1.8秒後）
+      // 条件: pending guidance なし / チャット未開 / 初回訪問 / ユーザーが自分で操作していない
+      var _prevVisitCount = recordPageVisit();  // 訪問記録 & 前回訪問数取得
       if (!pendingGuidance) {
         setTimeout(function () {
-          if (isOpen) return;  // チャット開いてたらスキップ
+          if (isOpen) return;              // チャット開いてたらスキップ
+          if (_prevVisitCount > 0) return; // 再訪問ページはスキップ
+          if (_userEngaged) return;        // ユーザーが自分で操作中ならスキップ
           callGreet().then(function (greetData) {
             if (!greetData || !greetData.reply) return;
-            // アラートバナーとして表示（チャットを開かずに）
             const alert = greetData.alert || { message: greetData.reply, severity: 'info', guide_id: 'greet_' + Date.now() };
             showAlertBanner(alert, greetData.choices || []);
           });
