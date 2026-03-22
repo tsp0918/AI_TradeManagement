@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>「なぜ LLM はコンプライアンスで使えないのか」—— 外為法 AI を一から作った 6 ヶ月の記録 | 開発ブログ</title>
+<title>「なぜ LLM はコンプライアンスで使えないのか」—— 安全保障輸出管理 AI を一から作った記録 | 開発ブログ</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
@@ -35,6 +35,9 @@
     font-family: 'Noto Sans JP', 'Inter', -apple-system, sans-serif;
     font-size: 16px; line-height: 1.85;
     color: var(--ink-2); background: var(--bg);
+    overflow-wrap: anywhere;
+    word-break: normal;
+    line-break: strict;
   }
 
   /* ── Site Header ── */
@@ -77,12 +80,14 @@
   .hero-cat::before { content: ''; width: 20px; height: 2px; background: var(--accent); }
   .hero h1 {
     font-size: clamp(24px, 4vw, 40px); font-weight: 900;
-    color: var(--ink); line-height: 1.25; margin-bottom: 20px;
+    color: var(--ink); line-height: 1.3; margin-bottom: 20px;
+    word-break: keep-all; overflow-wrap: anywhere;
   }
   .hero h1 em { font-style: normal; color: var(--accent); }
   .hero-desc {
     font-size: 16px; color: var(--ink-3); line-height: 1.75;
     max-width: 600px; margin-bottom: 32px;
+    word-break: keep-all; overflow-wrap: anywhere;
   }
   .hero-meta {
     display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
@@ -142,15 +147,29 @@
   h2 {
     font-size: clamp(20px, 2.5vw, 26px); font-weight: 900;
     color: var(--ink); line-height: 1.3;
+    word-break: keep-all; overflow-wrap: anywhere;
   }
   h3 {
     font-size: 18px; font-weight: 700; color: var(--ink);
     margin: 32px 0 12px;
     display: flex; align-items: center; gap: 8px;
+    word-break: keep-all; overflow-wrap: anywhere;
   }
   h3::before { content: '//'; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 14px; }
   p { margin-bottom: 20px; font-size: 15.5px; }
   strong { font-weight: 700; color: var(--ink); }
+
+  /* ── Inline code ── */
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875em;
+    background: var(--bg-warm);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--accent-d);
+    white-space: nowrap;
+  }
 
   /* ── Code block ── */
   .code-wrap { margin: 24px 0; border-radius: 10px; overflow: hidden; }
@@ -184,10 +203,11 @@
     display: flex; gap: 12px;
     font-size: 14.5px; line-height: 1.7;
   }
-  .callout.story  { border-color: var(--accent); background: #fff8f4; color: var(--ink-2); }
-  .callout.tech   { border-color: var(--blue);   background: var(--blue-l); color: #1e3a8a; }
-  .callout.lesson { border-color: var(--green);  background: var(--green-l); color: var(--green); }
-  .callout.warn   { border-color: #d97706;       background: #fffbeb; color: #92400e; }
+  .callout.story     { border-color: var(--accent); background: #fff8f4; color: var(--ink-2); }
+  .callout.tech      { border-color: var(--blue);   background: var(--blue-l); color: #1e3a8a; }
+  .callout.lesson    { border-color: var(--green);  background: var(--green-l); color: var(--green); }
+  .callout.warn      { border-color: #d97706;       background: #fffbeb; color: #92400e; }
+  .callout.disclaimer{ border-color: #6b21a8; background: #faf5ff; color: #4c1d95; border-left-width: 5px; }
   .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
 
   /* ── Pull quote ── */
@@ -204,8 +224,9 @@
   }
   .pull p {
     font-size: 20px; font-weight: 700; color: var(--ink);
-    font-style: italic; line-height: 1.5; margin-bottom: 8px;
+    font-style: italic; line-height: 1.6; margin-bottom: 8px;
     padding-left: 36px;
+    word-break: keep-all; overflow-wrap: anywhere;
   }
   .pull cite { font-size: 12px; color: var(--ink-3); font-style: normal; padding-left: 36px; }
 
@@ -239,7 +260,7 @@
     box-shadow: 0 0 0 3px var(--bg-warm);
   }
   .tl-right {}
-  .tl-head { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .tl-head { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px; word-break: keep-all; overflow-wrap: anywhere; }
   .tl-body2 { font-size: 14px; color: var(--ink-3); line-height: 1.6; }
 
   /* ── Failure / Breakthrough boxes ── */
@@ -251,6 +272,7 @@
   }
   .try-item.fail { background: var(--red-l); border: 1px solid #fecaca; color: var(--red); }
   .try-item.win  { background: var(--green-l); border: 1px solid #bbf7d0; color: var(--green); }
+  .try-item strong { color: inherit; }
   .try-icon { font-size: 16px; flex-shrink: 0; }
 
   /* ── Metrics table ── */
@@ -299,6 +321,15 @@
     font-size: 13px; margin-top: 40px;
   }
 
+  /* ── Screenshot frame ── */
+  .scr-wrap { margin: 28px 0; border-radius: 10px; overflow: hidden; box-shadow: 0 12px 36px rgba(44,30,18,.15), 0 3px 10px rgba(44,30,18,.08); border: 1px solid var(--border); }
+  .scr-bar { background: var(--bg-warm); padding: 9px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
+  .scr-dots { display: flex; gap: 5px; }
+  .scr-dot { width: 11px; height: 11px; border-radius: 50%; }
+  .scr-dot.rd { background: #ff5f57; } .scr-dot.yw { background: #ffbd2e; } .scr-dot.gn { background: #28c840; }
+  .scr-url { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 3px 12px; font-size: 11.5px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; margin: 0 8px; }
+  .scr-cap { font-size: 11px; color: var(--ink-3); text-align: center; padding: 7px 12px; background: var(--bg-warm); border-top: 1px solid var(--border); font-style: italic; }
+
   @media (max-width: 640px) {
     .site-nav { display: none; }
     .hero { padding: 40px 16px 36px; }
@@ -329,12 +360,8 @@
 <div class="hero">
   <div class="hero-inner">
     <div class="hero-cat">開発ストーリー &nbsp;·&nbsp; AI / RegTech</div>
-    <h1>「なぜ LLM はコンプライアンスで<em>使えないのか</em>」<br>—— 外為法 AI を一から作った記録</h1>
-    <p class="hero-desc">
-      NeuroSymbolic AI で輸出管理を自動化するプラットフォームを作り始めてから、
-      七つのモジュール、三層の FAISS インデックス、対話型エージェントが出来上がるまで。
-      失敗を重ね、設計思想が変わり、それでも「説明できる AI」にこだわり続けた記録。
-    </p>
+    <h1>「なぜ&nbsp;LLM&nbsp;はコンプライアンスで<wbr><em>使えないのか</em>」<br>——&nbsp;安全保障輸出管理&nbsp;AI&nbsp;を一から作った記録</h1>
+    <p class="hero-desc">NeuroSymbolic&nbsp;AI で安全保障輸出管理（該非判定）を支援するプラットフォームを作り始めてから、七つのモジュール、三層の&nbsp;FAISS&nbsp;インデックス、対話型エージェントが出来上がるまで。失敗を重ね、設計思想が変わり、それでも「説明できる&nbsp;AI」にこだわり続けた記録。</p>
     <div class="hero-meta">
       <div class="author-block">
         <div class="author-icon">🛠</div>
@@ -354,15 +381,31 @@
   <div class="toc">
     <div class="toc-title">目次</div>
     <ol>
-      <li><a href="#s1">そもそも、なぜ「外為法 AI」を作ろうと思ったのか</a></li>
-      <li><a href="#s2">最初の壁：「LLM に聞けばいい」という幻想</a></li>
-      <li><a href="#s3">NeuroSymbolic という答え：Neural + Symbolic の統合</a></li>
+      <li><a href="#s1">そもそも、なぜ「安全保障輸出管理&nbsp;AI」を作ろうと思ったのか</a></li>
+      <li><a href="#s2">最初の壁：「LLM&nbsp;に聞けばいい」という幻想</a></li>
+      <li><a href="#s3">NeuroSymbolic&nbsp;という答え：Neural&nbsp;+&nbsp;Symbolic&nbsp;の統合</a></li>
       <li><a href="#s4">FAISS 三層設計の試行錯誤</a></li>
       <li><a href="#s5">「required − known = missing」対話パターンの誕生</a></li>
       <li><a href="#s6">マルチモジュール化の判断と苦労</a></li>
       <li><a href="#s7">本番に向けた品質と運用の整備</a></li>
-      <li><a href="#s8">現状のメトリクスと今後の展望</a></li>
+      <li><a href="#s8">キャッチオール規制判定を実装した——Symbolic エンジンが担う第二の防衛線</a></li>
+      <li><a href="#s9">現状のメトリクスと今後の展望</a></li>
     </ol>
+  </div>
+</div>
+
+<!-- ── Disclaimer ── -->
+<div style="max-width:760px;margin:0 auto;padding:0 24px 4px;">
+  <div class="callout disclaimer" style="margin:0;">
+    <span class="callout-icon">⚖️</span>
+    <div>
+      <strong>本記事に関する重要事項：</strong>
+      本記事で紹介するシステムは<strong>該非判定・安全保障輸出管理の判断支援ツール</strong>であり、
+      最終的な輸出可否の判断は必ず資格を持つ貿易管理担当者・法務専門家が行ってください。
+      AI・FAISS による検索結果はリスク優先順位の参考情報であり、
+      輸出許可申請の法的根拠を代替するものではありません。
+      掲載の精度・項目数等はプロトタイプ時点の数値であり、商用製品の性能保証ではありません。
+    </div>
   </div>
 </div>
 
@@ -373,7 +416,7 @@
   <section class="section" id="s1">
     <div class="section-header">
       <span class="section-num">CHAPTER 01</span>
-      <h2>そもそも、なぜ「外為法 AI」を作ろうと思ったのか</h2>
+      <h2>そもそも、なぜ「安全保障輸出管理&nbsp;AI」を作ろうと思ったのか</h2>
     </div>
 
     <p>
@@ -392,11 +435,13 @@
     <div class="callout story">
       <span class="callout-icon">📖</span>
       <div>
-        <strong>外為法（外国為替及び外国貿易法）の基礎知識：</strong>
-        輸出する際に経済産業大臣の許可が必要な「規制品目」を定めた法律。
-        武器はもちろん、半導体製造装置・化学品・暗号技術・工作機械など広範囲に及ぶ。
-        対象品目は「外為令別表」に掲載されており、各項目に技術的パラメータ（閾値）が細かく規定されている。
-        違反した場合、個人は最大で懲役 5 年・罰金 100 万円、法人は 1 億円の罰金となる。
+        <strong>安全保障輸出管理（外国為替及び外国貿易法）の基礎：</strong>
+        外為法・輸出貿易管理令に基づき、経済産業大臣の許可が必要な品目・技術を定める制度。
+        武器・軍事転用可能品目はもちろん、半導体製造装置・化学品・暗号技術・工作機械など広範な品目が規制対象となる。
+        規制品目リストは<strong>輸出令別表第1（輸出貿易管理令別表第1）</strong>に掲載され、各項目に技術的閾値が精密に規定されている。
+        また、リスト規制対象外の汎用品であっても、大量破壊兵器等の開発・製造等に用いられるおそれがある場合には
+        <strong>キャッチオール規制</strong>（輸出令第4条・第4条の2）の審査が必要となる。
+        違反時は、刑事罰・行政処分（輸出禁止・業務停止等）という重大なリスクを伴う。
       </div>
     </div>
 
@@ -417,22 +462,22 @@
   <section class="section" id="s2">
     <div class="section-header">
       <span class="section-num">CHAPTER 02</span>
-      <h2>最初の壁：「LLM に聞けばいい」という幻想</h2>
+      <h2>最初の壁：「LLM&nbsp;に聞けばいい」という幻想</h2>
     </div>
 
     <p>
       最初に試みたのは、当然のように「最新の LLM に聞いてみる」でした。
-      GPT-4 や Claude に「この技術仕様は外為法何項に該当しますか？」と聞いてみると……
+      GPT-4 や Claude に「この技術仕様は輸出令別表第1の何項に該当しますか？」と聞いてみると……
       なるほど、もっともらしい回答が返ってきます。
       しかし専門家にチェックを依頼すると、<strong>かなりの頻度で間違っていた</strong>のです。
     </p>
 
-    <h3>LLM が規制判定に使えない理由</h3>
+    <h3>LLM&nbsp;が規制判定に使えない理由</h3>
 
     <div class="try-list">
       <div class="try-item fail">
         <span class="try-icon">✕</span>
-        <div><strong>ハルシネーション：</strong>存在しない条文番号を引用する。「外為令別表第1の7項(3)号イ」と言いながら、実際の文言と全く異なる内容を説明する。</div>
+        <div><strong>ハルシネーション：</strong>存在しない条文番号を引用する。「輸出令別表第1の7項(3)号ロ」と言いながら、実際の文言と全く異なる内容を説明する。コンプライアンス文書では一字一句の正確性が問われる。</div>
       </div>
       <div class="try-item fail">
         <span class="try-icon">✕</span>
@@ -468,7 +513,7 @@
   <section class="section" id="s3">
     <div class="section-header">
       <span class="section-num">CHAPTER 03</span>
-      <h2>NeuroSymbolic という答え：Neural + Symbolic の統合</h2>
+      <h2>NeuroSymbolic&nbsp;という答え：Neural&nbsp;+&nbsp;Symbolic&nbsp;の統合</h2>
     </div>
 
     <p>
@@ -479,7 +524,7 @@
     <h3>Symbolic 側：オントロジーの構築</h3>
 
     <p>
-      外為令別表の各項目を、人間が読める JSON 形式で形式化します。
+      輸出令別表第1（輸出貿易管理令別表第1）の各規制項目を、人間が読める JSON 形式で形式化します。
       これが<strong>HanteiKubanbang（判定項番）オントロジー</strong>です。
     </p>
 
@@ -510,13 +555,13 @@
     </div>
 
     <p>
-      このシードデータは現在 <strong>29 項目</strong>（外為法 17 + ECCN 12）、
+      このシードデータは現在 <strong>29 項目</strong>（輸出令別表第1: 17項目 + ECCN/EAR: 12項目）、
       <strong>40 種類以上の属性キー</strong>を持つまでに成長しています。
       重要なのは、これが<strong>コードとは独立した知識データ</strong>であること。
       法改正があれば JSON を更新するだけで、エンジン全体は変わりません。
     </p>
 
-    <h3>Neural 側：FAISS + E5-large の組み合わせ</h3>
+    <h3>Neural&nbsp;側：FAISS&nbsp;+&nbsp;E5-large&nbsp;の組み合わせ</h3>
 
     <p>
       規制知識は形式化できた。次の問題は「どの規制項目が、この品目に関係するか」を
@@ -828,7 +873,7 @@ missing = required - known
         <div class="tl-line"><div class="tl-dot2"></div></div>
         <div class="tl-right">
           <div class="tl-head">ai_validation — 該非判定</div>
-          <div class="tl-body2">Two-List 判定・FAISS パイプライン・PDF/CSV レポート出力。エグゼクティブサマリー付き。外為法・ECCN 対応。</div>
+          <div class="tl-body2">Two-List 判定・FAISS パイプライン・PDF/CSV レポート出力。エグゼクティブサマリー付き。輸出令別表第1（外為法）・ECCN/EAR 対応。</div>
         </div>
       </div>
       <div class="tl-row">
@@ -935,7 +980,7 @@ missing = required - known
     }</pre>
     </div>
 
-    <h3>ダッシュボードに NeuroSymbolic 統計を組み込む</h3>
+    <h3>ダッシュボードに&nbsp;NeuroSymbolic&nbsp;統計を組み込む</h3>
     <p>
       platform-core のダッシュボードには、既存の案件カードに加えて
       HanteiAgent のセッション統計（進行中・判定待ち・完了数）を
@@ -959,6 +1004,315 @@ missing = required - known
   <section class="section" id="s8">
     <div class="section-header">
       <span class="section-num">CHAPTER 08</span>
+      <h2>キャッチオール規制判定を実装した——Symbolic エンジンが担う第二の防衛線</h2>
+    </div>
+
+    <p>
+      FAISS Two-List の判定結果が <strong>LOW</strong>（リスト規制の候補ゼロ）で返ってきたとき、
+      最初は「よし、この取引はクリアだ」と思っていました。
+      でもそれは間違いでした。
+    </p>
+
+    <p>
+      外為法には<strong>リスト規制</strong>（輸出令別表第1に列挙された品目）だけでなく、
+      <strong>キャッチオール規制</strong>という第二の柱があります。
+      輸出令第4条（WMD キャッチオール）と第4条の2（通常兵器キャッチオール）です。
+      リストに載っていない汎用品でも、大量破壊兵器等の開発に使われるおそれがあると
+      判断されれば許可申請が必要になる——「誰でも」「何でも」対象になりうる規制です。
+    </p>
+
+    <div class="callout story">
+      <span class="callout-icon">📖</span>
+      <div>
+        <strong>設計の転換点：</strong>
+        「FAISS LOW = 安全」という思い込みを壊したのは、実際の輸出管理ガイダンスを精読したときでした。
+        外為法は「リスト規制 + キャッチオール規制」の二段構えであり、
+        片方の審査だけでは輸出管理の義務を果たしたことにならない。
+        TWO-LIST が終わったら、必ずキャッチオール審査を引き継ぐフローが必要だと気づきました。
+      </div>
+    </div>
+
+    <h3>なぜ Neural ではなく Symbolic で実装したか</h3>
+
+    <p>
+      キャッチオール判定の設計で最初に悩んだのが「どのアーキテクチャを使うか」でした。
+      FAISS + LLM のような Neural アプローチを使うのか、それとも純粋なルールエンジンか。
+    </p>
+
+    <div class="try-list">
+      <div class="try-item fail">
+        <span class="try-icon">✕</span>
+        <div><strong>Neural アプローチを却下した理由：</strong>キャッチオール判定の各ステップは「仕向国が懸念国か否か」「インフォーム通知を受けているか」「Red Flag 7項目のうちいくつが検出されたか」——すべて決定論的な Yes/No です。確率的な推論を挟む必然性がない。「もっともらしい」判定ではなく、「法的に正確な」判定が必要です。</div>
+      </div>
+      <div class="try-item win">
+        <span class="try-icon">✓</span>
+        <div><strong>Symbolic ルールエンジンを選んだ：</strong>6 ステップの判定ロジックを Python の条件分岐として実装。入力が同じなら出力は常に同じ——再現性と監査可能性が保証される。コードが規制条文のドキュメントでもある。法改正があれば該当ステップのルールだけ書き換えればいい。</div>
+      </div>
+    </div>
+
+    <p>
+      判定の中核となる <code>evaluate_catchall()</code> 関数のシグネチャはシンプルです：
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-head">
+        <div class="code-dots"><div class="code-dot r"></div><div class="code-dot y"></div><div class="code-dot g"></div></div>
+        <span class="code-filename">modules/ai_validation/app/services/catchall_engine.py</span>
+      </div>
+      <pre><span class="kw">def</span> <span class="fn">evaluate_catchall</span>(
+    country_code: <span class="cls">str</span>,
+    informed: <span class="cls">bool</span>,
+    red_flags: <span class="cls">list</span>[<span class="cls">str</span>],
+    euc_obtained: <span class="cls">bool</span>,
+    ear_groups: <span class="cls">list</span>[<span class="cls">str</span>],
+) -> <span class="cls">CatchallAssessment</span>:
+    <span class="cmt"># Step 1: インフォーム通知チェック</span>
+    <span class="kw">if</span> informed:
+        <span class="kw">return</span> <span class="cls">CatchallAssessment</span>(verdict=<span class="str">"REQUIRES_PERMIT"</span>, reason=<span class="str">"informed_notification"</span>)
+
+    <span class="cmt"># Step 1.5: E:1 禁輸国チェック（米国 BIS 指定）</span>
+    <span class="kw">if</span> <span class="str">"E:1"</span> <span class="kw">in</span> ear_groups:
+        <span class="kw">return</span> <span class="cls">CatchallAssessment</span>(verdict=<span class="str">"REQUIRES_PERMIT"</span>, reason=<span class="str">"e1_embargoed_country"</span>)
+
+    <span class="cmt"># Step 2: 仕向国区分（懸念国 / ホワイト国 / 一般国）</span>
+    country_tier = <span class="fn">get_country_tier</span>(country_code)  <span class="cmt"># 47カ国データベース参照</span>
+
+    <span class="cmt"># Step 4: Red Flag チェック → CAUTION or INDETERMINATE</span>
+    <span class="kw">if</span> <span class="fn">len</span>(red_flags) > <span class="num">0</span>:
+        <span class="kw">return</span> <span class="cls">CatchallAssessment</span>(verdict=<span class="str">"CAUTION"</span>, red_flag_count=<span class="fn">len</span>(red_flags))
+
+    <span class="cmt"># Step 6: 最終判定</span>
+    <span class="kw">return</span> <span class="fn">_final_verdict</span>(country_tier, euc_obtained, ear_groups)</pre>
+    </div>
+
+    <h3>EAR Country Chart データで判断根拠を可視化する</h3>
+
+    <p>
+      キャッチオール規制の判断根拠として採用したのが、米国輸出管理規則（EAR）の
+      <strong>Country Chart（15 CFR Part 738 Supplement 1）</strong>です。
+      NS1/NS2（国家安全保障）、MT（ミサイル技術）、NP1/NP2（核不拡散）、
+      CB1/CB2/CB3（化学・生物兵器）、RS1/RS2（地域安定）、
+      AT1/AT2（テロ対策）、FC1（武器）——13の制御列を持ちます。
+    </p>
+
+    <p>
+      日本の外為法と米国 EAR は別制度ですが、
+      国別の規制感度を示す参照データとして EAR Country Chart は非常に有用です。
+      現在のデータベースは<strong>47カ国（懸念国 19 + ホワイト国 28）</strong>をカバーし、
+      各国の EAR Groups（A/B/D/E）と全 13 制御列のフラグを保持しています。
+      判定レポートには「この国ではどの制御列が有効か」を証拠として明示することで、
+      担当者の判断根拠が書面として残ります。
+    </p>
+
+    <h3>ダッシュボード — LOW 取引へのキャッチオール推奨バナー</h3>
+
+    <!-- Screenshot 1: ダッシュボード -->
+    <div class="scr-wrap">
+      <div class="scr-bar">
+        <div class="scr-dots"><span class="scr-dot rd"></span><span class="scr-dot yw"></span><span class="scr-dot gn"></span></div>
+        <div class="scr-url">localhost:8000/dashboard</div>
+      </div>
+      <div style="background:#f9f6f1;padding:20px 22px;">
+        <!-- Stats row -->
+        <div style="display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
+          <div style="background:#fff;border:1px solid #e8e0d4;border-radius:8px;padding:12px 18px;flex:1;min-width:100px;">
+            <div style="font-size:22px;font-weight:900;color:#2c1e12;">12</div>
+            <div style="font-size:11px;color:#8c7b6a;">取引件数</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e8e0d4;border-radius:8px;padding:12px 18px;flex:1;min-width:100px;">
+            <div style="font-size:22px;font-weight:900;color:#2d6a4f;">9</div>
+            <div style="font-size:11px;color:#8c7b6a;">判定完了</div>
+          </div>
+          <div style="background:#fff8f4;border:1px solid #f4a26a;border-radius:8px;padding:12px 18px;flex:1;min-width:100px;">
+            <div style="font-size:22px;font-weight:900;color:#c75b24;">3</div>
+            <div style="font-size:11px;color:#8c7b6a;">キャッチオール推奨</div>
+          </div>
+        </div>
+        <!-- Table -->
+        <div style="background:#fff;border:1px solid #e8e0d4;border-radius:8px;overflow:hidden;">
+          <div style="background:#f9f6f1;padding:8px 14px;font-size:10px;font-weight:700;color:#8c7b6a;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e8e0d4;display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr;gap:8px;">
+            <div>品目</div><div>仕向国</div><div>FAISS判定</div><div>ステータス</div>
+          </div>
+          <!-- Row 1 - LOW with catchall banner -->
+          <div style="border-bottom:1px solid #e8e0d4;">
+            <div style="padding:10px 14px;display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr;gap:8px;align-items:center;">
+              <div style="font-size:13px;font-weight:600;color:#2c1e12;">工業用マスキングテープ（耐熱）</div>
+              <div style="font-size:12px;color:#4a3728;">CN（中国）</div>
+              <div><span style="font-size:11px;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:3px;padding:1px 7px;font-weight:700;">LOW</span></div>
+              <div><span style="font-size:10px;background:#fff8f4;color:#c75b24;border:1px solid #f4a26a;border-radius:3px;padding:2px 7px;font-weight:700;">⚑ キャッチオール推奨</span></div>
+            </div>
+            <div style="background:#fff8f4;border-top:1px solid #fde8d0;padding:6px 14px;font-size:11px;color:#8b3a10;">
+              ↳ リスト規制候補なし。輸出令第4条・第4条の2（キャッチオール規制）の自己審査を推奨します
+            </div>
+          </div>
+          <!-- Row 2 -->
+          <div style="padding:10px 14px;display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr;gap:8px;align-items:center;border-bottom:1px solid #e8e0d4;">
+            <div style="font-size:13px;font-weight:600;color:#2c1e12;">電子部品（精密センサー）</div>
+            <div style="font-size:12px;color:#4a3728;">JP</div>
+            <div><span style="font-size:11px;background:#fef2f2;color:#9b1c1c;border:1px solid #fecaca;border-radius:3px;padding:1px 7px;font-weight:700;">HIGH</span></div>
+            <div><span style="font-size:10px;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:3px;padding:2px 7px;font-weight:700;">審査中</span></div>
+          </div>
+          <!-- Row 3 -->
+          <div style="padding:10px 14px;display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr;gap:8px;align-items:center;">
+            <div style="font-size:13px;font-weight:600;color:#2c1e12;">半導体製造装置部品</div>
+            <div style="font-size:12px;color:#4a3728;">US</div>
+            <div><span style="font-size:11px;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:3px;padding:1px 7px;font-weight:700;">MEDIUM</span></div>
+            <div><span style="font-size:10px;background:#e6f4ea;color:#2d6a4f;border:1px solid #b4e2c4;border-radius:3px;padding:2px 7px;font-weight:700;">完了</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="scr-cap">Screenshot 1 — ダッシュボード：LOW 判定取引に「キャッチオール推奨」バナーが表示される（取引件数 12件、キャッチオール推奨 3件）</div>
+    </div>
+
+    <h3>キャッチオール判定パネル — CAUTION の中身を見る</h3>
+
+    <!-- Screenshot 2: キャッチオール判定パネル -->
+    <div class="scr-wrap">
+      <div class="scr-bar">
+        <div class="scr-dots"><span class="scr-dot rd"></span><span class="scr-dot yw"></span><span class="scr-dot gn"></span></div>
+        <div class="scr-url">localhost:8000/transactions/TX-2026-0083/catchall</div>
+      </div>
+      <div style="background:#f9f6f1;padding:20px 22px;">
+        <!-- Verdict banner -->
+        <div style="background:#fff;border:1px solid #e8e0d4;border-radius:8px;overflow:hidden;margin-bottom:14px;">
+          <div style="background:#2c1e12;padding:12px 18px;display:flex;align-items:center;gap:12px;">
+            <div style="font-size:13px;font-weight:700;color:#fefcf8;">キャッチオール判定結果</div>
+            <div style="margin-left:auto;font-size:13px;font-weight:800;background:#fdd68a;color:#7a4f00;border-radius:5px;padding:4px 14px;letter-spacing:.04em;">⚠ CAUTION</div>
+          </div>
+          <div style="padding:16px 18px;display:flex;gap:20px;flex-wrap:wrap;border-bottom:1px solid #e8e0d4;">
+            <div><div style="font-size:10px;color:#8c7b6a;text-transform:uppercase;margin-bottom:3px;">仕向国</div><div style="font-size:13px;font-weight:600;color:#2c1e12;">中華人民共和国（CN）</div></div>
+            <div><div style="font-size:10px;color:#8c7b6a;text-transform:uppercase;margin-bottom:3px;">国区分</div><div style="font-size:11px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:2px 8px;display:inline-block;">懸念国 MEDIUM</div></div>
+            <div><div style="font-size:10px;color:#8c7b6a;text-transform:uppercase;margin-bottom:3px;">適用条文</div><div style="font-size:12px;color:#2c1e12;">輸出令 第4条 / 第4条の2</div></div>
+          </div>
+          <div style="padding:14px 18px;">
+            <!-- EAR Groups -->
+            <div style="margin-bottom:12px;">
+              <div style="font-size:10px;font-weight:700;color:#8c7b6a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">EAR Country Groups</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <span style="font-size:11px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:2px 8px;">D:1</span>
+                <span style="font-size:11px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:2px 8px;">D:3</span>
+                <span style="font-size:11px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:2px 8px;">D:4</span>
+                <span style="font-size:11px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:2px 8px;">D:5</span>
+              </div>
+            </div>
+            <!-- Country Chart -->
+            <div style="margin-bottom:12px;">
+              <div style="font-size:10px;font-weight:700;color:#8c7b6a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">EAR Country Chart 該当列</div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                <span style="font-size:10px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:3px;padding:2px 7px;">NS1</span>
+                <span style="font-size:10px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:3px;padding:2px 7px;">MT</span>
+                <span style="font-size:10px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:3px;padding:2px 7px;">NP2</span>
+                <span style="font-size:10px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:3px;padding:2px 7px;">CB3</span>
+                <span style="font-size:10px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:3px;padding:2px 7px;">RS1</span>
+                <span style="font-size:10px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:3px;padding:2px 7px;">NS2</span>
+                <span style="font-size:10px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:3px;padding:2px 7px;">NP1</span>
+                <span style="font-size:10px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:3px;padding:2px 7px;">CB1/CB2</span>
+                <span style="font-size:10px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:3px;padding:2px 7px;">RS2/AT/FC1</span>
+              </div>
+            </div>
+            <!-- Red Flag -->
+            <div style="margin-bottom:12px;">
+              <div style="font-size:10px;font-weight:700;color:#8c7b6a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Red Flag チェック（METI ガイダンス 7項目）</div>
+              <div style="font-size:12px;font-weight:700;color:#2d6a4f;background:#e6f4ea;border:1px solid #b4e2c4;border-radius:4px;padding:4px 12px;display:inline-block;">✓ 0 / 7 検出なし</div>
+            </div>
+            <!-- Actions -->
+            <div style="border-top:1px solid #e8e0d4;padding-top:12px;">
+              <div style="font-size:10px;font-weight:700;color:#8c7b6a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">推奨アクション</div>
+              <div style="font-size:12px;color:#4a3728;line-height:1.8;">
+                ① EUC（最終用途証明書）を取得・保管してください<br>
+                ② 販売代理店経由の場合は再輸出先の用途を確認してください<br>
+                ③ 本判定記録と証拠資料を 7 年間保管してください
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="scr-cap">Screenshot 2 — 取引詳細「キャッチオール判定パネル」：CAUTION判定、EAR Groups D:1/D:3/D:4/D:5、制御列 5列該当、Red Flag 0/7</div>
+    </div>
+
+    <!-- Screenshot 3: PDF レポート Section 4 -->
+    <h3>PDF レポート Section 4 — 監査証跡として残す</h3>
+
+    <div class="scr-wrap">
+      <div class="scr-bar">
+        <div class="scr-dots"><span class="scr-dot rd"></span><span class="scr-dot yw"></span><span class="scr-dot gn"></span></div>
+        <div class="scr-url">PDF Viewer — TX-2026-0083_export_report.pdf  (p.4 / 4)</div>
+      </div>
+      <div style="background:#525659;padding:20px;display:flex;justify-content:center;">
+        <div style="background:#fff;width:100%;max-width:500px;padding:24px 28px;box-shadow:0 4px 20px rgba(0,0,0,.45);font-size:12px;color:#2c1e12;">
+          <div style="font-size:9px;font-weight:800;color:#8c7b6a;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid #e8e0d4;padding-bottom:5px;margin-bottom:12px;">Section 4 — キャッチオール規制審査（輸出令第4条・第4条の2）</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="font-size:10px;color:#8c7b6a;">総合判定：</div>
+            <div style="font-size:12px;font-weight:900;background:#fdd68a;color:#7a4f00;border-radius:4px;padding:3px 12px;letter-spacing:.05em;">⚠ CAUTION</div>
+          </div>
+          <div style="background:#f9f6f1;border:1px solid #e8e0d4;border-radius:5px;padding:9px 12px;margin-bottom:12px;">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11px;">
+              <div><span style="color:#8c7b6a;">仕向国：</span><strong>中華人民共和国（CN）</strong></div>
+              <div><span style="color:#8c7b6a;">区分：</span><strong style="color:#92400e;">懸念国（別表第3）</strong></div>
+            </div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <div style="font-size:9px;font-weight:700;color:#8c7b6a;text-transform:uppercase;margin-bottom:5px;">EAR Country Chart（15 CFR Part 738 Suppl. 1）</div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;">
+              <span style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:2px;padding:1px 5px;font-weight:700;">NS1●</span>
+              <span style="font-size:9px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:2px;padding:1px 5px;">NS2</span>
+              <span style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:2px;padding:1px 5px;font-weight:700;">MT●</span>
+              <span style="font-size:9px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:2px;padding:1px 5px;">NP1</span>
+              <span style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:2px;padding:1px 5px;font-weight:700;">NP2●</span>
+              <span style="font-size:9px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:2px;padding:1px 5px;">CB1</span>
+              <span style="font-size:9px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:2px;padding:1px 5px;">CB2</span>
+              <span style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:2px;padding:1px 5px;font-weight:700;">CB3●</span>
+              <span style="font-size:9px;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:2px;padding:1px 5px;font-weight:700;">RS1●</span>
+              <span style="font-size:9px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:2px;padding:1px 5px;">RS2</span>
+              <span style="font-size:9px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:2px;padding:1px 5px;">AT1</span>
+              <span style="font-size:9px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:2px;padding:1px 5px;">AT2</span>
+              <span style="font-size:9px;color:#8c7b6a;border:1px solid #e8e0d4;border-radius:2px;padding:1px 5px;">FC1</span>
+            </div>
+            <div style="font-size:9px;color:#8c7b6a;">● 該当制御列（5 / 13 列）</div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <div style="font-size:9px;font-weight:700;color:#8c7b6a;text-transform:uppercase;margin-bottom:4px;">Red Flag チェック（METI ガイダンス 7項目）</div>
+            <div style="font-size:11px;font-weight:700;color:#2d6a4f;">✓ 検出なし（0 / 7）</div>
+          </div>
+          <div style="border-top:1px solid #e8e0d4;padding-top:9px;margin-bottom:10px;">
+            <div style="font-size:9px;font-weight:700;color:#8c7b6a;text-transform:uppercase;margin-bottom:5px;">推奨アクション</div>
+            <div style="font-size:10px;color:#4a3728;line-height:1.75;">
+              ① EUC（最終用途証明書）の取得・保管<br>
+              ② 代理店経由の場合は再輸出先の用途確認<br>
+              ③ 判定資料の 7 年間保管（外為法第25条の3準拠）
+            </div>
+          </div>
+          <div style="border-top:1px solid #e8e0d4;padding-top:7px;font-size:8px;color:#8c7b6a;display:flex;justify-content:space-between;">
+            <span>AI TradeManagement Platform — キャッチオール規制審査レポート</span><span>p.4 / 4</span>
+          </div>
+        </div>
+      </div>
+      <div class="scr-cap">Screenshot 3 — PDF レポート Section 4「キャッチオール規制審査」自動出力（EAR Country Chart 13列・Red Flag 7項目・推奨アクション）</div>
+    </div>
+
+    <div class="callout lesson">
+      <span class="callout-icon">🎓</span>
+      <div>
+        <strong>設計の「aha moment」：</strong>
+        キャッチオール規制の実装を通じて、改めて確信したことがあります——
+        「コンプライアンス判定において、Symbolic（決定論的）とNeural（確率論的）は補完関係にある」。
+        FAISS が「どの規制が関係しそうか」を Neural で探索し、
+        キャッチオールエンジンが「その取引は規制上どう扱うべきか」を Symbolic で確定する。
+        二つの判断モードが役割分担することで、精度と信頼性を両立できる。
+      </div>
+    </div>
+
+    <div class="pull">
+      <p>FAISS LOW は「終わり」ではなく「始まり」だった——キャッチオール規制という第二の防衛線が、NeuroSymbolic アーキテクチャを本当の意味で完成させた。</p>
+      <cite>— キャッチオールエンジン実装後の振り返り</cite>
+    </div>
+
+  </section>
+
+  <!-- ==================== SECTION 9 ==================== -->
+  <section class="section" id="s9">
+    <div class="section-header">
+      <span class="section-num">CHAPTER 09</span>
       <h2>現状のメトリクスと今後の展望</h2>
     </div>
 
@@ -977,7 +1331,7 @@ missing = required - known
         <tr>
           <td>オントロジー</td>
           <td>規制項目数</td>
-          <td>29 項目（外為法 17 + ECCN 12）</td>
+          <td>29 項目（輸出令別表第1: 17 + ECCN/EAR: 12）</td>
           <td><span class="badge done">完成</span></td>
         </tr>
         <tr>
@@ -1008,6 +1362,24 @@ missing = required - known
           <td>レポート</td>
           <td>エグゼクティブサマリー</td>
           <td>HIGH/MEDIUM/LOW 自動判定付き</td>
+          <td><span class="badge done">完成</span></td>
+        </tr>
+        <tr>
+          <td>キャッチオール</td>
+          <td>懸念国・ホワイト国データベース</td>
+          <td>47カ国（懸念国19 + ホワイト国28）</td>
+          <td><span class="badge done">完成</span></td>
+        </tr>
+        <tr>
+          <td>キャッチオール</td>
+          <td>EAR Country Chart</td>
+          <td>13列制御フラグ + 47カ国分データ</td>
+          <td><span class="badge done">完成</span></td>
+        </tr>
+        <tr>
+          <td>キャッチオール</td>
+          <td>PDF レポート Section 4</td>
+          <td>EAR Groups・制御列・Red Flag 自動出力</td>
           <td><span class="badge done">完成</span></td>
         </tr>
         <tr>
@@ -1045,7 +1417,7 @@ missing = required - known
 
     <p>
       <strong>オントロジーのカバレッジ：</strong>
-      現在 29 項目ですが、外為令別表の全項目をカバーするには 100 項目以上が必要です。
+      現在 29 項目ですが、輸出令別表第1の全項目をカバーするには 100 項目以上が必要です。
       特に生物・化学兵器関連（1 項）、核関連（2 項）は技術的に複雑で、
       属性設計に専門家の協力が不可欠です。
     </p>
@@ -1058,11 +1430,12 @@ missing = required - known
     </p>
 
     <p>
-      <strong>法的リスクの整理：</strong>
-      AI が「規制対象ではない」と判定し、それを信じて輸出した結果、違反が発覚した場合、
-      責任はどこにあるのか。これは技術的な問題ではなく法的・倫理的な問題ですが、
-      真正面から向き合う必要があります。現時点では「判断支援ツール・最終判断は人間が行う」
-      というポジションを明確にしています。
+      <strong>法的リスクと責任の所在：</strong>
+      AI が「規制非該当」と示唆した情報をもとに輸出した結果、
+      行政機関から不正輸出と認定された場合の責任は、あくまで輸出者（企業・個人）にあります。
+      これは技術的な問題ではなく法的・倫理的な問題であり、正面から向き合う必要があります。
+      現時点での本システムの位置づけは<strong>「該非判定の判断支援ツール」</strong>であり、
+      最終的な輸出可否の決定は、社内の貿易管理担当者または外部の専門家が行う運用を前提としています。
     </p>
 
     <div class="pull">
@@ -1080,9 +1453,9 @@ missing = required - known
       <span class="callout-icon">🔬</span>
       <div>
         <strong>P3 計画：規制インテリジェンス自動更新パイプライン</strong><br>
-        経済産業省の告示 PDF を自動解析→オントロジーシードに反映するパイプライン。
+        経済産業省の告示 PDF（輸出貿易管理令改正・通達等）を自動解析→オントロジーシードに反映するパイプライン。
         NLP で法令改正を差分検出し、HanteiKubanbang の JSON を自動更新する。
-        改正があった場合に管理者に通知するアラート機能も含む。
+        輸出令別表改正や ECCN 更新（EAR）があった場合に管理者に通知するアラート機能も含む。
       </div>
     </div>
 
@@ -1099,9 +1472,9 @@ missing = required - known
     <h3>最後に</h3>
 
     <p>
-      輸出管理という地味で複雑な領域に、NeuroSymbolic AI という最先端のアーキテクチャで挑む——
+      安全保障輸出管理（該非判定）という地味で複雑な領域に、NeuroSymbolic AI という最先端のアーキテクチャで挑む——
       この組み合わせは、始めた当初は「ニッチすぎる」と思っていました。
-      でも今は確信しています。コンプライアンス領域こそ、
+      でも今は確信しています。コンプライアンス・法務領域こそ、
       <strong>「説明できない AI は使えない」</strong>という原則が最も明確に試される場所です。
     </p>
 
@@ -1127,12 +1500,14 @@ missing = required - known
         <span class="tag">#Python</span>
         <span class="tag">#マイクロサービス</span>
         <span class="tag">#SQLAlchemy</span>
+        <span class="tag">#キャッチオール規制</span>
+        <span class="tag">#EAR</span>
       </div>
       <div class="next-post">
         <div class="next-icon">→</div>
         <div>
           <div class="next-label">次の記事（予告）</div>
-          <div class="next-title">「外為令別表を JSON に変換する——オントロジー設計の全記録」</div>
+          <div class="next-title">「輸出令別表第1を JSON に変換する——オントロジー設計の全記録」</div>
         </div>
       </div>
     </div>

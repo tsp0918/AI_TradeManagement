@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Trade Compliance Management — Slide Design Sheet</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Noto Sans JP', sans-serif;
+    background: #0a0a0f;
+    color: #f0f4ff;
+    padding: 40px 24px 80px;
+  }
+
+  /* ── Page header ── */
+  .page-header {
+    max-width: 1040px; margin: 0 auto 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 20px; border-bottom: 1px solid #1e2a3a;
+  }
+  .page-logo { font-size: 13px; font-weight: 900; color: #0a6cff; letter-spacing: .08em; text-transform: uppercase; }
+  .page-title { font-size: 13px; color: #8892a4; }
+  .page-date { font-size: 12px; color: #8892a4; }
+
+  /* ── Slide wrapper ── */
+  .slide-stack { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+
+  .slide-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .slide-num { font-size: 11px; font-weight: 900; color: #0a6cff; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
+  .slide-section { font-size: 11px; color: #8892a4; text-transform: uppercase; letter-spacing: .08em; }
+
+  /* ── Slide card (16:9) ── */
+  .slide {
+    width: 100%; aspect-ratio: 16/9;
+    background: #080d1a;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #1e2a3a;
+    box-shadow: 0 24px 72px rgba(0,0,0,.6), 0 4px 16px rgba(0,0,0,.4);
+    position: relative;
+    display: flex; flex-direction: column;
+    padding: 36px 48px 28px;
+    font-family: 'Inter', 'Noto Sans JP', sans-serif;
+  }
+
+  /* Background grid (subtle) */
+  .slide::before {
+    content: '';
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(10,108,255,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(10,108,255,.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* ── Slide header (consistent across all) ── */
+  .sl-header {
+    display: flex; align-items: flex-start; gap: 14px;
+    margin-bottom: 16px; position: relative; z-index: 1;
+  }
+  .sl-accent { width: 4px; border-radius: 2px; background: #0a6cff; flex-shrink: 0; min-height: 100%; }
+  .sl-header-text { flex: 1; }
+  .sl-label { font-size: 9.5px; font-weight: 800; color: #0a6cff; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 5px; }
+  .sl-title { font-size: 22px; font-weight: 900; color: #f0f4ff; line-height: 1.25; word-break: keep-all; overflow-wrap: anywhere; }
+  .sl-headline { font-size: 12.5px; color: #8892a4; line-height: 1.65; margin-top: 5px; word-break: keep-all; overflow-wrap: anywhere; }
+  .sl-slidenum { margin-left: auto; font-size: 11px; color: #2d3748; font-weight: 700; flex-shrink: 0; padding-top: 2px; }
+
+  /* ── Body ── */
+  .sl-body { flex: 1; position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; }
+
+  /* ── Divider ── */
+  .sl-divider { height: 1px; background: linear-gradient(90deg, #0a6cff, transparent); margin-bottom: 16px; }
+
+  /* ── 3-card grid ── */
+  .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card {
+    background: #0d1220; border: 1px solid #1e2a3a; border-radius: 8px;
+    padding: 16px 18px; display: flex; flex-direction: column; gap: 7px;
+  }
+  .card-icon { font-size: 20px; line-height: 1; }
+  .card-title { font-size: 12.5px; font-weight: 800; color: #f0f4ff; line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere; }
+  .card-body { font-size: 10.5px; color: #8892a4; line-height: 1.6; flex: 1; word-break: keep-all; overflow-wrap: anywhere; }
+  .card.warn { border-color: rgba(247,68,68,.3); background: #110a0a; }
+  .card.good { border-color: rgba(10,108,255,.3); background: #080d1a; }
+  .card-tag { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 10px; margin-bottom: 2px; }
+  .card-tag.red { background: rgba(247,68,68,.15); color: #f74444; border: 1px solid rgba(247,68,68,.3); }
+  .card-tag.blue { background: rgba(10,108,255,.15); color: #60a5fa; border: 1px solid rgba(10,108,255,.3); }
+  .card-tag.green { background: rgba(34,197,94,.15); color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+  .card-tag.gold { background: rgba(200,169,110,.15); color: #c8a96e; border: 1px solid rgba(200,169,110,.3); }
+
+  /* ── Stat row ── */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .stat { background: #0d1220; border: 1px solid #1e2a3a; border-radius: 7px; padding: 12px 14px; text-align: center; }
+  .stat-n { font-size: 22px; font-weight: 900; color: #0a6cff; display: block; line-height: 1.1; margin-bottom: 4px; }
+  .stat-l { font-size: 9.5px; color: #8892a4; line-height: 1.5; word-break: keep-all; }
+
+  /* ── 2-col layout ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .two-col-wide { display: grid; grid-template-columns: 2fr 3fr; gap: 20px; }
+
+  /* ── Tag pills ── */
+  .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pill { font-size: 9.5px; font-weight: 700; padding: 3px 9px; border-radius: 12px; background: rgba(10,108,255,.12); color: #60a5fa; border: 1px solid rgba(10,108,255,.25); white-space: nowrap; }
+  .pill.gr { background: rgba(34,197,94,.1); color: #4ade80; border-color: rgba(34,197,94,.25); }
+  .pill.am { background: rgba(200,169,110,.1); color: #c8a96e; border-color: rgba(200,169,110,.25); }
+  .pill.rd { background: rgba(247,68,68,.1); color: #f87171; border-color: rgba(247,68,68,.25); }
+
+  /* ── Timeline ── */
+  .timeline { display: flex; gap: 0; }
+  .tl-step { flex: 1; position: relative; padding: 0 0 0 12px; }
+  .tl-step::before { content: ''; position: absolute; left: 0; top: 7px; width: 7px; height: 7px; border-radius: 50%; background: #0a6cff; }
+  .tl-step::after { content: ''; position: absolute; left: 6px; top: 7px; right: 0; height: 1px; background: linear-gradient(90deg, #0a6cff, #1e2a3a); }
+  .tl-step:last-child::after { display: none; }
+  .tl-year { font-size: 9px; font-weight: 800; color: #0a6cff; margin-bottom: 4px; }
+  .tl-text { font-size: 10px; color: #8892a4; line-height: 1.55; word-break: keep-all; }
+
+  /* ── VS comparison ── */
+  .vs-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  .vs-table th { background: #0d1220; color: #8892a4; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 7px 12px; text-align: left; border-bottom: 1px solid #1e2a3a; }
+  .vs-table td { padding: 7px 12px; border-bottom: 1px solid #111827; color: #d1d5db; vertical-align: top; line-height: 1.5; }
+  .vs-table tr:last-child td { border-bottom: none; }
+  .bad { color: #f87171; }
+  .good-c { color: #4ade80; font-weight: 600; }
+  .vs-label { font-size: 9px; font-weight: 800; color: #8892a4; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+
+  /* ── Module grid (slide 8) ── */
+  .module-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .mod-card {
+    background: #0d1220; border: 1px solid #1e2a3a; border-radius: 7px;
+    padding: 11px 12px;
+  }
+  .mod-card.highlight { border-color: rgba(10,108,255,.4); }
+  .mod-name { font-size: 10.5px; font-weight: 800; color: #60a5fa; margin-bottom: 4px; }
+  .mod-port { font-size: 8.5px; color: #2d3748; font-family: monospace; margin-bottom: 5px; }
+  .mod-desc { font-size: 9.5px; color: #8892a4; line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere; }
+  .mod-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+  .mod-tag { font-size: 8px; font-weight: 700; padding: 1px 5px; border-radius: 8px; background: rgba(10,108,255,.1); color: #60a5fa; border: 1px solid rgba(10,108,255,.2); }
+
+  /* ── Screenshot mockup ── */
+  .screen-mock {
+    background: #060c16; border: 1px solid #1e2a3a; border-radius: 8px; overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  .screen-bar { background: #111827; padding: 7px 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e2a3a; }
+  .screen-dots { display: flex; gap: 4px; }
+  .screen-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .screen-url { flex: 1; background: #0d1220; border: 1px solid #1e2a3a; border-radius: 4px; padding: 2px 10px; font-size: 9.5px; color: #2d3748; font-family: monospace; }
+  .screen-body { padding: 12px 14px; }
+
+  /* ── Dashboard mockup rows ── */
+  .db-stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+  .db-stat { background: #0d1220; border: 1px solid #1e2a3a; border-radius: 5px; padding: 8px 10px; }
+  .db-stat-n { font-size: 16px; font-weight: 900; color: #0a6cff; line-height: 1.1; }
+  .db-stat-l { font-size: 8.5px; color: #8892a4; }
+  .db-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+  .db-table th { background: #0d1220; color: #2d3748; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 5px 8px; border-bottom: 1px solid #1e2a3a; text-align: left; }
+  .db-table td { padding: 5px 8px; border-bottom: 1px solid #111827; color: #d1d5db; vertical-align: middle; }
+  .badge-risk { font-size: 7.5px; font-weight: 800; padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
+  .badge-risk.high { background: rgba(247,68,68,.2); color: #f87171; border: 1px solid rgba(247,68,68,.3); }
+  .badge-risk.med  { background: rgba(245,158,11,.2); color: #fbbf24; border: 1px solid rgba(245,158,11,.3); }
+  .badge-risk.low  { background: rgba(34,197,94,.2);  color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+  .badge-risk.ca   { background: rgba(139,92,246,.2); color: #a78bfa; border: 1px solid rgba(139,92,246,.3); }
+
+  /* ── PDF mock (nested inside slide) ── */
+  .pdf-mock { background: #f8f8f8; border-radius: 5px; padding: 10px 12px; font-family: sans-serif; }
+  .pdf-sect-bar { background: #1e40af; color: #fff; font-size: 8px; font-weight: 800; padding: 3px 8px; border-radius: 3px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em; }
+  .pdf-verdict { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+  .pdf-v-text { font-size: 8.5px; color: #374151; }
+  .pdf-v-badge { font-size: 7.5px; font-weight: 800; padding: 2px 7px; border-radius: 10px; }
+  .pdf-v-badge.caution { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+  .pdf-v-badge.clear { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+  .pdf-v-badge.permit { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+  .pdf-ear-row { display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0; }
+  .pdf-ear-pill { font-size: 7.5px; font-weight: 700; padding: 1px 5px; border-radius: 8px; background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
+  .pdf-rf { font-size: 8px; color: #166534; margin-top: 4px; }
+
+  /* ── Footer ── */
+  .sl-footer { position: absolute; bottom: 16px; left: 48px; right: 48px; display: flex; justify-content: space-between; align-items: center; z-index: 1; }
+  .sl-footer-brand { font-size: 8.5px; font-weight: 700; color: #1e2a3a; letter-spacing: .08em; }
+  .sl-footer-num { font-size: 9px; color: #1e2a3a; }
+
+  /* ── Video placeholder ── */
+  .video-ph {
+    background: #0d1220; border: 1px dashed #1e2a3a; border-radius: 6px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; padding: 16px;
+  }
+  .video-ph-icon { font-size: 22px; opacity: .5; }
+  .video-ph-text { font-size: 9.5px; color: #2d3748; text-align: center; line-height: 1.5; }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .slide { padding: 20px 22px 16px; }
+    .sl-title { font-size: 16px; }
+    .card-grid, .module-grid { grid-template-columns: 1fr 1fr; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .two-col, .two-col-wide { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-logo">AI Trade Compliance Management</div>
+  <div class="page-title">Slide Design Sheet — 8 Slides</div>
+  <div class="page-date">2026.03.20</div>
+</div>
+
+<div class="slide-stack">
+
+  <!-- ══════════════════════════════════════
+       SLIDE 01 — 輸出管理における課題
+  ══════════════════════════════════════ -->
+  <div>
+    <div class="slide-meta">
+      <span class="slide-num">01</span>
+      <span class="slide-section">Challenge</span>
+    </div>
+    <div class="slide">
+      <div class="sl-header">
+        <div class="sl-accent"></div>
+        <div class="sl-header-text">
+          <div class="sl-label">Challenge — 課題提起</div>
+          <div class="sl-title">輸出管理における課題</div>
+          <div class="sl-headline">「担当者が退職したら、誰も判定できなくなる」——日本の製造業・研究機関が直面する輸出管理の構造問題</div>
+        </div>
+        <div class="sl-slidenum">01 / 08</div>
+      </div>
+      <div class="sl-divider"></div>
+
+      <div class="sl-body">
+        <div class="stat-row">
+          <div class="stat">
+            <span class="stat-n">数年</span>
+            <span class="stat-l">輸出管理専門人材の育成に<br>必要な期間</span>
+          </div>
+          <div class="stat">
+            <span class="stat-n">数十万円〜</span>
+            <span class="stat-l">外部専門家への案件委託<br>コスト（1件あたり）</span>
+          </div>
+          <div class="stat">
+            <span class="stat-n">頻繁</span>
+            <span class="stat-l">外為法・輸出令の<br>改正ペース</span>
+          </div>
+          <div class="stat">
+            <span class="stat-n">三重</span>
+            <span class="stat-l">違反時の制裁層<br>刑事罰・行政処分・信頼失墜</span>
+          </div>
+        </div>
+
+        <div class="card-grid">
+          <div class="card warn">
+            <div class="card-icon">👤</div>
+            <span class="card-tag red">人材リスク</span>
+            <div class="card-title">専門知識の属人化</div>
+            <div class="card-body">該非判定の専門人材は国内でも希少。担当者の退職・異動で組織の輸出管理機能が一夜にして消滅するリスクを多くの企業が抱える。</div>
+          </div>
+          <div class="card warn">
+            <div class="card-icon">⏱</div>
+            <span class="card-tag red">スピードリスク</span>
+            <div class="card-title">外部委託の遅延・高コスト</div>
+            <div class="card-body">外部専門家への委託は数週間〜数ヶ月、数十万円以上。急ぎの海外案件への対応不能が商機の喪失に直結。内製化しても習熟に数年を要する。</div>
+          </div>
+          <div class="card warn">
+            <div class="card-icon">🕳</div>
+            <span class="card-tag red">規制カバレッジ</span>
+            <div class="card-title">キャッチオール規制の見落とし</div>
+            <div class="card-body">リスト規制外の汎用品でも「用途・仕向地・取引パターン」によってキャッチオール規制（輸出令第4条・第4条の2）が発動。自己判断の難しさが見落としを生む。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sl-footer">
+        <div class="sl-footer-brand">AI TRADE COMPLIANCE MANAGEMENT</div>
+        <div class="sl-footer-num">01 / 08</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SLIDE 02 — 制裁金の発動（AMATの事例）
+  ══════════════════════════════════════ -->
+  <div>
+    <div class="slide-meta">
+      <span class="slide-num">02</span>
+      <span class="slide-section">Case Study</span>
+    </div>
+    <div class="slide">
+      <div class="sl-header">
+        <div class="sl-accent" style="background:#f74444;"></div>
+        <div class="sl-header-text">
+          <div class="sl-label" style="color:#f74444;">Case Study — 制裁実例</div>
+          <div class="sl-title">制裁金の発動（AMATの事例）</div>
+          <div class="sl-headline">Applied Materials、半導体製造装置の対中輸出で DOJ 調査——$153M 超の制裁合意は「他人事」ではない</div>
+        </div>
+        <div class="sl-slidenum">02 / 08</div>
+      </div>
+      <div class="sl-divider" style="background:linear-gradient(90deg,#f74444,transparent);"></div>
+
+      <div class="sl-body">
+        <div class="two-col-wide">
+          <!-- Left: case summary -->
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="card" style="border-color:rgba(247,68,68,.3);background:#110a0a;">
+              <span class="card-tag red">概要</span>
+              <div class="card-title" style="color:#f0f4ff;">Applied Materials（AMAT）</div>
+              <div class="card-body">米国最大の半導体製造装置メーカー。DOJ（米国司法省）が EAR（輸出管理規則）違反の疑いで捜査。中国半導体メーカー SMIC（エンティティリスト掲載）への装置出荷が焦点。</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="stat" style="background:#110a0a;border-color:rgba(247,68,68,.25);">
+                <span class="stat-n" style="color:#f74444;">$153M+</span>
+                <span class="stat-l">報道ベースの制裁<br>合意報告額</span>
+              </div>
+              <div class="stat" style="background:#110a0a;border-color:rgba(247,68,68,.25);">
+                <span class="stat-n" style="color:#f74444;">刑事</span>
+                <span class="stat-l">法人・個人への<br>刑事罰リスク</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: timeline + impact -->
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="sl-label" style="font-size:9px;margin-bottom:2px;">事件の経緯</div>
+            <div class="timeline" style="margin-bottom:12px;">
+              <div class="tl-step">
+                <div class="tl-year">2020–21</div>
+                <div class="tl-text">SMIC が米商務省のエンティティリストに掲載。AMAT は第三国経由の出荷を継続との疑惑。</div>
+              </div>
+              <div class="tl-step">
+                <div class="tl-year">2022–23</div>
+                <div class="tl-text">DOJ・Commerce Dept による調査開始。株主訴訟も並行。株価への影響と経営陣の対応が注目される。</div>
+              </div>
+              <div class="tl-step">
+                <div class="tl-year">2024</div>
+                <div class="tl-text">$153M 超の民事和解合意が報道。輸出コンプライアンス体制の全面見直しを実施。</div>
+              </div>
+            </div>
+
+            <div class="card-grid" style="grid-template-columns:repeat(3,1fr);">
+              <div class="card" style="border-color:rgba(247,68,68,.2);background:#110a0a;padding:10px 12px;">
+                <div style="font-size:14px;">⚖</div>
+                <div class="card-title" style="font-size:10px;">刑事罰</div>
+                <div class="card-body" style="font-size:9px;">個人への懲役刑・法人への重大罰金。代表者の監督責任も問われる。</div>
+              </div>
+              <div class="card" style="border-color:rgba(247,68,68,.2);background:#110a0a;padding:10px 12px;">
+                <div style="font-size:14px;">🚫</div>
+                <div class="card-title" style="font-size:10px;">行政処分</div>
+                <div class="card-body" style="font-size:9px;">輸出業務停止命令。グローバルサプライチェーンの即時停止リスク。</div>
+              </div>
+              <div class="card" style="border-color:rgba(247,68,68,.2);background:#110a0a;padding:10px 12px;">
+                <div style="font-size:14px;">📉</div>
+                <div class="card-title" style="font-size:10px;">信頼失墜</div>
+                <div class="card-body" style="font-size:9px;">株価下落・顧客離反・資金調達コスト上昇。ブランド価値の毀損。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sl-footer">
+        <div class="sl-footer-brand">AI TRADE COMPLIANCE MANAGEMENT</div>
+        <div class="sl-footer-num">02 / 08</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SLIDE 03 — AI活用の難易度
+  ══════════════════════════════════════ -->
+  <div>
+    <div class="slide-meta">
+      <span class="slide-num">03</span>
+      <span class="slide-section">Constraint</span>
+    </div>
+    <div class="slide">
+      <div class="sl-header">
+        <div class="sl-accent" style="background:#c8a96e;"></div>
+        <div class="sl-header-text">
+          <div class="sl-label" style="color:#c8a96e;">Constraint — AI 活用の壁</div>
+          <div class="sl-title">安全保障貿易管理における AI 活用の難易度</div>
+          <div class="sl-headline">「汎用 LLM に任せる」では解決できない——コンプライアンス AI 固有の 3 つの壁と、NeuroSymbolic AI による突破口</div>
+        </div>
+        <div class="sl-slidenum">03 / 08</div>
+      </div>
+      <div class="sl-divider" style="background:linear-gradient(90deg,#c8a96e,transparent);"></div>
+
+      <div class="sl-body">
+        <div class="card-grid" style="margin-bottom:12px;">
+          <div class="card warn">
+            <div class="card-icon">🤔</div>
+            <span class="card-tag red">壁 1</span>
+            <div class="card-title">ハルシネーション</div>
+            <div class="card-body">存在しない条文番号を引用。数値閾値の判定で一貫性を欠く。コンプライアンス文脈での「もっともらしい誤り」は最悪のパターン。</div>
+          </div>
+          <div class="card warn">
+            <div class="card-icon">📅</div>
+            <span class="card-tag red">壁 2</span>
+            <div class="card-title">知識カットオフ問題</div>
+            <div class="card-body">外為法・輸出令は頻繁に改正される。トレーニング後の改正内容を LLM は知らない。「古い法律ベースで OK」は法的リスクそのもの。</div>
+          </div>
+          <div class="card warn">
+            <div class="card-icon">⬛</div>
+            <span class="card-tag red">壁 3</span>
+            <div class="card-title">判断根拠の不透明性</div>
+            <div class="card-body">「規制対象ではありません」と言われても根拠が示せない。担当者がダブルチェックできず、監査証跡にもならない。</div>
+          </div>
+        </div>
+
+        <div class="card-grid" style="grid-template-columns:repeat(3,1fr);">
+          <div class="card good">
+            <div class="card-icon">✦</div>
+            <span class="card-tag blue">解法 1</span>
+            <div class="card-title">規制知識 = オントロジー</div>
+            <div class="card-body">LLM に規制を「覚えさせない」。正確性はオントロジー JSON が保証。法改正 = シード更新のみ。</div>
+          </div>
+          <div class="card good">
+            <div class="card-icon">✦</div>
+            <span class="card-tag blue">解法 2</span>
+            <div class="card-title">Neural × Symbolic 分業</div>
+            <div class="card-body">FAISS/LLM は候補抽出・対話生成担当。閾値判定・条文適用は Symbolic ルールエンジン担当。</div>
+          </div>
+          <div class="card good">
+            <div class="card-icon">✦</div>
+            <span class="card-tag blue">解法 3</span>
+            <div class="card-title">三層の根拠付き出力</div>
+            <div class="card-body">条文・スコア・一致語・判定ロジックをすべて記録。PDF レポート + DB 監査ログで説明責任を担保。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sl-footer">
+        <div class="sl-footer-brand">AI TRADE COMPLIANCE MANAGEMENT</div>
+        <div class="sl-footer-num">03 / 08</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SLIDE 04 — 本プロダクト（スクリーンショット）
+  ══════════════════════════════════════ -->
+  <div>
+    <div class="slide-meta">
+      <span class="slide-num">04</span>
+      <span class="slide-section">Product</span>
+    </div>
+    <div class="slide">
+      <div class="sl-header">
+        <div class="sl-accent"></div>
+        <div class="sl-header-text">
+          <div class="sl-label">Product — プロダクト紹介</div>
+          <div class="sl-title">AI Trade Compliance Management</div>
+          <div class="sl-headline">あらゆる企業に、エキスパートレベルの安全保障輸出管理判断を——NeuroSymbolic AI 統合プラットフォーム</div>
+        </div>
+        <div class="sl-slidenum">04 / 08</div>
+      </div>
+      <div class="sl-divider"></div>
+
+      <div class="sl-body">
+        <!-- Full-width product screenshot mockup -->
+        <div class="screen-mock">
+          <div class="screen-bar">
+            <div class="screen-dots">
+              <div class="screen-dot" style="background:#ff5f57;"></div>
+              <div class="screen-dot" style="background:#ffbd2e;"></div>
+              <div class="screen-dot" style="background:#28c840;"></div>
+            </div>
+            <div class="screen-url">localhost:8001/ui/transactions/5/detail</div>
+          </div>
+          <div class="screen-body">
+            <div style="display:grid;grid-template-columns:200px 1fr;gap:12px;">
+              <!-- Left nav -->
+              <div style="background:#0d1220;border-radius:5px;padding:10px;">
+                <div style="font-size:8.5px;font-weight:900;color:#0a6cff;letter-spacing:.08em;margin-bottom:8px;">AI TRADE</div>
+                <div style="font-size:9px;color:#8892a4;padding:4px 8px;border-radius:4px;background:#111827;margin-bottom:3px;">📋 取引一覧</div>
+                <div style="font-size:9px;color:#f0f4ff;padding:4px 8px;border-radius:4px;background:#0a6cff;margin-bottom:3px;">🔍 該非判定</div>
+                <div style="font-size:9px;color:#8892a4;padding:4px 8px;margin-bottom:3px;">🛡️ キャッチオール</div>
+                <div style="font-size:9px;color:#8892a4;padding:4px 8px;margin-bottom:3px;">📄 レポート出力</div>
+                <div style="font-size:9px;color:#8892a4;padding:4px 8px;margin-bottom:3px;">📊 ダッシュボード</div>
+                <div style="font-size:9px;color:#8892a4;padding:4px 8px;">⚙️ 設定</div>
+              </div>
+              <!-- Main content -->
+              <div>
+                <!-- Transaction header -->
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                  <div style="font-size:11px;font-weight:700;color:#f0f4ff;">取引 TX-2026-0083 — 工業用マスキングテープ（耐熱・高精度）</div>
+                  <div style="font-size:8.5px;background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3);border-radius:4px;padding:1px 7px;font-weight:700;">FAISS判定: LOW</div>
+                  <div style="font-size:8.5px;background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);border-radius:4px;padding:1px 7px;font-weight:700;">🛡 キャッチオール推奨</div>
+                </div>
+                <!-- Two-list result -->
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;">
+                  <div style="background:#0d1220;border:1px solid #1e2a3a;border-radius:5px;padding:7px 10px;">
+                    <div style="font-size:8px;color:#8892a4;margin-bottom:3px;">INTERSECTION（高優先）</div>
+                    <div style="font-size:18px;font-weight:900;color:#4ade80;">0</div>
+                    <div style="font-size:8px;color:#4ade80;">リスト規制両面一致なし</div>
+                  </div>
+                  <div style="background:#0d1220;border:1px solid #1e2a3a;border-radius:5px;padding:7px 10px;">
+                    <div style="font-size:8px;color:#8892a4;margin-bottom:3px;">CORE ONLY（中優先）</div>
+                    <div style="font-size:18px;font-weight:900;color:#4ade80;">0</div>
+                    <div style="font-size:8px;color:#4ade80;">申告用途一致なし</div>
+                  </div>
+                  <div style="background:#0d1220;border:1px solid #1e2a3a;border-radius:5px;padding:7px 10px;">
+                    <div style="font-size:8px;color:#8892a4;margin-bottom:3px;">EXPANDED（転用可能性）</div>
+                    <div style="font-size:18px;font-weight:900;color:#fbbf24;">2</div>
+                    <div style="font-size:8px;color:#fbbf24;">LOW リスク 2件</div>
+                  </div>
+                </div>
+                <!-- Catchall panel -->
+                <div style="background:#0d1220;border:1px solid rgba(139,92,246,.35);border-radius:5px;padding:8px 10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <div>
+                    <div style="font-size:8px;font-weight:700;color:#a78bfa;margin-bottom:5px;">🛡 キャッチオール自己判定 — CAUTION（要注意）</div>
+                    <div style="font-size:8.5px;color:#8892a4;line-height:1.6;">仕向地: 中華人民共和国（CN）/ 懸念国 MEDIUM<br>EAR Groups: D:1 D:3 D:4 D:5 | Red Flag: 0/7</div>
+                  </div>
+                  <div>
+                    <div style="font-size:8px;font-weight:700;color:#8892a4;margin-bottom:4px;">推奨アクション</div>
+                    <div style="font-size:8.5px;color:#8892a4;line-height:1.6;">• エンドユーザー詳細調査<br>• EUC・最終用途申告書を保管<br>• 状況変化時は安全保障部門へ報告</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sl-footer">
+        <div class="sl-footer-brand">AI TRADE COMPLIANCE MANAGEMENT</div>
+        <div class="sl-footer-num">04 / 08</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SLIDE 05 — ソリューション全体概要
+  ══════════════════════════════════════ -->
+  <div>
+    <div class="slide-meta">
+      <span class="slide-num">05</span>
+      <span class="slide-section">Solution Overview</span>
+    </div>
+    <div class="slide">
+      <div class="sl-header">
+        <div class="sl-accent"></div>
+        <div class="sl-header-text">
+          <div class="sl-label">Solution Overview — 全体構成</div>
+          <div class="sl-title">ソリューションの全体概要</div>
+          <div class="sl-headline">NeuroSymbolic AI × 7 モジュール——リスト規制からキャッチオール規制・特許リスクまで一貫カバレッジ</div>
+        </div>
+        <div class="sl-slidenum">05 / 08</div>
+      </div>
+      <div class="sl-divider"></div>
+
+      <div class="sl-body">
+        <!-- Architecture overview: 2 layers + center agent + modules -->
+        <div style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:12px;flex:1;">
+          <!-- Neural layer -->
+          <div style="background:rgba(10,108,255,.06);border:1px solid rgba(10,108,255,.2);border-radius:8px;padding:12px;">
+            <div style="font-size:9px;font-weight:900;color:#60a5fa;letter-spacing:.1em;text-align:center;margin-bottom:10px;">NEURAL LAYER</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="background:#0d1220;border:1px solid #1e2a3a;border-radius:5px;padding:7px 9px;">
+                <div style="font-size:9.5px;font-weight:700;color:#60a5fa;">FAISS Layer A</div>
+                <div style="font-size:8.5px;color:#8892a4;">申告用途 ↔ 規制要件</div>
+              </div>
+              <div style="background:#0d1220;border:1px solid #1e2a3a;border-radius:5px;padding:7px 9px;">
+                <div style="font-size:9.5px;font-weight:700;color:#60a5fa;">FAISS Layer B</div>
+                <div style="font-size:8.5px;color:#8892a4;">転用可能性マッチング</div>
+              </div>
+              <div style="background:#0d1220;border:1px solid #1e2a3a;border-radius:5px;padding:7px 9px;">
+                <div style="font-size:9.5px;font-weight:700;color:#60a5fa;">FAISS Layer C</div>
+                <div style="font-size:8.5px;color:#8892a4;">HS コード照合</div>
+              </div>
+              <div style="background:#0d1220;border:1px solid #1e2a3a;border-radius:5px;padding:7px 9px;">
+                <div style="font-size:9.5px;font-weight:700;color:#60a5fa;">Claude API</div>
+                <div style="font-size:8.5px;color:#8892a4;">対話生成・質問補完</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Center: HanteiAgent -->
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="background:#0d1117;border:2px solid #0a6cff;border-radius:10px;padding:12px;text-align:center;flex:1;display:flex;flex-direction:column;justify-content:center;">
+              <div style="font-size:14px;font-weight:900;color:#60a5fa;margin-bottom:4px;">HanteiAgent</div>
+              <div style="font-size:9px;color:#8892a4;margin-bottom:8px;">対話型 NeuroSymbolic エージェント</div>
+              <div style="font-family:monospace;font-size:8.5px;color:#79c0ff;background:#111827;border-radius:4px;padding:5px 8px;margin:0 auto;">required − known = missing</div>
+              <div style="font-size:8px;color:#2d3748;margin-top:8px;line-height:1.6;">セッション DB 永続化 · 中断再開対応<br>TransactionContext 状態管理</div>
+            </div>
+            <!-- Catchall engine -->
+            <div style="background:#0d1117;border:1px solid rgba(139,92,246,.4);border-radius:8px;padding:10px;text-align:center;">
+              <div style="font-size:11px;font-weight:700;color:#a78bfa;margin-bottom:3px;">Catchall Symbolic Engine</div>
+              <div style="font-size:8.5px;color:#8892a4;">輸出令第4条・第4条の2 / E:1 禁輸国 / EAR Country Chart / Red Flag 7項目</div>
+            </div>
+            <!-- Output -->
+            <div style="background:#0a6cff;border-radius:7px;padding:9px;text-align:center;">
+              <div style="font-size:10.5px;font-weight:800;color:#fff;">判定レポート出力</div>
+              <div style="font-size:8.5px;color:#b8d4ff;margin-top:2px;">PDF（根拠付き）/ CSV / 監査ログ</div>
+            </div>
+          </div>
+
+          <!-- Symbolic layer -->
+          <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:12px;">
+            <div style="font-size:9px;font-weight:900;color:#4ade80;letter-spacing:.1em;text-align:center;margin-bottom:10px;">SYMBOLIC LAYER</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="background:#0d1220;border:1px solid #1e2a3a;border-radius:5px;padding:7px 9px;">
+                <div style="font-size:9.5px;font-weight:700;color:#4ade80;">オントロジーエンジン</div>
+                <div style="font-size:8.5px;color:#8892a4;">29項目 規制知識グラフ</div>
+              </div>
+              <div style="background:#0d1220;border:1px solid #1e2a3a;border-radius:5px;padding:7px 9px;">
+                <div style="font-size:9.5px;font-weight:700;color:#4ade80;">外為法 リスト規制</div>
+                <div style="font-size:8.5px;color:#8892a4;">輸出令別表第3（17項目）</div>
+              </div>
+              <div style="background:#0d1220;border:1px solid #1e2a3a;border-radius:5px;padding:7px 9px;">
+                <div style="font-size:9.5px;font-weight:700;color:#4ade80;">ECCN / EAR 規制</div>
+                <div style="font-size:8.5px;color:#8892a4;">米国輸出管理規則 12分類</div>
+              </div>
+              <div style="background:#0d1220;border:1px solid #1e2a3a;border-radius:5px;padding:7px 9px;">
+                <div style="font-size:9.5px;font-weight:700;color:#4ade80;">EAR Country Chart</div>
+                <div style="font-size:8.5px;color:#8892a4;">47カ国 13制御列データ</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sl-footer">
+        <div class="sl-footer-brand">AI TRADE COMPLIANCE MANAGEMENT</div>
+        <div class="sl-footer-num">05 / 08</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SLIDE 06 — 技術的優位性
+  ══════════════════════════════════════ -->
+  <div>
+    <div class="slide-meta">
+      <span class="slide-num">06</span>
+      <span class="slide-section">Technology</span>
+    </div>
+    <div class="slide">
+      <div class="sl-header">
+        <div class="sl-accent"></div>
+        <div class="sl-header-text">
+          <div class="sl-label">Technology — 技術優位性</div>
+          <div class="sl-title">ソリューションの技術的優位性</div>
+          <div class="sl-headline">LLM に規制知識を「覚えさせない」設計——NeuroSymbolic が実現するハルシネーション不在・法改正即時対応・完全監査証跡</div>
+        </div>
+        <div class="sl-slidenum">06 / 08</div>
+      </div>
+      <div class="sl-divider"></div>
+
+      <div class="sl-body">
+        <div class="two-col">
+          <!-- VS Table -->
+          <div>
+            <div class="vs-label" style="margin-bottom:6px;">従来アプローチとの比較</div>
+            <table class="vs-table">
+              <thead>
+                <tr><th>評価軸</th><th class="bad">汎用 LLM</th><th style="color:#4ade80;">本システム</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>規制知識の正確性</td>
+                  <td class="bad">ハルシネーション頻発</td>
+                  <td class="good-c">オントロジー保証</td>
+                </tr>
+                <tr>
+                  <td>法改正への対応</td>
+                  <td class="bad">カットオフ依存・追従不可</td>
+                  <td class="good-c">シード更新のみで即時対応</td>
+                </tr>
+                <tr>
+                  <td>判断根拠の透明性</td>
+                  <td class="bad">ブラックボックス</td>
+                  <td class="good-c">条文・スコア・閾値を明示</td>
+                </tr>
+                <tr>
+                  <td>監査証跡</td>
+                  <td class="bad">なし</td>
+                  <td class="good-c">全判定 DB 記録・PDF 保存</td>
+                </tr>
+                <tr>
+                  <td>キャッチオール対応</td>
+                  <td class="bad">判断基準なし</td>
+                  <td class="good-c">Symbolic 6ステップ自動判定</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 4 pillars -->
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <div class="card good">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:16px;">🔬</span>
+                <div>
+                  <div class="card-title">三層 FAISS インデックス</div>
+                  <div class="card-body">Layer A（申告用途）・B（転用可能性）・C（HS コード）。e5-large 多言語埋め込みで日本語・英語混在テキストに対応。</div>
+                </div>
+              </div>
+            </div>
+            <div class="card good">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:16px;">🛡</span>
+                <div>
+                  <div class="card-title">Symbolic キャッチオールエンジン</div>
+                  <div class="card-body">E:1 禁輸国即時判定・EAR Country Chart 13列証拠付与・Red Flag 7項目。47カ国データベース常時参照。</div>
+                </div>
+              </div>
+            </div>
+            <div class="card good">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:16px;">📖</span>
+                <div>
+                  <div class="card-title">知識とコードの完全分離</div>
+                  <div class="card-body">規制知識は JSON オントロジーとして独立管理。法改正時はシードファイルの更新のみ——エンジンの改修不要。</div>
+                </div>
+              </div>
+            </div>
+            <div class="card good">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:16px;">🗄</span>
+                <div>
+                  <div class="card-title">WAL 監査ログ + 完全証跡</div>
+                  <div class="card-body">SQLite WAL モード + PostgreSQL 横断ログ。全判定セッション・根拠・タイムスタンプを改ざん検知対応で永続化。</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pill-row" style="margin-top:10px;">
+          <span class="pill">FastAPI + SQLAlchemy 2.0</span>
+          <span class="pill">FAISS CPU インデックス 3層</span>
+          <span class="pill">intfloat/e5-large-v2</span>
+          <span class="pill gr">Anthropic Claude API</span>
+          <span class="pill gr">NeuroSymbolic Ontology Engine</span>
+          <span class="pill am">WeasyPrint PDF 生成</span>
+          <span class="pill am">Google BigQuery 特許検索</span>
+          <span class="pill rd">Alembic マイグレーション</span>
+        </div>
+      </div>
+
+      <div class="sl-footer">
+        <div class="sl-footer-brand">AI TRADE COMPLIANCE MANAGEMENT</div>
+        <div class="sl-footer-num">06 / 08</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SLIDE 07 — レポーティング・ダッシュボーディング
+  ══════════════════════════════════════ -->
+  <div>
+    <div class="slide-meta">
+      <span class="slide-num">07</span>
+      <span class="slide-section">Output</span>
+    </div>
+    <div class="slide">
+      <div class="sl-header">
+        <div class="sl-accent"></div>
+        <div class="sl-header-text">
+          <div class="sl-label">Output — 可視化・証跡</div>
+          <div class="sl-title">レポーティング、ダッシュボーディング</div>
+          <div class="sl-headline">判定根拠・監査証跡・経営指標——すべてが自動で記録・可視化。PDF 1本で「リスト規制判定＋キャッチオール自己審査」を完結</div>
+        </div>
+        <div class="sl-slidenum">07 / 08</div>
+      </div>
+      <div class="sl-divider"></div>
+
+      <div class="sl-body">
+        <div class="two-col">
+          <!-- Dashboard -->
+          <div>
+            <div class="vs-label" style="margin-bottom:6px;">📊 管理ダッシュボード</div>
+            <div class="screen-mock">
+              <div class="screen-bar">
+                <div class="screen-dots">
+                  <div class="screen-dot" style="background:#ff5f57;"></div>
+                  <div class="screen-dot" style="background:#ffbd2e;"></div>
+                  <div class="screen-dot" style="background:#28c840;"></div>
+                </div>
+                <div class="screen-url">localhost:8001/ui/dashboard</div>
+              </div>
+              <div class="screen-body">
+                <div class="db-stat-row">
+                  <div class="db-stat">
+                    <div class="db-stat-n">12</div>
+                    <div class="db-stat-l">総取引件数</div>
+                  </div>
+                  <div class="db-stat">
+                    <div class="db-stat-n" style="color:#f74444;">2</div>
+                    <div class="db-stat-l">HIGH リスク</div>
+                  </div>
+                  <div class="db-stat">
+                    <div class="db-stat-n" style="color:#a78bfa;">3</div>
+                    <div class="db-stat-l">CA 判定推奨</div>
+                  </div>
+                  <div class="db-stat">
+                    <div class="db-stat-n" style="color:#4ade80;">9</div>
+                    <div class="db-stat-l">判定完了</div>
+                  </div>
+                </div>
+                <table class="db-table">
+                  <thead>
+                    <tr><th>取引 ID</th><th>品目</th><th>仕向地</th><th>リスク</th><th>ステータス</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>TX-2026-0083</td>
+                      <td>工業用マスキングテープ（耐熱）</td>
+                      <td>CN（中国）</td>
+                      <td><span class="badge-risk low">LOW</span></td>
+                      <td><span class="badge-risk ca">CA推奨</span></td>
+                    </tr>
+                    <tr>
+                      <td>TX-2026-0081</td>
+                      <td>精密センサー（半導体向け）</td>
+                      <td>KR（韓国）</td>
+                      <td><span class="badge-risk med">MEDIUM</span></td>
+                      <td><span style="font-size:7.5px;color:#fbbf24;">審査中</span></td>
+                    </tr>
+                    <tr>
+                      <td>TX-2026-0078</td>
+                      <td>半導体製造装置部品</td>
+                      <td>US（米国）</td>
+                      <td><span class="badge-risk high">HIGH</span></td>
+                      <td><span style="font-size:7.5px;color:#4ade80;">完了</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- PDF report -->
+          <div>
+            <div class="vs-label" style="margin-bottom:6px;">📄 PDF 判定レポート（自動生成）</div>
+            <div class="pdf-mock" style="font-size:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #d1d5db;">
+                <div>
+                  <div style="font-size:11px;font-weight:900;color:#0d1220;">AI 該非判定レポート</div>
+                  <div style="font-size:8.5px;color:#6b7280;">TX-2026-0083 · 工業用マスキングテープ（耐熱）</div>
+                </div>
+                <div style="background:#1e40af;color:#fff;font-size:8px;font-weight:700;padding:2px 8px;border-radius:4px;">LOW RISK</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                  <div class="pdf-sect-bar">Section 3 — Two-List 判定</div>
+                  <div style="font-size:8px;color:#374151;line-height:1.6;">
+                    Intersection: <strong>0</strong> · Core Only: <strong>0</strong> · Expanded: <strong>2</strong><br>
+                    上位候補: 外為令別表 4-7 (score: 0.24)<br>
+                    ECCN EAR99 類似品目 (score: 0.18)<br>
+                    <span style="color:#166534;font-weight:700;">→ リスト規制候補なし（LOW）</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="pdf-sect-bar" style="background:#92400e;">Section 4 — キャッチオール判定</div>
+                  <div class="pdf-verdict">
+                    <div class="pdf-v-text">自己判定結果</div>
+                    <div class="pdf-v-badge caution">要注意（CAUTION）</div>
+                  </div>
+                  <div style="font-size:8px;color:#374151;margin-bottom:4px;">仕向地: 中華人民共和国（CN）/ 懸念国 MEDIUM</div>
+                  <div class="pdf-ear-row">
+                    <span class="pdf-ear-pill">D:1</span><span class="pdf-ear-pill">D:3</span><span class="pdf-ear-pill">D:4</span><span class="pdf-ear-pill">D:5</span>
+                  </div>
+                  <div style="font-size:7.5px;color:#374151;">制御列: NS1 / MT / NP2 / CB3 / RS1</div>
+                  <div class="pdf-rf">✅ Red Flag 検出なし（0/7）</div>
+                </div>
+              </div>
+              <div style="margin-top:6px;font-size:7px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:4px;">判定日時: 2026-03-20 09:14 UTC · 担当: Admin User · セッション: sess_abc123</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sl-footer">
+        <div class="sl-footer-brand">AI TRADE COMPLIANCE MANAGEMENT</div>
+        <div class="sl-footer-num">07 / 08</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SLIDE 08 — 各モジュールの詳細
+  ══════════════════════════════════════ -->
+  <div>
+    <div class="slide-meta">
+      <span class="slide-num">08</span>
+      <span class="slide-section">Modules</span>
+    </div>
+    <div class="slide">
+      <div class="sl-header">
+        <div class="sl-accent"></div>
+        <div class="sl-header-text">
+          <div class="sl-label">Modules — 機能詳細</div>
+          <div class="sl-title">各モジュールの詳細</div>
+          <div class="sl-headline">7 つのマイクロサービスが連携して企業の輸出管理インフラを形成する——各モジュールは独立稼働かつ統合 API で連携</div>
+        </div>
+        <div class="sl-slidenum">08 / 08</div>
+      </div>
+      <div class="sl-divider"></div>
+
+      <div class="sl-body">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;">
+          <div class="mod-card highlight">
+            <div class="mod-name">🔍 AI 該非判定</div>
+            <div class="mod-port">ai_validation · :8001</div>
+            <div class="mod-desc">FAISS Three-List 判定・HanteiAgent 対話補完・キャッチオール Symbolic Engine・PDF/CSV エクスポート</div>
+            <div class="mod-tags"><span class="mod-tag">FAISS</span><span class="mod-tag">Claude</span><span class="mod-tag">PDF</span></div>
+          </div>
+          <div class="mod-card highlight">
+            <div class="mod-name">🧩 品目管理</div>
+            <div class="mod-port">ai_classification · :8002</div>
+            <div class="mod-desc">品目マスタ管理・BOM（部品表）照合・外部 ERP 連携 API・品目別輸出管理属性の自動付与</div>
+            <div class="mod-tags"><span class="mod-tag">BOM</span><span class="mod-tag">ERP連携</span></div>
+          </div>
+          <div class="mod-card highlight">
+            <div class="mod-name">🔬 R&D リスク評価</div>
+            <div class="mod-port">rnd_assessment · :8003</div>
+            <div class="mod-desc">研究開発段階での輸出管理リスクを早期検出。IP レビュー・特許照合との連携で「シフトレフト」型コンプライアンス</div>
+            <div class="mod-tags"><span class="mod-tag">IP Review</span><span class="mod-tag">早期検出</span></div>
+          </div>
+          <div class="mod-card">
+            <div class="mod-name">💬 DAP コーチング</div>
+            <div class="mod-port">dap · :8004</div>
+            <div class="mod-desc">輸出管理担当者向けデジタルアドプションプラットフォーム。AI コーチが操作をリアルタイムガイド</div>
+            <div class="mod-tags"><span class="mod-tag">Chat</span><span class="mod-tag">ガイド</span></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          <div class="mod-card">
+            <div class="mod-name">🔭 特許検索</div>
+            <div class="mod-port">patent_search · :8005</div>
+            <div class="mod-desc">Google Patents × BigQuery で特許技術情報を参照。R&D リスク評価・ECCN 分類補助に活用</div>
+            <div class="mod-tags"><span class="mod-tag">BigQuery</span><span class="mod-tag">Patents</span></div>
+          </div>
+          <div class="mod-card">
+            <div class="mod-name">🗂 HS 分類</div>
+            <div class="mod-port">hs_classifier · :8006</div>
+            <div class="mod-desc">FAISS Layer C による HS コード自動分類。輸出令別表第1 × HS コードの意味的照合で規制分類を高速判定</div>
+            <div class="mod-tags"><span class="mod-tag">FAISS-C</span><span class="mod-tag">HS Code</span></div>
+          </div>
+          <div class="mod-card">
+            <div class="mod-name">🏛 Platform Core</div>
+            <div class="mod-port">platform-core · :8000</div>
+            <div class="mod-desc">認証・テナント管理・共通ダッシュボード・KPI API。全モジュールのオーケストレーション基盤</div>
+            <div class="mod-tags"><span class="mod-tag">認証</span><span class="mod-tag">Dashboard</span></div>
+          </div>
+          <!-- Video placeholder -->
+          <div class="video-ph">
+            <div class="video-ph-icon">▶</div>
+            <div class="video-ph-text">デモ動画<br>（全ワークフロー紹介）<br><span style="font-size:8px;opacity:.6;">demo_video.mp4</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sl-footer">
+        <div class="sl-footer-brand">AI TRADE COMPLIANCE MANAGEMENT</div>
+        <div class="sl-footer-num">08 / 08</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end slide-stack -->
+
+<div style="max-width:1040px;margin:48px auto 0;padding:20px 0;border-top:1px solid #1e2a3a;display:flex;justify-content:space-between;align-items:center;">
+  <div style="font-size:11px;color:#2d3748;">AI Trade Compliance Management — Confidential Design Draft</div>
+  <div style="font-size:11px;color:#2d3748;">Google Slides 変換: <code style="background:#111827;padding:2px 6px;border-radius:3px;color:#60a5fa;">python scripts/create_slides.py</code></div>
+</div>
+
+</body>
+</html>
