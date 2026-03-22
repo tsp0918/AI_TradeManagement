@@ -44,6 +44,12 @@ logs/
 .env.*
 !.env.example
 secrets/
+credentials.json
+token.json
+
+# 生成物・大容量データ
+output/
+data/staging/
 
 # FAISS / ML キャッシュ（再構築可能なバイナリ）
 *.index

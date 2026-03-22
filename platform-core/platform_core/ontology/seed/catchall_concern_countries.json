@@ -1,0 +1,1625 @@
+[
+  {
+    "iso_code": "KP",
+    "name_ja": "朝鮮民主主義人民共和国（北朝鮮）",
+    "fefta_status": "concern",
+    "level": "HIGH",
+    "conventional_catchall": true,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:2",
+      "D:3",
+      "D:4",
+      "D:5",
+      "E:1"
+    ],
+    "ear_is_embargoed": true,
+    "control_reasons": {
+      "ns1": true,
+      "ns2": true,
+      "mt": true,
+      "np1": true,
+      "np2": true,
+      "cb1": true,
+      "cb2": true,
+      "cb3": true,
+      "rs1": true,
+      "rs2": true,
+      "at1": true,
+      "at2": true,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "国連安保理制裁対象国（決議1718・1874・2270等）。核・ミサイル・化学兵器開発国。EAR E:1（テロ支援国家）指定。全品目に最高レベルの注意が必要。"
+  },
+  {
+    "iso_code": "IR",
+    "name_ja": "イラン・イスラム共和国",
+    "fefta_status": "concern",
+    "level": "HIGH",
+    "conventional_catchall": true,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:2",
+      "D:3",
+      "D:4",
+      "D:5",
+      "E:1"
+    ],
+    "ear_is_embargoed": true,
+    "control_reasons": {
+      "ns1": true,
+      "ns2": true,
+      "mt": true,
+      "np1": true,
+      "np2": true,
+      "cb1": true,
+      "cb2": true,
+      "cb3": false,
+      "rs1": true,
+      "rs2": false,
+      "at1": true,
+      "at2": true,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "核開発・ミサイル開発懸念国。EAR E:1（テロ支援国家）指定。国連安保理決議2231（JCPOA関連）。外為法上の特定国。"
+  },
+  {
+    "iso_code": "SY",
+    "name_ja": "シリア・アラブ共和国",
+    "fefta_status": "concern",
+    "level": "HIGH",
+    "conventional_catchall": true,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:2",
+      "D:3",
+      "D:5",
+      "E:1"
+    ],
+    "ear_is_embargoed": true,
+    "control_reasons": {
+      "ns1": true,
+      "ns2": true,
+      "mt": true,
+      "np1": false,
+      "np2": true,
+      "cb1": true,
+      "cb2": true,
+      "cb3": true,
+      "rs1": true,
+      "rs2": false,
+      "at1": true,
+      "at2": true,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "化学兵器使用国（OPCW調査確認）。EAR E:1（テロ支援国家）指定。国連制裁・EU制裁対象。"
+  },
+  {
+    "iso_code": "RU",
+    "name_ja": "ロシア連邦",
+    "fefta_status": "concern",
+    "level": "HIGH",
+    "conventional_catchall": true,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:5"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": true,
+      "ns2": true,
+      "mt": true,
+      "np1": false,
+      "np2": true,
+      "cb1": false,
+      "cb2": false,
+      "cb3": true,
+      "rs1": true,
+      "rs2": true,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "2022年ウクライナ侵攻以降、輸出規制大幅強化。外為法令和4年経産省告示による特定国指定。EAR D:1(NS)・D:5(Arms)。迂回輸出（第三国経由）に特に注意。"
+  },
+  {
+    "iso_code": "BY",
+    "name_ja": "ベラルーシ共和国",
+    "fefta_status": "concern",
+    "level": "HIGH",
+    "conventional_catchall": true,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:5"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": true,
+      "ns2": true,
+      "mt": true,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": true,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "ロシア連邦との軍事同盟国。2022年以降規制強化対象。EAR D:1(NS)・D:5(Arms)。ロシアへの迂回輸出リスクに要注意。"
+  },
+  {
+    "iso_code": "CN",
+    "name_ja": "中華人民共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:3",
+      "D:4",
+      "D:5"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": true,
+      "ns2": false,
+      "mt": true,
+      "np1": false,
+      "np2": true,
+      "cb1": false,
+      "cb2": false,
+      "cb3": true,
+      "rs1": true,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "軍民融合（MCF）政策により民生品の軍転用リスクが高い。EAR D:1(NS列1)・D:3(CB列3)・D:4(MT)・D:5(Arms)。エンドユーザー・エンドユース確認を徹底。EAR 744.21 軍事最終用途規制適用国。"
+  },
+  {
+    "iso_code": "IQ",
+    "name_ja": "イラク共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:3",
+      "D:5"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": true,
+      "mt": false,
+      "np1": false,
+      "np2": true,
+      "cb1": false,
+      "cb2": false,
+      "cb3": true,
+      "rs1": true,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "過去のWMD開発履歴（湾岸戦争）・ISIS残存リスク。EAR D:1(NS列2)・D:3(CB)・D:5(Arms)。国連監視下での復興支援が継続中。"
+  },
+  {
+    "iso_code": "PK",
+    "name_ja": "パキスタン・イスラム共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:2",
+      "D:3",
+      "D:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": true,
+      "mt": true,
+      "np1": true,
+      "np2": true,
+      "cb1": false,
+      "cb2": false,
+      "cb3": true,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "核保有国（NPT非締約）。ミサイル開発継続中（MTCR非加盟）。EAR D:1(NS列2)・D:2(核)・D:3(CB)・D:4(MT)。AQ Khan ネットワーク経由の拡散リスク。"
+  },
+  {
+    "iso_code": "IN",
+    "name_ja": "インド共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": false,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:3",
+      "D:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": true,
+      "mt": true,
+      "np1": false,
+      "np2": true,
+      "cb1": false,
+      "cb2": false,
+      "cb3": true,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "核保有国（NPT非締約）だが日印原子力協定締結済み（2017年）。EAR D:1(NS列2)・D:3(CB)・D:4(MT)。通常兵器キャッチオールは適用外。デュアルユース品目は要注意。"
+  },
+  {
+    "iso_code": "LY",
+    "name_ja": "リビア国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:3",
+      "D:5"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": true,
+      "mt": false,
+      "np1": false,
+      "np2": true,
+      "cb1": false,
+      "cb2": false,
+      "cb3": true,
+      "rs1": true,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "政情不安定・内戦継続。武器禁輸（国連安保理決議1970・1973）対象。EAR D:1(NS列2)・D:3(CB)・D:5(Arms)。"
+  },
+  {
+    "iso_code": "SD",
+    "name_ja": "スーダン共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:5"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": true,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": true,
+      "rs2": false,
+      "at1": true,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "武器禁輸（ダルフール：UN安保理決議1591）・人権侵害懸念。内戦継続中（2024年現在）。EAR D:1(NS列2)・D:5(Arms)・AT列1。"
+  },
+  {
+    "iso_code": "MM",
+    "name_ja": "ミャンマー連邦共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "D:1",
+      "D:5"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": true,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": true,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "2021年軍事クーデター以降、軍事政権への技術・資金流入規制強化。EAR D:1(NS列2)・D:5(Arms)。EU・米国・日本が制裁措置。軍関連エンティティへの輸出禁止。"
+  },
+  {
+    "iso_code": "CU",
+    "name_ja": "キューバ共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": true,
+    "ear_groups": [
+      "D:1",
+      "D:2",
+      "D:5",
+      "E:1"
+    ],
+    "ear_is_embargoed": true,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": true,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": true,
+      "at2": true,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "米国 EAR E:1（テロ支援国家）指定。米国再輸出規制に要注意。EAR AT列1・2。OFAC キューバ禁輸措置（CACR）。"
+  },
+  {
+    "iso_code": "AF",
+    "name_ja": "アフガニスタン・イスラム首長国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "D:1"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": true,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": true,
+      "rs2": false,
+      "at1": true,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "2021年タリバン政権樹立。テロ組織・武装勢力への技術・資金流入懸念。EAR D:1(NS列2)・AT列1。国連制裁委員会リスト（タリバン・アルカイダ）確認要。"
+  },
+  {
+    "iso_code": "VE",
+    "name_ja": "ベネズエラ・ボリバル共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "D:1"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": true,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "米国制裁対象（OFAC）。軍・政府関連エンティティへの輸出禁止。EAR D:1(RS列1)。迂回輸出・転用リスクに要注意。"
+  },
+  {
+    "iso_code": "YE",
+    "name_ja": "イエメン共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "D:1",
+      "D:5"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": true,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": true,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "内戦継続・フーシ派（ハマス連携）によるテロリスト指定。武器禁輸（国連安保理決議2216）対象。"
+  },
+  {
+    "iso_code": "LB",
+    "name_ja": "レバノン共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "D:1"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": true,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": true,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "ヒズボラ（テロ指定組織）の影響力・国家機能麻痺状態。軍・治安機関向け品目は要注意。"
+  },
+  {
+    "iso_code": "SO",
+    "name_ja": "ソマリア連邦共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "D:1",
+      "D:5"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": true,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": true,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "武器禁輸（国連安保理決議733等）対象。アルシャバブ（テロ指定）残存。"
+  },
+  {
+    "iso_code": "CF",
+    "name_ja": "中央アフリカ共和国",
+    "fefta_status": "concern",
+    "level": "MEDIUM",
+    "conventional_catchall": true,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "D:1",
+      "D:5"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": true,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [],
+    "note": "武器禁輸（国連安保理決議2127等）対象。ワグネル・グループ関連の技術流入懸念。"
+  },
+  {
+    "iso_code": "US",
+    "name_ja": "アメリカ合衆国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。通常兵器キャッチオール（第4条の2）除外。Wassenaar/MTCR/NSG/AG 全体制加盟。"
+  },
+  {
+    "iso_code": "GB",
+    "name_ja": "グレートブリテン及び北アイルランド連合王国（英国）",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "DE",
+    "name_ja": "ドイツ連邦共和国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "FR",
+    "name_ja": "フランス共和国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "AU",
+    "name_ja": "オーストラリア連邦",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。Australia Group 設立国。"
+  },
+  {
+    "iso_code": "CA",
+    "name_ja": "カナダ",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "NZ",
+    "name_ja": "ニュージーランド",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "AT",
+    "name_ja": "オーストリア共和国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。Wassenaar Arrangement 事務局所在地（ウィーン）。"
+  },
+  {
+    "iso_code": "BE",
+    "name_ja": "ベルギー王国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "BG",
+    "name_ja": "ブルガリア共和国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "CZ",
+    "name_ja": "チェコ共和国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "DK",
+    "name_ja": "デンマーク王国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "FI",
+    "name_ja": "フィンランド共和国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "GR",
+    "name_ja": "ギリシャ共和国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "HU",
+    "name_ja": "ハンガリー",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "IE",
+    "name_ja": "アイルランド",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "IT",
+    "name_ja": "イタリア共和国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "LU",
+    "name_ja": "ルクセンブルク大公国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "NL",
+    "name_ja": "オランダ王国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "NO",
+    "name_ja": "ノルウェー王国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "PL",
+    "name_ja": "ポーランド共和国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "PT",
+    "name_ja": "ポルトガル共和国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "RO",
+    "name_ja": "ルーマニア",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "ES",
+    "name_ja": "スペイン王国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "SE",
+    "name_ja": "スウェーデン王国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "CH",
+    "name_ja": "スイス連邦",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "IS",
+    "name_ja": "アイスランド共和国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。"
+  },
+  {
+    "iso_code": "LI",
+    "name_ja": "リヒテンシュタイン公国",
+    "fefta_status": "whitelist",
+    "level": null,
+    "conventional_catchall": false,
+    "wmd_catchall": false,
+    "ear_groups": [
+      "A:1",
+      "A:2",
+      "A:3",
+      "A:4"
+    ],
+    "ear_is_embargoed": false,
+    "control_reasons": {
+      "ns1": false,
+      "ns2": false,
+      "mt": false,
+      "np1": false,
+      "np2": false,
+      "cb1": false,
+      "cb2": false,
+      "cb3": false,
+      "rs1": false,
+      "rs2": false,
+      "at1": false,
+      "at2": false,
+      "fc1": false
+    },
+    "whitelist_agreements": [
+      "Wassenaar Arrangement",
+      "MTCR",
+      "NSG",
+      "Australia Group"
+    ],
+    "note": "輸出令別表第3の2掲載（ホワイト国）。スイスとの関税同盟。"
+  }
+]

@@ -324,10 +324,12 @@
     <nav class="module-nav">
       <a class="module-nav-link{% block nav_cases %} {% endblock %}" href="/ui/cases">プロジェクト一覧</a>
       <a class="module-nav-link{% block nav_new %} {% endblock %}" href="/ui/cases/new">新規プロジェクト</a>
+      <a class="module-nav-link{% block nav_personnel %} {% endblock %}" href="/ui/personnel">みなし輸出</a>
     </nav>
   </header>
   <main class="main">
     {% block content %}{% endblock %}
   </main>
+  <script src="http://localhost:8010/static/chat-widget.js" defer></script>
 </body>
 </html>

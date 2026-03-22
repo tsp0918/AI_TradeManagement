@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import pathlib
 from datetime import datetime
-from typing import Any, Dict, Optional, Union
+from functools import lru_cache
+from typing import Any, Dict, List, Optional, Union
 
 import httpx
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -16,6 +18,162 @@ from ..settings import settings
 from ..services.external_app_client import ExternalAppClient
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
+
+# ─────────────────────────────────────────────────────────────────────
+#  HS → ECCN / FEFTA 付加マッピング
+# ─────────────────────────────────────────────────────────────────────
+
+# HS heading (4桁) → 推定ECCN (US EAR CCL) 対照表
+# 主要な二重用途品目のみ収録。完全ではなく参考用。
+_HS_HEADING_TO_ECCN: dict[str, str] = {
+    # Cat 0 Nuclear
+    "2844": "0C001",  # 放射性元素
+    # Cat 1 Materials
+    "2818": "1C010",  # アルミナ
+    "3802": "1C117",  # 活性炭
+    "3818": "3C001",  # ドープシリコン（半導体基板）
+    "7228": "1C117",  # 特殊鋼
+    # Cat 2 Materials processing
+    "8418": "2B350",  # 冷凍装置
+    "8419": "2B350",  # 処理装置
+    "8421": "2B352",  # 遠心分離機
+    "8458": "2B001",  # 旋盤（CNC）
+    "8459": "2B001",  # フライス盤
+    "8461": "2B001",  # 形削り盤
+    "8462": "2B001",  # 鍛造・プレス機
+    "8466": "2B001",  # 工作機械部品
+    "8481": "2A226",  # バルブ
+    # Cat 3 Electronics
+    "8486": "3B001",  # 半導体製造装置
+    "8541": "3A001",  # 半導体デバイス（ダイオード/トランジスタ）
+    "8542": "3A001",  # 電子集積回路（IC）
+    "8543": "3A001",  # その他電気機械
+    "8536": "3A001",  # 電気回路部品
+    # Cat 4 Computers
+    "8471": "4A003",  # コンピュータ
+    "8473": "4A003",  # コンピュータ部品
+    # Cat 5 Telecom
+    "8517": "5A002",  # 通信機器
+    "8526": "6A008",  # レーダー
+    "8529": "6A008",  # レーダー部品
+    # Cat 6 Sensors/Lasers
+    "9001": "6A002",  # 光ファイバー
+    "9002": "6A002",  # 光学レンズ
+    "9003": "6A002",  # メガネフレーム（光学用途）
+    "9005": "6A003",  # 双眼鏡/望遠鏡
+    "9012": "6A001",  # 顕微鏡
+    "9013": "6A005",  # レーザー / 液晶
+    "9014": "7A001",  # 航法計器
+    "9015": "7A002",  # 測量機器
+    # Cat 7 Navigation
+    "8802": "9A610",  # 航空機
+    "8804": "1C111",  # パラシュート
+    # Cat 9 Aerospace
+    "8801": "9A610",  # 気球
+    "8807": "9A610",  # 航空機部品
+    # Chemicals
+    "2903": "1C350",  # ハロゲン化炭化水素
+    "3002": "1C351",  # 血液/ワクチン
+    "3824": "1C350",  # 化学調製品
+}
+
+# HS chapter (2桁) → ECCN フォールバック（heading でヒットしない場合）
+_HS_CHAPTER_TO_ECCN: dict[str, str] = {
+    "28": "1C350",   # 無機化学品
+    "29": "1C350",   # 有機化学品
+    "30": "1C351",   # 医薬品
+    "38": "1C117",   # 各種化学工業製品
+    "84": "2B001",   # 機械（汎用）
+    "85": "3A001",   # 電気機器（汎用）
+    "90": "6A002",   # 光学・精密機器（汎用）
+    "93": "USML",    # 武器（USML 対象）
+}
+
+_STAGING_DIR = pathlib.Path(__file__).resolve().parents[4] / "data" / "staging"
+_HS_FEFTA_REVERSE: dict[str, list] = {}
+
+
+@lru_cache(maxsize=1)
+def _load_hs_fefta_reverse() -> dict[str, list]:
+    """HS → FEFTA 逆引きインデックスをロード（起動後初回のみ）。"""
+    path = _STAGING_DIR / "hs_fefta_mapping_v2.json"
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    return data.get("reverse_index", {})
+
+
+def _lookup_eccn(hs_code: str) -> str:
+    """HS コードから推定 ECCN を返す。マッチしない場合は 'EAR99'。"""
+    heading = hs_code[:4]
+    chapter = hs_code[:2]
+    return (
+        _HS_HEADING_TO_ECCN.get(heading)
+        or _HS_CHAPTER_TO_ECCN.get(chapter)
+        or "EAR99"
+    )
+
+
+def _lookup_fefta(hs_code: str) -> list[dict]:
+    """HS コードから外為法別表第一の紐付け情報を返す。"""
+    rev = _load_hs_fefta_reverse()
+    # exact match
+    if hs_code in rev:
+        return rev[hs_code]
+    # try heading (4-digit prefix)
+    heading = hs_code[:4]
+    if heading in rev:
+        return rev[heading]
+    return []
+
+
+def _enrich_candidates(candidates: list[dict]) -> list[dict]:
+    """FAISS 結果候補に ECCN と FEFTA 情報を付加する。"""
+    enriched = []
+    for c in candidates:
+        hs = c.get("hs_code", "")
+        eccn = _lookup_eccn(hs)
+        fefta_items = _lookup_fefta(hs)
+        fefta_ref = ""
+        if fefta_items:
+            refs = [f"EL-{fi['fefta_item_no']}({fi['fefta_category_label']})" for fi in fefta_items]
+            fefta_ref = " / ".join(refs)
+        enriched.append({
+            **c,
+            "eccn":      eccn,
+            "fefta_ref": fefta_ref,
+            "fefta_items": fefta_items,
+        })
+    return enriched
+
+
+def _rerank_by_heading(candidates: list[dict], top_n: int = 5) -> list[dict]:
+    """同一 heading (HS 4桁) 単位でクラスタリング再ランキングする。
+
+    FAISS の embed_text に日本語 FEFTA ラベルが含まれるため、
+    heading を跨いで重複ヒットが起きる問題を軽減する。
+    同一 heading で複数ヒットした場合はカウントボーナスを加算し、
+    各 heading の代表候補（最高スコア）だけを上位 top_n 件に絞る。
+    """
+    from collections import defaultdict
+    heading_data: dict[str, list] = defaultdict(list)
+    for c in candidates:
+        heading = c.get("heading") or c.get("hs_code", "")[:4]
+        heading_data[heading].append(c)
+
+    ranked_headings: list[tuple[float, str]] = []
+    for heading, items in heading_data.items():
+        best_score = max(i.get("similarity_score", 0) for i in items)
+        ranked_headings.append((best_score, heading))
+
+    ranked_headings.sort(key=lambda x: x[0], reverse=True)
+
+    result = []
+    for rank, (_, heading) in enumerate(ranked_headings[:top_n], start=1):
+        best = max(heading_data[heading], key=lambda i: i.get("similarity_score", 0))
+        result.append({**best, "rank": rank})
+    return result
 
 
 class _HsFormValues(BaseModel):
@@ -356,11 +514,11 @@ async def request_hs_classification(
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            r = await client.get(hs_url, params={"q": query, "top_k": 5})
+            r = await client.get(hs_url, params={"q": query, "top_k": 15})
             r.raise_for_status()
 
         data = r.json()
-        results = data.get("results", [])
+        results = _rerank_by_heading(_enrich_candidates(data.get("results", [])), top_n=5)
 
         product.hs_classification_status = "completed"
         product.hs_classification_result = _json_dumps(results)
@@ -411,7 +569,7 @@ async def hs_classifier_webhook(body: dict, db: Session = Depends(get_db)):
     product.hs_classification_status = status
 
     if status == "completed":
-        results = body.get("results") or []
+        results = _enrich_candidates(body.get("results") or [])
         product.hs_classification_result = _json_dumps(results)
 
         classified_at_raw = body.get("classified_at")

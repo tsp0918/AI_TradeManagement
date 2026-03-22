@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI_TradeManagement — デモシナリオ スライド</title>
+<style>
+/* ═══ Global ═══ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: #0f2744;
+  --navy-mid: #1e3a5f;
+  --navy-light: #2d5a8e;
+  --accent1: #f59e0b;   /* amber  — シナリオ1 */
+  --accent2: #2563eb;   /* blue   — シナリオ2 */
+  --accent3: #16a34a;   /* green  — シナリオ3 */
+  --red: #dc2626;
+  --slide-w: 1280px;
+  --slide-h: 720px;
+}
+html, body {
+  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Meiryo', sans-serif;
+  background: #1a1a2e;
+  color: #fff;
+}
+
+/* ═══ Navigation ═══ */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  z-index: 999;
+  flex-wrap: wrap;
+}
+.nav-btn {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.3);
+  background: transparent;
+  color: #fff;
+  font-size: 11pt;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.15); }
+.nav-btn.active { background: rgba(255,255,255,0.3); font-weight: 600; }
+.nav-title { color: rgba(255,255,255,0.5); font-size: 10pt; margin-right: 8px; }
+
+/* ═══ Slide Container ═══ */
+.slides-wrap {
+  padding: 60px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+/* ═══ Slide Base ═══ */
+.slide {
+  width: var(--slide-w);
+  height: var(--slide-h);
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  display: none;
+  flex-shrink: 0;
+}
+.slide.visible { display: block; }
+
+/* Print: show all slides */
+@media print {
+  html, body { background: #fff; }
+  .nav { display: none; }
+  .slides-wrap { padding: 0; gap: 0; }
+  .slide { display: block !important; page-break-after: always; border-radius: 0; box-shadow: none; }
+  @page { size: 1280px 720px; margin: 0; }
+}
+
+/* ═══ Slide 0: Title ═══ */
+.slide-title-page {
+  background: linear-gradient(135deg, #0f2744 0%, #1e3a5f 60%, #0f4c75 100%);
+}
+.slide-title-page .bg-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.slide-title-page .content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 60px;
+}
+.slide-title-page .badge {
+  font-size: 10pt;
+  letter-spacing: 0.25em;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.slide-title-page h1 {
+  font-size: 38pt;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #fff 60%, #93c5fd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.slide-title-page .subtitle {
+  font-size: 14pt;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 48px;
+}
+.slide-title-page .scenario-pills {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.pill {
+  padding: 8px 22px;
+  border-radius: 24px;
+  font-size: 10pt;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.pill-1 { background: rgba(245,158,11,0.2); border: 1.5px solid var(--accent1); color: #fde68a; }
+.pill-2 { background: rgba(37,99,235,0.2);  border: 1.5px solid var(--accent2); color: #bfdbfe; }
+.pill-3 { background: rgba(22,163,74,0.2);  border: 1.5px solid var(--accent3); color: #bbf7d0; }
+.slide-title-page .meta {
+  position: absolute;
+  bottom: 24px;
+  right: 36px;
+  font-size: 9pt;
+  color: rgba(255,255,255,0.35);
+}
+
+/* ═══ Common Slide Layout ═══ */
+.slide-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 40px 18px;
+  position: relative;
+  z-index: 2;
+}
+.slide-num {
+  font-size: 11pt;
+  font-weight: 800;
+  opacity: 0.5;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+.slide-header h2 {
+  font-size: 19pt;
+  font-weight: 700;
+  line-height: 1.3;
+  flex: 1;
+}
+.slide-header .module-tag {
+  font-size: 9pt;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.slide-body {
+  padding: 0 40px 24px;
+  position: relative;
+  z-index: 2;
+  flex: 1;
+}
+.slide-footer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 10px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 8.5pt;
+  z-index: 2;
+}
+
+/* ═══ Slide 1: R&D Scenario ═══ */
+.slide-s1 {
+  background: linear-gradient(160deg, #1a0a02 0%, #2d1a06 40%, #0f2744 100%);
+}
+.slide-s1::before {
+  content: '';
+  position: absolute;
+  top: -100px; right: -100px;
+  width: 500px; height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%);
+}
+.slide-s1 .slide-header { border-bottom: 2px solid rgba(245,158,11,0.3); }
+.slide-s1 .slide-header h2 { color: #fde68a; }
+.slide-s1 .module-tag { background: rgba(245,158,11,0.2); color: #fde68a; border: 1px solid rgba(245,158,11,0.4); }
+.slide-s1 .slide-footer { border-top: 1px solid rgba(245,158,11,0.2); color: rgba(255,255,255,0.4); }
+
+.s1-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  height: 500px;
+}
+.s1-left, .s1-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.context-box {
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--accent1);
+}
+.context-box h3 {
+  font-size: 9.5pt;
+  font-weight: 700;
+  color: var(--accent1);
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.context-box p, .context-box ul {
+  font-size: 10pt;
+  color: rgba(255,255,255,0.8);
+  line-height: 1.6;
+}
+.context-box ul { padding-left: 16px; }
+.context-box li { margin-bottom: 4px; }
+
+.risk-badge-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.risk-badge {
+  font-size: 8.5pt;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+.risk-high  { background: rgba(220,38,38,0.3);  color: #fca5a5; border: 1px solid rgba(220,38,38,0.5); }
+.risk-med   { background: rgba(245,158,11,0.3); color: #fde68a; border: 1px solid rgba(245,158,11,0.5); }
+.risk-mod   { background: rgba(234,179,8,0.3);  color: #fef08a; border: 1px solid rgba(234,179,8,0.5); }
+
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.flow-step {
+  font-size: 8.5pt;
+  color: rgba(255,255,255,0.7);
+  text-align: center;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  flex: 1;
+  line-height: 1.4;
+}
+.flow-arrow {
+  color: rgba(255,255,255,0.3);
+  font-size: 11pt;
+  flex-shrink: 0;
+}
+.flow-step.active {
+  background: rgba(245,158,11,0.2);
+  color: #fde68a;
+  font-weight: 600;
+  border: 1px solid rgba(245,158,11,0.3);
+}
+
+.alert-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 9.5pt;
+}
+.alert-bar.danger { background: rgba(220,38,38,0.2); border: 1px solid rgba(220,38,38,0.4); }
+.alert-bar.warn   { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4); }
+.alert-bar.info   { background: rgba(37,99,235,0.15); border: 1px solid rgba(37,99,235,0.4); }
+.alert-bar .icon  { font-size: 15pt; flex-shrink: 0; }
+
+.result-final {
+  padding: 12px 16px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13pt;
+  background: rgba(220,38,38,0.25);
+  border: 2px solid rgba(220,38,38,0.6);
+  color: #fca5a5;
+  letter-spacing: 0.05em;
+}
+
+/* ═══ Slide 2: CMP Slurry ═══ */
+.slide-s2 {
+  background: linear-gradient(160deg, #020818 0%, #0a1628 40%, #0d1f3c 100%);
+}
+.slide-s2::before {
+  content: '';
+  position: absolute;
+  top: -80px; left: -80px;
+  width: 400px; height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%);
+}
+.slide-s2 .slide-header { border-bottom: 2px solid rgba(37,99,235,0.3); }
+.slide-s2 .slide-header h2 { color: #bfdbfe; }
+.slide-s2 .module-tag { background: rgba(37,99,235,0.2); color: #bfdbfe; border: 1px solid rgba(37,99,235,0.4); }
+.slide-s2 .slide-footer { border-top: 1px solid rgba(37,99,235,0.2); color: rgba(255,255,255,0.4); }
+
+.s2-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 20px;
+  height: 500px;
+}
+
+.context-box.blue { border-left-color: var(--accent2); }
+.context-box.blue h3 { color: #93c5fd; }
+
+.bom-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.5pt;
+}
+.bom-table th {
+  background: rgba(37,99,235,0.3);
+  color: #bfdbfe;
+  padding: 5px 8px;
+  text-align: left;
+  font-weight: 600;
+}
+.bom-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.8);
+}
+.bom-table tr:hover td { background: rgba(255,255,255,0.03); }
+.us-origin { color: #fde68a; font-weight: 600; }
+.cn-origin { color: #fca5a5; }
+.eccn-warn { color: #f87171; font-weight: 600; }
+.eccn-ok   { color: #86efac; }
+
+.ai-result-box {
+  background: rgba(37,99,235,0.1);
+  border: 1px solid rgba(37,99,235,0.3);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.ai-result-box h3 {
+  font-size: 9pt;
+  color: #93c5fd;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hs-rank {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  font-size: 9pt;
+}
+.hs-rank.top { background: rgba(37,99,235,0.2); border: 1px solid rgba(37,99,235,0.3); }
+.hs-rank .rnk { font-weight: 800; color: #60a5fa; width: 20px; text-align: center; flex-shrink: 0; }
+.hs-rank .code { font-family: monospace; font-weight: 700; color: #fff; flex-shrink: 0; }
+.hs-rank .desc { color: rgba(255,255,255,0.6); font-size: 8.5pt; flex: 1; }
+.hs-rank .eccn-tag { font-family: monospace; font-size: 8pt; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+.eccn-1c350 { background: rgba(220,38,38,0.3); color: #fca5a5; }
+.eccn-ear99 { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+
+/* ═══ Slide 3: Memory Device ═══ */
+.slide-s3 {
+  background: linear-gradient(160deg, #021207 0%, #062212 40%, #0a2a1a 100%);
+}
+.slide-s3::before {
+  content: '';
+  position: absolute;
+  bottom: -80px; right: -80px;
+  width: 450px; height: 450px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(22,163,74,0.1) 0%, transparent 70%);
+}
+.slide-s3 .slide-header { border-bottom: 2px solid rgba(22,163,74,0.3); }
+.slide-s3 .slide-header h2 { color: #bbf7d0; }
+.slide-s3 .module-tag { background: rgba(22,163,74,0.2); color: #bbf7d0; border: 1px solid rgba(22,163,74,0.4); }
+.slide-s3 .slide-footer { border-top: 1px solid rgba(22,163,74,0.2); color: rgba(255,255,255,0.4); }
+
+.s3-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  height: 500px;
+}
+.context-box.green { border-left-color: var(--accent3); }
+.context-box.green h3 { color: #86efac; }
+
+.catchall-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ca-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 9pt;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.ca-step .step-n {
+  font-weight: 800;
+  font-size: 10pt;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+  color: rgba(255,255,255,0.4);
+}
+.ca-step .step-label { flex: 1; color: rgba(255,255,255,0.7); }
+.ca-step .step-result {
+  font-weight: 700;
+  font-size: 8.5pt;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.ca-step.triggered { background: rgba(220,38,38,0.15); border-color: rgba(220,38,38,0.3); }
+.ca-step.triggered .step-n { color: #f87171; }
+.ca-step.triggered .step-label { color: #fca5a5; }
+.ca-step .result-ng { background: rgba(220,38,38,0.3); color: #fca5a5; }
+.ca-step .result-ok { background: rgba(22,163,74,0.3); color: #86efac; }
+.ca-step .result-warn { background: rgba(245,158,11,0.3); color: #fde68a; }
+
+.pipeline-flow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+}
+.pipe-step {
+  background: rgba(22,163,74,0.1);
+  border: 1px solid rgba(22,163,74,0.2);
+  border-radius: 6px;
+  padding: 8px 6px;
+  text-align: center;
+  font-size: 8pt;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.3;
+}
+.pipe-step.active {
+  background: rgba(22,163,74,0.25);
+  border-color: rgba(22,163,74,0.5);
+  color: #bbf7d0;
+  font-weight: 600;
+}
+.pipe-step .step-icon { font-size: 13pt; display: block; margin-bottom: 3px; }
+
+.final-result-box {
+  background: rgba(220,38,38,0.15);
+  border: 2px solid rgba(220,38,38,0.5);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.final-result-box .verdict {
+  font-size: 15pt;
+  font-weight: 800;
+  color: #f87171;
+  margin-bottom: 8px;
+}
+.final-result-box ul {
+  font-size: 8.5pt;
+  color: rgba(255,255,255,0.75);
+  padding-left: 14px;
+  line-height: 1.7;
+}
+
+/* ═══ Responsive Scale ═══ */
+@media (max-width: 1320px) {
+  .slide {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+  .slide > * {
+    position: relative;
+  }
+  .slide-title-page .content {
+    position: static;
+    transform: none;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav">
+  <span class="nav-title">SLIDE:</span>
+  <button class="nav-btn active" onclick="showSlide('title')">0｜表紙</button>
+  <button class="nav-btn" onclick="showSlide('s1')">1｜R&amp;D 起案</button>
+  <button class="nav-btn" onclick="showSlide('s2')">2｜CMP スラリー</button>
+  <button class="nav-btn" onclick="showSlide('s3')">3｜半導体メモリ審査</button>
+  <button class="nav-btn no-print" onclick="window.print()" style="background:rgba(255,255,255,0.1); margin-left: 16px;">🖨 PDF出力</button>
+</nav>
+
+<div class="slides-wrap">
+
+<!-- ═══ Slide 0: Title ═══ -->
+<div class="slide slide-title-page visible" id="slide-title">
+  <div class="bg-grid"></div>
+  <div class="content">
+    <div class="badge">AI Trade Management Platform — Demo</div>
+    <h1>輸出管理 AI デモ<br>シナリオ解説</h1>
+    <div class="subtitle">実業務シナリオで体感する — 審査フローとAI判定の連携</div>
+    <div class="scenario-pills">
+      <span class="pill pill-1">01｜R&amp;D 対中リスク起案</span>
+      <span class="pill pill-2">02｜CMP スラリー HS 付番</span>
+      <span class="pill pill-3">03｜半導体メモリ キャッチオール審査</span>
+    </div>
+  </div>
+  <div class="meta">2026-03-21 ｜ For Demo Use Only</div>
+</div>
+
+<!-- ═══ Slide 1: R&D Scenario ═══ -->
+<div class="slide slide-s1" id="slide-s1">
+  <div class="slide-header">
+    <span class="slide-num">SCENARIO 01</span>
+    <h2>R&amp;D 案件起案 — 対中国リスク半導体共同研究</h2>
+    <span class="module-tag">rnd_assessment :8003</span>
+  </div>
+  <div class="slide-body">
+    <div class="s1-layout">
+      <!-- Left column -->
+      <div class="s1-left">
+        <div class="context-box">
+          <h3>プロジェクト概要</h3>
+          <ul>
+            <li>案件名: <strong>次世代3nm FinFETプロセス開発</strong></li>
+            <li>相手方: 深圳半導体先端研究院（SSARI）</li>
+            <li>技術内容: CMPプロセスレシピ・エッチング選択比・<br>
+                半導体製造装置改良アルゴリズムの開示</li>
+            <li>想定ECCN: <strong>3B001</strong>（半導体製造装置）</li>
+            <li>外為法: <strong>EL-3</strong>（電子部品・集積回路）</li>
+          </ul>
+        </div>
+        <div class="context-box">
+          <h3>みなし輸出 — 登録人物</h3>
+          <p style="font-size: 10pt;">王 建国（WANG Jianguo）/ SSARI 材料科学部</p>
+          <div class="risk-badge-row" style="margin-top: 8px;">
+            <span class="risk-badge risk-high">国籍: CN</span>
+            <span class="risk-badge risk-high">二重雇用: COSTIND系</span>
+            <span class="risk-badge risk-high">ECCN 3B001 アクセス</span>
+            <span class="risk-badge risk-high">カテゴリ A</span>
+          </div>
+        </div>
+        <div class="alert-bar danger">
+          <span class="icon">🚨</span>
+          <span>軍民融合（MCF）政策下機関。軍事転用リスク高。<br>みなし輸出許可申請が必要な可能性。</span>
+        </div>
+      </div>
+      <!-- Right column -->
+      <div class="s1-right">
+        <div class="context-box">
+          <h3>操作フロー</h3>
+          <div class="flow-row" style="margin-bottom: 8px;">
+            <div class="flow-step">案件情報<br>入力</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step active">AI リスク<br>評価実行</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">人物<br>登録</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step active">みなし輸出<br>判定確認</div>
+          </div>
+        </div>
+        <div class="context-box">
+          <h3>AI 評価結果（期待値）</h3>
+          <ul>
+            <li>技術リスク: <span style="color:#f87171;font-weight:700;">HIGH</span>（3nm FinFET = 先端プロセス）</li>
+            <li>需要者リスク: <span style="color:#f87171;font-weight:700;">HIGH</span>（MCF機関・軍民融合）</li>
+            <li>規制リスク: <span style="color:#f87171;font-weight:700;">HIGH</span>（CN = D:1/D:3/D:4/D:5）</li>
+          </ul>
+        </div>
+        <div class="result-final">
+          総合判定: HIGH RISK — 経済産業大臣許可申請 推奨
+        </div>
+        <div class="alert-bar warn" style="margin-top: 8px;">
+          <span class="icon">👔</span>
+          <span style="font-size: 9pt;">DAP: 「スクリーニング未実施です。品目管理への連携前にスクリーニングを実施してください。」</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>AI_TradeManagement Platform — Demo Scenario 01</span>
+    <span>http://localhost:8003</span>
+  </div>
+</div>
+
+<!-- ═══ Slide 2: CMP Slurry ═══ -->
+<div class="slide slide-s2" id="slide-s2">
+  <div class="slide-header">
+    <span class="slide-num">SCENARIO 02</span>
+    <h2>品目登録 — CMPスラリーのHSコード付番 &amp; EAR判定</h2>
+    <span class="module-tag">ai_classification :8002</span>
+  </div>
+  <div class="slide-body">
+    <div class="s2-layout">
+      <!-- Left: BOM Table -->
+      <div>
+        <div class="context-box blue" style="margin-bottom: 14px;">
+          <h3>品目情報</h3>
+          <p style="font-size: 10pt;"><strong>CMPスラリー（3nm向け シリカ系）</strong><br>
+          半導体CMP工程用 SiO₂/W/Cu 研磨対応 水系スラリー</p>
+        </div>
+        <div class="context-box blue">
+          <h3>BOM（原料構成）</h3>
+          <table class="bom-table">
+            <thead>
+              <tr><th>原料</th><th>原産国</th><th>含有量</th><th>ECCN</th><th>注意</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>コロイダルシリカ<br><small style="color:rgba(255,255,255,0.4)">Cabot Microelectronics</small></td>
+                <td class="us-origin">US</td>
+                <td class="us-origin">25.0%</td>
+                <td class="eccn-ok">EAR99</td>
+                <td style="color:#fde68a;font-size:8pt;">de minimis<br>超過!</td>
+              </tr>
+              <tr>
+                <td>過酸化水素（30%）<br><small style="color:rgba(255,255,255,0.4)">三菱ガス化学</small></td>
+                <td style="color:#86efac;">JP</td>
+                <td>5.0%</td>
+                <td class="eccn-warn">1C350</td>
+                <td style="color:#f87171;font-size:8pt;">CWC注意</td>
+              </tr>
+              <tr>
+                <td>ポリアクリル酸（PAA）<br><small style="color:rgba(255,255,255,0.4)">Lubrizol</small></td>
+                <td class="us-origin">US</td>
+                <td>0.8%</td>
+                <td class="eccn-ok">EAR99</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>ベンゾトリアゾール<br><small style="color:rgba(255,255,255,0.4)">上海精化科技</small></td>
+                <td class="cn-origin">CN</td>
+                <td>0.1%</td>
+                <td class="eccn-ok">EAR99</td>
+                <td style="color:#fca5a5;font-size:8pt;">中国産</td>
+              </tr>
+              <tr>
+                <td>超純水（UPW）</td>
+                <td style="color:#86efac;">JP</td>
+                <td>68.3%</td>
+                <td style="color:rgba(255,255,255,0.4);">N/A</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Right: AI Result + EAR Check -->
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div class="ai-result-box">
+          <h3>🤖 AI HSコード判定結果（期待値）</h3>
+          <div class="hs-rank top">
+            <span class="rnk">1</span>
+            <span class="code">3824.99</span>
+            <span class="desc">Chemical preparations NEC（化学調製品）</span>
+            <span class="eccn-tag eccn-1c350">1C350</span>
+          </div>
+          <div class="hs-rank">
+            <span class="rnk">2</span>
+            <span class="code">2811.22</span>
+            <span class="desc">Silicon dioxide（シリカ）</span>
+            <span class="eccn-tag eccn-ear99">EAR99</span>
+          </div>
+          <div class="hs-rank">
+            <span class="rnk">3</span>
+            <span class="code">3824.40</span>
+            <span class="desc">Prepared additives（混合調整剤）</span>
+            <span class="eccn-tag eccn-ear99">EAR99</span>
+          </div>
+          <div style="margin-top:10px; padding:6px 10px; background:rgba(37,99,235,0.15); border-radius:6px; font-size:8.5pt; color:#93c5fd;">
+            ✅「反映」ボタン → HS 3824.99 + ECCN 1C350 を品目フォームへ一括書込み
+          </div>
+        </div>
+        <div class="alert-bar danger">
+          <span class="icon">⚠️</span>
+          <div>
+            <strong style="color:#fca5a5;">EAR de minimis 超過</strong><br>
+            <span style="font-size:9pt;">US原産品合計 <strong style="color:#fde68a;">25.8%</strong> &gt; 25%閾値<br>
+            → 中国向け再輸出に EAR ライセンス要確認</span>
+          </div>
+        </div>
+        <div class="alert-bar warn">
+          <span class="icon">📋</span>
+          <div>
+            <strong>BOM CSV 添付ファイル</strong><br>
+            <span style="font-size:9pt; color:rgba(255,255,255,0.6);">data/demo/cmp_slurry_bom.csv（7原料・全ECCN記載）</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>AI_TradeManagement Platform — Demo Scenario 02</span>
+    <span>http://localhost:8002</span>
+  </div>
+</div>
+
+<!-- ═══ Slide 3: Memory Device ═══ -->
+<div class="slide slide-s3" id="slide-s3">
+  <div class="slide-header">
+    <span class="slide-num">SCENARIO 03</span>
+    <h2>輸出審査 — 半導体メモリ キャッチオール確認 &amp; 正規審査</h2>
+    <span class="module-tag">ai_validation :8001</span>
+  </div>
+  <div class="slide-body">
+    <div class="s3-layout">
+      <!-- Left: Product + Catchall -->
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div class="context-box green">
+          <h3>品目 &amp; 取引情報</h3>
+          <ul>
+            <li>品目: <strong>LPDDR5 16Gb DRAM チップ（7nm世代）</strong></li>
+            <li>HS: <strong>854232</strong>（半導体メモリ）</li>
+            <li>ECCN推定: <strong>4A994 / 3A001</strong></li>
+            <li>取引先: 深圳科技集団有限公司</li>
+            <li>仕向地: <span style="color:#fca5a5;font-weight:700;">CN</span>（新疆向け通信インフラ）</li>
+          </ul>
+        </div>
+        <div class="context-box green">
+          <h3>⚖️ キャッチオール 6ステップ判定</h3>
+          <div class="catchall-steps">
+            <div class="ca-step">
+              <span class="step-n">1</span>
+              <span class="step-label">エンブレムト国チェック（E:1）</span>
+              <span class="step-result result-ok">PASS</span>
+            </div>
+            <div class="ca-step">
+              <span class="step-n">2</span>
+              <span class="step-label">ホワイト国チェック（A:1〜A:6）</span>
+              <span class="step-result result-ng">FAIL: CN 非該当</span>
+            </div>
+            <div class="ca-step triggered">
+              <span class="step-n">3</span>
+              <span class="step-label">EAR Country Chart（AT/CC列）照合</span>
+              <span class="step-result result-ng">TRIGGERED</span>
+            </div>
+            <div class="ca-step triggered">
+              <span class="step-n">4</span>
+              <span class="step-label">Red Flag 7項目（軍用転用・新疆）</span>
+              <span class="step-result result-warn">FLAG ×3</span>
+            </div>
+            <div class="ca-step">
+              <span class="step-n">5</span>
+              <span class="step-label">総合スコアリング</span>
+              <span class="step-result result-ng">Score: 78/100</span>
+            </div>
+            <div class="ca-step triggered">
+              <span class="step-n">6</span>
+              <span class="step-label">最終判定</span>
+              <span class="step-result result-ng">REQUIRES_PERMIT</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Right: Pipeline + Result -->
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div class="context-box green">
+          <h3>AI 審査 Pipeline</h3>
+          <div class="pipeline-flow">
+            <div class="pipe-step">
+              <span class="step-icon">📝</span>
+              usage_expand
+            </div>
+            <div class="pipe-step active">
+              <span class="step-icon">🔍</span>
+              matrix_match<br>Layer A FAISS
+            </div>
+            <div class="pipe-step active">
+              <span class="step-icon">🚫</span>
+              dual_list<br>check
+            </div>
+            <div class="pipe-step">
+              <span class="step-icon">📄</span>
+              patent_retrieve<br>Layer B
+            </div>
+            <div class="pipe-step active">
+              <span class="step-icon">⚖️</span>
+              catchall<br>assess
+            </div>
+            <div class="pipe-step active">
+              <span class="step-icon">✅</span>
+              finalize<br>report
+            </div>
+          </div>
+        </div>
+        <div class="final-result-box">
+          <div class="verdict">🔴 REQUIRES_PERMIT</div>
+          <ul>
+            <li>外為法 EL-3 該当 → 経済産業大臣許可申請必要</li>
+            <li>EAR AT列・CC列トリガー → BIS ライセンス要</li>
+            <li>Red Flag: 軍用転用・新疆設置・MCF顧客</li>
+            <li>制裁リストスクリーニング: 要実施（未完了警告）</li>
+          </ul>
+        </div>
+        <div class="alert-bar info">
+          <span class="icon">📄</span>
+          <div>
+            <strong>PDF レポート出力</strong>（4章構成）<br>
+            <span style="font-size:8.5pt; color:rgba(255,255,255,0.6);">
+              Section 1: 品目概要 ｜ 2: 外為法判定 ｜ 3: デュアルリスト ｜ 4: キャッチオール詳細
+            </span>
+          </div>
+        </div>
+        <div class="alert-bar warn">
+          <span class="icon">👔</span>
+          <span style="font-size:9pt;">DAP: 「スクリーニング未完了です。審査申請前に取引先の制裁リスト照合を実施してください。(http://localhost:8005)」</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>AI_TradeManagement Platform — Demo Scenario 03</span>
+    <span>http://localhost:8001</span>
+  </div>
+</div>
+
+</div><!-- /slides-wrap -->
+
+<script>
+function showSlide(id) {
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('visible'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('slide-' + id).classList.add('visible');
+  event.target.classList.add('active');
+  window.scrollTo({ top: 60, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

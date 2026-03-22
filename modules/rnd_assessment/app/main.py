@@ -24,6 +24,28 @@ async def _init_db() -> None:
             ("promoted_product_id", "INTEGER"),
             ("promoted_at",         "DATETIME"),
         ],
+        "personnel": [
+            ("case_id",               "VARCHAR(64)"),
+            ("tenant_id",             "VARCHAR(64)"),
+            ("name",                  "VARCHAR(200)"),
+            ("role",                  "VARCHAR(100)"),
+            ("affiliation",           "VARCHAR(200)"),
+            ("nationality",           "VARCHAR(2)"),
+            ("residence_country",     "VARCHAR(2)"),
+            ("years_in_japan",        "REAL"),
+            ("dual_employment_flag",  "BOOLEAN"),
+            ("dual_employer_name",    "VARCHAR(200)"),
+            ("dual_employer_country", "VARCHAR(2)"),
+            ("tech_access_eccn",      "VARCHAR(100)"),
+            ("tech_access_fefta",     "VARCHAR(100)"),
+            ("deemed_export_category","VARCHAR(1)"),
+            ("deemed_export_risk",    "VARCHAR(20)"),
+            ("deemed_export_reason",  "TEXT"),
+            ("screened_at",           "DATETIME"),
+            ("note",                  "TEXT"),
+            ("created_at",            "DATETIME"),
+            ("updated_at",            "DATETIME"),
+        ],
     }
     with engine.connect() as conn:
         inspector = sa_inspect(engine)

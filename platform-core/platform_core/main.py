@@ -8,9 +8,12 @@
 - /admin/*          管理 (tenants / users / modules)
 - /api/projects/*   案件管理 (Project / PatentLink)
 - /internal/*       内部 API (モジュール自動登録・モジュール間通信)
+- /api/metrics/*    成果評価メトリクス (クロスモジュール KPI)
 - /health           ヘルスチェック
 """
 
+import asyncio
+import logging
 import pathlib
 from contextlib import asynccontextmanager
 
@@ -27,16 +30,43 @@ from platform_core.routers.internal import router as internal_router
 from platform_core.routers.projects import router as projects_router
 from platform_core.routers.ui import router as ui_router
 from platform_core.routers.ui import start_all_modules, stop_all_modules
+from platform_core.agent.router import router as agent_router
+from platform_core.routers.metrics import router as metrics_router
+from platform_core.routers.faiss_search import router as faiss_search_router
+from platform_core.routers.regulatory import router as regulatory_router
 
+logger = logging.getLogger(__name__)
 _STATIC_DIR = pathlib.Path(__file__).parent / "static"
+_REG_CHECK_INTERVAL = 24 * 3600  # 24時間ごと
+
+
+async def _regulatory_scheduler() -> None:
+    """バックグラウンド: 24時間ごとに規制動向チェックを実行する。"""
+    from platform_core.db.session import AsyncSessionLocal
+    from platform_core.routers.regulatory import _check_egov, _check_bis
+
+    await asyncio.sleep(60)  # 起動直後は少し待つ
+    while True:
+        try:
+            async with AsyncSessionLocal() as session:
+                egov = await _check_egov(session)
+                bis = await _check_bis(session)
+                await session.commit()
+                logger.info("Scheduled RegMonitor: egov=%d bis=%d", egov, bis)
+        except Exception as exc:
+            logger.warning("Scheduled RegMonitor failed: %s", exc)
+        await asyncio.sleep(_REG_CHECK_INTERVAL)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 全モジュールを並行起動 (fire-and-forget)
     start_all_modules()
+    # 規制動向スケジューラー起動
+    _sched_task = asyncio.create_task(_regulatory_scheduler())
     yield
-    # 終了時: 全モジュールサブプロセスを停止
+    # 終了時: スケジューラー・モジュールサブプロセスを停止
+    _sched_task.cancel()
     stop_all_modules()
 
 
@@ -66,6 +96,10 @@ def create_app() -> FastAPI:
     app.include_router(admin_router, prefix="/admin")
     app.include_router(projects_router, prefix="/api/projects", tags=["projects"])
     app.include_router(internal_router)
+    app.include_router(agent_router)
+    app.include_router(metrics_router)
+    app.include_router(faiss_search_router)
+    app.include_router(regulatory_router)
 
     @app.get("/", include_in_schema=False)
     async def root():

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}みなし輸出スクリーニング — R&D リスク評価{% endblock %}
+{% block nav_personnel %} active{% endblock %}
+
+{% block content %}
+<div class="page-hd">
+  <h1>みなし輸出スクリーニング</h1>
+  <p class="sub">外為法施行規則 第17条の3 — 研究員・従業員・契約者の該当性管理</p>
+</div>
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+  <a href="/ui/personnel/new" class="btn btn-primary">＋ 新規登録</a>
+</div>
+
+{% if not persons %}
+<div class="card" style="text-align:center;padding:48px 24px;color:var(--muted);">
+  <div style="font-size:2rem;margin-bottom:12px;">👥</div>
+  <p>まだ登録されている人物がいません。</p>
+  <a href="/ui/personnel/new" class="btn btn-ghost" style="margin-top:16px;">最初の人物を登録する</a>
+</div>
+{% else %}
+
+<!-- リスク集計バナー -->
+{% set high_count = persons | selectattr("deemed_export_risk", "equalto", "high") | list | length %}
+{% set med_count  = persons | selectattr("deemed_export_risk", "equalto", "medium") | list | length %}
+{% if high_count > 0 or med_count > 0 %}
+<div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+  <span style="font-size:1.4rem;">🚨</span>
+  <div>
+    <strong style="color:#991b1b;">要対応あり：</strong>
+    {% if high_count > 0 %}<span style="color:#dc2626;font-weight:700;">高リスク {{ high_count }} 件</span>{% endif %}
+    {% if high_count > 0 and med_count > 0 %} ／ {% endif %}
+    {% if med_count > 0 %}<span style="color:#d97706;font-weight:700;">中リスク {{ med_count }} 件</span>{% endif %}
+    — 安全保障輸出管理担当者へ確認してください
+  </div>
+</div>
+{% endif %}
+
+<div class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:#fafafa;border-bottom:2px solid var(--border);">
+        <th style="padding:12px 16px;text-align:left;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">氏名</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">国籍</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">在日年数</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">判定カテゴリ</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">リスクレベル</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">技術アクセス</th>
+        <th style="padding:12px 16px;text-align:left;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">関連案件</th>
+        <th style="padding:12px 16px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for person in persons %}
+      {% set risk = person.deemed_export_risk or "未判定" %}
+      <tr style="border-bottom:1px solid var(--border);" onmouseover="this.style.background='#fffaf6'" onmouseout="this.style.background=''">
+        <td style="padding:12px 16px;">
+          <a href="/ui/personnel/{{ person.personnel_id }}" style="font-weight:700;color:var(--text-h);">{{ person.name }}</a>
+          {% if person.role %}<div style="font-size:.73rem;color:var(--muted);margin-top:2px;">{{ person.role }}</div>{% endif %}
+          {% if person.affiliation %}<div style="font-size:.73rem;color:var(--muted);">{{ person.affiliation }}</div>{% endif %}
+        </td>
+        <td style="padding:12px 16px;">
+          {% if person.nationality %}
+            <span class="badge {% if person.nationality in ['KP','IR','SY','CU'] %}badge-primary{% elif person.nationality in ['RU','BY','CN'] %}badge-dis{% else %}badge-meta{% endif %}" style="font-size:.75rem;">{{ person.nationality }}</span>
+          {% else %}
+            <span style="color:var(--muted);">—</span>
+          {% endif %}
+        </td>
+        <td style="padding:12px 16px;">
+          {% if person.years_in_japan is not none %}
+            {{ "%.1f"|format(person.years_in_japan) }} 年
+            {% if person.years_in_japan < 5 %}
+              <span style="font-size:.72rem;color:#d97706;margin-left:4px;">⚠ 5年未満</span>
+            {% endif %}
+          {% else %}
+            <span style="color:var(--muted);">—</span>
+          {% endif %}
+        </td>
+        <td style="padding:12px 16px;">
+          {% if person.deemed_export_category %}
+            <span class="badge badge-meta">カテゴリ {{ person.deemed_export_category }}</span>
+          {% elif person.screened_at %}
+            <span style="color:var(--muted);font-size:.8rem;">該当なし</span>
+          {% else %}
+            <span style="color:var(--muted);font-size:.8rem;">未判定</span>
+          {% endif %}
+        </td>
+        <td style="padding:12px 16px;">
+          {% if risk == "high" %}
+            <span class="chip" style="background:#fee2e2;color:#991b1b;">🔴 高</span>
+          {% elif risk == "medium" %}
+            <span class="chip" style="background:#fef3c7;color:#92400e;">🟡 中</span>
+          {% elif risk == "low" %}
+            <span class="chip" style="background:#dbeafe;color:#1d4ed8;">🔵 低</span>
+          {% elif risk == "none" %}
+            <span class="chip" style="background:#d1fae5;color:#065f46;">✅ なし</span>
+          {% else %}
+            <span class="chip chip-draft">未判定</span>
+          {% endif %}
+        </td>
+        <td style="padding:12px 16px;font-size:.8rem;">
+          {% if person.tech_access_eccn or person.tech_access_fefta %}
+            <div>{{ person.tech_access_eccn or "" }}</div>
+            <div style="color:var(--muted);">{{ person.tech_access_fefta or "" }}</div>
+          {% else %}
+            <span style="color:var(--muted);">—</span>
+          {% endif %}
+        </td>
+        <td style="padding:12px 16px;font-size:.8rem;">
+          {% if person.case_id and case_map.get(person.case_id) %}
+            <a href="/ui/cases/{{ person.case_id }}" style="color:var(--primary);">{{ case_map[person.case_id].title[:30] }}{% if case_map[person.case_id].title|length > 30 %}…{% endif %}</a>
+          {% else %}
+            <span style="color:var(--muted);">—</span>
+          {% endif %}
+        </td>
+        <td style="padding:12px 16px;">
+          <a href="/ui/personnel/{{ person.personnel_id }}" class="btn btn-ghost btn-sm">詳細</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

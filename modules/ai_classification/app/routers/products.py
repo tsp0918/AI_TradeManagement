@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import json
 from datetime import datetime
+from typing import Optional
 
 import pandas as pd
 from fastapi import (
@@ -282,6 +283,93 @@ def build_external_ai_items(product: Product) -> list[dict]:
 
 
 # =========================
+# 4象限スコア算出
+# =========================
+
+def calculate_regulation_score(product: Product, db: Session) -> float:
+    """規制感度スコア (0-100) を既存フィールドから自動算出する。"""
+    score = 0.0
+
+    eccn = (product.eccn or "").strip().upper()
+    if eccn and eccn != "EAR99":
+        score += 40  # EAR 規制品は大きく加点
+
+    if product.is_poison:             score += 25
+    if product.is_deleterious:        score += 20
+    kashinho = (product.is_kashinho or product.is_kashinho_class_I or product.is_kashinho_class_II)
+    if kashinho:                      score += 30
+    if product.is_roudou_anzen_eisei: score += 15
+    if product.is_prtr:               score += 10
+    if product.is_shoubouho:          score += 10
+    if product.is_high_pressure_gas:  score += 10
+
+    if "危険" in (product.ghs_signal_word or ""):
+        score += 10
+
+    coo = (product.country_of_origin or "").upper()
+    if coo in ("US", "CN"):
+        score += 5  # 再輸出規制の感度
+
+    if (product.external_eval_status or "") == "controlled":
+        score += 15  # 外部AI 判定確定
+
+    # BOM 構成品の規制感度を半加算
+    if product.bom_json:
+        try:
+            bom_items = json.loads(product.bom_json)
+        except Exception:
+            bom_items = []
+        for item in bom_items:
+            if item.get("kind") != "material":
+                continue
+            comp = db.get(Product, item.get("component_id"))
+            if not comp:
+                continue
+            comp_score = 0.0
+            comp_eccn = (comp.eccn or "").strip().upper()
+            if comp_eccn and comp_eccn != "EAR99":
+                comp_score += 40
+            if comp.is_poison:      comp_score += 25
+            if comp.is_deleterious: comp_score += 20
+            if comp_score >= 20:
+                score += comp_score * 0.5
+
+    return round(min(100.0, score), 1)
+
+
+def estimate_sovereignty_score(product: Product) -> float:
+    """技術主権価値の AI 推定値 (0-100) を返す（未設定時の初期値として表示）。"""
+    score = 30.0  # ベースライン
+
+    eccn = (product.eccn or "").strip().upper()
+    if eccn and eccn != "EAR99":
+        score += 25
+
+    strategic_kws = [
+        "半導体", "精密", "センサー", "レーザー", "量子", "先端",
+        "独自", "特許", "proprietary", "dual-use", "satellite",
+        "宇宙", "防衛", "暗号", "cipher",
+    ]
+    text_blob = " ".join(filter(None, [
+        product.name or "",
+        product.description or "",
+        product.item_class or "",
+        product.usage_summary or "",
+    ])).lower()
+    if any(kw.lower() in text_blob for kw in strategic_kws):
+        score += 15
+
+    if product.bom_json:
+        score += 5  # 製造品 → 複合技術
+
+    price = product.std_price or 0.0
+    if price > 100_000:   score += 10
+    elif price > 10_000:  score += 5
+
+    return round(min(100.0, score), 1)
+
+
+# =========================
 # Routes
 # =========================
 
@@ -289,6 +377,83 @@ def build_external_ai_items(product: Product) -> list[dict]:
 def root():
     return RedirectResponse(url="/products", status_code=307)
 
+
+# ── 4象限マップ ────────────────────────────────────────────────────────
+
+@router.get("/products/quadrant-map", response_class=HTMLResponse)
+def quadrant_map_page(request: Request):
+    return templates.TemplateResponse("quadrant_map.html", {"request": request})
+
+
+@router.get("/api/products/quadrant-data")
+def quadrant_data(db: Session = Depends(get_db)):
+    """Chart.js 用の全品目スコアデータを返す。"""
+    products = db.query(Product).order_by(Product.id).all()
+    result = []
+    for p in products:
+        reg = p.regulation_score
+        if reg is None:
+            reg = calculate_regulation_score(p, db)
+        sov = p.sovereignty_score
+        result.append({
+            "id":                         p.id,
+            "code":                       p.code or "",
+            "name":                       p.name or "",
+            "regulation_score":           round(reg, 1),
+            "sovereignty_score":          round(sov, 1) if sov is not None else None,
+            "sovereignty_score_estimate": estimate_sovereignty_score(p),
+            "sovereignty_note":           p.sovereignty_note or "",
+            "eccn":                       p.eccn or "",
+            "export_control_status":      p.export_control_status or "",
+            "edit_url":                   f"/products/{p.id}/edit",
+        })
+    return result
+
+
+@router.post("/products/{product_id}/sovereignty")
+def save_sovereignty(
+    product_id: int,
+    sovereignty_score: float = Form(...),
+    sovereignty_note: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """技術主権スコアとメモを保存する（4象限マップのサイドパネルから呼ばれる）。"""
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    product.sovereignty_score = round(max(0.0, min(100.0, sovereignty_score)), 1)
+    product.sovereignty_note = sovereignty_note.strip() or None
+    db.commit()
+    return {
+        "ok": True,
+        "id": product_id,
+        "sovereignty_score": product.sovereignty_score,
+        "sovereignty_note": product.sovereignty_note,
+    }
+
+
+@router.post("/products/{product_id}/recalculate-scores")
+def recalculate_scores(product_id: int, db: Session = Depends(get_db)):
+    """規制感度スコアを再計算して保存する。"""
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    product.regulation_score = calculate_regulation_score(product, db)
+    db.commit()
+    return {"ok": True, "regulation_score": product.regulation_score}
+
+
+@router.post("/api/products/recalculate-all-scores")
+def recalculate_all_scores(db: Session = Depends(get_db)):
+    """全品目の規制感度スコアを一括再計算する。"""
+    products = db.query(Product).all()
+    for p in products:
+        p.regulation_score = calculate_regulation_score(p, db)
+    db.commit()
+    return {"ok": True, "updated": len(products)}
+
+
+# ─────────────────────────────────────────────────────────────────────
 
 @router.get("/products", response_class=HTMLResponse)
 def list_products(request: Request, db: Session = Depends(get_db)):
@@ -491,6 +656,9 @@ def update_product(
     product.is_high_pressure_gas = is_high_pressure_gas
 
     product.regulation_ai_raw = regulation_ai_raw or None
+
+    # 規制感度スコアを自動再計算
+    product.regulation_score = calculate_regulation_score(product, db)
 
     db.commit()
 
@@ -1025,13 +1193,17 @@ def get_hs_status(product_id: int, db: Session = Depends(get_db)):
 def apply_hs_code(
     product_id: int,
     hs_code: str = Form(...),
+    eccn: Optional[str] = Form(default=""),
+    fefta_ref: Optional[str] = Form(default=""),
     db: Session = Depends(get_db),
 ):
-    """HS判定候補から選択したコードを product.hs_code に反映する。"""
+    """HS判定候補から選択したコード・ECCN・外為法項番を product に反映する。"""
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
     product.hs_code = hs_code.strip()
+    if eccn and eccn.strip():
+        product.eccn = eccn.strip()
     db.commit()
     return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)

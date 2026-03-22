@@ -41,14 +41,12 @@ def get_case(db: Session, case_id: str) -> RDCases | None:
     return db.get(RDCases, case_id)
 
 
-def list_cases(db: Session, tenant_id: str, limit: int = 200) -> list[RDCases]:
-    """全ケースを updated_at 降順で返す。"""
-    stmt = (
-        select(RDCases)
-        .where(RDCases.tenant_id == tenant_id)
-        .order_by(RDCases.updated_at.desc())
-        .limit(limit)
-    )
+def list_cases(db: Session, tenant_id: str | None = None, limit: int = 200) -> list[RDCases]:
+    """全ケースを updated_at 降順で返す。tenant_id=None のとき全テナントを返す。"""
+    stmt = select(RDCases)
+    if tenant_id is not None:
+        stmt = stmt.where(RDCases.tenant_id == tenant_id)
+    stmt = stmt.order_by(RDCases.updated_at.desc()).limit(limit)
     return list(db.scalars(stmt).all())
 
 

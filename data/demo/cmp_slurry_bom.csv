@@ -1,0 +1,8 @@
+部品番号,原料名（日本語）,原料名（英語）,CAS番号,製造者/仕入先,原産国,含有量(%),HSコード,ECCN,EAR規制理由,GHS区分,備考
+BOM-001,コロイダルシリカ砥粒分散液,Colloidal Silica Abrasive Slurry,7631-86-9,Cabot Microelectronics (CMC Materials),US,25.0,2811.22,EAR99,de minimis以下だが原産国US確認要,眼刺激性 Cat.2,高純度(99.999%) 粒径30nm品 CMP向け主砥粒
+BOM-002,過酸化水素（30%水溶液）,Hydrogen Peroxide 30% Solution,7722-84-1,三菱ガス化学,JP,5.0,2847.00,1C350,Chemical Weapons Convention precursor (Schedule 3),腐食性 Cat.1A,酸化剤 タングステン・銅CMP対応
+BOM-003,水酸化カリウム（KOH）,Potassium Hydroxide,1310-58-3,BASF SE,DE,0.5,2815.20,EAR99,—,腐食性 Cat.1A,pH調整剤 スラリーpH 10〜11に管理
+BOM-004,ポリアクリル酸（PAA）,Polyacrylic Acid (dispersant),9003-01-4,Lubrizol Advanced Materials,US,0.8,3906.10,EAR99,—,皮膚刺激性 Cat.2,分散剤 砥粒凝集防止
+BOM-005,ベンゾトリアゾール（BTA）,Benzotriazole (corrosion inhibitor),95-14-7,上海精化科技,CN,0.1,2933.99,EAR99,—,環境有害性 Cat.1,銅配線腐食防止剤 中国産原料 使用量極少
+BOM-006,クエン酸三アンモニウム,Ammonium Citrate Tribasic,3012-65-5,Sigma-Aldrich (Merck KGaA),DE,0.3,2918.15,EAR99,—,—,キレート剤 金属不純物除去
+BOM-007,超純水（UPW）,Ultrapure Water,7732-18-5,自社製造（RO+イオン交換）,JP,68.3,2851.00,N/A,—,—,比抵抗 18.2 MΩ·cm以上

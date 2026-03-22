@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}人物登録 — みなし輸出スクリーニング{% endblock %}
+{% block nav_personnel %} active{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/ui/personnel">みなし輸出</a> &rsaquo; 新規登録
+</div>
+<div class="page-hd">
+  <h1>人物登録</h1>
+  <p class="sub">みなし輸出スクリーニング対象者を登録します。保存時に自動でスクリーニングを実行します。</p>
+</div>
+
+<form method="post" action="/ui/personnel/new">
+  <div class="card">
+    <div class="card-title">👤 基本情報</div>
+    <div class="g2">
+      <div class="field">
+        <label>氏名 <span style="color:#dc2626;">*</span></label>
+        <input type="text" name="name" required placeholder="例: 山田 太郎">
+      </div>
+      <div class="field">
+        <label>所属・役職</label>
+        <input type="text" name="role" placeholder="例: 研究員 / 契約者">
+      </div>
+    </div>
+    <div class="field">
+      <label>所属組織・部門</label>
+      <input type="text" name="affiliation" placeholder="例: 先端材料研究部">
+    </div>
+    <div class="g2">
+      <div class="field">
+        <label>テナントID <span class="opt">(任意)</span></label>
+        <input type="text" name="tenant_id" placeholder="例: tenant-001">
+      </div>
+      <div class="field">
+        <label>関連案件</label>
+        <select name="case_id">
+          <option value="">— 案件と紐付けない —</option>
+          {% for c in cases %}
+          <option value="{{ c.case_id }}" {% if selected_case_id == c.case_id %}selected{% endif %}>{{ c.title }} ({{ c.case_id[:8] }})</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🌍 国籍・在留情報</div>
+    <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:.82rem;color:#1e40af;">
+      <strong>外為法施行規則 第17条の3:</strong> 非居住者（在日5年未満）への規制技術提供はみなし輸出として管理が必要です。
+    </div>
+    <div class="g3">
+      <div class="field">
+        <label>国籍 (ISO 3166-1 alpha-2)</label>
+        <input type="text" name="nationality" maxlength="2" placeholder="例: CN / US / DE" style="text-transform:uppercase;">
+        <span class="hint">KP/IR/SY/CU: 禁止国 ／ RU/BY/CN: 重点審査国</span>
+      </div>
+      <div class="field">
+        <label>居住国</label>
+        <input type="text" name="residence_country" maxlength="2" placeholder="例: JP" style="text-transform:uppercase;">
+      </div>
+      <div class="field">
+        <label>在日年数</label>
+        <input type="number" name="years_in_japan" min="0" max="99" step="0.5" placeholder="例: 3.5">
+        <span class="hint">5年未満 → カテゴリC 要管理</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏢 二重雇用・兼職状況</div>
+    <div class="field">
+      <div class="toggles">
+        <label class="toggle">
+          <input type="checkbox" name="dual_employment_flag"> 外国企業との兼職・二重雇用あり
+        </label>
+      </div>
+    </div>
+    <div class="g3">
+      <div class="field">
+        <label>兼職先企業名</label>
+        <input type="text" name="dual_employer_name" placeholder="例: Huawei Technologies">
+      </div>
+      <div class="field">
+        <label>兼職先国 (ISO)</label>
+        <input type="text" name="dual_employer_country" maxlength="2" placeholder="例: CN" style="text-transform:uppercase;">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔒 技術アクセス情報</div>
+    <div class="g2">
+      <div class="field">
+        <label>アクセス対象 ECCN</label>
+        <input type="text" name="tech_access_eccn" placeholder="例: 3E001 / EAR99">
+        <span class="hint">規制品目のECCN番号</span>
+      </div>
+      <div class="field">
+        <label>アクセス対象 外為法項番</label>
+        <input type="text" name="tech_access_fefta" placeholder="例: 外為法別表第一 7項">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📝 備考</div>
+    <div class="field">
+      <textarea name="note" placeholder="特記事項・管理メモ"></textarea>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px;">
+    <a href="/ui/personnel" class="btn btn-ghost">キャンセル</a>
+    <button type="submit" class="btn btn-primary">登録 & スクリーニング実行</button>
+  </div>
+</form>
+{% endblock %}

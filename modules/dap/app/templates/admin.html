@@ -98,11 +98,17 @@
     <section id="tab-chat-widget" class="tab">
       <div class="analyticsCard">
         <div class="analyticsHeader">
-          <div class="analyticsTitle">Chat Widget — モジュール別設定</div>
-          <button id="btnReloadChatConfigs" class="btnGhost btnSm">再読み込み</button>
+          <div class="analyticsTitle">Chat Widget — モジュール別コーチング設定</div>
+          <div style="display:flex;gap:8px;">
+            <button id="btnApplyAllTemplates" class="btnGhost btnSm" title="全モジュールにデフォルトテンプレートを一括適用">
+              ⚡ 全テンプレート適用
+            </button>
+            <button id="btnReloadChatConfigs" class="btnGhost btnSm">再読み込み</button>
+          </div>
         </div>
         <p style="font-size:12px;color:#6b88a8;margin:0 0 16px;">
-          各モジュールでチャットウィジェットの有効/無効と、Claude へのプロンプト補足を設定します。
+          各モジュールでチャットウィジェットの有効/無効と、Claude へのコーチングプロンプト補足を設定します。
+          「テンプレートを適用」でモジュール最適化済みの指示を即座に設定できます。
         </p>
         <div id="chatWidgetCards" class="chatWidgetGrid">
           <div class="analyticsEmpty">読み込み中…</div>

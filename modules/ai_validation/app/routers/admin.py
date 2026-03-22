@@ -17,14 +17,15 @@ router = APIRouter(tags=["admin"])
 def faiss_status(request: Request):
     """FAISS インデックスの現在状態を返す。"""
     from platform_core.services.faiss_e5_service import (
-        is_ready, ntotal_layer_a, ntotal_layer_b, ntotal_layer_c
+        is_ready, layer_c_available, ntotal_layer_a, ntotal_layer_b, ntotal_layer_c
     )
     return {
         "faiss_ready": getattr(request.app.state, "faiss_ready", False),
         "is_ready_fn":  is_ready(),
         "layer_a_ntotal": ntotal_layer_a(),
         "layer_b_ntotal": ntotal_layer_b(),
-        "layer_c_ntotal": ntotal_layer_c(),
+        "layer_c_available": layer_c_available(),
+        "layer_c_ntotal": ntotal_layer_c() if layer_c_available() else None,
     }
 
 

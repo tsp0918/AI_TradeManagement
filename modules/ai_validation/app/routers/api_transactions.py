@@ -1,5 +1,6 @@
 """
 GET /api/transactions/recent  — ダッシュボード向け案件サマリー JSON API
+POST /api/transactions        — DAP / 外部システムからの新規案件作成 JSON API
 
 直近 N 件の Transaction と各ステップの進捗・未完了アクションを返す。
 platform-core の案件ダッシュボードから httpx で呼ばれる。
@@ -8,13 +9,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.db.deps import get_db
 from app.db.models.ai_run import AiRun, RunType
-from app.db.models.transaction import Transaction
+from app.db.models.transaction import Transaction, TransactionItem, UsageRequirement
 from app.services.two_list import compute_two_lists
 
 router = APIRouter(prefix="/api/transactions", tags=["api-transactions"])
@@ -159,3 +161,105 @@ def get_recent_transactions(
         })
 
     return {"transactions": results, "total": len(results)}
+
+
+# ──────────────────────────────────────────────
+# POST /api/transactions  (DAP / 外部 JSON API)
+# ──────────────────────────────────────────────
+
+class _ItemIn(BaseModel):
+    item_name: str = ""
+    item_description: str = ""
+
+
+class _UsageIn(BaseModel):
+    source: str = "core"
+    text: str = ""
+
+
+class TransactionCreateRequest(BaseModel):
+    title: str
+    counterparty_name: Optional[str] = None
+    destination_country: Optional[str] = None
+    items: List[_ItemIn] = []
+    usage_requirements: List[_UsageIn] = []
+
+
+def _make_case_no_api() -> str:
+    import datetime
+    import random
+    today = datetime.date.today().strftime("%Y%m%d")
+    return f"API-{today}-{random.randint(1000, 9999)}"
+
+
+@router.post("", status_code=201)
+def create_transaction_api(
+    body: TransactionCreateRequest,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    DAP ヒアリング完了後に案件を JSON API 経由で新規作成する。
+
+    Returns: {id, case_no, title, status, url}
+    """
+    tx = Transaction(
+        case_no=_make_case_no_api(),
+        title=body.title.strip() or "新規審査",
+        status="draft",
+        counterparty_name=body.counterparty_name.strip() if body.counterparty_name else None,
+        source_module="dap",
+    )
+    # destination_country は extra_info 等に保存（モデルにフィールドがない場合は title に付与）
+    if body.destination_country and not hasattr(Transaction, "destination_country"):
+        tx.title = f"{tx.title}（仕向地: {body.destination_country}）"
+    db.add(tx)
+    db.flush()
+
+    for item in body.items:
+        if item.item_name.strip() or item.item_description.strip():
+            ti = TransactionItem(
+                transaction_id=tx.id,
+                item_name=item.item_name.strip() or tx.title,
+                spec_text=item.item_description.strip() or None,
+                attachments_meta={"files": []},
+            )
+            db.add(ti)
+            db.flush()
+            for usage in body.usage_requirements:
+                if usage.text.strip():
+                    db.add(UsageRequirement(
+                        transaction_id=tx.id,
+                        transaction_item_id=ti.id,
+                        source=usage.source or "core",
+                        text=usage.text.strip(),
+                        risk_tags=[],
+                        created_by="dap",
+                    ))
+            break  # 現状は先頭1品目のみ
+
+    if not body.items or not any(i.item_name.strip() for i in body.items):
+        # 品目なしでも UsageRequirement だけ追加
+        for usage in body.usage_requirements:
+            if usage.text.strip():
+                db.add(UsageRequirement(
+                    transaction_id=tx.id,
+                    transaction_item_id=None,
+                    source=usage.source or "core",
+                    text=usage.text.strip(),
+                    risk_tags=[],
+                    created_by="dap",
+                ))
+
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {
+        "id":       tx.id,
+        "case_no":  tx.case_no,
+        "title":    tx.title,
+        "status":   tx.status,
+        "url":      f"{_BASE}/ui/transactions/{tx.id}",
+    }

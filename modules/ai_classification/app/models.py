@@ -84,6 +84,11 @@ class Product(Base):
     # 輸出管理 判定明細（JSON list: [{rule_item_no, decision, comment}, ...]）
     export_control_items = Column(Text, nullable=True)
 
+    # 4象限マッピング用スコア
+    regulation_score  = Column(Float, nullable=True)   # 0-100: 規制感度（自動算出）
+    sovereignty_score = Column(Float, nullable=True)   # 0-100: 技術主権価値（手動入力）
+    sovereignty_note  = Column(Text,  nullable=True)   # 主権価値の根拠メモ
+
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

@@ -4,7 +4,8 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
-from app.services.bigquery_service import BigQueryService
+from app.services.bigquery_service import get_bigquery_service
+from app.services.jplatpat_service import search_jplatpat
 from app.models.search_history import SearchHistory
 
 
@@ -12,7 +13,7 @@ class SearchService:
     """Service for orchestrating patent searches and managing search history."""
 
     def __init__(self):
-        self.bigquery_service = BigQueryService()
+        self.bigquery_service = get_bigquery_service()  # シングルトン利用（リクエストごとに再初期化しない）
 
     async def search(
         self,
@@ -41,16 +42,24 @@ class SearchService:
         Returns:
             Search results with patents and metadata
         """
-        # Execute BigQuery search
-        results = await self.bigquery_service.search_patents(
-            keywords=keywords,
-            date_from=date_from,
-            date_to=date_to,
-            inventor=inventor,
-            applicant=applicant,
-            country=country,
-            limit=limit
-        )
+        # BigQuery が未設定の場合は J-PlatPat にフォールバック
+        if not self.bigquery_service.is_configured():
+            results = await search_jplatpat(
+                keywords=keywords,
+                inventor=inventor,
+                applicant=applicant,
+                limit=limit or 20,
+            )
+        else:
+            results = await self.bigquery_service.search_patents(
+                keywords=keywords,
+                date_from=date_from,
+                date_to=date_to,
+                inventor=inventor,
+                applicant=applicant,
+                country=country,
+                limit=limit,
+            )
 
         # Save to search history
         filters = {

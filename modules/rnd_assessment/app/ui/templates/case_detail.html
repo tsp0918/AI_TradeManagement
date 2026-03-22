@@ -136,5 +136,81 @@
   </div>
   {% endif %}
 
+  <!-- みなし輸出スクリーニング -->
+  <div style="margin-top:32px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+      <div style="font-size:.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px;">
+        👥 みなし輸出スクリーニング
+      </div>
+      <a href="/ui/personnel/new?case_id={{ case.case_id }}"
+         style="display:inline-flex; align-items:center; gap:5px; font-size:.8rem; font-weight:600;
+                background:var(--primary-lt); color:var(--primary-dk); padding:5px 12px;
+                border-radius:var(--r-sm); text-decoration:none;">
+        ＋ 人物を登録
+      </a>
+    </div>
+
+    {% if personnel %}
+    {% set high_count = personnel | selectattr("deemed_export_risk", "equalto", "high") | list | length %}
+    {% if high_count > 0 %}
+    <div style="background:#fef2f2; border:1.5px solid #fecaca; border-radius:10px; padding:12px 16px; margin-bottom:12px; display:flex; align-items:center; gap:10px; font-size:.84rem;">
+      <span>🚨</span>
+      <span><strong style="color:#991b1b;">高リスク {{ high_count }} 件</strong> — 安全保障輸出管理担当者へ確認してください</span>
+    </div>
+    {% endif %}
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden;">
+      <table style="width:100%; border-collapse:collapse; font-size:.84rem;">
+        <thead>
+          <tr style="background:var(--bg);">
+            <th style="padding:9px 14px; text-align:left; font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border);">氏名</th>
+            <th style="padding:9px 14px; text-align:left; font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border);">国籍</th>
+            <th style="padding:9px 14px; text-align:left; font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border);">カテゴリ</th>
+            <th style="padding:9px 14px; text-align:left; font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border);">リスク</th>
+            <th style="padding:9px 14px; border-bottom:1px solid var(--border);"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in personnel %}
+          {% set risk = p.deemed_export_risk or "未判定" %}
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px 14px; font-weight:600;">
+              <a href="/ui/personnel/{{ p.personnel_id }}" style="color:var(--text-h); text-decoration:none;">{{ p.name }}</a>
+              {% if p.role %}<div style="font-size:.73rem; color:var(--muted);">{{ p.role }}</div>{% endif %}
+            </td>
+            <td style="padding:10px 14px;">
+              {% if p.nationality %}
+                <span class="badge {% if p.nationality in ['KP','IR','SY','CU'] %}badge-primary{% elif p.nationality in ['RU','BY','CN'] %}badge-dis{% else %}badge-meta{% endif %}" style="font-size:.73rem;">{{ p.nationality }}</span>
+              {% else %}<span style="color:var(--muted);">—</span>{% endif %}
+            </td>
+            <td style="padding:10px 14px;">
+              {% if p.deemed_export_category %}
+                <span class="badge badge-meta" style="font-size:.73rem;">カテゴリ {{ p.deemed_export_category }}</span>
+              {% elif p.screened_at %}<span style="color:var(--muted); font-size:.8rem;">該当なし</span>
+              {% else %}<span style="color:var(--muted); font-size:.8rem;">未判定</span>{% endif %}
+            </td>
+            <td style="padding:10px 14px;">
+              {% if risk == "high" %}<span class="chip" style="background:#fee2e2;color:#991b1b;font-size:.76rem;">🔴 高</span>
+              {% elif risk == "medium" %}<span class="chip" style="background:#fef3c7;color:#92400e;font-size:.76rem;">🟡 中</span>
+              {% elif risk == "low" %}<span class="chip" style="background:#dbeafe;color:#1d4ed8;font-size:.76rem;">🔵 低</span>
+              {% elif risk == "none" %}<span class="chip" style="background:#d1fae5;color:#065f46;font-size:.76rem;">✅ なし</span>
+              {% else %}<span class="chip chip-draft" style="font-size:.76rem;">未判定</span>{% endif %}
+            </td>
+            <td style="padding:10px 14px; text-align:right;">
+              <a href="/ui/personnel/{{ p.personnel_id }}" class="btn btn-ghost btn-sm">詳細</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align:center; padding:32px 20px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); color:var(--muted);">
+      <div style="font-size:1.5rem; margin-bottom:8px; opacity:.5;">👥</div>
+      <p style="font-size:.84rem;">この案件に紐付いた人物がいません。</p>
+      <a href="/ui/personnel/new?case_id={{ case.case_id }}" class="btn btn-ghost btn-sm" style="margin-top:12px;">人物を登録する</a>
+    </div>
+    {% endif %}
+  </div>
+
 </div>
 {% endblock %}

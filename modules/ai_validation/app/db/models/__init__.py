@@ -4,3 +4,4 @@ from app.db.models.transaction import Transaction, UsageRequirement
 from app.db.models.patent import Patent
 from app.db.models.matrix import MatrixRule
 from app.db.models.integration import ExternalEvalRequest
+from app.db.models.catchall_assessment import CatchallAssessment

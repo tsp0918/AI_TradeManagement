@@ -587,6 +587,9 @@
       <!-- ===== /外部AI判定 ===== -->
     </div>
 
+    <!-- HS転記フラッシュメッセージ -->
+    <div id="hs-apply-flash" style="display:none; background:#effaf5; border:1px solid #b5e8d0; border-radius:8px; padding:10px 16px; margin-bottom:12px; font-size:.85rem; color:#257953;"></div>
+
     <!-- HSコード判定ステータス（直前の判定結果サマリー） -->
     {% if product.hs_classification_status %}
     <div class="card" style="padding:12px 20px;">
@@ -905,29 +908,52 @@
           var desc  = (c.description_en || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
           var code  = (c.hs_code || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
           var score = (c.similarity_score || 0).toFixed(3);
-          return '<tr style="cursor:pointer;" onclick="_applyCode(\'' + c.hs_code + '\')" title="クリックしてHSコード欄に反映">'
-               + '<td><strong>' + rank + '</strong></td>'
-               + '<td><code style="background:#f0f4ff;padding:2px 6px;border-radius:4px;font-size:.9rem;">' + code + '</code></td>'
-               + '<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + desc + '">' + desc + '</td>'
-               + '<td style="white-space:nowrap;">'
-               + '<div style="background:#e8e8e8;border-radius:4px;width:72px;height:8px;display:inline-block;vertical-align:middle;">'
-               + '<div style="background:' + color + ';width:' + pct + '%;height:100%;border-radius:4px;"></div></div>'
-               + '<span style="font-size:.78rem;margin-left:6px;color:#555;">' + score + '</span></td>'
+          var eccn  = (c.eccn || 'EAR99');
+          var fefta = (c.fefta_ref || '—');
+          var eccnBg = eccn === 'EAR99' ? '#f0f0f0' : eccn === 'USML' ? '#fee2e2' : '#fef3c7';
+          var eccnCl = eccn === 'EAR99' ? '#666'    : eccn === 'USML' ? '#991b1b' : '#92400e';
+          var safeHs = code.replace(/'/g, "\\'");
+          var safeEccn = eccn.replace(/'/g, "\\'");
+          var safeFefta = fefta.replace(/'/g, "\\'");
+          return '<tr style="border-bottom:1px solid var(--border);">'
+               + '<td style="padding:8px 6px;text-align:center;"><strong style="color:var(--muted);">' + rank + '</strong></td>'
+               + '<td style="padding:8px 8px;white-space:nowrap;">'
+               +   '<code style="background:#f0f4ff;padding:2px 6px;border-radius:4px;font-size:.88rem;font-weight:700;">' + code + '</code>'
+               + '</td>'
+               + '<td style="padding:8px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;" title="' + desc + '">' + desc + '</td>'
+               + '<td style="padding:8px 6px;white-space:nowrap;">'
+               +   '<span style="display:inline-block;background:' + eccnBg + ';color:' + eccnCl + ';border-radius:4px;padding:2px 7px;font-size:.78rem;font-weight:700;font-family:monospace;">' + eccn + '</span>'
+               + '</td>'
+               + '<td style="padding:8px 6px;font-size:.75rem;color:#666;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="' + fefta + '">' + fefta + '</td>'
+               + '<td style="padding:8px 6px;white-space:nowrap;">'
+               +   '<div style="background:#e8e8e8;border-radius:4px;width:52px;height:6px;display:inline-block;vertical-align:middle;">'
+               +   '<div style="background:' + color + ';width:' + pct + '%;height:100%;border-radius:4px;"></div></div>'
+               +   '<span style="font-size:.74rem;margin-left:5px;color:#555;">' + score + '</span>'
+               + '</td>'
+               + '<td style="padding:8px 8px;">'
+               +   '<button type="button" onclick="_applyBoth(\'' + safeHs + '\',\'' + safeEccn + '\',\'' + safeFefta + '\')" '
+               +   'style="padding:4px 12px;font-size:.78rem;font-weight:700;background:#3273dc;color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;font-family:inherit;">反映</button>'
+               + '</td>'
                + '</tr>';
         }).join('');
 
         var topScore = candidates[0] ? (candidates[0].similarity_score || 0) : 0;
 
-        body.innerHTML = '<p style="font-size:.78rem;color:var(--muted);margin-bottom:10px;">行をクリックするとHSコード欄に反映されます。</p>'
+        body.innerHTML = '<p style="font-size:.78rem;color:var(--muted);margin-bottom:10px;">「反映」ボタンでHSコードとECCNを品目フォームに転記します。保存ボタンで確定してください。</p>'
+          + '<div style="overflow-x:auto;">'
           + '<table style="width:100%;border-collapse:collapse;font-size:.83rem;">'
-          + '<thead><tr style="border-bottom:2px solid var(--border);">'
-          + '<th style="padding:6px 8px;color:var(--muted);font-size:.78rem;">#</th>'
-          + '<th style="padding:6px 8px;color:var(--muted);font-size:.78rem;">HSコード</th>'
-          + '<th style="padding:6px 8px;color:var(--muted);font-size:.78rem;">説明（英語）</th>'
-          + '<th style="padding:6px 8px;color:var(--muted);font-size:.78rem;">類似度</th>'
+          + '<thead><tr style="background:#f7f9ff;border-bottom:2px solid var(--border);">'
+          + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:center;">#</th>'
+          + '<th style="padding:7px 8px;color:var(--muted);font-size:.74rem;text-align:left;">HSコード</th>'
+          + '<th style="padding:7px 8px;color:var(--muted);font-size:.74rem;text-align:left;">説明（英語）</th>'
+          + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:left;">推定ECCN</th>'
+          + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:left;">外為法項番</th>'
+          + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:left;">類似度</th>'
+          + '<th style="padding:7px 8px;"></th>'
           + '</tr></thead>'
           + '<tbody>' + rows + '</tbody>'
           + '</table>'
+          + '</div>'
           + _hintsHtml(topScore)
           + _disclaimerHtml();
       }
@@ -983,15 +1009,34 @@
 
       function _disclaimerHtml() {
         return '<div style="margin-top:10px;background:#fffbeb;border:1px solid #f5e1a0;border-radius:8px;padding:10px 14px;font-size:.76rem;color:#7a5c00;line-height:1.6;">'
-          + '⚠️ <strong>免責事項：</strong>AIによる判定は参考情報であり、正確性を保証するものではありません。'
-          + '輸出申告・通関手続きに使用する正式なHSコードは、必ず専門家（通関士・税関）または税関相談窓口にてご確認ください。'
+          + '⚠️ <strong>免責事項：</strong>AIによる判定は参考情報であり、正確性を保証するものではありません。<br>'
+          + '正式なHSコードは通関士・税関窓口にてご確認ください。<br>'
+          + '<strong>推定ECCN</strong> はHSコードとの公知対応表に基づく参考値です。EAR99 = 輸出規制対象外の可能性が高い品目。'
+          + '正確なECCNはBIS CCLまたは輸出管理専門家にご確認ください。'
           + '</div>';
       }
 
-      function _applyCode(code) {
-        document.getElementById('hs-code-input').value = code;
+      function _applyBoth(hsCode, eccn, fefta) {
+        // HSコード欄に転記
+        var hsInput = document.getElementById('hs-code-input');
+        if (hsInput) hsInput.value = hsCode;
+        // ECCN欄に転記（EAR99 は基本的に規制外なのでクリアしない）
+        var eccnInput = document.querySelector('input[name="eccn"]');
+        if (eccnInput && eccn && eccn !== 'EAR99') eccnInput.value = eccn;
+        // 転記完了フラッシュ
+        var flashDiv = document.getElementById('hs-apply-flash');
+        if (flashDiv) {
+          flashDiv.innerHTML = '✅ HSコード <strong>' + hsCode + '</strong>'
+            + (eccn && eccn !== 'EAR99' ? ' ／ ECCN <strong>' + eccn + '</strong>' : '')
+            + ' を転記しました。フォームを保存してください。';
+          flashDiv.style.display = 'block';
+          setTimeout(function() { flashDiv.style.display = 'none'; }, 5000);
+        }
         closeHsModal();
       }
+
+      // 後方互換: 行クリック用（現在は使用しないが残す）
+      function _applyCode(code) { _applyBoth(code, '', ''); }
 
       function closeHsModal() {
         document.getElementById('hs-modal').style.display = 'none';
@@ -1018,6 +1063,7 @@
       window.showLastCandidates = showLastCandidates;
       window.closeHsModal       = closeHsModal;
       window._applyCode         = _applyCode;
+      window._applyBoth         = _applyBoth;
     })();
     </script>
     <style>
