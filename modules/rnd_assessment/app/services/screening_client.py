@@ -9,7 +9,7 @@ class ScreeningClient:
         self.base_url = base_url or settings.screening_service_base_url
 
     async def submit_screening_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        url = f"{self.base_url}/screenings"
+        url = f"{self.base_url}/api/screen"
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 r = await client.post(url, json=payload)

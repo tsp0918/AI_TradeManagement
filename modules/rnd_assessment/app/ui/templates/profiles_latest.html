@@ -336,7 +336,7 @@
         {% if profile.ai_validation_run_at %}
           <span style="font-size:.78rem; opacity:.75;">最終実行: {{ profile.ai_validation_run_at.strftime('%Y-%m-%d %H:%M') }}</span>
         {% endif %}
-        <a href="http://localhost:8001/ui/transactions/{{ profile.ai_validation_transaction_id }}"
+        <a href="/proxy/ai_validation/ui/transactions/{{ profile.ai_validation_transaction_id }}"
            target="_blank"
            style="padding:5px 12px; border-radius:8px; background:rgba(0,0,0,.08);
                   color:inherit; text-decoration:none; font-size:.82rem; font-weight:600;">
@@ -451,7 +451,7 @@
         {% set total = av_two_lists.get("counts", {}).get("total_unique_items", 0) %}
         {% if total > 6 %}
         <div style="padding:6px 12px; font-size:.75rem; color:var(--muted); text-align:right; border-top:1px solid var(--border);">
-          他 {{ total - 6 }} 件 — <a href="http://localhost:8001/ui/transactions/{{ profile.ai_validation_transaction_id }}" target="_blank" style="color:var(--primary);">全件を表示 →</a>
+          他 {{ total - 6 }} 件 — <a href="/proxy/ai_validation/ui/transactions/{{ profile.ai_validation_transaction_id }}" target="_blank" style="color:var(--primary);">全件を表示 →</a>
         </div>
         {% endif %}
       </div>
@@ -524,7 +524,7 @@
         <span style="font-size:.8rem; font-weight:400; margin-left:4px;">対象: {{ eu_name }}</span>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a href="http://localhost:8005/ui/results" target="_blank" class="btn"
+        <a href="/proxy/screening/ui/results" target="_blank" class="btn"
            style="font-size:.82rem; padding:6px 14px;">📋 詳細を見る</a>
         <form method="post"
               action="/ui/cases/{{ case.case_id }}/profiles/{{ profile.profile_id }}/run-screening"
@@ -557,7 +557,7 @@
     <p style="font-size:.84rem; color:var(--muted); margin:0 0 10px;">
       需要者要件でエンドユーザー名（end_user_name）を入力するとスクリーニングが利用できます。
     </p>
-    <a href="http://localhost:8005/ui/screen" target="_blank" class="btn"
+    <a href="/proxy/screening/ui/screen" target="_blank" class="btn"
        style="font-size:.82rem; padding:6px 14px;">手動スクリーニングへ →</a>
   {% endif %}
 </div>
@@ -590,18 +590,18 @@
       {% endif %}
     </div>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <a href="http://localhost:8002/products/{{ profile.promoted_product_id }}/edit"
+      <a href="/proxy/ai_classification/products/{{ profile.promoted_product_id }}/edit"
          target="_blank" class="btn" style="font-size:.82rem; padding:6px 14px;">
         品目詳細を見る →
       </a>
       {% if profile.ai_validation_transaction_id %}
-      <a href="http://localhost:8001/ui/transactions/{{ profile.ai_validation_transaction_id }}"
+      <a href="/proxy/ai_validation/ui/transactions/{{ profile.ai_validation_transaction_id }}"
          target="_blank" class="btn" style="font-size:.82rem; padding:6px 14px;">
         RND審査を見る →
       </a>
       {% endif %}
       {% if product_eval and product_eval.get('ui_validation_transaction_id') %}
-      <a href="http://localhost:8001/ui/transactions/{{ product_eval.ui_validation_transaction_id }}"
+      <a href="/proxy/ai_validation/ui/transactions/{{ product_eval.ui_validation_transaction_id }}"
          target="_blank" class="btn"
          style="font-size:.82rem; padding:6px 14px; background:#1565c0; color:#fff;">
         UI審査を見る →

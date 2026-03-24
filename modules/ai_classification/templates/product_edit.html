@@ -15,10 +15,10 @@
         padding:6px 12px; font-size:13px; color:#2e7d32;
       ">
         🔬 R&D案件 <strong>RND-{{ product.source_rnd_case_id[:8] }}</strong> から登録
-        <a href="http://localhost:8003/ui/cases/{{ product.source_rnd_case_id }}" target="_blank"
+        <a href="/proxy/rnd_assessment/ui/cases/{{ product.source_rnd_case_id }}" target="_blank"
            style="color:#1565c0; font-size:12px;">R&D詳細 →</a>
         {% if product.source_rnd_transaction_id %}
-        <a href="http://localhost:8001/ui/transactions/{{ product.source_rnd_transaction_id }}" target="_blank"
+        <a href="/proxy/ai_validation/ui/transactions/{{ product.source_rnd_transaction_id }}" target="_blank"
            style="color:#1565c0; font-size:12px;">RND審査 →</a>
         {% endif %}
       </span>
@@ -30,9 +30,9 @@
         padding:6px 12px; font-size:13px; color:#1565c0;
       ">
         🔍 UI品目審査あり
-        <a href="http://localhost:8001/ui/transactions/{{ product.ui_validation_transaction_id }}" target="_blank"
+        <a href="/proxy/ai_validation/ui/transactions/{{ product.ui_validation_transaction_id }}" target="_blank"
            style="color:#1565c0; font-size:12px; font-weight:600;">UI審査を確認 →</a>
-        <a href="http://localhost:8001/ui/transactions/new?parent_transaction_id={{ product.ui_validation_transaction_id }}&title={{ (product.name ~ ' の輸出取引') | urlencode }}&description={{ (product.usage_summary or '') | urlencode }}"
+        <a href="/proxy/ai_validation/ui/transactions/new?parent_transaction_id={{ product.ui_validation_transaction_id }}&title={{ (product.name ~ ' の輸出取引') | urlencode }}&description={{ (product.usage_summary or '') | urlencode }}"
            target="_blank"
            style="
              background:#1565c0; color:#fff; border-radius:5px;

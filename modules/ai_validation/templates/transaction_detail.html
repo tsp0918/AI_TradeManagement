@@ -262,7 +262,7 @@
         <span class="muted small" style="margin-left:8px;">対象: {{ tx.counterparty_name }}</span>
       </div>
       <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-        <a href="http://localhost:8005/ui/results" target="_blank" class="btn btn-sm">
+        <a href="/proxy/screening/ui/results" target="_blank" class="btn btn-sm">
           📋 詳細を見る
         </a>
         <form method="post" action="/ui/transactions/{{ tx.id }}/run-screening" style="margin:0;">
@@ -283,7 +283,7 @@
     <p style="font-size:.84rem; color:var(--muted); margin:0 0 10px;">
       取引先企業名が未設定です。新規登録時または下記リンクから手動スクリーニングが可能です。
     </p>
-    <a href="http://localhost:8005/ui/screen" target="_blank" class="btn" style="font-size:.82rem;">
+    <a href="/proxy/screening/ui/screen" target="_blank" class="btn" style="font-size:.82rem;">
       手動スクリーニングへ →
     </a>
   {% endif %}
@@ -352,7 +352,7 @@
 
 <script>
 (function() {
-  const PLATFORM_URL = "{{ platform_url | default('http://localhost:8000') }}";
+  const PLATFORM_URL = "";  // platform-core is at proxy root
   let _sessionId = null;
   let _totalCandidates = 0;
 

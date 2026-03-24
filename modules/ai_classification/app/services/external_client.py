@@ -16,7 +16,7 @@ class ExternalAIClient:
     """
 
     def __init__(self):
-        self.base_url = os.getenv("EXTERNAL_AI_BASE_URL", "http://127.0.0.1:8010").rstrip("/")
+        self.base_url = os.getenv("MODULE_DAP_URL", "http://localhost:8010").rstrip("/")
         self.api_key = os.getenv("EXTERNAL_AI_API_KEY", "")
         self.timeout_sec = float(os.getenv("EXTERNAL_AI_TIMEOUT_SEC", "15"))
 
