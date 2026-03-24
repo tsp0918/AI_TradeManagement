@@ -80,8 +80,16 @@ const state = {
 // SECTION 3: API Layer
 // ============================================================
 
+// リバースプロキシ経由のアクセスに対応するためベースパスを自動検出
+// 例: /proxy/dap/ 経由の場合は _PROXY_BASE = "/proxy/dap"
+const _PROXY_BASE = (() => {
+  const m = window.location.pathname.match(/^(\/proxy\/[^/]+)/);
+  return m ? m[1] : "";
+})();
+
 async function api(url, opts = {}) {
-  const res = await fetch(url, {
+  const prefixedUrl = (url.startsWith("/") && _PROXY_BASE) ? _PROXY_BASE + url : url;
+  const res = await fetch(prefixedUrl, {
     headers: { "Content-Type": "application/json" },
     ...opts,
   });
