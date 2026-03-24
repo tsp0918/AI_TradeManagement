@@ -530,7 +530,7 @@ async def request_hs_classification(
     except httpx.ConnectError:
         return {
             "ok":     False,
-            "detail": "HSコード判定モジュールに接続できません (http://localhost:8006)。起動しているか確認してください。",
+            "detail": f"HSコード判定モジュールに接続できません ({settings.HS_CLASSIFIER_BASE_URL})。起動しているか確認してください。",
         }
     except httpx.HTTPStatusError as e:
         return {"ok": False, "detail": f"HSコード判定モジュールがエラーを返しました: HTTP {e.response.status_code}"}

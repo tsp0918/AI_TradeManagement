@@ -30,6 +30,7 @@ from platform_core.routers.internal import router as internal_router
 from platform_core.routers.projects import router as projects_router
 from platform_core.routers.ui import router as ui_router
 from platform_core.routers.ui import start_all_modules, stop_all_modules
+from platform_core.routers.proxy import router as proxy_router
 from platform_core.agent.router import router as agent_router
 from platform_core.routers.metrics import router as metrics_router
 from platform_core.routers.faiss_search import router as faiss_search_router
@@ -92,6 +93,7 @@ def create_app() -> FastAPI:
 
     # ルーター登録
     app.include_router(ui_router)
+    app.include_router(proxy_router)
     app.include_router(auth_router)
     app.include_router(admin_router, prefix="/admin")
     app.include_router(projects_router, prefix="/api/projects", tags=["projects"])

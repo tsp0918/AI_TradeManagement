@@ -19,14 +19,14 @@ async def ui_root(request: Request):
 
 @router.get("/screen", response_class=HTMLResponse, include_in_schema=False)
 async def screen_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html", {})
 
 
 @router.get("/results", response_class=HTMLResponse, include_in_schema=False)
 async def results_page(request: Request):
-    return templates.TemplateResponse("results.html", {"request": request})
+    return templates.TemplateResponse(request, "results.html", {})
 
 
 @router.get("/watchlist", response_class=HTMLResponse, include_in_schema=False)
 async def watchlist_page(request: Request):
-    return templates.TemplateResponse("watchlist.html", {"request": request})
+    return templates.TemplateResponse(request, "watchlist.html", {})

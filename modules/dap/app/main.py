@@ -73,7 +73,7 @@ app.include_router(chat_router.router)
 
 @app.get("/", response_class=HTMLResponse)
 def admin_home(request: Request):
-    return templates.TemplateResponse("admin.html", {"request": request, "sv": _STATIC_VER})
+    return templates.TemplateResponse(request, "admin.html", {"sv": _STATIC_VER})
 
 # ─────────────────── Runtime Config ──────────────────────────────────────────
 

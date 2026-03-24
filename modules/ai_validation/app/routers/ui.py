@@ -13,7 +13,8 @@ from sqlalchemy import desc
 
 logger = logging.getLogger(__name__)
 
-SCREENING_BASE = "http://localhost:8005"
+import os as _os
+SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
 
 from app.db.deps import get_db
 
@@ -39,9 +40,7 @@ def home(request: Request):
 def transactions_page(request: Request, db: Session = Depends(get_db)):
     txs = db.query(Transaction).order_by(desc(Transaction.id)).all()
     templates = request.app.state.templates
-    return templates.TemplateResponse(
-        "transactions.html",
-        {"request": request, "txs": txs},
+    return templates.TemplateResponse(request, "transactions.html", {"txs": txs},
     )
 
 
@@ -157,9 +156,7 @@ def _create_transaction_manual(
 @router.get("/ui/transactions/new", response_class=HTMLResponse)
 def transaction_new_form(request: Request):
     templates = request.app.state.templates
-    return templates.TemplateResponse(
-        "transaction_new.html",
-        {"request": request, "error": None},
+    return templates.TemplateResponse(request, "transaction_new.html", {"error": None},
     )
 
 
@@ -219,9 +216,7 @@ def transaction_new_submit(
     """手動入力で新規審査を作成（AIパイプラインは実行しない）。"""
     templates = request.app.state.templates
     if not title.strip() and not product_code.strip() and not description.strip():
-        return templates.TemplateResponse(
-            "transaction_new.html",
-            {"request": request, "error": "品名・品番・用途のいずれかを入力してください。"},
+        return templates.TemplateResponse(request, "transaction_new.html", {"error": "品名・品番・用途のいずれかを入力してください。"},
         )
     try:
         tx = _create_transaction_manual(
@@ -237,9 +232,7 @@ def transaction_new_submit(
         db.commit()
     except Exception as e:
         db.rollback()
-        return templates.TemplateResponse(
-            "transaction_new.html",
-            {"request": request, "error": f"登録エラー: {e}"},
+        return templates.TemplateResponse(request, "transaction_new.html", {"error": f"登録エラー: {e}"},
         )
     return RedirectResponse(url=f"/ui/transactions/{tx.id}", status_code=303)
 
@@ -290,9 +283,8 @@ async def transaction_csv_import(
             errors.append(f"行 {i}: 登録エラー: {e}")
 
     return templates.TemplateResponse(
-        "transaction_new.html",
+        request, "transaction_new.html",
         {
-            "request": request,
             "csv_result": {
                 "created": len(created_ids),
                 "ids": created_ids[:20],
@@ -406,9 +398,8 @@ def transaction_detail_page(
 
     templates = request.app.state.templates
     return templates.TemplateResponse(
-        "transaction_detail.html",
+        request, "transaction_detail.html",
         {
-            "request": request,
             "tx": tx,
             "items": items,
             "usages": usages,
@@ -437,9 +428,7 @@ def external_requests_page(request: Request, db: Session = Depends(get_db)):
         .all()
     )
     templates = request.app.state.templates
-    return templates.TemplateResponse(
-        "external_requests.html",
-        {"request": request, "reqs": reqs},
+    return templates.TemplateResponse(request, "external_requests.html", {"reqs": reqs},
     )
 
 

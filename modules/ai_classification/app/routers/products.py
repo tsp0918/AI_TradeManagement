@@ -382,7 +382,7 @@ def root():
 
 @router.get("/products/quadrant-map", response_class=HTMLResponse)
 def quadrant_map_page(request: Request):
-    return templates.TemplateResponse("quadrant_map.html", {"request": request})
+    return templates.TemplateResponse(request, "quadrant_map.html", {})
 
 
 @router.get("/api/products/quadrant-data")
@@ -458,12 +458,12 @@ def recalculate_all_scores(db: Session = Depends(get_db)):
 @router.get("/products", response_class=HTMLResponse)
 def list_products(request: Request, db: Session = Depends(get_db)):
     products = db.query(Product).order_by(Product.id.desc()).all()
-    return templates.TemplateResponse("product_list.html", {"request": request, "products": products})
+    return templates.TemplateResponse(request, "product_list.html", {"products": products})
 
 
 @router.get("/products/new", response_class=HTMLResponse)
 def new_product_form(request: Request):
-    return templates.TemplateResponse("product_new.html", {"request": request})
+    return templates.TemplateResponse(request, "product_new.html", {})
 
 
 @router.post("/products/new")
@@ -583,9 +583,8 @@ def edit_product(request: Request, product_id: int, db: Session = Depends(get_db
             ec_items = []
 
     return templates.TemplateResponse(
-        "product_edit.html",
+        request, "product_edit.html",
         {
-            "request": request,
             "product": product,
             "bom_components": bom_components,
             "bom_total_ratio": bom_total_ratio,
@@ -786,7 +785,7 @@ def bom_upload_form(request: Request, product_id: int, db: Session = Depends(get
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    return templates.TemplateResponse("bom_upload.html", {"request": request, "product": product})
+    return templates.TemplateResponse(request, "bom_upload.html", {"product": product})
 
 
 @router.post("/products/{product_id}/bom")
@@ -929,9 +928,7 @@ def bom_history_list(request: Request, product_id: int, db: Session = Depends(ge
         .all()
     )
 
-    return templates.TemplateResponse(
-        "bom_history_list.html",
-        {"request": request, "product": product, "histories": histories},
+    return templates.TemplateResponse(request, "bom_history_list.html", {"product": product, "histories": histories},
     )
 
 
@@ -1016,9 +1013,8 @@ def bom_history_detail(request: Request, product_id: int, history_id: int, db: S
             )
 
     return templates.TemplateResponse(
-        "bom_history_detail.html",
+        request, "bom_history_detail.html",
         {
-            "request": request,
             "product": product,
             "history": history,
             "bom_components": bom_components,
@@ -1116,7 +1112,7 @@ def save_export_items(
 # =========================
 @router.get("/products/import", response_class=HTMLResponse)
 def import_products_page(request: Request):
-    return templates.TemplateResponse("products_import.html", {"request": request})
+    return templates.TemplateResponse(request, "products_import.html", {})
 
 
 @router.post("/products/import", response_class=HTMLResponse)

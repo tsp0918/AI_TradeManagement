@@ -21,9 +21,8 @@ _MODEL_NAME = "intfloat/multilingual-e5-large"
 @router.get("/ui/", response_class=HTMLResponse)
 def ui_index(request: Request):
     return templates.TemplateResponse(
-        "index.html",
+        request, "index.html",
         {
-            "request": request,
             "index_size": faiss_index.ntotal(),
             "is_built": faiss_index.is_built(),
             "model": _MODEL_NAME,

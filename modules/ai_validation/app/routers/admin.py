@@ -52,7 +52,7 @@ async def faiss_reload(request: Request):
 
 def _render(request: Request, **ctx):
     templates = request.app.state.templates
-    return templates.TemplateResponse("admin_import.html", {"request": request, **ctx})
+    return templates.TemplateResponse(request, "admin_import.html", {**ctx})
 
 
 @router.get("/ui/admin/import", response_class=HTMLResponse)

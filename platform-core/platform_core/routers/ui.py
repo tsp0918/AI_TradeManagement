@@ -81,7 +81,7 @@ _KNOWN_MODULES: list[dict] = [
         "name":              "AI特許検索",
         "description":       "Google Patents BigQuery を用いた特許検索と LLM による用途要件抽出",
         "base_url":          "http://localhost:8004",
-        "iframe_url":        "http://localhost:8004",
+        "iframe_url":        "/proxy/patent_search/",
         "icon":              _MODULE_ICONS["patent_search"],
         "health_check_path": "/health",
         "nav_section":       "process",
@@ -91,7 +91,7 @@ _KNOWN_MODULES: list[dict] = [
         "name":              "R&Dリスク評価",
         "description":       "R&Dプロジェクトの知財戦略と安全保障貿易管理の統合リスク評価",
         "base_url":          "http://localhost:8003",
-        "iframe_url":        "http://localhost:8003",
+        "iframe_url":        "/proxy/rnd_assessment/",
         "icon":              _MODULE_ICONS["rnd_assessment"],
         "health_check_path": "/health",
         "nav_section":       "process",
@@ -101,7 +101,7 @@ _KNOWN_MODULES: list[dict] = [
         "name":              "品目管理",
         "description":       "取り扱い品目の法規制情報管理・SDS解析・該非判定連携",
         "base_url":          "http://localhost:8002",
-        "iframe_url":        "http://localhost:8002",
+        "iframe_url":        "/proxy/ai_classification/",
         "icon":              _MODULE_ICONS["ai_classification"],
         "health_check_path": "/health",
         "nav_section":       "process",
@@ -111,7 +111,7 @@ _KNOWN_MODULES: list[dict] = [
         "name":              "HSコード判定",
         "description":       "品目管理と連携し、HS2022 6桁コードを FAISS セマンティック検索で自動付番支援する",
         "base_url":          "http://localhost:8006",
-        "iframe_url":        "http://localhost:8006",
+        "iframe_url":        "/proxy/hs_classifier/",
         "icon":              _MODULE_ICONS["hs_classifier"],
         "health_check_path": "/health",
         "nav_section":       "process",
@@ -121,7 +121,7 @@ _KNOWN_MODULES: list[dict] = [
         "name":              "懸念取引先スクリーニング",
         "description":       "BIS Entity List / OFAC SDN 等を用いた懸念取引先スクリーニング",
         "base_url":          "http://localhost:8005",
-        "iframe_url":        "http://localhost:8005",
+        "iframe_url":        "/proxy/screening/",
         "icon":              _MODULE_ICONS["screening"],
         "health_check_path": "/health",
         "nav_section":       "process",
@@ -131,7 +131,7 @@ _KNOWN_MODULES: list[dict] = [
         "name":              "AI該非判定",
         "description":       "外為法に基づく輸出管理の該非判定を AI で支援する",
         "base_url":          "http://localhost:8001",
-        "iframe_url":        "http://localhost:8001",
+        "iframe_url":        "/proxy/ai_validation/",
         "icon":              _MODULE_ICONS["ai_validation"],
         "health_check_path": "/health",
         "nav_section":       "process",
@@ -141,7 +141,7 @@ _KNOWN_MODULES: list[dict] = [
         "name":              "DAP / AIオーケストレーター",
         "description":       "クロスモジュール AI エージェント・各画面コーチング・入力補助",
         "base_url":          "http://localhost:8010",
-        "iframe_url":        "http://localhost:8010",
+        "iframe_url":        "/proxy/dap/",
         "icon":              _MODULE_ICONS["dap"],
         "health_check_path": "/health",
         "nav_section":       "tools",
@@ -156,7 +156,7 @@ def _build_module_entry(m: ModuleRegistry) -> dict:
         "name":             m.name,
         "description":      m.description or "",
         "base_url":         m.base_url,
-        "iframe_url":       m.base_url,
+        "iframe_url":       f"/proxy/{m.key}/",
         "icon":             _MODULE_ICONS.get(m.key, "📌"),
         "health_check_path": m.health_check_path,
         "nav_section":      known.get("nav_section", "process"),
@@ -279,8 +279,8 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
     modules = [_DASHBOARD_ENTRY, _PLATFORM_ENTRY] + list(known.values())
 
     return templates.TemplateResponse(
-        "home.html",
-        {"request": request, "modules": modules, "version": "0.1.0"},
+        request, "home.html",
+        {"modules": modules, "version": "0.1.0"},
     )
 
 
@@ -346,8 +346,8 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
         pass
 
     return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request, "transactions": transactions, "error": error,
+        request, "dashboard.html",
+        {"transactions": transactions, "error": error,
          "agent_stats": agent_stats, "reg_alerts": reg_alerts},
     )
 
@@ -360,8 +360,8 @@ async def platform_dashboard(request: Request, db: AsyncSession = Depends(get_db
     )
     registered = result.scalars().all()
     return templates.TemplateResponse(
-        "platform_dashboard.html",
-        {"request": request, "registered_modules": registered, "version": "0.1.0"},
+        request, "platform_dashboard.html",
+        {"registered_modules": registered, "version": "0.1.0"},
     )
 
 

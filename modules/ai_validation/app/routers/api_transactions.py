@@ -21,9 +21,10 @@ from app.services.two_list import compute_two_lists
 
 router = APIRouter(prefix="/api/transactions", tags=["api-transactions"])
 
+import os as _os
 # ai_validation 自身のベース URL（ダッシュボードのアクション URL 生成用）
-_BASE = "http://localhost:8001"
-_SCREENING_BASE = "http://localhost:8005"
+_BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8001")
+_SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
 
 
 # ──────────────────────────────────────────────

@@ -91,9 +91,8 @@ def sds_upload_form(
     message = "SDS解析が完了しました。規制情報が更新されました。" if success else None
 
     return templates.TemplateResponse(
-        "product_sds_upload.html",
+        request, "product_sds_upload.html",
         {
-            "request": request,
             "product": product,
             "existing_pdfs": _list_existing_pdfs(),
             "message": message,
@@ -115,9 +114,8 @@ async def sds_upload(
 
     def _render(error: str | None = None, message: str | None = None):
         return templates.TemplateResponse(
-            "product_sds_upload.html",
+            request, "product_sds_upload.html",
             {
-                "request": request,
                 "product": product,
                 "existing_pdfs": _list_existing_pdfs(),
                 "error": error,

@@ -26,8 +26,9 @@ from app.models.rd_case import RDCaseProfiles, RDAssessments
 from app.models.personnel import Personnel
 from app.services.deemed_export import run_screening as _run_deemed_screening
 
-AI_VALIDATION_BASE = "http://localhost:8001"
-SCREENING_BASE = "http://localhost:8005"
+import os as _os
+AI_VALIDATION_BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8001")
+SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
 
 
 router = APIRouter(prefix="/ui", tags=["ui"])
@@ -121,7 +122,7 @@ def cases_list(request: Request, db: Session = Depends(get_db)):
             "latest_profile": latest,
             "latest_assessment": latest_assessment,
         })
-    return templates.TemplateResponse("cases.html", {"request": request, "enriched": enriched})
+    return templates.TemplateResponse(request, "cases.html", { "enriched": enriched})
 
 
 # -----------------------------
@@ -129,7 +130,7 @@ def cases_list(request: Request, db: Session = Depends(get_db)):
 # -----------------------------
 @router.get("/cases/new")
 def cases_new(request: Request):
-    return templates.TemplateResponse("cases_new.html", {"request": request})
+    return templates.TemplateResponse(request, "cases_new.html", {})
 
 
 @router.post("/cases/new")
@@ -177,8 +178,8 @@ def case_detail(case_id: str, request: Request, db: Session = Depends(get_db)):
         .where(Personnel.case_id == case_id)
         .order_by(Personnel.created_at.desc())
     ).all()
-    return templates.TemplateResponse("case_detail.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "case_detail.html", {
+        
         "case": case,
         "enriched_profiles": enriched_profiles,
         "personnel": personnel,
@@ -198,11 +199,10 @@ def profiles_new(request: Request, case_id: str, db: Session = Depends(get_db)):
     next_version = 1 if not latest else latest.version_no + 1
 
     ctx = {
-        "request": request,
         "case": case,
         "next_version": next_version,
     }
-    return templates.TemplateResponse("profiles_new.html", ctx)
+    return templates.TemplateResponse(request, "profiles_new.html", ctx)
 
 
 @router.post("/cases/{case_id}/profiles/new")
@@ -568,9 +568,8 @@ def profiles_latest(request: Request, case_id: str, db: Session = Depends(get_db
             pass
 
     return templates.TemplateResponse(
-        "profiles_latest.html",
+        request, "profiles_latest.html",
         {
-            "request": request,
             "case": case,
             "profile": prof,
             "assessment": latest_assessment,
@@ -630,9 +629,8 @@ def profiles_compare(
     }
 
     return templates.TemplateResponse(
-        "profiles_compare.html",
+        request, "profiles_compare.html",
         {
-            "request": request,
             "case": case,
             "profiles": profiles,
             "from_version": from_version,
@@ -753,7 +751,7 @@ def run_screening(
     return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest", status_code=303)
 
 
-AI_CLASSIFICATION_BASE = "http://localhost:8002"
+AI_CLASSIFICATION_BASE = _os.environ.get("MODULE_AI_CLASSIFICATION_URL", "http://localhost:8002")
 
 
 @router.post("/cases/{case_id}/profiles/{profile_id}/promote-to-item")
@@ -820,9 +818,7 @@ def personnel_list(request: Request, db: Session = Depends(get_db)):
     case_ids = {p.case_id for p in persons if p.case_id}
     from app.crud.rd_case import get_case
     case_map = {cid: get_case(db, cid) for cid in case_ids}
-    return templates.TemplateResponse(
-        "personnel.html",
-        {"request": request, "persons": persons, "case_map": case_map},
+    return templates.TemplateResponse(request, "personnel.html", {"persons": persons, "case_map": case_map},
     )
 
 
@@ -831,9 +827,7 @@ def personnel_new(request: Request, case_id: Optional[str] = None, db: Session =
     cases = db.query(RDCaseProfiles.__class__).all() if False else []
     from app.crud import rd_case as rd_crud
     cases = rd_crud.list_cases(db)
-    return templates.TemplateResponse(
-        "personnel_new.html",
-        {"request": request, "cases": cases, "selected_case_id": case_id},
+    return templates.TemplateResponse(request, "personnel_new.html", {"cases": cases, "selected_case_id": case_id},
     )
 
 
@@ -901,9 +895,7 @@ def personnel_detail(personnel_id: str, request: Request, db: Session = Depends(
             reasons = _json.loads(person.deemed_export_reason)
         except Exception:
             reasons = [person.deemed_export_reason]
-    return templates.TemplateResponse(
-        "personnel_detail.html",
-        {"request": request, "person": person, "reasons": reasons},
+    return templates.TemplateResponse(request, "personnel_detail.html", {"person": person, "reasons": reasons},
     )
 
 

@@ -20,9 +20,8 @@ async def home_page(request: Request, db: AsyncSession = Depends(get_db)):
     recent_searches = await search_service.get_search_history(db, limit=5)
 
     return templates.TemplateResponse(
-        "index.html",
+        request, "index.html",
         {
-            "request": request,
             "recent_searches": recent_searches
         }
     )
@@ -59,9 +58,8 @@ async def search_results_page(
             error = str(e)
 
     return templates.TemplateResponse(
-        "search_results.html",
+        request, "search_results.html",
         {
-            "request": request,
             "results": results,
             "error": error,
             "keywords": keywords,
@@ -96,9 +94,8 @@ async def patent_detail_page(
         use_cases = await favorites_service.get_use_cases(db, favorite.id)
 
     return templates.TemplateResponse(
-        "patent_detail.html",
+        request, "patent_detail.html",
         {
-            "request": request,
             "publication_number": publication_number,
             "favorite": favorite,
             "use_cases": use_cases
@@ -120,9 +117,8 @@ async def favorites_page(request: Request, db: AsyncSession = Depends(get_db)):
     ]
 
     return templates.TemplateResponse(
-        "favorites.html",
+        request, "favorites.html",
         {
-            "request": request,
             "favorites": parsed_favorites
         }
     )
@@ -136,9 +132,8 @@ async def history_page(request: Request, db: AsyncSession = Depends(get_db)):
     history = await search_service.get_search_history(db, limit=50)
 
     return templates.TemplateResponse(
-        "history.html",
+        request, "history.html",
         {
-            "request": request,
             "history": history
         }
     )
