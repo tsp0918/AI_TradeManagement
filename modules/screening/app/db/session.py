@@ -9,6 +9,9 @@ _DB_URL = os.environ.get(
     "SCREENING_DATABASE_URL",
     "postgresql+asyncpg://platform_user:platform_pass@localhost:5432/platform_db",
 )
+# Alembic 用に psycopg2 ドライバが指定されていた場合は asyncpg に変換
+if "+psycopg2" in _DB_URL:
+    _DB_URL = _DB_URL.replace("+psycopg2", "+asyncpg")
 
 engine = create_async_engine(_DB_URL, pool_pre_ping=True)
 
