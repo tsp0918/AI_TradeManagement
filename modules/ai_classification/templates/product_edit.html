@@ -1087,11 +1087,16 @@
           <h2 class="subtitle is-5" style="margin-bottom:2px;">🌏 国別規制プロファイル</h2>
           <p class="help">仕出国・仕向国ごとのローカルHSコード・関税・輸入規制を管理します。</p>
         </div>
-        <div style="display:flex; gap:8px; align-items:center;">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <button type="button" id="cp-fetch-all-btn" class="button is-info is-small is-outlined"
                   onclick="cpFetchTariffAll()"
                   title="全プロファイルの関税率を WTO API で一括取得">
             🌐 関税率を一括取得
+          </button>
+          <button type="button" id="cp-fetch-stats-all-btn" class="button is-success is-small is-outlined"
+                  onclick="cpFetchTradeStatsAll()"
+                  title="全プロファイルの貿易統計を UN Comtrade API で一括取得">
+            📊 統計を一括取得
           </button>
           <button type="button" class="button is-primary is-small"
                   onclick="cpOpenAdd()">＋ 国を追加</button>
@@ -1396,6 +1401,21 @@
               + _esc(p.local_hs_code) + '</code>'
               + (p.local_hs_description ? '<span style="font-size:.78rem;color:#555;margin-left:6px;">' + _esc(p.local_hs_description) + '</span>' : '')
             : '<span style="font-size:.78rem;color:#aaa;">ローカルHS: 未登録</span>';
+          // 貿易統計
+          var ts = p.trade_stats || {};
+          var tsHtml = '';
+          if (ts.exports || ts.imports) {
+            var expVal = ts.exports && ts.exports.value_usd != null
+              ? '輸出: $' + _fmtNum(ts.exports.value_usd) : '';
+            var impVal = ts.imports && ts.imports.value_usd != null
+              ? '輸入: $' + _fmtNum(ts.imports.value_usd) : '';
+            var tsYear = ts.year ? ts.year + '年' : '';
+            tsHtml = '<div style="margin-top:4px;font-size:.75rem;color:#555;display:flex;gap:10px;flex-wrap:wrap;">'
+              + '<span style="color:#888;">📊 ' + tsYear + '</span>'
+              + (expVal ? '<span>' + expVal + '</span>' : '')
+              + (impVal ? '<span>' + impVal + '</span>' : '')
+              + '</div>';
+          }
           var notes = p.notes
             ? '<div style="margin-top:5px;font-size:.75rem;color:#666;background:#fafafa;border-radius:4px;padding:4px 8px;">' + _esc(p.notes) + '</div>'
             : '';
@@ -1411,6 +1431,7 @@
             +   '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">'
             +     hs + tariff
             +   '</div>'
+            +   tsHtml
             +   notes
             + '</div>'
             + '<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">'
@@ -1420,6 +1441,9 @@
             +   '<button type="button" onclick="cpFetchTariff(' + p.id + ')" '
             +     'style="padding:3px 12px;font-size:.75rem;background:#eff6ff;border:1px solid #93c5fd;'
             +     'color:#1d4ed8;border-radius:4px;cursor:pointer;" title="WTO APIで関税率を自動取得">🌐 関税率</button>'
+            +   '<button type="button" onclick="cpFetchTradeStats(' + p.id + ')" '
+            +     'style="padding:3px 12px;font-size:.75rem;background:#f0fdf4;border:1px solid #86efac;'
+            +     'color:#166534;border-radius:4px;cursor:pointer;" title="UN Comtrade APIで貿易統計を自動取得">📊 統計</button>'
             +   '<button type="button" onclick="cpDelete(' + p.id + ')" '
             +     'style="padding:3px 12px;font-size:.75rem;background:#fff5f5;border:1px solid #fca5a5;'
             +     'color:#dc2626;border-radius:4px;cursor:pointer;">削除</button>'
@@ -1581,6 +1605,66 @@
         alert('通信エラー: ' + e.message);
       }
     };
+
+    // ── 貿易統計自動取得（単体） ───────────────────────────────────────
+    window.cpFetchTradeStats = async function(profileId) {
+      var url = _base + '/products/' + _pid + '/country-profiles/' + profileId + '/fetch-trade-stats';
+      try {
+        var r = await fetch(url, { method: 'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert('取得エラー: ' + (data.detail || r.status)); return; }
+        var msg;
+        if (data.fetch_status === 'updated') {
+          var exp = data.exports ? '輸出: $' + _fmtNum(data.exports.value_usd) : '';
+          var imp = data.imports ? '輸入: $' + _fmtNum(data.imports.value_usd) : '';
+          msg = '✅ 貿易統計を取得しました (' + (data.year||'') + '年) ' + [exp, imp].filter(Boolean).join(' / ');
+          _cpToast(msg, '#166534');
+        } else {
+          _cpToast('⚠️ ' + (data.fetch_message || '統計データなし'), '#92400e');
+        }
+        cpLoad();
+      } catch(e) {
+        alert('通信エラー: ' + e.message);
+      }
+    };
+
+    // ── 貿易統計自動取得（一括） ───────────────────────────────────────
+    window.cpFetchTradeStatsAll = async function() {
+      var btn = document.getElementById('cp-fetch-stats-all-btn');
+      if (!btn) return;
+      btn.textContent = '…取得中';
+      btn.disabled = true;
+      try {
+        var url = _base + '/products/' + _pid + '/country-profiles/fetch-trade-stats/all';
+        var r = await fetch(url, { method: 'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert('一括取得エラー: ' + r.status); return; }
+        var updated = data.filter(function(d){ return d.fetch_status === 'updated'; }).length;
+        var noData  = data.filter(function(d){ return d.fetch_status === 'no_data'; }).length;
+        var noKey   = data.filter(function(d){ return d.fetch_status === 'no_key'; }).length;
+        var noHs    = data.filter(function(d){ return d.fetch_status === 'no_hs'; }).length;
+        var summary = '一括取得完了: 更新 ' + updated + '件';
+        if (noKey)  summary += ' / APIキー未設定 ' + noKey + '件';
+        if (noData) summary += ' / データなし ' + noData + '件';
+        if (noHs)   summary += ' / HS未設定 ' + noHs + '件';
+        _cpToast(summary, noKey ? '#92400e' : '#166534');
+        cpLoad();
+      } catch(e) {
+        alert('通信エラー: ' + e.message);
+      } finally {
+        btn.textContent = '📊 統計を一括取得';
+        btn.disabled = false;
+      }
+    };
+
+    // ── 数値フォーマット ──────────────────────────────────────────────
+    function _fmtNum(n) {
+      if (n == null) return '−';
+      if (n >= 1e9)  return (n / 1e9).toFixed(1) + 'B';
+      if (n >= 1e6)  return (n / 1e6).toFixed(1) + 'M';
+      if (n >= 1e3)  return (n / 1e3).toFixed(1) + 'K';
+      return String(Math.round(n));
+    }
 
     function _esc(s) {
       return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
