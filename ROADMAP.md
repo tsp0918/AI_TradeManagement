@@ -233,13 +233,15 @@ search.py (GET /status):
 | Ph.4 | UN Comtrade API v2 で貿易統計（輸出入額）自動取得 |
 | Ph.5 | EAR Country Chart × ECCN で再輸出規制自動判定 |
 
-### Ph.6: 次期開発（進行中）
+### ✅ Ph.6: 完了済み（2026-03-26）
 
 ```
-概要: ai_validation の取引審査に国別規制プロファイルを連携する
-  - 取引の仕向国に対して ai_classification の ProductCountryProfile を参照
-  - 関税率・再輸出規制判定・貿易統計リスクを HanteiAgent の判定材料に追加
-  - 審査レポート（PDF/HTML）の Section 4 に国別リスクセクションを追加
+ai_validation 取引審査画面 — 仕向地 EAR Country Chart リスクプロファイル表示
+  - GET /api/reexport/country-risk/{code}（ai_classification）
+    platform_core の get_country_info（外為法ステータス・EARグループ）と
+    EAR Country Chart（17列 X/NLR）を統合してリスクサマリーを返す
+  - transaction_detail.html: 仕向地（ISO alpha-2）入力時に自動フェッチ
+    リスクバッジ（green/yellow/orange/red）+ EARグループ + X列一覧をインライン表示
 ```
 
 ---
@@ -276,7 +278,7 @@ search.py (GET /status):
 | 問題 | 影響 | 優先度 |
 |------|------|--------|
 | ECCN付加マッピングが近似（非公式） | HS→ECCN変換の不確実性残存 | 低優先 |
-| ai_validation に国別リスク未連携 | 仕向国リスクが判定に未反映 | **Ph.6** |
+| ECCN付加マッピングが近似（非公式） | HS→ECCN変換の不確実性残存 | 低優先 |
 
 ---
 
@@ -322,5 +324,5 @@ lsof | grep ".db$" | grep -v ".venv"
 
 ---
 
-*更新: 2026-03-26（P3完了・国別規制プロファイル実装）*
+*更新: 2026-03-26（P3完了・国別規制プロファイル Ph.1〜6 実装）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
