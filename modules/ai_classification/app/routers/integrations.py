@@ -264,7 +264,7 @@ def _enrich_candidates(candidates: list[dict]) -> list[dict]:
     enriched = []
     for c in candidates:
         hs = c.get("hs_code", "")
-        eccn = _lookup_eccn(hs)
+        eccn_detail = _lookup_eccn_detail(hs)
         fefta_items = _lookup_fefta(hs)
         fefta_ref = ""
         precision = ""
