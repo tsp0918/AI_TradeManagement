@@ -157,8 +157,13 @@ class ClaudeLLMBridge(BaseLLMBridge):
 
     @staticmethod
     def _summarize_known(context_dict: dict) -> str:
-        known = context_dict.get("known_attributes", {})
+        # known_attributes（汎用）＋ 専用フィールドを統合
+        known: dict = dict(context_dict.get("known_attributes", {}))
+        for key in ("end_use_type", "end_user_type", "destination_country"):
+            val = context_dict.get(key)
+            if val and val not in ("unknown", None):
+                known[key] = val
         if not known:
             return "（なし）"
-        parts = [f"{k}: {v}" for k, v in list(known.items())[:5]]
+        parts = [f"{k}: {v}" for k, v in list(known.items())[:8]]
         return " / ".join(parts)

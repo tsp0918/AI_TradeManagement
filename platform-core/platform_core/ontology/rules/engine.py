@@ -272,7 +272,10 @@ class OntologyReasoningEngine(BaseOntology):
         for t in kb.thresholds:
             if t.attr_key in known:
                 val = known[t.attr_key]
-                ctrl = "規制対象" if t.is_controlled(float(val)) else "閾値未満（非該当）"
+                try:
+                    ctrl = "規制対象" if t.is_controlled(float(val)) else "閾値未満（非該当）"
+                except (TypeError, ValueError):
+                    ctrl = "要確認（値不正）"
                 parts.append(
                     f"{t.label}={val}{t.unit or ''} ({t.operator.value}{t.controlled_value}{t.unit or ''}) → {ctrl}"
                 )
