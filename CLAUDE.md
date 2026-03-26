@@ -24,6 +24,19 @@
 
 **開発が一区切りついたら、必ず以下の順番で実行すること。**
 
+### Step 0: トンネルを再起動して最新状態を外部公開する
+
+開発・確認が完了するたびに、最新コードが外部からアクセスできる状態にすること。
+
+```bash
+./start.sh --restart-tunnel   # アプリは止めずトンネルのみ再起動
+./start.sh --tunnel-status    # 接続確認
+```
+
+- トンネルは **常時稼働** を維持する
+- 再起動後は `https://app.tsp-aitrademanagement.com` で動作確認すること
+- HTTP エラーが出た場合は必ずトンネル状態も確認する（後述）
+
 ### Step 1: MEMORY.md を更新する
 
 `/Users/takehirosato/.claude/projects/-Users-takehirosato-Desktop-AI-TradeManagement/memory/` の各ファイルを最新状態に更新する。
