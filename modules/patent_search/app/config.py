@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # Ollama Configuration
     ollama_host: str = "http://localhost:11434"
-    ollama_model: str = "llama2"
+    ollama_model: str = "qwen2.5:7b"
     ollama_timeout: int = 120
 
     # Search Configuration

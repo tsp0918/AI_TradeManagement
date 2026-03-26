@@ -27,6 +27,16 @@ from ..models import DapChatConfig
 
 _PLATFORM_URL = os.environ.get("MODULE_PLATFORM_URL", "http://localhost:8000")
 
+# モジュール別ポータルProxy URL（ナビゲート先はポータル経由に統一）
+_PORTAL_MODULE_URLS: dict[str, str] = {
+    "ai_validation":    f"{_PLATFORM_URL}/proxy/ai_validation",
+    "ai_classification": f"{_PLATFORM_URL}/proxy/ai_classification",
+    "rnd_assessment":   f"{_PLATFORM_URL}/proxy/rnd_assessment",
+    "patent_search":    f"{_PLATFORM_URL}/proxy/patent_search",
+    "screening":        f"{_PLATFORM_URL}/proxy/screening",
+    "hs_classifier":    f"{_PLATFORM_URL}/proxy/hs_classifier",
+}
+
 # .env フォールバック（start.sh 経由でない単体起動時に ANTHROPIC_API_KEY を補完）
 try:
     from dotenv import load_dotenv as _load_dotenv
@@ -724,26 +734,26 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 【業務フロー全体像】
 このシステムは以下のモジュール連鎖で構成されています:
 
-1. R&D リスク管理（port 8003, http://localhost:8003）
+1. R&D リスク管理（{_PORTAL_MODULE_URLS['rnd_assessment']}）
    研究開発案件のリスク審査・プロジェクト登録
    フロー: 案件作成 → プロファイル入力（用途要件・需要者要件）→ AI審査 → 品目管理へワンクリック登録
    入力必須: 用途要件（工程/装置/性能/最終使用地）、需要者要件（法人名/場所/第三者提供の有無）
 
-2. 品目管理（port 8002, http://localhost:8002）
+2. 品目管理（{_PORTAL_MODULE_URLS['ai_classification']}）
    輸出品目の登録・分類・AI判定依頼
    フロー: 品目登録（品目コード・名称・仕様）→ 用途概要入力 → HSコード判定（8006連携）→ AI該非判定を依頼
    注意: 用途概要が不十分だと AI 判定の精度が落ちる。工程/装置/性能/最終使用地の4要素を含めること
 
-3. AI 該非判定（port 8001, http://localhost:8001）
+3. AI 該非判定（{_PORTAL_MODULE_URLS['ai_validation']}）
    外為法マトリクス照合・案件審査
-   フロー: 案件作成 → スクリーニング実行（8005連携）→ AI判定実行 → 結果確認 → CSV/PDF出力
+   フロー: 案件作成 → スクリーニング実行（screening連携）→ AI判定実行 → 結果確認 → CSV/PDF出力
    結果の読み方: intersection=要注意(黄)、core_only=直接リストヒット(青)、expanded_only=低リスク(灰)
 
-4. スクリーニング（port 8005, http://localhost:8005）
+4. スクリーニング（{_PORTAL_MODULE_URLS['screening']}）
    取引先の制裁リストチェック
    注意: 企業名は英語正式法人名で入力するとマッチ精度が上がる
 
-5. 特許検索（port 8004）: 技術的先行技術・競合特許の調査
+5. 特許検索（{_PORTAL_MODULE_URLS['patent_search']}）: 技術的先行技術・競合特許の調査
 {task_block}
 
 【規制インテリジェンス — 主要規制の要点】
@@ -804,7 +814,8 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 
 【行動指針】
 - ユーザーの発言から「最終的にやりたいこと」を推測し、そのゴールへの最短経路を案内する
-- 現在のページにない機能が必要な場合は、どのモジュール（URLも含む）に移動すべきか具体的に案内する
+- 現在のページにない機能が必要な場合は、必ず actions に {{"type": "navigate_to", "url": "<ポータルURL>"}} を含める。reply にURLを書くだけでは不十分（ユーザーが手動で移動できない）
+- navigate_to の url は必ず http://localhost:8000/proxy/<モジュールキー>/ 形式のポータルURL を使う。http://localhost:80XX などの直接ポートURLは絶対に使わない
 - choices は「今すぐ次にやること」を反映させる。汎用的な質問より、ユーザーのタスクの次ステップを優先する
 - interactive_elements に該当するボタン/リンクがあれば必ず actions に含める
 - 規制に関する質問には上記インテリジェンス情報を活用して参考情報を提供する
@@ -827,9 +838,19 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
   choices: [{{"label": "結果の読み方", "message": "match/possible_matchはどういう意味ですか"}}, {{"label": "AI判定を実行", "message": "スクリーニング後にAI判定を実行するにはどうしますか"}}]
 
 例4: R&D画面、ユーザー「品目管理に登録したい」、プロファイルにAI判定結果あり
-  reply: AI審査が完了していれば「品目管理へ登録」ボタンでワンクリック登録できます。登録後は http://localhost:8002 で品目の詳細を確認できます。
+  reply: AI審査が完了していれば「品目管理へ登録」ボタンでワンクリック登録できます。登録後は品目管理モジュールで品目の詳細を確認できます。
   actions: [{{"type": "highlight", "target": "品目管理へ登録"}}]
   choices: [{{"label": "品目管理に移動", "message": "品目管理（8002）でやること一覧を教えてください"}}, {{"label": "登録後の流れ", "message": "品目管理登録後にAI該非判定を依頼するにはどうしますか"}}]
+
+例5: DAP画面、ユーザー「スクリーニングしたい」、interactive_elements に該当なし
+  reply: スクリーニングはスクリーニングモジュールで実行できます。移動しますか？
+  actions: [{{"type": "navigate_to", "url": "http://localhost:8000/proxy/screening/"}}]
+  choices: [{{"label": "移動する", "message": "スクリーニングモジュールに移動してください"}}, {{"label": "スクリーニングとは", "message": "スクリーニングの手順を教えてください"}}]
+
+例6: DAP画面、ユーザー「AI分類画面に行きたい」
+  reply: AI分類モジュールに移動します。
+  actions: [{{"type": "navigate_to", "url": "http://localhost:8000/proxy/ai_classification/"}}]
+  choices: [{{"label": "AI分類の手順", "message": "AI分類の手順を教えてください"}}, {{"label": "戻り方", "message": "DAPに戻るにはどうしますか"}}]
 
 【NeuroSymbolic 該非判定エージェント（重要機能）】
 - ユーザーが「該非判定エージェント」「NeuroSymbolicエージェント」「対話形式の判定」「AI質問形式で判定」などと言った場合は、
@@ -1049,7 +1070,7 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
                                     "message": f"案件{tx_id}の詳細を確認したい"})
             return ChatResponse(
                 reply=reply[:300],
-                actions=[{"type": "navigate_to", "target": "", "url": f"{ai_val_url}/ui/transactions/{tx_id}"}] if tx_id else [],
+                actions=[{"type": "navigate_to", "target": "", "url": f"{_PORTAL_MODULE_URLS['ai_validation']}/ui/transactions/{tx_id}"}] if tx_id else [],
                 choices=choices[:3],
                 intake_state=intake_state,
             )

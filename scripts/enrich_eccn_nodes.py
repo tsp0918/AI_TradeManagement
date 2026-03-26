@@ -122,6 +122,28 @@ def call_claude(prompt: str, api_key: str) -> str | None:
         return None
 
 
+def call_ollama(prompt: str) -> str | None:
+    """Ollama ローカル LLM (qwen2.5:7b) を使って requirement_text を生成する。"""
+    try:
+        import ollama
+    except ImportError:
+        print("  [ERROR] ollama パッケージが未インストール", file=sys.stderr)
+        return None
+    ollama_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+    model = os.environ.get("OLLAMA_QUESTION_MODEL", "qwen2.5:7b")
+    try:
+        client = ollama.Client(host=ollama_url)
+        resp = client.chat(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": 0.1, "num_predict": 512},
+        )
+        return (resp.message.content or "").strip()
+    except Exception as e:
+        print(f"  [OLLAMA ERROR] {e}", file=sys.stderr)
+        return None
+
+
 def extract_requirement_text(response: str) -> str | None:
     """Claude のレスポンスから requirement_text を抽出する"""
     try:
@@ -141,11 +163,14 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="書き込まずプレビューのみ")
     parser.add_argument("--limit", type=int, default=0, help="最大処理件数（0=無制限）")
     parser.add_argument("--force", action="store_true", help="既存テキストがあっても再生成")
+    parser.add_argument("--use-local", action="store_true",
+                        help="Ollama ローカル LLM (qwen2.5:7b) を使用（API キー不要）")
     args = parser.parse_args()
 
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key and not args.dry_run:
-        print("[ERROR] ANTHROPIC_API_KEY が設定されていません", file=sys.stderr)
+    if not api_key and not args.dry_run and not args.use_local:
+        print("[ERROR] ANTHROPIC_API_KEY が設定されていません（または --use-local を指定してください）",
+              file=sys.stderr)
         sys.exit(1)
 
     data, nodes = load_nodes()
@@ -184,12 +209,12 @@ def main() -> None:
             continue
 
         prompt = build_prompt(node)
-        response = call_claude(prompt, api_key)
+        response = call_ollama(prompt) if args.use_local else call_claude(prompt, api_key)
 
         if response is None:
             print(f"  → [SKIP] API エラー")
             failed += 1
-            time.sleep(2)
+            time.sleep(0 if args.use_local else 2)
             continue
 
         req_text = extract_requirement_text(response)
@@ -204,8 +229,9 @@ def main() -> None:
         print(f"  → OK: {req_text[:60]}...")
         updated += 1
 
-        # レート制限対策（Haiku は高速・低コストだが念のため）
-        time.sleep(0.5)
+        # レート制限対策（ローカル使用時は不要）
+        if not args.use_local:
+            time.sleep(0.5)
 
     if not args.dry_run:
         save_supplement(supplement)

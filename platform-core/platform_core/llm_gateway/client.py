@@ -4,16 +4,20 @@ platform_core.llm_gateway.client
 Anthropic SDK を使った BaseLLMBridge 実装。
 
 モデル使い分け:
-    Claude Haiku  → 質問文生成（軽量・高速・低コスト）
-    Claude Sonnet → 最終判定レポート生成（高品質・詳細）
+    Qwen2.5:7b (Ollama) → 質問文生成（$0・ローカル）  ← OLLAMA_QUESTION_GEN=true 時
+    Claude Haiku         → 質問文生成（フォールバック）
+    Claude Sonnet        → 最終判定レポート生成（高品質・詳細、常に Sonnet）
 """
 from __future__ import annotations
 
+import asyncio
+import logging
 import os
 from typing import Optional
 
 from platform_core.agent.base_agent import BaseLLMBridge, MissingAttr
 
+logger = logging.getLogger(__name__)
 
 # Anthropic SDK はオプショナルインポート（未インストール環境でも起動できるよう）
 try:
@@ -22,9 +26,19 @@ try:
 except ImportError:
     _ANTHROPIC_AVAILABLE = False
 
+# Ollama はオプショナルインポート（未インストール環境でも起動できるよう）
+try:
+    import ollama as _ollama_lib
+    _OLLAMA_AVAILABLE = True
+except ImportError:
+    _OLLAMA_AVAILABLE = False
 
 _MODEL_HAIKU  = "claude-haiku-4-5-20251001"
 _MODEL_SONNET = "claude-sonnet-4-6"
+_OLLAMA_MODEL = os.environ.get("OLLAMA_QUESTION_MODEL", "qwen2.5:7b")
+_OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+# OLLAMA_QUESTION_GEN=true で質問生成を Ollama 7B に切り替える
+_USE_OLLAMA_FOR_QUESTIONS = os.environ.get("OLLAMA_QUESTION_GEN", "").lower() in ("1", "true", "yes")
 
 _QUESTION_SYSTEM_PROMPT = """\
 あなたは外為法・輸出管理の専門家として、輸出取引の担当者に必要な情報を確認しています。
@@ -60,18 +74,17 @@ class ClaudeLLMBridge(BaseLLMBridge):
         if _ANTHROPIC_AVAILABLE and self._api_key:
             self._client = anthropic.AsyncAnthropic(api_key=self._api_key)
 
-    # ── Haiku: 質問文生成 ──────────────────────────────────────────────────
+    # ── 質問文生成: Ollama 7B (優先) / Haiku (フォールバック) ──────────────
 
     async def generate_question(
         self, missing_attr: MissingAttr, context_dict: dict
     ) -> str:
         """
-        MissingAttr（何を確認すべきか）を受け取り、
-        Haiku を使って自然言語の質問文を生成する。
-        """
-        if not self._client:
-            return self._fallback_question(missing_attr)
+        MissingAttr（何を確認すべきか）を受け取り、自然言語の質問文を生成する。
 
+        OLLAMA_QUESTION_GEN=true かつ Ollama が起動中 → Qwen2.5:7b（$0）
+        それ以外 → Claude Haiku（フォールバック）
+        """
         unit_hint = f"（単位: {missing_attr.unit}）" if missing_attr.unit else ""
         example_hint = f"（例: {missing_attr.example}）" if missing_attr.example else ""
         known_summary = self._summarize_known(context_dict)
@@ -84,6 +97,21 @@ class ClaudeLLMBridge(BaseLLMBridge):
 
 上記の情報を担当者に確認する質問を1つ生成してください。"""
 
+        # ── Ollama 7B パス ───────────────────────────────────────────────
+        if _USE_OLLAMA_FOR_QUESTIONS and _OLLAMA_AVAILABLE:
+            try:
+                result = await asyncio.to_thread(
+                    self._ollama_generate_question, user_message
+                )
+                if result:
+                    return result
+            except Exception as e:
+                logger.warning("[llm_gateway] Ollama 質問生成失敗、Haiku にフォールバック: %s", e)
+
+        # ── Haiku フォールバック ─────────────────────────────────────────
+        if not self._client:
+            return self._fallback_question(missing_attr)
+
         try:
             resp = await self._client.messages.create(
                 model=self._model_haiku,
@@ -94,6 +122,20 @@ class ClaudeLLMBridge(BaseLLMBridge):
             return resp.content[0].text.strip()
         except Exception:
             return self._fallback_question(missing_attr)
+
+    @staticmethod
+    def _ollama_generate_question(user_message: str) -> str:
+        """Ollama 同期呼び出し（asyncio.to_thread 経由で非同期文脈から呼ぶ）"""
+        client = _ollama_lib.Client(host=_OLLAMA_BASE_URL)
+        resp = client.chat(
+            model=_OLLAMA_MODEL,
+            messages=[
+                {"role": "system", "content": _QUESTION_SYSTEM_PROMPT},
+                {"role": "user",   "content": user_message},
+            ],
+            options={"temperature": 0.1, "num_predict": 128},
+        )
+        return (resp.message.content or "").strip()
 
     # ── Sonnet: 最終レポート生成 ────────────────────────────────────────────
 

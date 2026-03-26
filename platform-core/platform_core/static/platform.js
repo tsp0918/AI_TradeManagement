@@ -180,6 +180,13 @@
     }
   }
 
+  // ── DAP ウィジェットに公開するポータルナビゲーション API ──────────
+  // chat-widget.js から window.__dap_portal_navigate__(key, path) で呼べる
+  window.__dap_portal_navigate__ = function (moduleKey, subPath) {
+    var iframeUrl = "/proxy/" + moduleKey + (subPath || "/");
+    selectModule(moduleKey, iframeUrl);
+  };
+
   // ── 初期化 ────────────────────────────────────────────────────
 
   document.addEventListener("DOMContentLoaded", function () {
