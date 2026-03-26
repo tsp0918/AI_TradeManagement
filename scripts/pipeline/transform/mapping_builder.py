@@ -47,6 +47,7 @@ def build_ipc_eccn_mapping(
     output_path: Path | None = None,
     dry_run: bool = False,
     batch_size: int = 10,
+    use_local: bool = False,
 ) -> dict[str, list[str]]:
     """
     IPC分類コード → ECCN番号 のマッピング辞書を生成する。
@@ -55,7 +56,8 @@ def build_ipc_eccn_mapping(
       1. Seed マッピングを初期値として使用
       2. control_nodes.json の patent ノードの ipc_codes と eccn_explicit から
          データドリブンでマッピングを追加・拡充
-      3. anthropic_api_key が指定された場合、未カバーの IPC に Claude で補完
+      3. use_local=True: Ollama ローカル LLM で補完（API キー不要）
+         anthropic_api_key 指定時: Claude Haiku で補完
     """
     mapping: dict[str, list[str]] = {k: list(v) for k, v in IPC_ECCN_SEED.items()}
 
@@ -65,8 +67,10 @@ def build_ipc_eccn_mapping(
 
     logger.info("IPC↔ECCN mapping built: %d IPC classes covered", len(mapping))
 
-    # Claude API 補完（オプション）
-    if anthropic_api_key and not dry_run:
+    # LLM 補完（オプション）
+    if use_local and not dry_run:
+        mapping = _enrich_with_ollama(mapping, cn_data, batch_size)
+    elif anthropic_api_key and not dry_run:
         mapping = _enrich_with_claude(mapping, cn_data, anthropic_api_key, batch_size)
 
     if output_path and not dry_run:
@@ -139,6 +143,62 @@ def _enrich_with_claude(
         time.sleep(0.5)
 
     return mapping
+
+
+def _enrich_with_ollama(
+    mapping: dict[str, list[str]],
+    cn_data: dict,
+    batch_size: int,
+) -> dict[str, list[str]]:
+    """未カバーの IPC クラスについて Ollama ローカル LLM で ECCN 推定を補完する。"""
+    try:
+        import ollama
+    except ImportError:
+        logger.warning("ollama パッケージが未インストール。ローカル補完をスキップ。")
+        return mapping
+
+    ollama_url = _get_ollama_url()
+    model = _get_ollama_model()
+    eccn_nodes = [n for n in cn_data.get("nodes", []) if n.get("type") == "regulation"
+                  and n.get("regime") == "ear"]
+
+    client = ollama.Client(host=ollama_url)
+    uncovered_ipcs = [ipc for ipc in _COMMON_IPC_CLASSES if ipc not in mapping]
+
+    for i in range(0, len(uncovered_ipcs), batch_size):
+        batch = uncovered_ipcs[i: i + batch_size]
+        prompt = _build_ipc_eccn_prompt(batch, eccn_nodes)
+        try:
+            resp = client.chat(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0.1, "num_predict": 512},
+            )
+            result = json.loads(resp.message.content or "{}")
+            for ipc, eccns in result.items():
+                if not isinstance(eccns, list):
+                    continue
+                if ipc not in mapping:
+                    mapping[ipc] = eccns
+                else:
+                    for eccn in eccns:
+                        if eccn not in mapping[ipc]:
+                            mapping[ipc].append(eccn)
+            logger.info("Ollama enriched %d IPC classes", len(batch))
+        except Exception as exc:
+            logger.warning("Ollama API error: %s", exc)
+
+    return mapping
+
+
+def _get_ollama_url() -> str:
+    import os
+    return os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+
+
+def _get_ollama_model() -> str:
+    import os
+    return os.environ.get("OLLAMA_QUESTION_MODEL", "qwen2.5:7b")
 
 
 def _build_ipc_eccn_prompt(ipcs: list[str], eccn_nodes: list[dict]) -> str:
