@@ -31,7 +31,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # macOS / tokenizer セグフォルト対策
@@ -194,7 +194,6 @@ def build(dry_run: bool = False, batch_size: int = _DEFAULT_BATCH) -> None:
             normalize_embeddings=True,
             show_progress_bar=False,
             batch_size=batch_size,
-            num_workers=0,
         )
         all_emb.append(np.asarray(emb, dtype="float32"))
         done = min(start + batch_size, total)
@@ -222,7 +221,7 @@ def build(dry_run: bool = False, batch_size: int = _DEFAULT_BATCH) -> None:
         "total":            index.ntotal,
         "dim":              dim,
         "model":            _MODEL_NAME,
-        "built_at":         datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "built_at":         datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "source_breakdown": type_counts,
         "records":          records,
     }
