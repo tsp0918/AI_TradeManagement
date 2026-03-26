@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -5,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.deps import get_db
-from app.db.models.transaction import Transaction, TransactionItem, UsageRequirement
+from app.db.models.transaction import Transaction, TransactionItem, UsageRequirement, TransactionStatus
 from app.services.two_list import compute_two_lists
 from app.services.pipeline.orchestrator import run_until_matrix_match
 
@@ -247,3 +248,107 @@ def run_and_two_lists(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── エージェント判定結果の保存 ───────────────────────────────────────────
+
+class AgentJudgmentSaveRequest(BaseModel):
+    overall_status: str          # controlled / not_controlled / requires_review / pending
+    session_id: Optional[str] = None
+
+
+@router.post("/{transaction_id}/save-agent-judgment")
+def save_agent_judgment(
+    transaction_id: int,
+    body: AgentJudgmentSaveRequest,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    HanteiAgent の最終判定結果を Transaction に保存する。
+    判定完了後に status を in_review へ遷移させる。
+    """
+    tx = db.get(Transaction, transaction_id)
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    tx.agent_judgment_status = body.overall_status
+    tx.agent_judged_at = datetime.utcnow()
+
+    # draft の場合のみ in_review へ遷移（already in_review/approved はそのまま）
+    if tx.status == TransactionStatus.draft.value:
+        tx.status = TransactionStatus.in_review.value
+
+    db.commit()
+    return {
+        "ok": True,
+        "transaction_id": transaction_id,
+        "agent_judgment_status": tx.agent_judgment_status,
+        "status": tx.status,
+    }
+
+
+@router.post("/{transaction_id}/submit-formal-review")
+def submit_formal_review(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    正式審査へ提出する。status を approved へ遷移させ、提出日時を記録する。
+    """
+    tx = db.get(Transaction, transaction_id)
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    if tx.status == TransactionStatus.approved.value:
+        return {"ok": True, "transaction_id": transaction_id, "status": tx.status, "already_approved": True}
+
+    tx.status = TransactionStatus.approved.value
+    tx.formal_submitted_at = datetime.utcnow()
+    db.commit()
+    return {
+        "ok": True,
+        "transaction_id": transaction_id,
+        "status": tx.status,
+        "formal_submitted_at": tx.formal_submitted_at.isoformat(),
+    }
+
+
+@router.get("/{transaction_id}/review-checklist")
+def get_review_checklist(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    審査チェックリストの現在状態を返す。
+    """
+    from app.db.models.ai_run import AiRun, RunType
+    from app.db.models.catchall_assessment import CatchallAssessment
+
+    tx = db.get(Transaction, transaction_id)
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    has_screening = bool(tx.screening_status)
+    has_ai_run = db.query(AiRun).filter(
+        AiRun.transaction_id == transaction_id,
+        AiRun.run_type == RunType.matrix_match.value,
+    ).first() is not None
+    has_agent_judgment = bool(tx.agent_judged_at)
+    has_catchall = db.query(CatchallAssessment).filter(
+        CatchallAssessment.transaction_id == transaction_id
+    ).first() is not None
+    is_submitted = tx.status == TransactionStatus.approved.value
+
+    return {
+        "transaction_id": transaction_id,
+        "status": tx.status,
+        "checklist": {
+            "screening":        {"done": has_screening,      "label": "スクリーニング実施"},
+            "ai_run":           {"done": has_ai_run,         "label": "AI判定（FAISS照合）実行"},
+            "agent_judgment":   {"done": has_agent_judgment, "label": "エージェント対話・判定完了"},
+            "catchall":         {"done": has_catchall,       "label": "キャッチオール自己判定"},
+            "formal_submitted": {"done": is_submitted,       "label": "正式審査へ提出"},
+        },
+        "agent_judgment_status": tx.agent_judgment_status,
+        "formal_submitted_at": tx.formal_submitted_at.isoformat() if tx.formal_submitted_at else None,
+    }
