@@ -1,10 +1,10 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-03-21 更新（HSコードAI判定強化・ECCN付加・再ランキング全面実装）
+# 2026-03-26 更新（P3完了・国別規制プロファイル・NACCS 9桁HS実装）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
-> 2026-03-21 追加: HSコードAI判定精度改善（ECCN付加マッピング・見出し番号クラスタリング再ランキング・
-> モーダルUI刷新・反映ボタン）、asyncio制裁スケジューラー、規制動向ウィジェット、
-> みなし輸出×R&Dケース統合、HS同期エンドポイント、J-PlatPatフォールバックを反映。
+> 2026-03-26 追加: P3全完了（Layer A 2,922vec再ビルド・CISTEC照合・出願人照合・制裁cron・Layer C改善）、
+> ai_classification 国別規制プロファイル（Ph.1〜5: WTO関税・Comtrade統計・EAR再輸出判定）、
+> 税関NACCSコードリストから JP 9桁統計品目番号 11,368件自動取得。
 
 ---
 
@@ -35,7 +35,7 @@
 | HanteiAgent | agent/hantei_agent.py | ✅ 完成 |
 | AgentTools（FAISS呼出・キャッチオール詳細） | agent/tools.py | ✅ 完成 |
 | キャッチオールエンジン | ontology/rules/catchall_engine.py | ✅ 完成 |
-| FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ 2,040vec |
+| FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ 2,922vec（P3-1完了）|
 | FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ 1,595vec |
 | FAISS Layer C（HSコード） | services/faiss_e5_service.py | ✅ 5,476vec |
 | asyncio 規制動向スケジューラー | main.py (_regulatory_scheduler) | ✅ 24h周期 |
@@ -212,60 +212,34 @@ search.py (GET /status):
 
 ---
 
-### P3: 次期開発バックログ
+### ✅ P3: 完了済み（2026-03-26）
 
-#### P3-1: Layer A 全体再ビルド（Colab）
+| タスク | 内容 | 状態 |
+|--------|------|------|
+| P3-1 | Layer A 再ビルド | ✅ 2,040vec → 2,922vec（law:990, entity_list:835, eccn:637, parameter:406, tsutatsu:54）|
+| P3-2 | CISTEC対照表照合・HS→ECCNマッピング精度向上 | ✅ 90エントリ拡充・chapterフォールバック追加 |
+| P3-3 | 特許出願人制裁リスト一括照合 | ✅ patent_search × screening 連携 |
+| P3-4 | 月次制裁リスト自動同期 | ✅ OFAC SDN / BIS Entity List 月次スケジューラー |
+| P3-5 | Layer C embed_text から FEFTA 日本語ラベル除外 | ✅ 完了 |
 
-```
-背景:
-  - e-Gov API で取得した 外為法省令（191 regulation ノード）を
-    layer_a_meta.json に追加済みだが FAISS 本体は 2040vec のまま
-  - macOS CPU では e5-large の OOM でビルド不可
-  - Colab（GPU）環境で再ビルドが必要
+### ✅ 国別規制プロファイル（ai_classification、2026-03-26）
 
-作業:
-  - layer_a_meta.json の faiss_id pending タグ付きエントリを embed
-  - Layer A: 2040 → 2231 vec 見込み（+191件）
-  - scripts/colab/06_rebuild_layer_a.ipynb 実行
-```
+| タスク | 内容 |
+|--------|------|
+| Ph.1 | ProductCountryProfile モデル・CRUD API・UI |
+| Ph.2 | JP 9桁 HS コード自動補完 |
+| Ph.2b | 税関 NACCS コードリストから 11,368件取得（`fetch_jp_naccs.py`）|
+| Ph.3 | WTO API（`HS_A_0010`）で MFN 関税率自動取得 |
+| Ph.4 | UN Comtrade API v2 で貿易統計（輸出入額）自動取得 |
+| Ph.5 | EAR Country Chart × ECCN で再輸出規制自動判定 |
 
-#### P3-2: CISTEC公式対照表との照合（P1-3b）
-
-```
-背景:
-  - hs_fefta_mapping_v2.json はキーワードマッチベースで生成
-  - CISTEC「輸出令別表第一関係 HS 番号一覧表」公式版と照合が必要
-
-作業:
-  - CISTEC PDF 取得・パース
-  - v2 マッピングの誤マッピング修正・カバレッジ向上
-```
-
-#### P3-3: 特許出願人の制裁リスト照合
+### Ph.6: 次期開発（進行中）
 
 ```
-概要: patent_search で取得した特許の出願人 → screening に自動照合
-実装:
-  - 特許メタデータの inventor/assignee → screening API 呼出
-  - 「制裁リスト関連出願人の特許」フラグ → ai_validation pipeline に連携
-```
-
-#### P3-4: 月次制裁リスト cron 設定
-
-```
-概要: OFAC SDN XML / BIS Entity List の月次自動同期
-現状: UI ボタン（POST /api/admin/sync-sanctions）で手動実行可能
-実装: macOS launchd または Linux cron での定期実行
-```
-
-#### P3-5: HS判定精度さらなる向上
-
-```
-方針案:
-  a) Layer C embed_text から FEFTA日本語ラベルを除外して再ビルド
-     → FAISSノイズの根本解決（ただし Layer C 全再構築が必要）
-  b) HS heading辞書との クロスチェック（Section/Chapter フィルタ）
-  c) 英語クエリ変換（品目名・説明を EN に翻訳してから検索）
+概要: ai_validation の取引審査に国別規制プロファイルを連携する
+  - 取引の仕向国に対して ai_classification の ProductCountryProfile を参照
+  - 関税率・再輸出規制判定・貿易統計リスクを HanteiAgent の判定材料に追加
+  - 審査レポート（PDF/HTML）の Section 4 に国別リスクセクションを追加
 ```
 
 ---
@@ -274,10 +248,10 @@ search.py (GET /status):
 
 | データ | 優先度 | 現状 | 次のアクション |
 |--------|--------|------|-------------|
-| 外為法（FEFTA）省令 | ★★★★★ | ✅ 191/191 ノード充填済 | Colab で Layer A 全体再ビルド（P3-1） |
+| 外為法（FEFTA）省令 | ★★★★★ | ✅ 191/191 ノード充填済・Layer A 2,922vec 再ビルド完了 | — |
 | ECCN/EAR Part774 | ★★★★☆ | ✅ 84/84 requirement_text 充填済 | 追加パラメータ精査（低優先） |
-| 制裁リスト | ★★★★★ | ✅ OFAC/BIS 公式ソース対応済 | 月次 cron の設定（P3-4） |
-| HS コード対照表 | ★★★★☆ | ✅ v2: 1,577件（6桁）・ECCN付加マッピング追加 | CISTEC 公式照合（P3-2） |
+| 制裁リスト | ★★★★★ | ✅ OFAC/BIS 公式ソース・月次自動同期（P3-4完了） | — |
+| HS コード対照表 | ★★★★☆ | ✅ v2: 1,577件・ECCN付加90エントリ・NACCS 9桁 11,368件 | — |
 | 特許（J-PlatPat） | ★★★★☆ | ✅ 64/67件 IPC→ECCN/FEFTA 996エッジ・フォールバック対応 | 実特許データ大量取得（長期） |
 | 中国輸出管理法リスト | ★★☆☆☆ | 未取得 | 長期: 将来的な規制拡張に備えて調査 |
 
@@ -301,11 +275,8 @@ search.py (GET /status):
 
 | 問題 | 影響 | 優先度 |
 |------|------|--------|
-| Layer A 再ビルド未実施 | 外為法省令 191件が FAISS 未反映 | **P3-1** |
-| HS↔外為法対照が近似（非公式） | HS分類の不確実性 | **P3-2** |
-| Layer C embed_text に日本語FEFTA ラベル混入 | 再ランキングで緩和済みだが根本解決は再ビルド要 | **P3-5** |
-| 制裁リスト自動同期が手動 | 月次更新漏れリスク | **P3-4** |
-| 特許→制裁リスト照合未実装 | コンプライアンスギャップ | **P3-3** |
+| ECCN付加マッピングが近似（非公式） | HS→ECCN変換の不確実性残存 | 低優先 |
+| ai_validation に国別リスク未連携 | 仕向国リスクが判定に未反映 | **Ph.6** |
 
 ---
 
@@ -351,5 +322,5 @@ lsof | grep ".db$" | grep -v ".venv"
 
 ---
 
-*更新: 2026-03-26*
+*更新: 2026-03-26（P3完了・国別規制プロファイル実装）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
