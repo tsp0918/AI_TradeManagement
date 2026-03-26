@@ -3,9 +3,12 @@
 {% block title %}取引一覧 - AI Validation{% endblock %}
 
 {% block content %}
-<div class="page-head">
-  <h1>取引一覧</h1>
-  <div class="muted">DB内の transactions を表示します</div>
+<div class="page-head" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+  <div>
+    <h1>取引一覧</h1>
+    <div class="muted">DB内の transactions を表示します</div>
+  </div>
+  <a class="btn btn-primary" href="/ui/transactions/new">＋ 新規取引</a>
 </div>
 
 <div class="card">
@@ -15,6 +18,9 @@
         <tr>
           <th>ID</th>
           <th>case_no</th>
+          <th>ステータス</th>
+          <th>スクリーニング</th>
+          <th>AI判定</th>
           <th>メモ</th>
           <th></th>
         </tr>
@@ -29,6 +35,39 @@
                 <span class="chip chip-ext" style="margin-left:6px;">外部</span>
               {% endif %}
             </td>
+            <td>
+              {% if tx.status == "approved" %}
+                <span class="status-chip status-approved">✅ 審査完了</span>
+              {% elif tx.status == "in_review" %}
+                <span class="status-chip status-in-review">📋 審査中</span>
+              {% elif tx.status == "rejected" %}
+                <span class="status-chip status-rejected">❌ 却下</span>
+              {% else %}
+                <span class="status-chip status-draft">⬜ 作業中</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if tx.screening_status == "clear" %}
+                <span class="chip-screen screen-clear">✓ Clear</span>
+              {% elif tx.screening_status == "possible_match" %}
+                <span class="chip-screen screen-warn">⚠ 要確認</span>
+              {% elif tx.screening_status == "match" %}
+                <span class="chip-screen screen-match">🔴 Match</span>
+              {% else %}
+                <span class="muted small">未実施</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if tx.agent_judgment_status == "not_controlled" %}
+                <span class="chip-agent agent-clear">非規制</span>
+              {% elif tx.agent_judgment_status == "controlled" %}
+                <span class="chip-agent agent-controlled">規制対象</span>
+              {% elif tx.agent_judgment_status == "requires_review" %}
+                <span class="chip-agent agent-review">要確認</span>
+              {% else %}
+                <span class="muted small">未判定</span>
+              {% endif %}
+            </td>
             <td class="muted">{{ (tx.note or "-") }}</td>
             <td style="text-align:right">
               <a class="btn" href="/ui/transactions/{{ tx.id }}">詳細・2リスト</a>
@@ -38,11 +77,30 @@
       </tbody>
     </table>
   {% else %}
-    <div class="muted">transactions が空です。seed_data.py を確認してください。</div>
+    <div class="muted">transactions が空です。「＋ 新規取引」から登録してください。</div>
   {% endif %}
 </div>
 
 <style>
-.chip-ext { background: #ede9fe; color: #5b21b6; font-size: 0.72rem; }
+.chip-ext       { background: #ede9fe; color: #5b21b6; font-size: 0.72rem; }
+
+/* ステータスチップ */
+.status-chip        { display:inline-block; padding:2px 10px; border-radius:999px; font-size:.78rem; font-weight:700; }
+.status-approved    { background:#dcfce7; color:#166534; }
+.status-in-review   { background:#dbeafe; color:#1e40af; }
+.status-rejected    { background:#fee2e2; color:#be123c; }
+.status-draft       { background:#f3f4f6; color:#6b7280; }
+
+/* スクリーニングチップ */
+.chip-screen       { display:inline-block; padding:2px 8px; border-radius:4px; font-size:.75rem; font-weight:600; }
+.screen-clear      { background:#dcfce7; color:#166534; }
+.screen-warn       { background:#fffbeb; color:#854d0e; }
+.screen-match      { background:#fee2e2; color:#be123c; }
+
+/* エージェント判定チップ */
+.chip-agent        { display:inline-block; padding:2px 8px; border-radius:4px; font-size:.75rem; font-weight:600; }
+.agent-clear       { background:#dcfce7; color:#166534; }
+.agent-controlled  { background:#fee2e2; color:#be123c; }
+.agent-review      { background:#fffbeb; color:#854d0e; }
 </style>
 {% endblock %}

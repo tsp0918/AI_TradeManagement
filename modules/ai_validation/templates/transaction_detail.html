@@ -80,6 +80,62 @@
   <div class="muted small">ID: {{ tx.id }}{% if tx.case_no %} / case_no: {{ tx.case_no }}{% endif %} / {{ tx.status or "-" }}</div>
 </div>
 
+<!-- ===== Section 1.2: 審査完了チェックリスト ===== -->
+{% set has_screening    = tx.screening_status is not none and tx.screening_status != "" %}
+{% set has_ai_run       = latest_matrix_match is not none %}
+{% set has_agent        = tx.agent_judged_at is not none %}
+{% set has_catchall     = latest_catchall is not none %}
+{% set is_approved      = tx.status == "approved" %}
+{% set all_done         = has_screening and has_ai_run and has_agent %}
+
+<div id="review-checklist-card" class="card" style="margin-bottom:16px; padding:14px 18px;
+  border-left: 4px solid {% if is_approved %}#22863a{% elif all_done %}#1a73e8{% else %}#e0a800{% endif %};">
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+    <div>
+      <div style="font-size:13px; font-weight:700; color:var(--fg,#222); margin-bottom:10px;">
+        {% if is_approved %}✅ 審査完了{% elif all_done %}📋 審査チェックリスト — 提出準備完了{% else %}📋 審査チェックリスト{% endif %}
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        {% macro step(done, label, note="") %}
+        <div style="display:flex; align-items:center; gap:5px; font-size:.83rem;
+          color:{% if done %}#166534{% else %}#6b7280{% endif %};">
+          <span style="font-size:1rem;">{% if done %}✅{% else %}⬜{% endif %}</span>
+          <span>{{ label }}</span>
+          {% if note %}<span style="font-size:.75rem; color:#9ca3af;">({{ note }})</span>{% endif %}
+        </div>
+        {% endmacro %}
+        {{ step(has_screening, "スクリーニング", tx.screening_status if has_screening else "") }}
+        <span style="color:#d1d5db;">│</span>
+        {{ step(has_ai_run, "AI判定実行") }}
+        <span style="color:#d1d5db;">│</span>
+        {{ step(has_agent, "エージェント判定",
+          {"controlled":"規制対象","not_controlled":"非規制","requires_review":"要確認"}.get(tx.agent_judgment_status or "", "")) }}
+        <span style="color:#d1d5db;">│</span>
+        {{ step(has_catchall, "キャッチオール判定") }}
+        <span style="color:#d1d5db;">│</span>
+        {{ step(is_approved, "正式審査提出",
+          tx.formal_submitted_at.strftime('%m/%d %H:%M') if tx.formal_submitted_at else "") }}
+      </div>
+    </div>
+    {% if not is_approved %}
+    <button id="submit-formal-btn"
+      onclick="submitFormalReview()"
+      {% if not all_done %}disabled title="エージェント判定が完了するまで提出できません"{% endif %}
+      style="
+        padding:8px 18px; border-radius:8px; font-size:.88rem; font-weight:700; cursor:pointer; border:none;
+        background:{% if all_done %}#1a73e8{% else %}#e5e7eb{% endif %};
+        color:{% if all_done %}#fff{% else %}#9ca3af{% endif %};
+        {% if not all_done %}cursor:not-allowed;{% endif %}">
+      📨 正式審査へ提出
+    </button>
+    {% else %}
+    <div style="font-size:.88rem; color:#166534; font-weight:700;">
+      🏁 提出済み: {{ tx.formal_submitted_at.strftime('%Y-%m-%d %H:%M') if tx.formal_submitted_at else "-" }}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
 <!-- ===== Section 1.5: 審査連鎖（証跡管理） ===== -->
 {% if chain and chain|length > 1 %}
 <div class="card" style="margin-bottom:16px; padding:14px 18px;">
@@ -493,9 +549,64 @@
       resultEl.style.display = "block";
       resultEl.innerHTML = renderJudgmentResult(result);
 
+      // 判定結果を ai_validation に保存してチェックリストを更新
+      try {
+        await fetch(`/decision/${txId}/save-agent-judgment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ overall_status: result.overall_status, session_id: _sessionId }),
+        });
+        refreshChecklist();
+      } catch (_) { /* 保存失敗は無視してUIは継続表示 */ }
+
     } catch (e) {
       btn.disabled = false;
       log("判定エラー: " + e.message, "system");
+    }
+  };
+
+  // ── チェックリスト更新 ────────────────────────────────────────────────
+  async function refreshChecklist() {
+    try {
+      const r = await fetch(`/decision/${txId}/review-checklist`);
+      if (!r.ok) return;
+      const data = await r.json();
+      const cl = data.checklist;
+      const keys = ["screening", "ai_run", "agent_judgment", "catchall", "formal_submitted"];
+      const icons = { screening: "⬜", ai_run: "⬜", agent_judgment: "⬜", catchall: "⬜", formal_submitted: "⬜" };
+      // チェックリストの各ステップアイコンを更新
+      keys.forEach(k => {
+        document.querySelectorAll(`[data-cl="${k}"]`).forEach(el => {
+          el.textContent = cl[k]?.done ? "✅" : "⬜";
+          el.style.color = cl[k]?.done ? "#166534" : "#6b7280";
+        });
+      });
+      // 正式審査ボタンの有効化
+      const submitBtn = document.getElementById("submit-formal-btn");
+      if (submitBtn && data.checklist.agent_judgment?.done) {
+        submitBtn.disabled = false;
+        submitBtn.style.background = "#1a73e8";
+        submitBtn.style.color = "#fff";
+        submitBtn.style.cursor = "pointer";
+        submitBtn.title = "";
+      }
+    } catch (_) {}
+  }
+
+  // ── 正式審査提出 ──────────────────────────────────────────────────────
+  window.submitFormalReview = async function() {
+    if (!confirm("正式審査へ提出します。よろしいですか？\n（ステータスが「審査完了（approved）」になります）")) return;
+    const btn = document.getElementById("submit-formal-btn");
+    btn.disabled = true;
+    btn.textContent = "提出中…";
+    try {
+      const r = await fetch(`/decision/${txId}/submit-formal-review`, { method: "POST" });
+      if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+      location.reload();
+    } catch (e) {
+      alert("提出に失敗しました: " + e.message);
+      btn.disabled = false;
+      btn.textContent = "📨 正式審査へ提出";
     }
   };
 

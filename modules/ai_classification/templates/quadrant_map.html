@@ -17,28 +17,35 @@
   </div>
 </div>
 
-<!-- 凡例 -->
-<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
-  <span style="padding:4px 12px; border-radius:20px; font-size:.78rem; font-weight:700;
-               background:#fee2e2; border:1px solid #fca5a5; color:#991b1b;">
-    🔴 要塞技術（高主権・高規制）
-  </span>
-  <span style="padding:4px 12px; border-radius:20px; font-size:.78rem; font-weight:700;
-               background:#dbeafe; border:1px solid #93c5fd; color:#1e40af;">
-    🔵 戦略資産（高主権・低規制）
-  </span>
-  <span style="padding:4px 12px; border-radius:20px; font-size:.78rem; font-weight:700;
-               background:#fef9c3; border:1px solid #fde047; color:#854d0e;">
-    🟡 コンプライアンス負荷（低主権・高規制）
-  </span>
-  <span style="padding:4px 12px; border-radius:20px; font-size:.78rem; font-weight:700;
-               background:#f3f4f6; border:1px solid #d1d5db; color:#6b7280;">
-    ⚪ 標準品目（低主権・低規制）
-  </span>
-  <span style="padding:4px 12px; border-radius:20px; font-size:.78rem;
-               background:#fff; border:1px dashed #9ca3af; color:#6b7280;">
-    △ = AI推定値（未設定）
-  </span>
+<!-- 象限説明カード（チャートと同じ配置：左上=戦略資産、右上=要塞技術、左下=標準品目、右下=コンプライアンス負荷） -->
+<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px;">
+  <!-- 左上: 戦略資産（低規制・高主権） -->
+  <div style="padding:12px 14px; border-radius:10px; background:#dbeafe; border:1.5px solid #93c5fd;">
+    <div style="font-size:.82rem; font-weight:800; color:#1e40af; margin-bottom:4px;">🔵 戦略資産（高主権・低規制）</div>
+    <div style="font-size:.75rem; color:#1e3a8a; line-height:1.5;">競争優位の核心だが規制は低い。<br>
+    <b>→ 判断:</b> 技術流出・模倣リスク管理を優先。NDA/秘密保持体制を強化。輸出手続きは通常で可。</div>
+  </div>
+  <!-- 右上: 要塞技術（高規制・高主権） -->
+  <div style="padding:12px 14px; border-radius:10px; background:#fee2e2; border:1.5px solid #fca5a5;">
+    <div style="font-size:.82rem; font-weight:800; color:#991b1b; margin-bottom:4px;">🔴 要塞技術（高主権・高規制）</div>
+    <div style="font-size:.75rem; color:#7f1d1d; line-height:1.5;">自社の競争優位の核心かつ厳格な輸出規制対象。<br>
+    <b>→ 判断:</b> 輸出許可申請を必須検討。社内保全措置と技術漏洩リスク対策を最優先。</div>
+  </div>
+  <!-- 左下: 標準品目（低規制・低主権） -->
+  <div style="padding:12px 14px; border-radius:10px; background:#f3f4f6; border:1.5px solid #d1d5db;">
+    <div style="font-size:.82rem; font-weight:800; color:#374151; margin-bottom:4px;">⚪ 標準品目（低主権・低規制）</div>
+    <div style="font-size:.75rem; color:#6b7280; line-height:1.5;">汎用品・一般市販品相当。<br>
+    <b>→ 判断:</b> 定常的な輸出管理で十分。EAR99 / 非該当 の確認のみ実施。</div>
+  </div>
+  <!-- 右下: コンプライアンス負荷（高規制・低主権） -->
+  <div style="padding:12px 14px; border-radius:10px; background:#fef9c3; border:1.5px solid #fde047;">
+    <div style="font-size:.82rem; font-weight:800; color:#854d0e; margin-bottom:4px;">🟡 コンプライアンス負荷（低主権・高規制）</div>
+    <div style="font-size:.75rem; color:#78350f; line-height:1.5;">戦略的重要度は低いが許認可コストが高い。<br>
+    <b>→ 判断:</b> 輸出審査フローを効率化・標準化。許可不要な代替品や仕向け先変更を検討。</div>
+  </div>
+</div>
+<div style="margin-bottom:12px; font-size:.75rem; color:#9ca3af;">
+  △ = 技術主権スコア未設定（AI推定値で仮配置）。ドットをクリックしてスコアを設定してください。
 </div>
 
 <!-- メインレイアウト -->
@@ -68,6 +75,10 @@
 
   var allProducts = [];
   var chartInstance = null;
+
+  // ポータルプロキシ経由のとき /proxy/ai_classification を prefix として付与
+  var _proxyMatch = window.location.pathname.match(/^(\/proxy\/[^/]+)/);
+  var _moduleBase = _proxyMatch ? _proxyMatch[1] : '';
 
   // ── 象限カラー ──────────────────────────────────────────────────
   function quadrantColor(x, y, alpha) {
@@ -265,6 +276,15 @@
       '標準品目': '#6b7280',
     }[ql] || '#374151';
 
+    // 象限ごとの業務ガイダンス
+    var quadrantGuide = {
+      '要塞技術':          { icon:'🔴', action:'輸出許可申請を必須検討。社内保全措置を最優先で実施。', next:'AI該非判定→許可申請フローへ' },
+      '戦略資産':          { icon:'🔵', action:'技術流出・模倣リスク管理を優先。NDA/秘密保持体制を強化。', next:'知的財産保護策を確認' },
+      'コンプライアンス負荷': { icon:'🟡', action:'許可不要品への代替や仕向け先変更を検討。審査を効率化。', next:'AI該非判定で規制内容を確認' },
+      '標準品目':          { icon:'⚪', action:'定常的な輸出管理フローで対応。EAR99/非該当の確認のみ。', next:'年次レビューで位置を再確認' },
+    };
+    var guide = quadrantGuide[ql] || { icon:'📌', action:'技術主権スコアを設定して象限を確定してください。', next:'スコア設定' };
+
     document.getElementById('sidePanelContent').innerHTML = [
       '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">',
         '<div>',
@@ -273,6 +293,13 @@
         '</div>',
         '<span style="padding:3px 9px; border-radius:12px; font-size:.72rem; font-weight:700;',
               ' background:', qlColor + '22; color:', qlColor, '; border:1px solid ', qlColor + '44; flex-shrink:0;">', ql, '</span>',
+      '</div>',
+
+      // 象限ガイダンス
+      '<div style="background:', qlColor + '11; border:1px solid ', qlColor + '33; border-radius:8px; padding:10px 12px; margin-bottom:14px;">',
+        '<div style="font-size:.78rem; font-weight:700; color:', qlColor, '; margin-bottom:4px;">', guide.icon, ' この象限の意味と判断</div>',
+        '<div style="font-size:.76rem; color:#374151; line-height:1.55; margin-bottom:6px;">', guide.action, '</div>',
+        '<div style="font-size:.74rem; color:#6b7280;"><b>次のアクション:</b> ', guide.next, '</div>',
       '</div>',
 
       '<div style="margin-bottom:14px;">',
@@ -298,7 +325,7 @@
         '</div>',
         '<div style="display:flex; gap:8px;">',
           '<button type="button" onclick="saveSov(', p.id, ')" class="btn btn-primary btn-sm" style="font-size:.8rem;">保存</button>',
-          '<a href="', escHtml(p.edit_url), '" class="btn btn-sm" style="font-size:.8rem;" target="_blank">詳細編集 →</a>',
+          '<a href="', escHtml(_moduleBase + p.edit_url), '" class="btn btn-sm" style="font-size:.8rem;" target="_blank">詳細編集 →</a>',
           '<button type="button" onclick="closeSidePanel()" class="btn btn-sm" style="font-size:.8rem; margin-left:auto;">✕</button>',
         '</div>',
       '</form>',

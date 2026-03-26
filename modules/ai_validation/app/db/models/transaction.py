@@ -57,6 +57,12 @@ class Transaction(Base, TimestampMixin):
     screening_status: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
 
     # 審査連鎖（証跡管理）
+    # エージェント判定結果
+    agent_judgment_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)   # controlled / not_controlled / requires_review
+    agent_judged_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    formal_submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 正式審査提出日時
+
+    # 審査連鎖（証跡管理）
     source_module: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)           # "rnd_assessment" | "ai_classification" | "manual"
     parent_transaction_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True)
     rnd_case_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)             # RND case_id（表示用・非正規化）
