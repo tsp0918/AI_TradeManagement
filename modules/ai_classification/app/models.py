@@ -93,6 +93,60 @@ class Product(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
+class ProductCountryProfile(Base):
+    """品目×国別ローカル規制プロファイル。
+
+    仕出国・仕向国それぞれについて、ローカルHSコード・関税率・輸入規制・
+    再輸出規制・貿易統計を品目単位で管理する。
+    対応国: JP（日本）/ US（米国）/ CN（中国）/ EU（EU）/ KR（韓国）
+    """
+    __tablename__ = "product_country_profiles"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # 国識別
+    country_code = Column(String(4),  nullable=False)        # JP / US / CN / EU / KR
+    country_name = Column(String(64), nullable=True)         # 表示用
+    role         = Column(String(16), nullable=False)        # "origin" | "destination" | "both"
+
+    # ローカルHSコード（手入力 Ph.1、自動補完 Ph.2〜）
+    local_hs_code        = Column(String(12), nullable=True)   # 9〜10桁
+    local_hs_description = Column(Text,       nullable=True)
+
+    # 関税情報（Ph.3 で自動取得）
+    tariff_rate  = Column(Float,       nullable=True)         # 例: 0.05 = 5%
+    tariff_type  = Column(String(16),  nullable=True)         # MFN / FTA / GSP / 301 ...
+    tariff_notes = Column(Text,        nullable=True)
+
+    # 輸入規制・禁止品目フラグ（Ph.3 で自動取得）
+    import_restrictions = Column(Text, nullable=True)         # JSON
+
+    # 再輸出規制（Ph.5）
+    re_export_control = Column(Text, nullable=True)           # JSON
+
+    # 貿易統計（Ph.4 で自動取得）
+    trade_stats = Column(Text, nullable=True)                 # JSON: {year, value_usd, qty, unit}
+
+    # メタ
+    data_source = Column(String(32), nullable=True)           # "manual" | "wto_api" | ...
+    notes       = Column(Text,       nullable=True)           # 手動メモ
+    fetched_at  = Column(DateTime,   nullable=True)
+    created_at  = Column(DateTime,   server_default=func.now(), nullable=False)
+    updated_at  = Column(DateTime,   server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    product = relationship("Product", back_populates="country_profiles")
+
+
+# Product モデルに country_profiles リレーション追加（動的）
+Product.country_profiles = relationship(
+    "ProductCountryProfile",
+    back_populates="product",
+    cascade="all, delete-orphan",
+    order_by="ProductCountryProfile.country_code",
+)
+
+
 class BomHistory(Base):
     __tablename__ = "bom_history"
 

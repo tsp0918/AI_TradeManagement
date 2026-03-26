@@ -1075,6 +1075,326 @@
     #hs-modal table tr:hover { background: #f0f7ff; }
     </style>
 
+  </div><!-- /container -->
+
+  <!-- ===================================================================
+       国別規制プロファイル（仕出国 / 仕向国）
+       =================================================================== -->
+  <div class="container" style="margin-top:32px;">
+    <div class="box" id="country-profiles-section">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
+        <div>
+          <h2 class="subtitle is-5" style="margin-bottom:2px;">🌏 国別規制プロファイル</h2>
+          <p class="help">仕出国・仕向国ごとのローカルHSコード・関税・輸入規制を管理します。</p>
+        </div>
+        <button type="button" class="button is-primary is-small"
+                onclick="cpOpenAdd()">＋ 国を追加</button>
+      </div>
+
+      <!-- プロファイル一覧 -->
+      <div id="cp-list">
+        <div class="has-text-grey" style="padding:24px; text-align:center; font-size:.88rem;">読み込み中…</div>
+      </div>
+
+      <!-- 凡例 -->
+      <div style="margin-top:14px; font-size:.75rem; color:#888; display:flex; gap:16px; flex-wrap:wrap;">
+        <span>🟦 仕出国（Origin）</span>
+        <span>🟧 仕向国（Destination）</span>
+        <span>🟩 兼用（Both）</span>
+      </div>
+    </div>
   </div>
+
+  <!-- 追加 / 編集モーダル -->
+  <div id="cp-modal" style="display:none; position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:10px; width:540px; max-width:96vw; max-height:90vh; overflow-y:auto; box-shadow:0 8px 40px rgba(0,0,0,.25);">
+      <div style="padding:16px 20px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between;">
+        <strong id="cp-modal-title">国別規制プロファイルを追加</strong>
+        <button type="button" onclick="cpCloseModal()" style="background:none; border:none; font-size:1.3rem; cursor:pointer; color:#888;">×</button>
+      </div>
+      <div style="padding:20px 24px;">
+        <input type="hidden" id="cp-edit-id" value="">
+
+        <div class="field is-horizontal" style="margin-bottom:14px;">
+          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">国 / 地域</label></div>
+          <div class="field-body">
+            <div class="field">
+              <div class="control">
+                <div class="select is-fullwidth">
+                  <select id="cp-country-code">
+                    <option value="JP">🇯🇵 JP — 日本</option>
+                    <option value="US">🇺🇸 US — 米国</option>
+                    <option value="CN">🇨🇳 CN — 中国</option>
+                    <option value="EU">🇪🇺 EU — EU（欧州連合）</option>
+                    <option value="KR">🇰🇷 KR — 韓国</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field is-horizontal" style="margin-bottom:14px;">
+          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">役割</label></div>
+          <div class="field-body">
+            <div class="field">
+              <div class="control">
+                <div class="select is-fullwidth">
+                  <select id="cp-role">
+                    <option value="origin">🟦 仕出国（Origin）</option>
+                    <option value="destination">🟧 仕向国（Destination）</option>
+                    <option value="both">🟩 仕出国 / 仕向国（Both）</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field is-horizontal" style="margin-bottom:14px;">
+          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">ローカル HS</label></div>
+          <div class="field-body">
+            <div class="field" style="margin-right:8px;">
+              <div class="control">
+                <input class="input is-small" type="text" id="cp-local-hs"
+                       placeholder="例: 8504401000（9〜10桁）" maxlength="12" style="font-family:monospace;">
+              </div>
+              <p class="help">JP: 9桁 / US: 10桁 / CN: 10桁 / EU: 8桁 / KR: 10桁</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="field is-horizontal" style="margin-bottom:14px;">
+          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">品目説明（現地語）</label></div>
+          <div class="field-body">
+            <div class="field">
+              <div class="control">
+                <input class="input is-small" type="text" id="cp-local-hs-desc"
+                       placeholder="例: 変圧器（定格電力 1kVA 超）">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field is-horizontal" style="margin-bottom:14px;">
+          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">関税率</label></div>
+          <div class="field-body">
+            <div class="field" style="max-width:120px; margin-right:8px;">
+              <div class="control has-icons-right">
+                <input class="input is-small" type="number" id="cp-tariff-rate"
+                       placeholder="0.0" min="0" max="500" step="0.1" style="font-family:monospace;">
+                <span class="icon is-small is-right" style="font-size:.8rem;">%</span>
+              </div>
+            </div>
+            <div class="field" style="max-width:120px;">
+              <div class="control">
+                <div class="select is-small is-fullwidth">
+                  <select id="cp-tariff-type">
+                    <option value="">種別</option>
+                    <option value="MFN">MFN（最恵国）</option>
+                    <option value="FTA">FTA（特恵）</option>
+                    <option value="GSP">GSP（一般特恵）</option>
+                    <option value="301">301条（対中制裁）</option>
+                    <option value="OTHER">その他</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field is-horizontal" style="margin-bottom:14px;">
+          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">メモ</label></div>
+          <div class="field-body">
+            <div class="field">
+              <div class="control">
+                <textarea class="textarea is-small" id="cp-notes" rows="2"
+                          placeholder="輸入規制・再輸出規制・その他備考など"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:14px 24px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" class="button is-light is-small" onclick="cpCloseModal()">キャンセル</button>
+        <button type="button" class="button is-primary is-small" onclick="cpSave()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    var _pid = {{ product.id }};
+    var _proxyMatch = window.location.pathname.match(/^(\/proxy\/[^/]+)/);
+    var _base = _proxyMatch ? _proxyMatch[1] : '';
+
+    var ROLE_STYLE = {
+      origin:      { bg:'#eff6ff', border:'#93c5fd', text:'#1d4ed8', label:'仕出国' },
+      destination: { bg:'#fff7ed', border:'#fdba74', text:'#c2410c', label:'仕向国' },
+      both:        { bg:'#f0fdf4', border:'#86efac', text:'#166534', label:'仕出・仕向' },
+    };
+    var FLAG = { JP:'🇯🇵', US:'🇺🇸', CN:'🇨🇳', EU:'🇪🇺', KR:'🇰🇷' };
+
+    // ── 一覧取得 ───────────────────────────────────────────────────────
+    async function cpLoad() {
+      var list = document.getElementById('cp-list');
+      try {
+        var r = await fetch(_base + '/products/' + _pid + '/country-profiles');
+        var data = await r.json();
+        if (!data.length) {
+          list.innerHTML = '<div style="padding:20px; text-align:center; color:#aaa; font-size:.88rem;">'
+            + '国別規制プロファイルはまだ登録されていません。「＋ 国を追加」から登録してください。</div>';
+          return;
+        }
+        list.innerHTML = data.map(function(p) {
+          var rs = ROLE_STYLE[p.role] || ROLE_STYLE.destination;
+          var flag = FLAG[p.country_code] || '🌐';
+          var tariff = p.tariff_rate_pct
+            ? '<span style="font-size:.78rem;color:#555;">関税: <strong>' + p.tariff_rate_pct + '</strong>'
+              + (p.tariff_type ? ' (' + _esc(p.tariff_type) + ')' : '') + '</span>'
+            : '<span style="font-size:.78rem;color:#aaa;">関税: 未登録</span>';
+          var hs = p.local_hs_code
+            ? '<code style="background:#f0f4ff;padding:1px 7px;border-radius:4px;font-size:.85rem;font-weight:700;">'
+              + _esc(p.local_hs_code) + '</code>'
+              + (p.local_hs_description ? '<span style="font-size:.78rem;color:#555;margin-left:6px;">' + _esc(p.local_hs_description) + '</span>' : '')
+            : '<span style="font-size:.78rem;color:#aaa;">ローカルHS: 未登録</span>';
+          var notes = p.notes
+            ? '<div style="margin-top:5px;font-size:.75rem;color:#666;background:#fafafa;border-radius:4px;padding:4px 8px;">' + _esc(p.notes) + '</div>'
+            : '';
+          return '<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;'
+            + 'border:1px solid ' + rs.border + ';border-radius:8px;background:' + rs.bg + ';margin-bottom:8px;">'
+            + '<div style="font-size:1.6rem;line-height:1;">' + flag + '</div>'
+            + '<div style="flex:1;min-width:0;">'
+            +   '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+            +     '<strong style="font-size:.93rem;">' + _esc(p.country_code) + ' — ' + _esc(p.country_name || '') + '</strong>'
+            +     '<span style="background:' + rs.bg + ';color:' + rs.text + ';border:1px solid ' + rs.border + ';'
+            +       'border-radius:999px;padding:1px 9px;font-size:.72rem;font-weight:700;">' + rs.label + '</span>'
+            +   '</div>'
+            +   '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">'
+            +     hs + tariff
+            +   '</div>'
+            +   notes
+            + '</div>'
+            + '<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">'
+            +   '<button type="button" onclick="cpOpenEdit(' + p.id + ')" '
+            +     'style="padding:3px 12px;font-size:.75rem;background:#f5f5f5;border:1px solid #ddd;'
+            +     'border-radius:4px;cursor:pointer;">編集</button>'
+            +   '<button type="button" onclick="cpDelete(' + p.id + ')" '
+            +     'style="padding:3px 12px;font-size:.75rem;background:#fff5f5;border:1px solid #fca5a5;'
+            +     'color:#dc2626;border-radius:4px;cursor:pointer;">削除</button>'
+            + '</div>'
+            + '</div>';
+        }).join('');
+      } catch(e) {
+        list.innerHTML = '<div style="color:#dc2626;padding:12px;">読み込みエラー: ' + e.message + '</div>';
+      }
+    }
+
+    // ── モーダル操作 ───────────────────────────────────────────────────
+    function cpOpenAdd() {
+      document.getElementById('cp-modal-title').textContent = '国別規制プロファイルを追加';
+      document.getElementById('cp-edit-id').value = '';
+      _cpReset();
+      _cpShow();
+    }
+
+    window.cpOpenEdit = async function(profileId) {
+      document.getElementById('cp-modal-title').textContent = '国別規制プロファイルを編集';
+      document.getElementById('cp-edit-id').value = profileId;
+      try {
+        var r = await fetch(_base + '/products/' + _pid + '/country-profiles');
+        var data = await r.json();
+        var p = data.find(function(x) { return x.id === profileId; });
+        if (!p) return;
+        document.getElementById('cp-country-code').value = p.country_code || 'JP';
+        document.getElementById('cp-role').value         = p.role || 'destination';
+        document.getElementById('cp-local-hs').value     = p.local_hs_code || '';
+        document.getElementById('cp-local-hs-desc').value= p.local_hs_description || '';
+        document.getElementById('cp-tariff-rate').value  = p.tariff_rate != null ? (p.tariff_rate * 100).toFixed(1) : '';
+        document.getElementById('cp-tariff-type').value  = p.tariff_type || '';
+        document.getElementById('cp-notes').value        = p.notes || '';
+      } catch(e) {}
+      _cpShow();
+    };
+
+    window.cpCloseModal = function() {
+      document.getElementById('cp-modal').style.display = 'none';
+    };
+
+    function _cpShow() {
+      var m = document.getElementById('cp-modal');
+      m.style.display = 'flex';
+    }
+
+    function _cpReset() {
+      ['cp-country-code','cp-role','cp-local-hs','cp-local-hs-desc',
+       'cp-tariff-rate','cp-tariff-type','cp-notes'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = id === 'cp-country-code' ? 'JP' : id === 'cp-role' ? 'destination' : '';
+      });
+    }
+
+    // ── 保存 ──────────────────────────────────────────────────────────
+    window.cpSave = async function() {
+      var editId = document.getElementById('cp-edit-id').value;
+      var rateVal = document.getElementById('cp-tariff-rate').value;
+      var body = {
+        country_code:        document.getElementById('cp-country-code').value,
+        role:                document.getElementById('cp-role').value,
+        local_hs_code:       document.getElementById('cp-local-hs').value.trim() || null,
+        local_hs_description:document.getElementById('cp-local-hs-desc').value.trim() || null,
+        tariff_rate:         rateVal !== '' ? parseFloat(rateVal) / 100 : null,
+        tariff_type:         document.getElementById('cp-tariff-type').value || null,
+        notes:               document.getElementById('cp-notes').value.trim() || null,
+      };
+      var url    = _base + '/products/' + _pid + '/country-profiles' + (editId ? '/' + editId : '');
+      var method = editId ? 'PUT' : 'POST';
+      try {
+        var r = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) {
+          var err = await r.json().catch(function() { return {}; });
+          alert('保存エラー: ' + (err.detail || r.status));
+          return;
+        }
+        cpCloseModal();
+        cpLoad();
+      } catch(e) {
+        alert('通信エラー: ' + e.message);
+      }
+    };
+
+    // ── 削除 ──────────────────────────────────────────────────────────
+    window.cpDelete = async function(profileId) {
+      if (!confirm('このプロファイルを削除しますか？')) return;
+      try {
+        var r = await fetch(_base + '/products/' + _pid + '/country-profiles/' + profileId, { method: 'DELETE' });
+        if (!r.ok) { alert('削除エラー: ' + r.status); return; }
+        cpLoad();
+      } catch(e) {
+        alert('通信エラー: ' + e.message);
+      }
+    };
+
+    function _esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // モーダル外クリックで閉じる
+    document.getElementById('cp-modal').addEventListener('click', function(e) {
+      if (e.target === this) cpCloseModal();
+    });
+
+    // 追加ボタンをグローバルに公開
+    window.cpOpenAdd = cpOpenAdd;
+
+    // 初回ロード
+    cpLoad();
+  })();
+  </script>
+
 </section>
 {% endblock %}

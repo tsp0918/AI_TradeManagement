@@ -8,11 +8,12 @@ from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan
 from .routers.products import router as products_router
 from .routers.sds import router as sds_router
 from .routers.integrations import router as integrations_router
+from .routers.country_profiles import router as country_profiles_router
 from .database import engine
 
 
 async def _ensure_columns() -> None:
-    """SQLite 起動時カラム自動追加（Alembic 非適用環境向け）"""
+    """SQLite 起動時カラム自動追加・テーブル自動作成（Alembic 非適用環境向け）"""
     from sqlalchemy import inspect as sa_inspect, text
 
     needed: dict[str, list[tuple[str, str]]] = {
@@ -40,6 +41,16 @@ async def _ensure_columns() -> None:
                         f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}"
                     ))
         conn.commit()
+
+    # product_country_profiles テーブルを初回起動時に作成
+    from .models import ProductCountryProfile  # noqa: F401 – ensure mapping registered
+    from sqlalchemy import inspect as _insp
+    with engine.connect() as conn:
+        if not _insp(engine).has_table("product_country_profiles"):
+            from .database import Base
+            Base.metadata.create_all(engine, tables=[
+                Base.metadata.tables["product_country_profiles"]
+            ])
 
 
 MODULE = ModuleInfo(
@@ -71,6 +82,7 @@ def create_app() -> FastAPI:
     app.include_router(products_router)
     app.include_router(sds_router)
     app.include_router(integrations_router)
+    app.include_router(country_profiles_router)
 
     return app
 
