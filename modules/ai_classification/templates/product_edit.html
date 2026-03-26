@@ -1087,8 +1087,15 @@
           <h2 class="subtitle is-5" style="margin-bottom:2px;">🌏 国別規制プロファイル</h2>
           <p class="help">仕出国・仕向国ごとのローカルHSコード・関税・輸入規制を管理します。</p>
         </div>
-        <button type="button" class="button is-primary is-small"
-                onclick="cpOpenAdd()">＋ 国を追加</button>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button type="button" id="cp-fetch-all-btn" class="button is-info is-small is-outlined"
+                  onclick="cpFetchTariffAll()"
+                  title="全プロファイルの関税率を WTO API で一括取得">
+            🌐 関税率を一括取得
+          </button>
+          <button type="button" class="button is-primary is-small"
+                  onclick="cpOpenAdd()">＋ 国を追加</button>
+        </div>
       </div>
 
       <!-- プロファイル一覧 -->
@@ -1410,6 +1417,9 @@
             +   '<button type="button" onclick="cpOpenEdit(' + p.id + ')" '
             +     'style="padding:3px 12px;font-size:.75rem;background:#f5f5f5;border:1px solid #ddd;'
             +     'border-radius:4px;cursor:pointer;">編集</button>'
+            +   '<button type="button" onclick="cpFetchTariff(' + p.id + ')" '
+            +     'style="padding:3px 12px;font-size:.75rem;background:#eff6ff;border:1px solid #93c5fd;'
+            +     'color:#1d4ed8;border-radius:4px;cursor:pointer;" title="WTO APIで関税率を自動取得">🌐 関税率</button>'
             +   '<button type="button" onclick="cpDelete(' + p.id + ')" '
             +     'style="padding:3px 12px;font-size:.75rem;background:#fff5f5;border:1px solid #fca5a5;'
             +     'color:#dc2626;border-radius:4px;cursor:pointer;">削除</button>'
@@ -1499,6 +1509,66 @@
         alert('通信エラー: ' + e.message);
       }
     };
+
+    // ── 関税率自動取得（単体） ─────────────────────────────────────────
+    window.cpFetchTariff = async function(profileId) {
+      var url = _base + '/products/' + _pid + '/country-profiles/' + profileId + '/fetch-tariff';
+      try {
+        var r = await fetch(url, { method: 'POST' });
+        var data = await r.json();
+        if (!r.ok) {
+          alert('取得エラー: ' + (data.detail || r.status));
+          return;
+        }
+        // カード上のメッセージ表示
+        var msg = data.tariff_rate_pct
+          ? '✅ ' + data.tariff_rate_pct + ' (' + (data.tariff_type || 'MFN') + ') を取得しました'
+          : '⚠️ データなし: ' + (data.tariff_notes || '');
+        _cpToast(msg, data.tariff_rate_pct ? '#166534' : '#92400e');
+        cpLoad();
+      } catch(e) {
+        alert('通信エラー: ' + e.message);
+      }
+    };
+
+    // ── 関税率自動取得（一括） ─────────────────────────────────────────
+    window.cpFetchTariffAll = async function() {
+      var btn = document.getElementById('cp-fetch-all-btn');
+      if (!btn) return;
+      btn.textContent = '…取得中';
+      btn.disabled = true;
+      try {
+        var url = _base + '/products/' + _pid + '/country-profiles/fetch-tariff/all';
+        var r = await fetch(url, { method: 'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert('一括取得エラー: ' + r.status); return; }
+        var updated = data.filter(function(d){ return d.fetch_status === 'updated'; }).length;
+        var noData  = data.filter(function(d){ return d.fetch_status === 'no_data'; }).length;
+        var noHs    = data.filter(function(d){ return d.fetch_status === 'no_hs'; }).length;
+        _cpToast(
+          '一括取得完了: 更新 ' + updated + '件 / データなし ' + noData + '件 / HS未設定 ' + noHs + '件',
+          '#1d4ed8'
+        );
+        cpLoad();
+      } catch(e) {
+        alert('通信エラー: ' + e.message);
+      } finally {
+        btn.textContent = '🌐 関税率を一括取得';
+        btn.disabled = false;
+      }
+    };
+
+    // ── トースト通知 ───────────────────────────────────────────────────
+    function _cpToast(msg, color) {
+      var t = document.createElement('div');
+      t.textContent = msg;
+      t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);'
+        + 'background:' + (color||'#1d4ed8') + ';color:#fff;padding:10px 22px;border-radius:8px;'
+        + 'font-size:.85rem;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2);'
+        + 'max-width:90vw;text-align:center;';
+      document.body.appendChild(t);
+      setTimeout(function(){ t.remove(); }, 4000);
+    }
 
     // ── 削除 ──────────────────────────────────────────────────────────
     window.cpDelete = async function(profileId) {

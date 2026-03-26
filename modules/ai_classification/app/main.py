@@ -10,6 +10,7 @@ from .routers.sds import router as sds_router
 from .routers.integrations import router as integrations_router
 from .routers.country_profiles import router as country_profiles_router
 from .routers.hs_local import router as hs_local_router
+from .routers.tariff_fetch import router as tariff_fetch_router
 from .database import engine
 
 
@@ -85,6 +86,7 @@ def create_app() -> FastAPI:
     app.include_router(integrations_router)
     app.include_router(country_profiles_router)
     app.include_router(hs_local_router)
+    app.include_router(tariff_fetch_router)
 
     return app
 
