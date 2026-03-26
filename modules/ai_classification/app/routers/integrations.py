@@ -153,15 +153,78 @@ def _load_hs_fefta_reverse() -> dict[str, list]:
     return data.get("reverse_index", {})
 
 
+@lru_cache(maxsize=1)
+def _load_hs_eccn_mapping() -> dict[str, dict]:
+    """HS6 → ECCN 包括マッピングをロード（build_hs_eccn_mapping.py で生成）。"""
+    path = _STAGING_DIR / "hs_eccn_mapping.json"
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    return data.get("records", {})
+
+
 def _lookup_eccn(hs_code: str) -> str:
-    """HS コードから推定 ECCN を返す。マッチしない場合は 'EAR99'。"""
-    heading = hs_code[:4]
-    chapter = hs_code[:2]
-    return (
-        _HS_HEADING_TO_ECCN.get(heading)
-        or _HS_CHAPTER_TO_ECCN.get(chapter)
-        or "EAR99"
-    )
+    """HS コードから推定 ECCN を返す。
+
+    優先順:
+      1. 手動 heading マッピング（_HS_HEADING_TO_ECCN、confidence=1.0）
+      2. hs_eccn_mapping.json（FEFTA チェーン経由、confidence≥0.4）
+      3. chapter フォールバック（_HS_CHAPTER_TO_ECCN）
+      4. EAR99
+    """
+    clean = hs_code.replace(".", "").replace(" ", "")
+    heading = clean[:4]
+    chapter = clean[:2]
+
+    # 1. 手動精密マッピング（最高信頼度）
+    if heading in _HS_HEADING_TO_ECCN:
+        return _HS_HEADING_TO_ECCN[heading]
+
+    # 2. 包括マッピング（FEFTA チェーン）— 6桁→4桁→2桁 順に試みる
+    mapping = _load_hs_eccn_mapping()
+    for key in (clean, heading + "00", chapter + "0000"):
+        entry = mapping.get(key)
+        if entry:
+            eccn = entry.get("eccn", "")
+            if eccn and eccn != "USML":
+                return eccn
+            if eccn == "USML":
+                return "USML"
+
+    # 3. chapter フォールバック
+    if chapter in _HS_CHAPTER_TO_ECCN:
+        return _HS_CHAPTER_TO_ECCN[chapter]
+
+    return "EAR99"
+
+
+def _lookup_eccn_detail(hs_code: str) -> dict:
+    """_lookup_eccn の詳細版。ECCN・confidence・複数候補・判定方法を返す。"""
+    clean = hs_code.replace(".", "").replace(" ", "")
+    heading = clean[:4]
+    chapter = clean[:2]
+
+    if heading in _HS_HEADING_TO_ECCN:
+        eccn = _HS_HEADING_TO_ECCN[heading]
+        return {"eccn": eccn, "eccns": [eccn], "confidence": 1.0, "method": "heading_manual"}
+
+    mapping = _load_hs_eccn_mapping()
+    for key in (clean, heading + "00", chapter + "0000"):
+        entry = mapping.get(key)
+        if entry:
+            return {
+                "eccn":       entry.get("eccn", "EAR99"),
+                "eccns":      entry.get("eccns", []),
+                "confidence": entry.get("confidence", 0.5),
+                "method":     entry.get("method", "fefta_chain"),
+            }
+
+    if chapter in _HS_CHAPTER_TO_ECCN:
+        eccn = _HS_CHAPTER_TO_ECCN[chapter]
+        return {"eccn": eccn, "eccns": [eccn], "confidence": 0.4, "method": "chapter_fallback"}
+
+    return {"eccn": "EAR99", "eccns": ["EAR99"], "confidence": 0.1, "method": "default"}
 
 
 def _lookup_fefta(hs_code: str) -> list[dict]:
@@ -209,12 +272,16 @@ def _enrich_candidates(candidates: list[dict]) -> list[dict]:
             refs = [f"EL-{fi['fefta_item_no']}({fi['fefta_category_label']})" for fi in fefta_items]
             fefta_ref = " / ".join(refs)
             precision = fefta_items[0].get("match_precision", "")
+        eccn_detail = _lookup_eccn_detail(hs)
         enriched.append({
             **c,
-            "eccn":            eccn,
-            "fefta_ref":       fefta_ref,
-            "fefta_items":     fefta_items,
-            "fefta_precision": precision,  # "exact"|"heading"|"chapter"|""
+            "eccn":             eccn_detail["eccn"],
+            "eccn_candidates":  eccn_detail["eccns"],   # 複数候補
+            "eccn_confidence":  eccn_detail["confidence"],
+            "eccn_method":      eccn_detail["method"],
+            "fefta_ref":        fefta_ref,
+            "fefta_items":      fefta_items,
+            "fefta_precision":  precision,  # "exact"|"heading"|"chapter"|""
         })
     return enriched
 
