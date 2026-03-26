@@ -82,8 +82,7 @@ if [[ "${1:-}" == "--restart-tunnel" ]]; then
     sleep 1
   fi
   info "Cloudflare Tunnel を再起動します…"
-  cloudflared tunnel run c021837a-9593-4c04-8be8-3477297d5649 \
-    --config ~/.cloudflared/config.yml &
+  cloudflared --config ~/.cloudflared/config.yml tunnel run c021837a-9593-4c04-8be8-3477297d5649 &
   ok "Tunnel 起動済み (PID $!)"
   exit 0
 fi
@@ -158,8 +157,7 @@ if command -v cloudflared &>/dev/null; then
     ok "Cloudflare Tunnel: 既に実行中 (PID $_CF_PID)"
   else
     info "Cloudflare Tunnel を起動します…"
-    cloudflared tunnel run c021837a-9593-4c04-8be8-3477297d5649 \
-      --config ~/.cloudflared/config.yml &>/tmp/cloudflared.log &
+    cloudflared --config ~/.cloudflared/config.yml tunnel run c021837a-9593-4c04-8be8-3477297d5649 &>/tmp/cloudflared.log &
     _CF_NEW_PID=$!
     sleep 2
     if kill -0 "$_CF_NEW_PID" 2>/dev/null; then
