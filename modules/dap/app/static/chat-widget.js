@@ -1,4 +1,4 @@
-// cache-bust: 1774499348
+// cache-bust: 1774585200
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -901,11 +901,11 @@
           if (proxyMatch) moduleKey = proxyMatch[1];
         }
         if (moduleKey) {
-          // ポートを除いたパスをポータルiframeに渡す
           var subPath = parsed.pathname + parsed.search + parsed.hash;
-          // localhost:PORT/path → /proxy/module/path に変換
-          if (port && _PORT_TO_MODULE[port]) {
-            subPath = subPath || '/';
+          // /proxy/{key}/... 形式の場合はプレフィックスを除去（二重プロキシ防止）
+          var proxyPrefix = '/proxy/' + moduleKey;
+          if (subPath.startsWith(proxyPrefix)) {
+            subPath = subPath.slice(proxyPrefix.length) || '/';
           }
           window.__dap_portal_navigate__(moduleKey, subPath);
           return;
