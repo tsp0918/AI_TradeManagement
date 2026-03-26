@@ -9,10 +9,14 @@ Layer C FAISS インデックス構築スクリプト。
   data/staging/layer_c.index
   data/staging/layer_c_meta.json
 
-embed_text 方針:
+embed_text 方針 (P3-5 改訂):
   "passage: {description}"
-  fefta_items がある場合は " / 外為法: {item_labels}" を末尾に追加。
-  日英意味的距離を縮め、FEFTA 文脈を埋め込みに含める。
+  FEFTA 日本語ラベルは embed_text に含めない。
+  旧方針では " / 外為法: {item_labels}" を末尾追加していたが、
+  英語 description と日本語ラベルを混在させると heading 間で
+  重複ヒット（false cluster）が多発するため廃止。
+  FEFTA メタデータは meta JSON のフィールドとして保持し、
+  integrations.py の _lookup_fefta() が post-hoc に付加する。
 
 使い方:
   cd /Users/takehirosato/Desktop/AI_TradeManagement
@@ -54,30 +58,16 @@ _ENCODE_BATCH   = 16   # macOS SIGSEGV 対策: 小さめバッチで安定動作
 
 # ── embed_text 生成 ───────────────────────────────────────────────────────────
 def _make_embed_text(record: dict) -> str:
-    """
-    HS レコードから embedding 用テキストを生成する。
+    """HS レコードから embedding 用テキストを生成する。
 
-    構成:
-      "passage: {description} / 外為法: {fefta_label1}, {fefta_label2}"
-    fefta_items がない場合は description のみ。
+    P3-5 改訂: FEFTA 日本語ラベルを embed_text から除外。
+    英語 description のみを埋め込むことで heading 間の false cluster を防ぐ。
+    FEFTA 情報は meta JSON フィールドとして保持し、後段で付加する。
     """
     desc = (record.get("description") or "").strip()
     if not desc:
         return ""
-
-    parts = [_PASSAGE_PREFIX + desc]
-
-    fefta = record.get("fefta_items") or []
-    if fefta:
-        labels = ", ".join(
-            f.get("item_label", f.get("item_no", ""))
-            for f in fefta
-            if f.get("item_label") or f.get("item_no")
-        )
-        if labels:
-            parts[0] += f" / 外為法: {labels}"
-
-    return parts[0]
+    return _PASSAGE_PREFIX + desc
 
 
 # ── メインビルド ──────────────────────────────────────────────────────────────

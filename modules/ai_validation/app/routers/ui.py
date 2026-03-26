@@ -16,6 +16,24 @@ logger = logging.getLogger(__name__)
 import os as _os
 SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
 
+
+def _auto_screen(db: Session, tx: Transaction) -> None:
+    """取引先名が設定されていれば screening を自動実行して結果を保存する（非致命的）。"""
+    company = (tx.counterparty_name or "").strip()
+    if not company:
+        return
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            r = client.post(f"{SCREENING_BASE}/api/screen",
+                            json={"company_name": company, "threshold": 0.75})
+        if r.status_code == 200:
+            data = r.json()
+            tx.screening_result_id = str(data["id"])
+            tx.screening_status   = data["result_status"]
+            db.flush()
+    except Exception:
+        pass
+
 from app.db.deps import get_db
 
 from app.db.models.transaction import Transaction, TransactionItem, UsageRequirement
@@ -229,6 +247,7 @@ def transaction_new_submit(
             counterparty_name=counterparty_name,
             parent_transaction_id=parent_transaction_id,
         )
+        _auto_screen(db, tx)
         db.commit()
     except Exception as e:
         db.rollback()
@@ -268,6 +287,7 @@ async def transaction_csv_import(
             continue
 
         try:
+            counterparty = (row.get("counterparty_name") or row.get("取引先") or "").strip()
             tx = _create_transaction_manual(
                 db=db,
                 title=title,
@@ -275,7 +295,9 @@ async def transaction_csv_import(
                 description=description,
                 spec_text=spec_text,
                 case_no=case_no or None,
+                counterparty_name=counterparty or None,
             )
+            _auto_screen(db, tx)
             db.commit()
             created_ids.append(tx.id)
         except Exception as e:

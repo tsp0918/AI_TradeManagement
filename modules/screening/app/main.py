@@ -14,6 +14,7 @@
   DELETE /api/watchlist/{id}    エントリ無効化
 """
 
+import asyncio
 import os
 from pathlib import Path
 
@@ -59,12 +60,19 @@ async def _init_faiss() -> None:
     faiss_service.get_or_build(entities)
 
 
+async def _startup() -> None:
+    """FAISS 初期化 + 制裁リスト自動同期スケジューラー起動。"""
+    from app.services.sync_scheduler import run_sync_loop
+    await _init_faiss()
+    asyncio.create_task(run_sync_loop())
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Screening Module",
         version="0.1.0",
         description="懸念取引先スクリーニング (BIS/OFAC等)",
-        lifespan=build_lifespan(MODULE, on_startup=_init_faiss),
+        lifespan=build_lifespan(MODULE, on_startup=_startup),
     )
 
     app.add_middleware(

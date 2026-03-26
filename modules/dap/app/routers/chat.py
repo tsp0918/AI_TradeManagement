@@ -393,6 +393,27 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
     except Exception:
         pass  # platform-core 未起動時は無視
 
+    # 審査が止まっている案件の検出 (ai_validation API 経由)
+    _ai_val_url = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8001")
+    try:
+        import httpx as _httpx
+        r = _httpx.get(f"{_ai_val_url}/api/transactions/stuck", timeout=3)
+        if r.status_code == 200:
+            stuck = r.json().get("stuck_transactions", [])
+            if stuck:
+                names = "、".join(
+                    f"#{t['id']}({t.get('title','') or t.get('case_no','')})" for t in stuck[:3]
+                )
+                alerts.append({
+                    "type":        "stuck_review",
+                    "severity":    "warn",
+                    "guide_id":    f"stuck_review:{','.join(str(t['id']) for t in stuck[:3])}",
+                    "message":     f"審査が止まっている案件が {len(stuck)} 件あります: {names}。続きを進めましょうか？",
+                    "action_hint": f"「案件{stuck[0]['id']}の審査を続けたい」と話しかけてください",
+                })
+    except Exception:
+        pass  # ai_validation 未起動時は無視
+
     return {"stage": stage, "gap_modules": gap_modules, "proactive_alerts": alerts}
 
 

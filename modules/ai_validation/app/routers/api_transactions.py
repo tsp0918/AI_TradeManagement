@@ -264,3 +264,63 @@ def create_transaction_api(
         "status":   tx.status,
         "url":      f"{_BASE}/ui/transactions/{tx.id}",
     }
+
+
+# ──────────────────────────────────────────────
+# 審査が止まっている案件の検出
+# ──────────────────────────────────────────────
+
+@router.get("/stuck")
+def get_stuck_transactions(
+    db: Session = Depends(get_db),
+    limit: int = Query(default=10),
+) -> Dict[str, Any]:
+    """
+    審査チェックリストが未完了のまま放置されている案件を返す。
+    条件:
+      - status が draft または in_review
+      - AI判定（matrix_match run）が実行済みだがエージェント判定未完了
+      - または status が draft でスクリーニング未実施かつ AI 判定未実施
+    DAP の先輩担当者がプロアクティブ通知するために使用する。
+    """
+    txs = (
+        db.query(Transaction)
+        .filter(Transaction.status.in_(["draft", "in_review"]))
+        .order_by(desc(Transaction.updated_at))
+        .limit(50)
+        .all()
+    )
+
+    stuck = []
+    for tx in txs:
+        has_ai_run = db.query(AiRun).filter(
+            AiRun.transaction_id == tx.id,
+            AiRun.run_type == RunType.matrix_match.value,
+        ).first() is not None
+        has_agent = bool(tx.agent_judged_at)
+
+        # AI判定済みだがエージェント判定未完了 → 止まっている
+        if has_ai_run and not has_agent:
+            stuck.append({
+                "id":       tx.id,
+                "case_no":  tx.case_no,
+                "title":    tx.title,
+                "status":   tx.status,
+                "reason":   "agent_judgment_pending",
+                "url":      f"{_BASE}/ui/transactions/{tx.id}",
+            })
+        # AI判定もスクリーニングも未実施の古い案件（draft が続いている）
+        elif not has_ai_run and not tx.screening_status:
+            stuck.append({
+                "id":       tx.id,
+                "case_no":  tx.case_no,
+                "title":    tx.title,
+                "status":   tx.status,
+                "reason":   "not_started",
+                "url":      f"{_BASE}/ui/transactions/{tx.id}",
+            })
+
+        if len(stuck) >= limit:
+            break
+
+    return {"stuck_transactions": stuck, "total": len(stuck)}
