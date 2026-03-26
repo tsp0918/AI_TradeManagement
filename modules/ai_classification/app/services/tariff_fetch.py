@@ -54,7 +54,7 @@ _WITS_API_KEY = os.environ.get("WITS_API_KEY", "")
 # ISO 2文字 → WTO Reporter コード (ISO 3166-1 numeric)
 _WTO_REPORTER: dict[str, str] = {
     "JP": "392",
-    "US": "842",
+    "US": "840",
     "CN": "156",
     "EU": "918",
     "KR": "410",
@@ -69,8 +69,8 @@ _WITS_ISO3: dict[str, str] = {
     "KR": "KOR",
 }
 
-# WTO API: Applied MFN Tariff 指標コード
-_WTO_INDICATOR_MFN = "HS_T_AV_MFN_001_R"   # Simple average applied MFN rate
+# WTO API: Applied MFN Tariff 指標コード（HS 2/4/6桁対応, 2024年確認済）
+_WTO_INDICATOR_MFN = "HS_A_0010"   # HS MFN - Simple average ad valorem duty
 
 
 # ── キャッシュ ─────────────────────────────────────────────────────────────────
@@ -128,14 +128,13 @@ async def _fetch_wto(country_code: str, hs6: str, year: int) -> Optional[dict]:
 
     url = f"{_WTO_BASE}/timeseries/v1/data"
     params = {
-        "i":   _WTO_INDICATOR_MFN,
-        "r":   reporter,
-        "p":   "all",
-        "pc":  "HS6",
-        "ps":  str(year),
-        "fmt": "json",
+        "i":    _WTO_INDICATOR_MFN,
+        "r":    reporter,
+        "ps":   str(year),
+        "pc":   hs6,       # HS コードフィルタ（2/4/6桁対応）
+        "fmt":  "json",
         "lang": "1",
-        "sc":  hs6,        # specific commodity / HS コード フィルタ
+        "max":  "5",
     }
     headers = {"Ocp-Apim-Subscription-Key": _WTO_API_KEY}
 
@@ -154,14 +153,15 @@ async def _fetch_wto(country_code: str, hs6: str, year: int) -> Optional[dict]:
         logger.warning("WTO API error: %s", e)
         return None
 
-    # WTO timeseries レスポンス: {"Dataset": [{"value": ..., "period": ..., ...}]}
+    # WTO timeseries レスポンス: {"Dataset": [{"Value": 2.1, "ProductOrSectorCode": "850440", ...}]}
     dataset = data.get("Dataset") or data.get("dataset") or []
     if not dataset:
         logger.info("WTO API: no data for %s/%s/%d", country_code, hs6, year)
         return None
 
-    row = dataset[0]
-    rate_raw = row.get("value") or row.get("Value")
+    # HS6桁に最も近いコードのレコードを優先
+    exact = next((r for r in dataset if str(r.get("ProductOrSectorCode","")) == hs6), dataset[0])
+    rate_raw = exact.get("Value")
     try:
         rate = float(rate_raw) / 100.0 if rate_raw is not None else None
     except (ValueError, TypeError):
