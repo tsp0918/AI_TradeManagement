@@ -1098,6 +1098,11 @@
                   title="全プロファイルの貿易統計を UN Comtrade API で一括取得">
             📊 統計を一括取得
           </button>
+          <button type="button" id="cp-reexport-all-btn" class="button is-warning is-small is-outlined"
+                  onclick="cpReexportAssessAll()"
+                  title="全プロファイルを EAR Country Chart で一括判定">
+            ⚖️ 再輸出を一括判定
+          </button>
           <button type="button" class="button is-primary is-small"
                   onclick="cpOpenAdd()">＋ 国を追加</button>
         </div>
@@ -1416,6 +1421,25 @@
               + (impVal ? '<span>' + impVal + '</span>' : '')
               + '</div>';
           }
+          // 再輸出規制バッジ
+          var rec = p.re_export_control || {};
+          var reHtml = '';
+          if (rec.verdict) {
+            var reColor = {
+              'no_license_required': '#16a34a',
+              'at1_only':            '#d97706',
+              'license_required':    '#dc2626',
+              'ear99':               '#6b7280',
+              'unknown':             '#9ca3af',
+            }[rec.verdict] || '#9ca3af';
+            reHtml = '<div style="margin-top:4px;">'
+              + '<span style="display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;'
+              + 'background:' + reColor + '1a;color:' + reColor + ';border:1px solid ' + reColor + '55;'
+              + 'border-radius:999px;padding:1px 9px;" title="' + _esc((rec.notes||[])[0]||'') + '">'
+              + '⚖️ ' + _esc(rec.verdict_label || rec.verdict) + '</span>'
+              + (rec.eccn ? '<span style="font-size:.72rem;color:#888;margin-left:6px;">ECCN: ' + _esc(rec.eccn) + '</span>' : '')
+              + '</div>';
+          }
           var notes = p.notes
             ? '<div style="margin-top:5px;font-size:.75rem;color:#666;background:#fafafa;border-radius:4px;padding:4px 8px;">' + _esc(p.notes) + '</div>'
             : '';
@@ -1432,6 +1456,7 @@
             +     hs + tariff
             +   '</div>'
             +   tsHtml
+            +   reHtml
             +   notes
             + '</div>'
             + '<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">'
@@ -1444,6 +1469,9 @@
             +   '<button type="button" onclick="cpFetchTradeStats(' + p.id + ')" '
             +     'style="padding:3px 12px;font-size:.75rem;background:#f0fdf4;border:1px solid #86efac;'
             +     'color:#166534;border-radius:4px;cursor:pointer;" title="UN Comtrade APIで貿易統計を自動取得">📊 統計</button>'
+            +   '<button type="button" onclick="cpReexportAssess(' + p.id + ')" '
+            +     'style="padding:3px 12px;font-size:.75rem;background:#fffbeb;border:1px solid #fcd34d;'
+            +     'color:#92400e;border-radius:4px;cursor:pointer;" title="EAR Country Chartで再輸出規制を判定">⚖️ 再輸出</button>'
             +   '<button type="button" onclick="cpDelete(' + p.id + ')" '
             +     'style="padding:3px 12px;font-size:.75rem;background:#fff5f5;border:1px solid #fca5a5;'
             +     'color:#dc2626;border-radius:4px;cursor:pointer;">削除</button>'
@@ -1653,6 +1681,53 @@
         alert('通信エラー: ' + e.message);
       } finally {
         btn.textContent = '📊 統計を一括取得';
+        btn.disabled = false;
+      }
+    };
+
+    // ── 再輸出規制判定（単体） ────────────────────────────────────────
+    window.cpReexportAssess = async function(profileId) {
+      var url = _base + '/products/' + _pid + '/country-profiles/' + profileId + '/reexport-assess';
+      try {
+        var r = await fetch(url, { method: 'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert('判定エラー: ' + (data.detail || r.status)); return; }
+        var colorMap = {
+          'no_license_required': '#16a34a',
+          'at1_only':            '#d97706',
+          'license_required':    '#dc2626',
+          'ear99':               '#6b7280',
+          'unknown':             '#9ca3af',
+        };
+        var color = colorMap[data.verdict] || '#9ca3af';
+        _cpToast('⚖️ ' + data.verdict_label + ' (ECCN: ' + data.eccn + ')', color);
+        cpLoad();
+      } catch(e) {
+        alert('通信エラー: ' + e.message);
+      }
+    };
+
+    // ── 再輸出規制判定（一括） ────────────────────────────────────────
+    window.cpReexportAssessAll = async function() {
+      var btn = document.getElementById('cp-reexport-all-btn');
+      if (!btn) return;
+      btn.textContent = '…判定中';
+      btn.disabled = true;
+      try {
+        var url = _base + '/products/' + _pid + '/country-profiles/reexport-assess/all';
+        var r = await fetch(url, { method: 'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert('一括判定エラー: ' + r.status); return; }
+        var required = data.filter(function(d){ return d.verdict === 'license_required'; }).length;
+        var at1      = data.filter(function(d){ return d.verdict === 'at1_only'; }).length;
+        var nlr      = data.filter(function(d){ return d.verdict === 'no_license_required'; }).length;
+        var msg = '一括判定完了: 要許可 ' + required + '件 / AT1のみ ' + at1 + '件 / NLR ' + nlr + '件';
+        _cpToast(msg, required > 0 ? '#dc2626' : '#166534');
+        cpLoad();
+      } catch(e) {
+        alert('通信エラー: ' + e.message);
+      } finally {
+        btn.textContent = '⚖️ 再輸出を一括判定';
         btn.disabled = false;
       }
     };
