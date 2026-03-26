@@ -51,9 +51,9 @@ async def save_session(
     tx_id = ctx_dict.get("transaction_id")
 
     # ステータス決定
-    from platform_core.agent.base_agent import AgentResponse  # 型参照用
+    # 候補が 0（全除外）または 1 件以下 → 判定フェーズへ移行可能
     status = "active"
-    if not candidates or len(candidates) <= 1:
+    if len(candidates) <= 1:
         status = "ready_for_judgment"
 
     result = await db.execute(

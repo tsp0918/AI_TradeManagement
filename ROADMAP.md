@@ -182,6 +182,10 @@ search.py (GET /status):
 | 4 | **結合** | hs_classifierがprivate `_staging_dir()`を直接参照 | 公開関数`get_staging_dir()`を追加し切替 | faiss_e5_service.py / classify.py |
 | 5 | **精度** | FAISS embed_textの日本語FETAラベルによる誤ヒット | `_rerank_by_heading()`クラスタリング追加 | integrations.py |
 | 6 | **EAR** | EARキーワード部分一致バグ（単語境界なし） | 単語境界チェック追加 | regulatory.py |
+| 7 | **エンジン** | `_build_explanation` で非数値属性値 (e.g. "JP") を `float()` 変換して ValueError | try-except 追加 | ontology/rules/engine.py |
+| 8 | **LLM** | `_summarize_known` が `end_use_type`/`end_user_type`/`destination_country` 専用フィールドを見落とし、レポートに「確認済み属性なし」 | 専用フィールドを `known` dict にマージ | llm_gateway/client.py |
+| 9 | **エージェント** | `finalize()` で候補が全除外（空リスト）の場合に全29 domain_id フォールバックし、誤判定レポートを生成 | `context.candidate_domain_ids` を中間フォールバックとして使用 | agent/hantei_agent.py |
+| 10 | **URL** | `chat.py` でplatform-core URL・ai_validation URL がハードコード（`http://localhost:800x`） | `_PLATFORM_URL` / `ai_val_url` 変数を参照するよう修正 | modules/dap/app/routers/chat.py |
 
 ---
 
@@ -347,5 +351,5 @@ lsof | grep ".db$" | grep -v ".venv"
 
 ---
 
-*更新: 2026-03-21*
+*更新: 2026-03-26*
 *担当: Takehiro Sato + Claude Sonnet 4.6*

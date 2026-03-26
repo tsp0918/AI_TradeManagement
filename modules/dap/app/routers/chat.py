@@ -365,7 +365,7 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
     # 規制動向モニタリング — 未読の warn/danger 変更をアラート化
     try:
         import httpx as _httpx
-        r = _httpx.get("http://localhost:8000/api/regulatory/changes?limit=3", timeout=2)
+        r = _httpx.get(f"{_PLATFORM_URL}/api/regulatory/changes?limit=3", timeout=2)
         if r.status_code == 200:
             reg_changes = r.json().get("changes", [])
             for rc in reg_changes:
@@ -1049,7 +1049,7 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
                                     "message": f"案件{tx_id}の詳細を確認したい"})
             return ChatResponse(
                 reply=reply[:300],
-                actions=[{"type": "navigate_to", "target": "", "url": f"http://localhost:8001/ui/transactions/{tx_id}"}] if tx_id else [],
+                actions=[{"type": "navigate_to", "target": "", "url": f"{ai_val_url}/ui/transactions/{tx_id}"}] if tx_id else [],
                 choices=choices[:3],
                 intake_state=intake_state,
             )

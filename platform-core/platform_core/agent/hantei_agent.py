@@ -184,9 +184,14 @@ class HanteiAgent(BaseAgent):
         2. Sonnet でサマリーレポート生成
         3. JudgmentResult を dict で返す
         """
-        result = self._engine.reason(
-            self.context, self._current_candidates or self._engine.all_domain_ids
+        # _current_candidates が空（全除外）の場合は初期候補を使って非該当根拠を生成する。
+        # all_domain_ids フォールバックは「初期候補すら設定されていない」場合のみ。
+        candidates_for_reason = (
+            self._current_candidates
+            or list(self.context.candidate_domain_ids)
+            or self._engine.all_domain_ids
         )
+        result = self._engine.reason(self.context, candidates_for_reason)
 
         # Sonnet でサマリーレポートを生成
         summary = await self.llm_bridge.generate_report(
