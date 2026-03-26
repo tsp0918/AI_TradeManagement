@@ -54,6 +54,57 @@
 
 ---
 
+## Cloudflare Tunnel（外部アクセス）
+
+このシステムは常時 Cloudflare Tunnel 経由で外部公開されている。
+
+| ドメイン | モジュール | ポート |
+|----------|-----------|--------|
+| app.tsp-aitrademanagement.com | platform-core (portal) | 8000 |
+| validation.tsp-aitrademanagement.com | ai_validation | 8001 |
+| classification.tsp-aitrademanagement.com | ai_classification | 8002 |
+| rnd.tsp-aitrademanagement.com | rnd_assessment | 8003 |
+| patent.tsp-aitrademanagement.com | patent_search | 8004 |
+| screening.tsp-aitrademanagement.com | screening | 8005 |
+| hs.tsp-aitrademanagement.com | hs_classifier | 8006 |
+| dap.tsp-aitrademanagement.com | dap | 8010 |
+
+### 起動・確認コマンド
+
+```bash
+./start.sh                    # アプリ + トンネルを同時起動
+./start.sh --tunnel-status    # トンネル状態確認
+./start.sh --restart-tunnel   # トンネルのみ再起動
+./start.sh --stop             # アプリ + トンネルを停止
+
+# 手動ログ確認
+tail -f /tmp/cloudflared.log
+```
+
+### HTTP エラー発生時の確認手順
+
+**必ずトンネル状態も確認すること。**
+
+```bash
+# Step 1: アプリが動いているか
+curl -s http://localhost:8000/health
+
+# Step 2: トンネルが動いているか
+./start.sh --tunnel-status
+# または
+pgrep -f "cloudflared tunnel run" && echo "UP" || echo "DOWN"
+
+# Step 3: トンネルが停止していれば再起動
+./start.sh --restart-tunnel
+```
+
+トンネルエラーの主な原因:
+- Cloudflare 認証の期限切れ（`cloudflared tunnel login` で再認証）
+- ネットワーク変更後の接続切断（`--restart-tunnel` で復旧）
+- プロセスクラッシュ（`/tmp/cloudflared.log` でエラー確認）
+
+---
+
 ## コーディング規約
 
 - 過剰な抽象化・将来の拡張のためのコードは書かない

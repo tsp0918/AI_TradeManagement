@@ -43,6 +43,48 @@ if [[ "${1:-}" == "--stop" ]]; then
       kill "$PID_PORT" 2>/dev/null && info "ポート $PORT (PID $PID_PORT) を解放しました"
     fi
   done
+  # Cloudflare Tunnel 停止
+  _CF_PID=$(pgrep -f "cloudflared tunnel run" 2>/dev/null || true)
+  if [[ -n "$_CF_PID" ]]; then
+    kill "$_CF_PID" 2>/dev/null && ok "Cloudflare Tunnel (PID $_CF_PID) を停止しました"
+  fi
+  exit 0
+fi
+
+# ── トンネルステータス確認コマンド ─────────────────────────────────
+if [[ "${1:-}" == "--tunnel-status" ]]; then
+  echo ""
+  echo -e "${BOLD}═══════════════════════════════════════════════${RESET}"
+  echo -e "${BOLD}  Cloudflare Tunnel ステータス${RESET}"
+  echo -e "${BOLD}═══════════════════════════════════════════════${RESET}"
+  _CF_PID=$(pgrep -f "cloudflared tunnel run" 2>/dev/null || true)
+  if [[ -n "$_CF_PID" ]]; then
+    ok "Tunnel プロセス実行中 (PID $_CF_PID)"
+  else
+    error "Tunnel プロセスが停止しています"
+    warn "  再起動: ./start.sh --restart-tunnel"
+  fi
+  cloudflared tunnel info c021837a-9593-4c04-8be8-3477297d5649 2>&1 | head -10
+  echo ""
+  echo -e "  アクセス URL:"
+  echo -e "  ${CYAN}https://app.tsp-aitrademanagement.com${RESET}           (portal)"
+  echo -e "  ${CYAN}https://dap.tsp-aitrademanagement.com${RESET}           (DAP)"
+  echo -e "  ${CYAN}https://validation.tsp-aitrademanagement.com${RESET}    (ai_validation)"
+  echo -e "  ${CYAN}https://classification.tsp-aitrademanagement.com${RESET} (ai_classification)"
+  exit 0
+fi
+
+# ── トンネル単体再起動 ──────────────────────────────────────────────
+if [[ "${1:-}" == "--restart-tunnel" ]]; then
+  _CF_PID=$(pgrep -f "cloudflared tunnel run" 2>/dev/null || true)
+  if [[ -n "$_CF_PID" ]]; then
+    kill "$_CF_PID" 2>/dev/null && info "既存の Tunnel プロセスを停止しました"
+    sleep 1
+  fi
+  info "Cloudflare Tunnel を再起動します…"
+  cloudflared tunnel run c021837a-9593-4c04-8be8-3477297d5649 \
+    --config ~/.cloudflared/config.yml &
+  ok "Tunnel 起動済み (PID $!)"
   exit 0
 fi
 
@@ -109,6 +151,30 @@ fi
 
 DAP_DIR="$SCRIPT_DIR/modules/dap"
 
+# ── Cloudflare Tunnel ───────────────────────────────────────────────
+if command -v cloudflared &>/dev/null; then
+  _CF_PID=$(pgrep -f "cloudflared tunnel run" 2>/dev/null || true)
+  if [[ -n "$_CF_PID" ]]; then
+    ok "Cloudflare Tunnel: 既に実行中 (PID $_CF_PID)"
+  else
+    info "Cloudflare Tunnel を起動します…"
+    cloudflared tunnel run c021837a-9593-4c04-8be8-3477297d5649 \
+      --config ~/.cloudflared/config.yml &>/tmp/cloudflared.log &
+    _CF_NEW_PID=$!
+    sleep 2
+    if kill -0 "$_CF_NEW_PID" 2>/dev/null; then
+      ok "Cloudflare Tunnel: 起動済み (PID $_CF_NEW_PID)"
+      info "  外部 URL: https://app.tsp-aitrademanagement.com"
+    else
+      warn "Cloudflare Tunnel の起動に失敗しました。ログ: /tmp/cloudflared.log"
+    fi
+  fi
+else
+  warn "cloudflared が見つかりません。外部アクセスは無効です。"
+  warn "  インストール: brew install cloudflared"
+fi
+echo ""
+
 # ── DAP (port 8010) をバックグラウンドで起動 ────────────────────────
 # StaticFiles が相対パス "app/static" を使うため DAP_DIR に cd してから起動する
 # 再起動時に旧プロセスが残っていると "address already in use" で即終了するため事前に解放する
@@ -135,8 +201,10 @@ else
   info "platform-core をポート ${PLATFORM_PORT} で起動します…"
   info "全モジュール (Ollama 含む) は lifespan で自動起動されます"
   echo ""
-  info "ブラウザでアクセス → http://localhost:${PLATFORM_PORT}"
-  info "DAP アシスタント → http://localhost:8010"
+  info "ローカルアクセス  → http://localhost:${PLATFORM_PORT}"
+  info "外部アクセス     → https://app.tsp-aitrademanagement.com"
+  info "DAP (外部)       → https://dap.tsp-aitrademanagement.com"
+  info "トンネル確認     → ./start.sh --tunnel-status"
   echo ""
   PYTHONPATH="$PLATFORM_CORE" \
     exec "$VENV/uvicorn" platform_core.main:app \
