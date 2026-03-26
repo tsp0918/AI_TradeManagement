@@ -54,7 +54,7 @@ def _load() -> tuple[list[dict], dict[str, list[dict]]]:
             return _records, _by_hs6
         with open(_DATA_PATH, encoding="utf-8") as f:
             data = json.load(f)
-        _records = data.get("records", []) if isinstance(data, dict) else data
+        _records = data.get("items", data.get("records", [])) if isinstance(data, dict) else data
         _by_hs6 = {}
         for r in _records:
             _by_hs6.setdefault(r.get("hs6", ""), []).append(r)
@@ -108,7 +108,7 @@ def search_jp_hs(
     q_lower = q.lower()
     results = [
         r for r in records
-        if q_lower in r.get("description", "").lower()
+        if q_lower in (r.get("desc") or r.get("description", "")).lower()
     ]
     return results[:limit]
 
