@@ -1,4 +1,4 @@
-// cache-bust: 1772970000
+// cache-bust: 1774499348
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -870,6 +870,51 @@
     el.focus();
   }
 
+  // ── ポータル対応ナビゲーション ────────────────────────────────────
+  // ポート番号 → ポータルのモジュールキー対応表
+  var _PORT_TO_MODULE = {
+    '8001': 'ai_validation',
+    '8002': 'ai_classification',
+    '8003': 'rnd_assessment',
+    '8004': 'patent_search',
+    '8005': 'screening',
+    '8006': 'hs_classifier',
+    '8010': 'dap',
+  };
+
+  /**
+   * URL に応じてナビゲートする。
+   * - ポータル上（window.__dap_portal_navigate__ あり）: iframe を切り替える
+   * - スタンドアロン: window.location.href で直接移動
+   */
+  function _portalNavigate(url) {
+    if (!url) return;
+    // ポータル公開 API が存在する場合はiframe切り替え
+    if (typeof window.__dap_portal_navigate__ === 'function') {
+      try {
+        var parsed = new URL(url, window.location.href);
+        var port   = parsed.port;
+        var moduleKey = _PORT_TO_MODULE[port];
+        // /proxy/KEY/... 形式のURLにも対応
+        if (!moduleKey) {
+          var proxyMatch = parsed.pathname.match(/^\/proxy\/([^/]+)(\/.*)?$/);
+          if (proxyMatch) moduleKey = proxyMatch[1];
+        }
+        if (moduleKey) {
+          // ポートを除いたパスをポータルiframeに渡す
+          var subPath = parsed.pathname + parsed.search + parsed.hash;
+          // localhost:PORT/path → /proxy/module/path に変換
+          if (port && _PORT_TO_MODULE[port]) {
+            subPath = subPath || '/';
+          }
+          window.__dap_portal_navigate__(moduleKey, subPath);
+          return;
+        }
+      } catch (e) { /* URL解析失敗 → フォールバック */ }
+    }
+    window.location.href = url;
+  }
+
   // ── アクション実行 ────────────────────────────────────────────────
   function executeActions(actions) {
     if (!Array.isArray(actions)) return;
@@ -891,7 +936,7 @@
           break;
         case 'navigate_to':
           if (action.url) {
-            setTimeout(function () { window.location.href = action.url; }, 800);
+            setTimeout(function () { _portalNavigate(action.url); }, 800);
           }
           break;
       }
@@ -916,7 +961,7 @@
             await sleep(1800);  // メッセージを読む時間
             appendGuidanceMsg('移動先でも続きをご案内しますので、慌てなくて大丈夫です 👍');
             await waitForUserAck('ページを開く →', 30000);  // ユーザーが準備できたら
-            window.location.href = step.url;
+            _portalNavigate(step.url);
             return;  // ページ遷移するのでここで終わり
           }
           break;
