@@ -351,7 +351,7 @@ def profiles_create(
     }
     fingerprint = make_fingerprint(fp_payload)
 
-    crud.create_profile(
+    new_profile = crud.create_profile(
         db,
         case_id=case_id,
         version_no=next_version,
@@ -368,7 +368,22 @@ def profiles_create(
         disclosure_template_json=dis_json,
     )
 
-    return RedirectResponse(url="/ui/cases", status_code=303)
+    # エンドユーザー企業名が入力されていれば自動スクリーニング実行
+    eu_name = (end_json.get("end_user_name") or "").strip() if end_json else ""
+    if eu_name and new_profile:
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                r = client.post(
+                    f"{SCREENING_BASE}/api/screen",
+                    json={"company_name": eu_name, "threshold": 0.75},
+                )
+            if r.status_code == 200:
+                data = r.json()
+                crud.update_profile_screening(db, new_profile.profile_id, str(data["id"]), data["result_status"])
+        except Exception:
+            pass  # 自動スクリーニング失敗は非致命的
+
+    return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest", status_code=303)
 
 
 # -----------------------------
