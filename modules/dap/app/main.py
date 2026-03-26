@@ -45,6 +45,14 @@ async def _startup() -> None:
     finally:
         db.close()
 
+    # Ollama ウォームアップ (失敗しても起動を止めない)
+    try:
+        import asyncio as _asyncio
+        from .llm_router import init_ollama
+        await _asyncio.get_event_loop().run_in_executor(None, init_ollama)
+    except Exception:
+        pass
+
 
 import time as _time
 _STATIC_VER = str(int(_time.time()))  # cache-busting token; changes on every restart

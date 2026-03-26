@@ -21,6 +21,8 @@ dependencies = [
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
     "python-dotenv>=1.0",
+    # Local LLM (Ollama) — optional; fallback to Sonnet if unavailable
+    "ollama>=0.4",
 ]
 
 [build-system]
