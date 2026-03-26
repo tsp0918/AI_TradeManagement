@@ -8,7 +8,7 @@ from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan
 
 from app.config import settings
 from app.database import init_db, close_db
-from app.routers import pages, search, favorites, use_cases, export
+from app.routers import pages, search, favorites, use_cases, export, applicant_screening
 
 MODULE = ModuleInfo(
     key="patent_search",
@@ -39,6 +39,7 @@ app.include_router(search.router, prefix="/api", tags=["Search"])
 app.include_router(favorites.router, prefix="/api", tags=["Favorites"])
 app.include_router(use_cases.router, prefix="/api", tags=["Use Cases"])
 app.include_router(export.router, prefix="/api", tags=["Export"])
+app.include_router(applicant_screening.router, prefix="/api", tags=["Applicant Screening"])
 
 
 @app.get("/api/health")

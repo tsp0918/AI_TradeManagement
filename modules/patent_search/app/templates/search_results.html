@@ -14,9 +14,31 @@
 {% elif results %}
   <p>{{ results.count }}件の特許が見つかりました</p>
 
-  <div class="actions">
+  <div class="actions" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
     <button onclick="exportResults('csv')">CSV出力</button>
     <button onclick="exportResults('json')">JSON出力</button>
+    <button id="btnScreenApplicants" onclick="screenApplicants()" style="background:#1e40af;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:.85rem;">
+      🔍 出願人スクリーニング
+    </button>
+    <span id="screeningStatus" style="font-size:.8rem;color:#6b7280;"></span>
+  </div>
+
+  <!-- スクリーニング結果パネル -->
+  <div id="screeningPanel" style="display:none; margin-bottom:16px; border:1px solid #e5e7eb; border-radius:6px; overflow:hidden;">
+    <div style="background:#f9fafb; padding:8px 14px; font-size:.85rem; font-weight:600; border-bottom:1px solid #e5e7eb;">
+      出願人 制裁リスト照合結果
+    </div>
+    <table style="width:100%; border-collapse:collapse; font-size:.83rem;">
+      <thead>
+        <tr style="background:#f3f4f6;">
+          <th style="padding:6px 10px; text-align:left;">出願人名</th>
+          <th style="padding:6px 10px; text-align:left;">判定</th>
+          <th style="padding:6px 10px; text-align:left;">スコア</th>
+          <th style="padding:6px 10px; text-align:left;">マッチ先</th>
+        </tr>
+      </thead>
+      <tbody id="screeningTableBody"></tbody>
+    </table>
   </div>
 
   <table id="patentTable" class="patent-table">
@@ -26,6 +48,7 @@
         <th>Publication</th>
         <th>Title</th>
         <th>Assignee</th>
+        <th>制裁</th>
         <th>Date</th>
         <th>Country</th>
       </tr>
@@ -41,6 +64,7 @@
         <td>{{ patent.publication_number }}</td>
         <td>{{ patent.title }}</td>
         <td>{{ (patent.assignees | join(', ')) if patent.assignees else "" }}</td>
+        <td class="screening-cell" data-assignees="{{ (patent.assignees | tojson) if patent.assignees else '[]' }}">—</td>
         <td>{{ patent.publication_date or "" }}</td>
         <td>{{ patent.country_code or "" }}</td>
       </tr>
@@ -94,10 +118,88 @@
   <link rel="stylesheet" href="/static/css/modal.css">
   <script src="/static/js/search_modal.js"></script>
   <script>
+  // ── 出願人スクリーニング ─────────────────────────────────────────────
+  var _proxyMatch = window.location.pathname.match(/^(\/proxy\/[^/]+)/);
+  var _moduleBase = _proxyMatch ? _proxyMatch[1] : '';
+
+  async function screenApplicants() {
+    const results = window.__SEARCH_RESULTS__ || [];
+    const names = [];
+    results.forEach(p => { (p.assignees || []).forEach(a => { if (a) names.push(a); }); });
+    if (!names.length) { alert('出願人情報がありません'); return; }
+
+    const btn = document.getElementById('btnScreenApplicants');
+    const status = document.getElementById('screeningStatus');
+    btn.disabled = true;
+    status.textContent = '照合中...';
+
+    try {
+      const resp = await fetch(_moduleBase + '/api/screen-applicants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ names, threshold: 0.75 })
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+
+      // name → result map
+      const map = {};
+      data.forEach(r => { map[r.name] = r; });
+
+      // パネルを更新
+      const tbody = document.getElementById('screeningTableBody');
+      tbody.innerHTML = '';
+      data.forEach(r => {
+        const chip = _chipHtml(r.result_status);
+        tbody.innerHTML += `<tr>
+          <td style="padding:5px 10px;">${_esc(r.name)}</td>
+          <td style="padding:5px 10px;">${chip}</td>
+          <td style="padding:5px 10px;">${r.max_score ? (r.max_score * 100).toFixed(0) + '%' : '—'}</td>
+          <td style="padding:5px 10px;">${_esc(r.top_match || '—')}</td>
+        </tr>`;
+      });
+      document.getElementById('screeningPanel').style.display = 'block';
+
+      // テーブルの「制裁」列を更新
+      document.querySelectorAll('.screening-cell').forEach(cell => {
+        const assignees = JSON.parse(cell.dataset.assignees || '[]');
+        if (!assignees.length) { cell.textContent = '—'; return; }
+        const worst = assignees.reduce((acc, a) => {
+          const r = map[a];
+          if (!r) return acc;
+          const rank = { match: 3, possible_match: 2, clear: 1, error: 0 };
+          return (rank[r.result_status] || 0) > (rank[acc] || 0) ? r.result_status : acc;
+        }, 'clear');
+        cell.innerHTML = _chipHtml(worst);
+      });
+
+      const matchCount = data.filter(r => r.result_status !== 'clear' && r.result_status !== 'error').length;
+      status.textContent = `照合完了（${data.length}社、要確認: ${matchCount}社）`;
+    } catch (e) {
+      status.textContent = 'エラー: ' + e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function _chipHtml(status) {
+    const map = {
+      clear:          '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600;">✓ Clear</span>',
+      possible_match: '<span style="background:#fffbeb;color:#854d0e;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600;">⚠ 要確認</span>',
+      match:          '<span style="background:#fee2e2;color:#be123c;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600;">🔴 Match</span>',
+    };
+    return map[status] || '<span style="color:#9ca3af;font-size:.75rem;">—</span>';
+  }
+
+  function _esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── エクスポート ─────────────────────────────────────────────────────────
   async function exportResults(format) {
     const results = window.__SEARCH_RESULTS__ || [];
     if (!results.length) { alert('エクスポートするデータがありません'); return; }
-    const resp = await fetch('/api/export/results/' + format, {
+    const resp = await fetch(_moduleBase + '/api/export/results/' + format, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(results)
