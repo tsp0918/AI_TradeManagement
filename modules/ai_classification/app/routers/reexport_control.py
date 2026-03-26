@@ -32,6 +32,8 @@ from ..services.reexport_control import (
     assess_reexport,
     get_rfc_codes,
     _load_eccn_index,
+    _COUNTRY_CHART,
+    _CHART_COLUMNS,
     ReexportAssessment,
 )
 
@@ -252,4 +254,76 @@ def eccn_info(eccn: str):
         "product_group":     entry.get("product_group"),
         "heading":           (entry.get("heading") or "")[:200],
         "license_exceptions":entry.get("license_exceptions", ""),
+    }
+
+
+# ── 国別リスクサマリー ─────────────────────────────────────────────────────────
+
+@router.get("/api/reexport/country-risk/{country_code}")
+def country_risk(country_code: str):
+    """
+    EAR Country Chart の指定国データを返す。
+
+    取引審査（ai_validation）から仕向地リスク表示に利用する。
+    country_code: JP / US / CN / EU / KR （ISO alpha-2 または EU）
+    """
+    code = country_code.upper().strip()
+    chart = _COUNTRY_CHART.get(code)
+
+    # platform_core の国情報（懸念国・ホワイト国・EAR グループ）を追加取得
+    country_meta: dict = {}
+    try:
+        from platform_core.ontology.rules.catchall_engine import get_country_info
+        info = get_country_info(code)
+        if info:
+            country_meta = {
+                "name_ja":            info.get("name_ja", code),
+                "fefta_status":       info.get("fefta_status"),
+                "ear_groups":         info.get("ear_groups", []),
+                "ear_is_embargoed":   info.get("ear_is_embargoed", False),
+                "whitelist_agreements": info.get("whitelist_agreements", []),
+                "level":              info.get("level"),
+            }
+    except Exception:
+        pass
+
+    if chart is None:
+        return {
+            "country_code":  code,
+            "found":         False,
+            "columns_x":     [],
+            "chart":         {},
+            **country_meta,
+            "message": (
+                f"{code} は EAR Country Chart の収録対象外です（JP/US/CN/EU/KR のみ対応）。"
+                " platform_core の catchall_engine が仕向地リスクを判定します。"
+            ),
+        }
+
+    columns_x = [col for col in _CHART_COLUMNS if chart.get(col) == "X"]
+
+    # リスクレベルをカラム数から算出
+    x_count = len(columns_x)
+    if x_count == 0:
+        risk_color = "green"
+        risk_label = "低リスク（NLR）"
+    elif x_count <= 3:
+        risk_color = "yellow"
+        risk_label = "中リスク（限定的許可要件）"
+    elif x_count <= 8:
+        risk_color = "orange"
+        risk_label = "高リスク（多数列で許可要件）"
+    else:
+        risk_color = "red"
+        risk_label = "最高リスク（全列ほぼ許可要件）"
+
+    return {
+        "country_code":  code,
+        "found":         True,
+        "columns_x":     columns_x,
+        "columns_x_count": x_count,
+        "risk_color":    risk_color,
+        "risk_label":    risk_label,
+        "chart":         chart,
+        **country_meta,
     }

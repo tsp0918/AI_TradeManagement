@@ -1118,7 +1118,8 @@
           <span style="font-weight:600;">仕向地（ISO alpha-2）</span>
           <input id="ca-dest" type="text" placeholder="例: CN, RU, US" maxlength="2"
             style="padding:6px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:.88rem; text-transform:uppercase;"
-            value="{{ tx.destination_country or '' }}">
+            value="{{ tx.destination_country or '' }}"
+            oninput="destRiskFetch(this.value)">
         </label>
         <label style="display:flex; flex-direction:column; gap:4px; font-size:.85rem;">
           <span style="font-weight:600;">最終需要者所在国（ISO alpha-2）</span>
@@ -1138,6 +1139,17 @@
             style="padding:6px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:.88rem;">
         </label>
       </div>
+    </div>
+
+    <!-- 仕向地リスクプロファイル（EAR Country Chart） -->
+    <div id="dest-risk-card" style="display:none; margin-bottom:14px; padding:10px 14px;
+         border:1px solid #e5e7eb; border-radius:8px; background:#f9fafb; font-size:.83rem;">
+      <div style="font-weight:700; margin-bottom:6px; color:#374151;">
+        EAR Country Chart — 仕向地リスクプロファイル
+        <span id="dest-risk-badge" style="margin-left:8px; padding:2px 8px; border-radius:12px;
+          font-size:.78rem; font-weight:700;"></span>
+      </div>
+      <div id="dest-risk-body" style="color:#4b5563;"></div>
     </div>
 
     <!-- インフォーム通知・EUC -->
@@ -1326,6 +1338,52 @@ function renderCatchallResult(j) {
   document.getElementById('ca-result').style.display = 'block';
   document.getElementById('ca-result').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
+
+// ── 仕向地リスクプロファイル（EAR Country Chart） ───────────────────────────
+let _destRiskTimer = null;
+async function destRiskFetch(val) {
+  const code = (val || '').trim().toUpperCase();
+  const card  = document.getElementById('dest-risk-card');
+  const badge = document.getElementById('dest-risk-badge');
+  const body  = document.getElementById('dest-risk-body');
+  if (code.length !== 2) { card.style.display = 'none'; return; }
+  try {
+    const resp = await fetch(`/proxy/ai_classification/api/reexport/country-risk/${code}`);
+    if (!resp.ok) { card.style.display = 'none'; return; }
+    const d = await resp.json();
+    card.style.display = 'block';
+    const colorMap = {green:'#d1fae5', yellow:'#fef9c3', orange:'#fed7aa', red:'#fee2e2'};
+    const textMap  = {green:'#065f46', yellow:'#92400e', orange:'#9a3412', red:'#991b1b'};
+    const col = d.risk_color || 'green';
+    badge.textContent = d.risk_label || '';
+    badge.style.background = colorMap[col] || '#e5e7eb';
+    badge.style.color       = textMap[col]  || '#374151';
+    if (!d.found) {
+      body.innerHTML = `<span style="color:#6b7280;">${d.message || ''}</span>`;
+      if (d.fefta_status) body.innerHTML += ` <b>外為法: ${d.fefta_status}</b>`;
+      return;
+    }
+    const name = d.name_ja ? `${d.name_ja}（${code}）` : code;
+    const groups = (d.ear_groups || []).join(', ') || '—';
+    const colsX  = (d.columns_x || []).join(' / ') || 'なし（全列 NLR）';
+    const embargo = d.ear_is_embargoed
+      ? '<span style="background:#fee2e2;color:#991b1b;padding:1px 6px;border-radius:4px;font-weight:700;">E:1 禁輸国</span> '
+      : '';
+    const wl = (d.whitelist_agreements || []).length > 0
+      ? `<span style="background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:4px;">ホワイト国</span> `
+      : '';
+    body.innerHTML = `
+      <div style="margin-bottom:4px;">${embargo}${wl}<b>${name}</b>
+        — EAR グループ: <code>${groups}</code>
+        ${d.fefta_status ? `&nbsp;/ 外為法: <b>${d.fefta_status}</b>` : ''}
+      </div>
+      <div>許可要件カラム（X）: <code style="font-size:.82rem;">${colsX}</code>
+        （${d.columns_x_count || 0} / ${17} 列）
+      </div>`;
+  } catch(e) { card.style.display = 'none'; }
+}
+// 初期表示（既存の仕向地が設定済みの場合）
+(function(){ const v = document.getElementById('ca-dest'); if(v) destRiskFetch(v.value); })();
 </script>
 {% endif %}
 
