@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>輸出許可申請管理</title>
+  <link rel="stylesheet" href="/static/platform.css" />
+  <style>
+    .stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 18px; }
+    .stat-card { background: #fff; border-radius: 8px; padding: 14px 12px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.06); border-top: 3px solid #e5e7eb; }
+    .stat-card.warn  { border-top-color: #f59e0b; }
+    .stat-card.danger { border-top-color: #ef4444; }
+    .stat-card.info  { border-top-color: #3b82f6; }
+    .stat-card.success { border-top-color: #10b981; }
+    .stat-num { font-size: 1.7rem; font-weight: 800; color: #111827; }
+    .stat-label { font-size: .75rem; color: #6b7280; margin-top: 2px; }
+    .filter-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .filter-bar input, .filter-bar select { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size:.85rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; background: #fff; }
+    th { background: #f9fafb; color: #374151; font-weight: 600; padding: 8px 10px; border-bottom: 2px solid #e5e7eb; text-align: left; white-space: nowrap; }
+    td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    tr:hover td { background: #f0f9ff; }
+    .badge { display: inline-block; border-radius: 99px; padding: 2px 9px; font-size: .75rem; font-weight: 600; }
+    .badge-draft     { background: #f3f4f6; color: #374151; }
+    .badge-submitted { background: #dbeafe; color: #1d4ed8; }
+    .badge-approved  { background: #d1fae5; color: #065f46; }
+    .badge-denied    { background: #fee2e2; color: #991b1b; }
+    .badge-expired   { background: #fef3c7; color: #92400e; }
+    .badge-not_required { background: #e5e7eb; color: #6b7280; }
+    .badge-ear  { background: #ede9fe; color: #5b21b6; }
+    .badge-fefta { background: #fce7f3; color: #9d174d; }
+    .expiring { color: #d97706; font-weight: 600; }
+    .expired-text { color: #ef4444; font-weight: 600; }
+    .btn    { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: .82rem; font-weight: 500; }
+    .btn-sm { padding: 3px 8px; font-size: .75rem; border-radius: 4px; }
+    .btn-primary { background: #1a56db; color: #fff; }
+    .btn-success { background: #0e9f6e; color: #fff; }
+    .btn-warn    { background: #f59e0b; color: #fff; }
+    .btn-danger  { background: #ef4444; color: #fff; }
+    .btn-cancel  { background: #e5e7eb; color: #374151; }
+    .btn-preview { background: #6366f1; color: #fff; }
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:#fff; border-radius:12px; padding:24px; width:640px; max-width:95vw; max-height:92vh; overflow-y:auto; box-shadow:0 8px 30px rgba(0,0,0,.2); }
+    .modal h2 { font-size:1.05rem; font-weight:700; margin-bottom:16px; }
+    .modal-footer { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .form-group label { display:block; font-size:.8rem; font-weight:600; color:#374151; margin-bottom:4px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width:100%; padding:7px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:.85rem; }
+    .form-group textarea { resize:vertical; min-height:60px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .timeline { margin-top: 12px; }
+    .timeline-item { display: flex; gap: 10px; margin-bottom: 10px; font-size: .84rem; }
+    .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; margin-top: 4px; }
+    .timeline-dot.active { background: #10b981; }
+    .timeline-dot.warn   { background: #f59e0b; }
+    .detail-panel { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; font-size: .85rem; }
+    .detail-row { display: flex; gap: 6px; margin-bottom: 6px; }
+    .detail-label { color: #6b7280; min-width: 130px; flex-shrink: 0; }
+    .detail-value { color: #111827; font-weight: 500; }
+    @media (max-width:900px) {
+      .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── ダッシュボード ─── -->
+<div style="padding:20px 24px 0;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <h2 style="font-size:1.1rem;font-weight:700;">📋 輸出許可申請管理</h2>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-success" onclick="openCreateModal()">＋ 新規作成</button>
+      <button class="btn btn-warn" onclick="openDraftFromTxModal()">⚡ 取引から生成</button>
+    </div>
+  </div>
+
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card"><div class="stat-num" id="sTotal">—</div><div class="stat-label">申請総数</div></div>
+    <div class="stat-card info"><div class="stat-num" id="sActive">—</div><div class="stat-label">承認済み</div></div>
+    <div class="stat-card"><div class="stat-num" id="sDraft">—</div><div class="stat-label">ドラフト</div></div>
+    <div class="stat-card"><div class="stat-num" id="sSubmitted">—</div><div class="stat-label">申請済み（審査中）</div></div>
+    <div class="stat-card warn"><div class="stat-num" id="sExpiring">—</div><div class="stat-label">30日以内に期限</div></div>
+    <div class="stat-card danger"><div class="stat-num" id="sExpired">—</div><div class="stat-label">期限切れ</div></div>
+  </div>
+</div>
+
+<!-- ─── フィルター & テーブル ─── -->
+<div style="padding:0 24px 20px;">
+  <div class="filter-bar">
+    <input id="filterQ" type="text" placeholder="品名・ECCNで検索…" oninput="filterTable()" style="width:220px;" />
+    <select id="filterStatus" onchange="filterTable()">
+      <option value="">すべてのステータス</option>
+      <option value="draft">ドラフト</option>
+      <option value="submitted">申請済み</option>
+      <option value="approved">承認済み</option>
+      <option value="denied">却下</option>
+      <option value="expired">期限切れ</option>
+    </select>
+    <select id="filterType" onchange="filterTable()">
+      <option value="">すべての種別</option>
+      <option value="EAR">EAR (BIS-748P)</option>
+      <option value="FEFTA">外為法</option>
+    </select>
+  </div>
+
+  <div style="overflow-x:auto;">
+    <table id="licTable">
+      <thead>
+        <tr>
+          <th>種別</th>
+          <th>品目</th>
+          <th>ECCN</th>
+          <th>仕向地</th>
+          <th>荷受人</th>
+          <th>ステータス</th>
+          <th>許可番号</th>
+          <th>有効期限</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="licBody"><tr><td colspan="9" style="text-align:center;color:#9ca3af;">読み込み中…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── 新規作成モーダル ─── -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal">
+    <h2>＋ 輸出許可申請ドラフト 新規作成</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>申請種別 *</label>
+        <select id="cType" onchange="updateFormType()">
+          <option value="EAR">EAR (BIS-748P) — 米国再輸出規制</option>
+          <option value="FEFTA">外為法 — 輸出許可申請書（様式第1）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>仕向地（国コード）</label>
+        <input id="cCountry" type="text" placeholder="例: CN, KR, DE" maxlength="4" />
+      </div>
+      <div class="form-group full">
+        <label>品目名称 *</label>
+        <input id="cItem" type="text" placeholder="例: GaN HEMT Amplifier Module" />
+      </div>
+      <div class="form-group">
+        <label>ECCN</label>
+        <input id="cEccn" type="text" placeholder="例: 3A001.a.2" />
+      </div>
+      <div class="form-group">
+        <label>申請金額（USD）</label>
+        <input id="cValue" type="number" min="0" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label>数量</label>
+        <input id="cQty" type="number" min="0" step="0.001" />
+      </div>
+      <div class="form-group">
+        <label>単位</label>
+        <input id="cUnit" type="text" placeholder="例: units, kg" />
+      </div>
+      <div class="form-group full">
+        <label>荷受人（Consignee）</label>
+        <input id="cConsignee" type="text" placeholder="会社名" />
+      </div>
+      <div class="form-group full">
+        <label>荷受人住所</label>
+        <input id="cConsigneeAddr" type="text" placeholder="住所（市・国）" />
+      </div>
+      <div class="form-group full">
+        <label>最終需要者（End User）</label>
+        <input id="cEndUser" type="text" placeholder="荷受人と異なる場合" />
+      </div>
+      <div class="form-group full">
+        <label>最終用途（End Use）</label>
+        <textarea id="cEndUse" placeholder="具体的な使用目的…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>許可証有効期限（見込み）</label>
+        <input id="cExpires" type="date" />
+      </div>
+      <div class="form-group">
+        <label>備考</label>
+        <input id="cNotes" type="text" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('createModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitCreate()">ドラフト作成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 取引からドラフト生成モーダル ─── -->
+<div class="modal-overlay" id="draftFromTxModal">
+  <div class="modal" style="width:440px;">
+    <h2>⚡ 取引データからドラフト生成</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>ai_validation 取引 ID *</label>
+        <input id="dtxId" type="number" min="1" placeholder="取引 ID を入力" />
+      </div>
+      <div class="form-group full">
+        <label>申請種別</label>
+        <select id="dtxType">
+          <option value="EAR">EAR (BIS-748P)</option>
+          <option value="FEFTA">外為法</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('draftFromTxModal')">キャンセル</button>
+      <button class="btn btn-warn" onclick="submitDraftFromTx()">ドラフト生成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 詳細・操作モーダル ─── -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" style="width:680px;">
+    <h2 id="detailTitle">申請詳細</h2>
+    <div id="detailContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('detailModal')">閉じる</button>
+      <button class="btn btn-preview" id="btnPreview" onclick="openPreview()">📄 フォームプレビュー</button>
+      <button class="btn btn-primary" id="btnSubmitApp" onclick="submitApp()" style="display:none;">申請済みに変更</button>
+      <button class="btn btn-success" id="btnApprove" onclick="openApproveModal()" style="display:none;">承認・許可番号登録</button>
+      <button class="btn btn-danger" id="btnDeny" onclick="denyApp()" style="display:none;">却下</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 承認モーダル ─── -->
+<div class="modal-overlay" id="approveModal">
+  <div class="modal" style="width:440px;">
+    <h2>✅ 承認・許可番号登録</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>許可番号 *</label>
+        <input id="apLicNum" type="text" placeholder="例: D123456789 / 輸出-2026-001234" />
+      </div>
+      <div class="form-group">
+        <label>発行機関</label>
+        <select id="apAuthority">
+          <option value="BIS">BIS（米国商務省）</option>
+          <option value="METI">METI（経済産業省）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>承認日</label>
+        <input id="apApprovedAt" type="date" />
+      </div>
+      <div class="form-group">
+        <label>許可証有効期限</label>
+        <input id="apExpiresAt" type="date" />
+      </div>
+      <div class="form-group full">
+        <label>許可金額残高（USD）</label>
+        <input id="apValueRemaining" type="number" min="0" step="0.01" placeholder="ライセンス金額上限" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('approveModal')">キャンセル</button>
+      <button class="btn btn-success" onclick="submitApprove()">登録</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let _allApps = [];
+let _currentId = null;
+
+// ── 初期化 ────────────────────────────────────────────────────────
+(async function init() {
+  await loadStats();
+  await loadApps();
+})();
+
+async function loadStats() {
+  try {
+    const r = await fetch('/api/export-licenses/stats');
+    const d = await r.json();
+    document.getElementById('sTotal').textContent     = d.total;
+    document.getElementById('sActive').textContent    = d.active_licenses;
+    document.getElementById('sDraft').textContent     = d.pending_submission;
+    document.getElementById('sSubmitted').textContent = (d.by_status?.submitted||0);
+    document.getElementById('sExpiring').textContent  = d.expiring_soon_count;
+    document.getElementById('sExpired').textContent   = d.expired_count;
+  } catch(e) {}
+}
+
+async function loadApps() {
+  try {
+    const r = await fetch('/api/export-licenses');
+    _allApps = await r.json();
+    renderTable(_allApps);
+  } catch(e) {
+    document.getElementById('licBody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:#ef4444;">読み込みエラー</td></tr>';
+  }
+}
+
+function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+function badgeStatus(s) {
+  const labels = { draft:'ドラフト', submitted:'申請済み', approved:'承認済み', denied:'却下', expired:'期限切れ', not_required:'許可不要' };
+  return `<span class="badge badge-${s}">${labels[s]||s}</span>`;
+}
+
+function daysDisplay(days) {
+  if (days === null || days === undefined) return '—';
+  if (days < 0) return `<span class="expired-text">期限切れ (${Math.abs(days)}日前)</span>`;
+  if (days <= 30) return `<span class="expiring">残 ${days} 日</span>`;
+  return `残 ${days} 日`;
+}
+
+function renderTable(apps) {
+  if (!apps.length) {
+    document.getElementById('licBody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:#9ca3af;">申請なし</td></tr>';
+    return;
+  }
+  document.getElementById('licBody').innerHTML = apps.map(a => `
+    <tr>
+      <td><span class="badge badge-${a.license_type.toLowerCase()}">${a.license_type}</span></td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.item_description||'—')}</td>
+      <td style="font-family:monospace;">${esc(a.eccn||'—')}</td>
+      <td>${esc(a.destination_country||'—')}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.consignee_name||'—')}</td>
+      <td>${badgeStatus(a.status)}</td>
+      <td style="font-family:monospace;font-size:.78rem;">${esc(a.license_number||'—')}</td>
+      <td>${daysDisplay(a.days_remaining)}</td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="openDetail('${a.id}')">詳細</button>
+        <button class="btn btn-sm btn-danger" style="margin-left:2px;" onclick="deleteLic('${a.id}')">削除</button>
+      </td>
+    </tr>`).join('');
+}
+
+function filterTable() {
+  const q  = document.getElementById('filterQ').value.toLowerCase();
+  const st = document.getElementById('filterStatus').value;
+  const tp = document.getElementById('filterType').value;
+  const filtered = _allApps.filter(a => {
+    if (q  && !(a.item_description||'').toLowerCase().includes(q) && !(a.eccn||'').toLowerCase().includes(q)) return false;
+    if (st && a.status !== st) return false;
+    if (tp && a.license_type !== tp) return false;
+    return true;
+  });
+  renderTable(filtered);
+}
+
+// ── 新規作成 ──────────────────────────────────────────────────────
+function openCreateModal() {
+  ['cItem','cEccn','cCountry','cConsignee','cConsigneeAddr','cEndUser','cEndUse','cNotes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('cValue').value='';
+  document.getElementById('cQty').value='';
+  document.getElementById('cUnit').value='';
+  document.getElementById('cExpires').value='';
+  document.getElementById('createModal').classList.add('open');
+}
+
+async function submitCreate() {
+  const item = document.getElementById('cItem').value.trim();
+  if (!item) { alert('品目名称は必須です'); return; }
+  const licType = document.getElementById('cType').value;
+  const body = {
+    license_type: licType,
+    form_type: licType === 'EAR' ? 'BIS748P' : 'FEFTA_FORM',
+    item_description: item,
+    eccn: document.getElementById('cEccn').value.trim()||null,
+    destination_country: document.getElementById('cCountry').value.trim().toUpperCase()||null,
+    consignee_name: document.getElementById('cConsignee').value.trim()||null,
+    consignee_address: document.getElementById('cConsigneeAddr').value.trim()||null,
+    end_user_name: document.getElementById('cEndUser').value.trim()||null,
+    end_use_description: document.getElementById('cEndUse').value.trim()||null,
+    value_usd: parseFloat(document.getElementById('cValue').value)||null,
+    quantity: parseFloat(document.getElementById('cQty').value)||null,
+    quantity_unit: document.getElementById('cUnit').value.trim()||null,
+    expires_at: document.getElementById('cExpires').value||null,
+    notes: document.getElementById('cNotes').value.trim()||null,
+  };
+  try {
+    const r = await fetch('/api/export-licenses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(await r.text());
+    closeModal('createModal');
+    await loadStats();
+    await loadApps();
+  } catch(e) { alert('エラー: '+e.message); }
+}
+
+// ── 取引からドラフト ──────────────────────────────────────────────
+function openDraftFromTxModal() {
+  document.getElementById('dtxId').value='';
+  document.getElementById('draftFromTxModal').classList.add('open');
+}
+
+async function submitDraftFromTx() {
+  const txId = parseInt(document.getElementById('dtxId').value);
+  if (!txId) { alert('取引 ID を入力してください'); return; }
+  try {
+    const r = await fetch('/api/export-licenses/draft-from-transaction', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ transaction_id: txId, license_type: document.getElementById('dtxType').value })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    closeModal('draftFromTxModal');
+    await loadStats();
+    await loadApps();
+    alert('ドラフトを生成しました。詳細から内容を確認・編集してください。');
+  } catch(e) { alert('エラー: '+e.message); }
+}
+
+// ── 詳細 ─────────────────────────────────────────────────────────
+async function openDetail(id) {
+  _currentId = id;
+  const r = await fetch(`/api/export-licenses/${id}`);
+  const a = await r.json();
+
+  document.getElementById('detailTitle').textContent = `${a.license_type} 申請詳細`;
+
+  const txLinks = (a.transaction_ids||[]).map(t => `取引#${t}`).join(', ') || '—';
+
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-panel" style="margin-bottom:12px;">
+      <div class="detail-row"><span class="detail-label">ステータス</span><span class="detail-value">${badgeStatus(a.status)}</span></div>
+      <div class="detail-row"><span class="detail-label">申請種別</span><span class="detail-value"><span class="badge badge-${a.license_type.toLowerCase()}">${a.license_type}</span></span></div>
+      <div class="detail-row"><span class="detail-label">品目</span><span class="detail-value">${esc(a.item_description||'—')}</span></div>
+      <div class="detail-row"><span class="detail-label">ECCN</span><span class="detail-value" style="font-family:monospace;">${esc(a.eccn||'—')}</span></div>
+      <div class="detail-row"><span class="detail-label">仕向地</span><span class="detail-value">${esc(a.destination_country||'—')}</span></div>
+      <div class="detail-row"><span class="detail-label">荷受人</span><span class="detail-value">${esc(a.consignee_name||'—')}</span></div>
+      <div class="detail-row"><span class="detail-label">最終需要者</span><span class="detail-value">${esc(a.end_user_name||'—')}</span></div>
+      <div class="detail-row"><span class="detail-label">最終用途</span><span class="detail-value">${esc(a.end_use_description||'—')}</span></div>
+      <div class="detail-row"><span class="detail-label">申請金額</span><span class="detail-value">${a.value_usd?'$'+a.value_usd.toLocaleString():'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">数量</span><span class="detail-value">${a.quantity?a.quantity+' '+esc(a.quantity_unit||''):'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">紐付け取引</span><span class="detail-value">${txLinks}</span></div>
+    </div>
+    ${a.license_number ? `
+    <div class="detail-panel" style="border-left:4px solid #10b981;margin-bottom:12px;">
+      <div class="detail-row"><span class="detail-label">許可番号</span><span class="detail-value" style="font-family:monospace;font-weight:700;">${esc(a.license_number)}</span></div>
+      <div class="detail-row"><span class="detail-label">発行機関</span><span class="detail-value">${esc(a.issuing_authority||'—')}</span></div>
+      <div class="detail-row"><span class="detail-label">承認日</span><span class="detail-value">${a.approved_at?a.approved_at.slice(0,10):'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">有効期限</span><span class="detail-value">${a.expires_at?a.expires_at.slice(0,10):'—'} ${daysDisplay(a.days_remaining)}</span></div>
+      ${a.license_value_remaining_usd?`<div class="detail-row"><span class="detail-label">残高（USD）</span><span class="detail-value">$${a.license_value_remaining_usd.toLocaleString()}</span></div>`:''}
+    </div>` : ''}
+    ${a.notes?`<div style="font-size:.82rem;color:#6b7280;margin-top:6px;">備考: ${esc(a.notes)}</div>`:''}
+  `;
+
+  // ボタン表示制御
+  document.getElementById('btnSubmitApp').style.display = a.status === 'draft' ? '' : 'none';
+  document.getElementById('btnApprove').style.display   = a.status === 'submitted' ? '' : 'none';
+  document.getElementById('btnDeny').style.display      = a.status === 'submitted' ? '' : 'none';
+
+  document.getElementById('detailModal').classList.add('open');
+}
+
+function openPreview() {
+  if (!_currentId) return;
+  window.open(`/api/export-licenses/${_currentId}/preview`, '_blank');
+}
+
+async function submitApp() {
+  if (!_currentId) return;
+  const r = await fetch(`/api/export-licenses/${_currentId}/submit`, { method:'POST' });
+  if (r.ok) { closeModal('detailModal'); await loadStats(); await loadApps(); }
+  else alert('エラー');
+}
+
+function openApproveModal() {
+  document.getElementById('apLicNum').value='';
+  document.getElementById('apApprovedAt').value='';
+  document.getElementById('apExpiresAt').value='';
+  document.getElementById('apValueRemaining').value='';
+  document.getElementById('approveModal').classList.add('open');
+}
+
+async function submitApprove() {
+  const num = document.getElementById('apLicNum').value.trim();
+  if (!num) { alert('許可番号を入力してください'); return; }
+  const body = {
+    license_number: num,
+    issuing_authority: document.getElementById('apAuthority').value,
+    approved_at: document.getElementById('apApprovedAt').value||null,
+    expires_at: document.getElementById('apExpiresAt').value||null,
+    license_value_remaining_usd: parseFloat(document.getElementById('apValueRemaining').value)||null,
+  };
+  const r = await fetch(`/api/export-licenses/${_currentId}/approve`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (r.ok) {
+    closeModal('approveModal');
+    closeModal('detailModal');
+    await loadStats();
+    await loadApps();
+  } else alert('エラー');
+}
+
+async function denyApp() {
+  if (!confirm('この申請を却下しますか？')) return;
+  const r = await fetch(`/api/export-licenses/${_currentId}/deny`, { method:'POST' });
+  if (r.ok) { closeModal('detailModal'); await loadStats(); await loadApps(); }
+  else alert('エラー');
+}
+
+async function deleteLic(id) {
+  if (!confirm('この申請を削除しますか？')) return;
+  const r = await fetch(`/api/export-licenses/${id}`, { method:'DELETE' });
+  if (r.ok) { await loadStats(); await loadApps(); }
+  else alert('削除エラー');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function updateFormType() {
+  // 今後: 種別に応じてフォームフィールドを切替
+}
+</script>
+</body>
+</html>

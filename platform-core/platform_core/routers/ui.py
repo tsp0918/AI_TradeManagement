@@ -146,6 +146,36 @@ _KNOWN_MODULES: list[dict] = [
         "health_check_path": "/health",
         "nav_section":       "tools",
     },
+    {
+        "key":               "counterparty",
+        "name":              "与信管理",
+        "description":       "取引先の与信スコア・制裁リスト・国別リスクを統合管理する",
+        "base_url":          "",
+        "iframe_url":        "/ui/counterparty",
+        "icon":              "🏢",
+        "health_check_path": "",
+        "nav_section":       "tools",
+    },
+    {
+        "key":               "supply_chain",
+        "name":              "サプライチェーン管理",
+        "description":       "BOM 構造管理と EAR §734.4 De Minimis ルール自動計算",
+        "base_url":          "",
+        "iframe_url":        "/ui/supply-chain",
+        "icon":              "🔗",
+        "health_check_path": "",
+        "nav_section":       "tools",
+    },
+    {
+        "key":               "export_license",
+        "name":              "輸出許可申請",
+        "description":       "EAR BIS-748P / 外為法 様式第1 のドラフト自動生成・期限管理",
+        "base_url":          "",
+        "iframe_url":        "/ui/export-license",
+        "icon":              "📋",
+        "health_check_path": "",
+        "nav_section":       "tools",
+    },
 ]
 
 
@@ -461,6 +491,24 @@ async def launch_module(module_key: str, db: AsyncSession = Depends(get_db)):
             pass
 
     return {"status": "launching", "pid": proc.pid}
+
+
+@router.get("/counterparty", response_class=HTMLResponse, include_in_schema=False)
+async def counterparty_ui(request: Request):
+    """与信管理画面。"""
+    return templates.TemplateResponse(request, "counterparty.html", {})
+
+
+@router.get("/supply-chain", response_class=HTMLResponse, include_in_schema=False)
+async def supply_chain_ui(request: Request):
+    """サプライチェーン管理画面。"""
+    return templates.TemplateResponse(request, "supply_chain.html", {})
+
+
+@router.get("/export-license", response_class=HTMLResponse, include_in_schema=False)
+async def export_license_ui(request: Request):
+    """輸出許可申請管理画面。"""
+    return templates.TemplateResponse(request, "export_license.html", {})
 
 
 @router.post("/stop/{module_key}", include_in_schema=False)
