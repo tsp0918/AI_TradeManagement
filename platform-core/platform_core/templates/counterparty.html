@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>与信管理 — AI Trade Management</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; color: #1a1a2e; }
+  .topbar { background: #1a1a2e; color: #fff; padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
+  .topbar h1 { font-size: 1.1rem; font-weight: 600; }
+  .topbar a { color: #90caf9; font-size: 0.85rem; text-decoration: none; }
+  .container { max-width: 1400px; margin: 24px auto; padding: 0 20px; }
+  /* Stats */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: #fff; border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .stat-card .val { font-size: 2rem; font-weight: 700; }
+  .stat-card .lbl { font-size: 0.78rem; color: #666; margin-top: 4px; }
+  .stat-card.critical .val { color: #c62828; }
+  .stat-card.high .val { color: #e65100; }
+  .stat-card.medium .val { color: #f9a825; }
+  .stat-card.low .val { color: #2e7d32; }
+  /* Toolbar */
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+  .toolbar input, .toolbar select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
+  .toolbar input { flex: 1; min-width: 200px; }
+  .btn { padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.88rem; font-weight: 500; }
+  .btn-primary { background: #1976d2; color: #fff; }
+  .btn-primary:hover { background: #1565c0; }
+  .btn-sm { padding: 4px 10px; font-size: 0.8rem; border-radius: 4px; }
+  .btn-screen { background: #7b1fa2; color: #fff; }
+  .btn-edit { background: #0288d1; color: #fff; }
+  .btn-del { background: #c62828; color: #fff; }
+  /* Table */
+  .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { background: #f5f7fa; padding: 10px 14px; text-align: left; font-weight: 600; color: #555; border-bottom: 1px solid #e0e0e0; white-space: nowrap; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f9faff; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+  .badge-critical { background: #fce4ec; color: #880e4f; }
+  .badge-high { background: #fff3e0; color: #bf360c; }
+  .badge-medium { background: #fff9c4; color: #827717; }
+  .badge-low { background: #e8f5e9; color: #1b5e20; }
+  .badge-unknown { background: #f5f5f5; color: #757575; }
+  .badge-sanction { background: #c62828; color: #fff; margin-left: 4px; }
+  .role-tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; background: #e3f2fd; color: #0d47a1; margin: 1px; }
+  .action-btns { display: flex; gap: 4px; }
+  .pagination { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 16px; font-size: 0.88rem; }
+  .pagination button { padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; }
+  .pagination button:disabled { opacity: .4; cursor: default; }
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; }
+  .modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+  .modal { background: #fff; border-radius: 12px; padding: 28px; width: 600px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal h2 { font-size: 1.1rem; margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-grid .full { grid-column: 1/-1; }
+  .form-group label { display: block; font-size: 0.82rem; color: #555; margin-bottom: 4px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.88rem;
+  }
+  .form-group textarea { height: 70px; resize: vertical; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+  .btn-cancel { background: #eee; color: #333; }
+  /* Detail modal */
+  .detail-section { margin-bottom: 18px; }
+  .detail-section h3 { font-size: 0.9rem; color: #1976d2; font-weight: 600; margin-bottom: 10px; border-bottom: 1px solid #e3f2fd; padding-bottom: 4px; }
+  .detail-row { display: flex; gap: 16px; margin-bottom: 6px; font-size: 0.88rem; }
+  .detail-row .dk { color: #666; min-width: 140px; }
+  .credit-score-bar { height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 4px; }
+  .credit-score-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+  .history-table { width: 100%; font-size: 0.82rem; border-collapse: collapse; }
+  .history-table th, .history-table td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; text-align: left; }
+  .history-table th { background: #f9f9f9; font-weight: 600; }
+  .empty { text-align: center; color: #aaa; padding: 40px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🏢 与信管理</h1>
+  <a href="/ui">← ポータルへ戻る</a>
+</div>
+
+<div class="container">
+  <!-- Stats -->
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card"><div class="val" id="statTotal">—</div><div class="lbl">取引先総数</div></div>
+    <div class="stat-card critical"><div class="val" id="statCritical">—</div><div class="lbl">CRITICAL</div></div>
+    <div class="stat-card high"><div class="val" id="statHigh">—</div><div class="lbl">HIGH</div></div>
+    <div class="stat-card medium"><div class="val" id="statMedium">—</div><div class="lbl">MEDIUM</div></div>
+    <div class="stat-card low"><div class="val" id="statLow">—</div><div class="lbl">LOW</div></div>
+    <div class="stat-card critical"><div class="val" id="statSanctioned">—</div><div class="lbl">制裁リスト該当</div></div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <input id="searchInput" type="text" placeholder="企業名・別名で検索..." oninput="debounceSearch()">
+    <select id="filterRisk" onchange="loadList()">
+      <option value="">リスクレベル（全）</option>
+      <option value="CRITICAL">CRITICAL</option>
+      <option value="HIGH">HIGH</option>
+      <option value="MEDIUM">MEDIUM</option>
+      <option value="LOW">LOW</option>
+    </select>
+    <select id="filterRole" onchange="loadList()">
+      <option value="">役割（全）</option>
+      <option value="customer">顧客</option>
+      <option value="supplier">仕入先</option>
+      <option value="researcher_institution">研究機関</option>
+      <option value="consignee">荷受人</option>
+      <option value="end_user">エンドユーザー</option>
+    </select>
+    <select id="filterSanctioned" onchange="loadList()">
+      <option value="">制裁（全）</option>
+      <option value="true">制裁該当</option>
+      <option value="false">問題なし</option>
+    </select>
+    <button class="btn btn-primary" onclick="openCreateModal()">＋ 新規登録</button>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>企業名</th>
+          <th>国</th>
+          <th>役割</th>
+          <th>与信スコア</th>
+          <th>リスクレベル</th>
+          <th>最終スクリーニング</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="7" class="empty">読み込み中...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pagination">
+    <span id="paginationInfo"></span>
+    <button id="btnPrev" onclick="prevPage()" disabled>‹ 前へ</button>
+    <button id="btnNext" onclick="nextPage()">次へ ›</button>
+  </div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="formModal">
+  <div class="modal">
+    <h2 id="formModalTitle">取引先登録</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>企業名 *</label>
+        <input id="fName" type="text" placeholder="例: ABC Electronics Co., Ltd.">
+      </div>
+      <div class="form-group full">
+        <label>別名・略称（カンマ区切り）</label>
+        <input id="fAliases" type="text" placeholder="例: ABC Electronics, ABCエレクトロニクス">
+      </div>
+      <div class="form-group">
+        <label>国コード (ISO 3166-1 alpha-2/3)</label>
+        <input id="fCountry" type="text" placeholder="例: CN, US, JP">
+      </div>
+      <div class="form-group">
+        <label>登録番号</label>
+        <input id="fRegNum" type="text">
+      </div>
+      <div class="form-group full">
+        <label>住所</label>
+        <input id="fAddress" type="text">
+      </div>
+      <div class="form-group">
+        <label>ウェブサイト</label>
+        <input id="fWebsite" type="text" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label>与信スコア (0-100)</label>
+        <input id="fCreditScore" type="number" min="0" max="100" placeholder="例: 80">
+      </div>
+      <div class="form-group full">
+        <label>役割（複数選択可）</label>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:4px;">
+          <label><input type="checkbox" name="role" value="customer"> 顧客</label>
+          <label><input type="checkbox" name="role" value="supplier"> 仕入先</label>
+          <label><input type="checkbox" name="role" value="researcher_institution"> 研究機関</label>
+          <label><input type="checkbox" name="role" value="consignee"> 荷受人</label>
+          <label><input type="checkbox" name="role" value="end_user"> エンドユーザー</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label><input id="fIsEndUser" type="checkbox"> エンドユーザーフラグ</label>
+      </div>
+      <div class="form-group">
+        <label><input id="fIsConsignee" type="checkbox"> 荷受人フラグ</label>
+      </div>
+      <div class="form-group full">
+        <label>エンドユース備考</label>
+        <textarea id="fEndUseNote" placeholder="用途・注意事項など"></textarea>
+      </div>
+      <div class="form-group full" id="changeReasonGroup" style="display:none;">
+        <label>変更理由</label>
+        <input id="fChangeReason" type="text">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('formModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitForm()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" style="width:700px;">
+    <h2 id="detailName">—</h2>
+    <div id="detailBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('detailModal')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let _page = 0;
+const _limit = 20;
+let _total = 0;
+let _editId = null;
+let _searchTimer = null;
+
+const ROLE_LABEL = {
+  customer: '顧客', supplier: '仕入先',
+  researcher_institution: '研究機関', consignee: '荷受人', end_user: 'エンドユーザー'
+};
+const RISK_CLASS = { CRITICAL:'critical', HIGH:'high', MEDIUM:'medium', LOW:'low' };
+
+function riskBadge(level) {
+  if (!level) return '<span class="badge badge-unknown">-</span>';
+  const cls = RISK_CLASS[level] || 'unknown';
+  return `<span class="badge badge-${cls}">${level}</span>`;
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch('/api/counterparties/stats');
+    const d = await r.json();
+    document.getElementById('statTotal').textContent = d.total;
+    document.getElementById('statCritical').textContent = d.by_risk_level.CRITICAL || 0;
+    document.getElementById('statHigh').textContent = d.by_risk_level.HIGH || 0;
+    document.getElementById('statMedium').textContent = d.by_risk_level.MEDIUM || 0;
+    document.getElementById('statLow').textContent = d.by_risk_level.LOW || 0;
+    document.getElementById('statSanctioned').textContent = d.sanctioned;
+  } catch(e) { console.error(e); }
+}
+
+async function loadList() {
+  const q = document.getElementById('searchInput').value.trim();
+  const risk = document.getElementById('filterRisk').value;
+  const role = document.getElementById('filterRole').value;
+  const sanctioned = document.getElementById('filterSanctioned').value;
+  const params = new URLSearchParams({ limit: _limit, offset: _page * _limit });
+  if (q) params.set('q', q);
+  if (risk) params.set('risk_level', risk);
+  if (role) params.set('role', role);
+  if (sanctioned) params.set('is_sanctioned', sanctioned);
+
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="empty">読み込み中...</td></tr>';
+  try {
+    const r = await fetch('/api/counterparties?' + params);
+    const d = await r.json();
+    _total = d.total;
+    renderTable(d.items);
+    updatePagination();
+  } catch(e) {
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="empty">読み込みエラー</td></tr>';
+  }
+}
+
+function renderTable(items) {
+  if (!items.length) {
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="empty">データがありません</td></tr>';
+    return;
+  }
+  const rows = items.map(c => {
+    const roles = (c.roles || []).map(r => `<span class="role-tag">${ROLE_LABEL[r]||r}</span>`).join('');
+    const sanctionBadge = c.is_sanctioned ? '<span class="badge badge-sanction">制裁</span>' : '';
+    const screened = c.last_screened_at ? new Date(c.last_screened_at).toLocaleDateString('ja-JP') : '未実施';
+    const score = c.credit_score !== null ? c.credit_score : '—';
+    return `<tr>
+      <td><strong>${esc(c.name)}</strong>${sanctionBadge}</td>
+      <td>${c.country_code || '—'}</td>
+      <td>${roles || '—'}</td>
+      <td>${score}</td>
+      <td>${riskBadge(c.overall_risk_level)}</td>
+      <td>${screened}</td>
+      <td class="action-btns">
+        <button class="btn btn-sm btn-edit" onclick="openDetail('${c.id}')">詳細</button>
+        <button class="btn btn-sm btn-screen" onclick="runScreen('${c.id}', '${esc(c.name)}')">照合</button>
+        <button class="btn btn-sm btn-del" onclick="deleteItem('${c.id}', '${esc(c.name)}')">削除</button>
+      </td>
+    </tr>`;
+  });
+  document.getElementById('tableBody').innerHTML = rows.join('');
+}
+
+function updatePagination() {
+  const start = _page * _limit + 1;
+  const end = Math.min((_page + 1) * _limit, _total);
+  document.getElementById('paginationInfo').textContent = _total ? `${start}–${end} / ${_total}件` : '0件';
+  document.getElementById('btnPrev').disabled = _page === 0;
+  document.getElementById('btnNext').disabled = (_page + 1) * _limit >= _total;
+}
+
+function prevPage() { if (_page > 0) { _page--; loadList(); } }
+function nextPage() { if ((_page + 1) * _limit < _total) { _page++; loadList(); } }
+function debounceSearch() {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => { _page = 0; loadList(); }, 300);
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Create / Edit ──────────────────────────────────────────────
+function openCreateModal() {
+  _editId = null;
+  document.getElementById('formModalTitle').textContent = '取引先登録';
+  document.getElementById('changeReasonGroup').style.display = 'none';
+  clearForm();
+  document.getElementById('formModal').classList.add('open');
+}
+
+function openEditModal(company) {
+  _editId = company.id;
+  document.getElementById('formModalTitle').textContent = '取引先編集';
+  document.getElementById('changeReasonGroup').style.display = '';
+  clearForm();
+  document.getElementById('fName').value = company.name || '';
+  document.getElementById('fAliases').value = (company.name_aliases || []).join(', ');
+  document.getElementById('fCountry').value = company.country_code || '';
+  document.getElementById('fRegNum').value = company.registration_number || '';
+  document.getElementById('fAddress').value = company.address || '';
+  document.getElementById('fWebsite').value = company.website || '';
+  document.getElementById('fCreditScore').value = company.credit_score !== null ? company.credit_score : '';
+  document.getElementById('fIsEndUser').checked = company.is_end_user;
+  document.getElementById('fIsConsignee').checked = company.is_consignee;
+  document.getElementById('fEndUseNote').value = company.end_use_note || '';
+  const roles = company.roles || [];
+  document.querySelectorAll('input[name="role"]').forEach(cb => {
+    cb.checked = roles.includes(cb.value);
+  });
+  document.getElementById('formModal').classList.add('open');
+}
+
+function clearForm() {
+  ['fName','fAliases','fCountry','fRegNum','fAddress','fWebsite','fCreditScore','fEndUseNote','fChangeReason'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('fIsEndUser').checked = false;
+  document.getElementById('fIsConsignee').checked = false;
+  document.querySelectorAll('input[name="role"]').forEach(cb => cb.checked = false);
+}
+
+async function submitForm() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { alert('企業名は必須です'); return; }
+  const aliases = document.getElementById('fAliases').value.split(',').map(s => s.trim()).filter(Boolean);
+  const roles = [...document.querySelectorAll('input[name="role"]:checked')].map(cb => cb.value);
+  const creditScore = document.getElementById('fCreditScore').value;
+  const body = {
+    name,
+    name_aliases: aliases.length ? aliases : null,
+    country_code: document.getElementById('fCountry').value.trim() || null,
+    registration_number: document.getElementById('fRegNum').value.trim() || null,
+    address: document.getElementById('fAddress').value.trim() || null,
+    website: document.getElementById('fWebsite').value.trim() || null,
+    roles: roles.length ? roles : null,
+    credit_score: creditScore !== '' ? parseInt(creditScore) : null,
+    is_end_user: document.getElementById('fIsEndUser').checked,
+    is_consignee: document.getElementById('fIsConsignee').checked,
+    end_use_note: document.getElementById('fEndUseNote').value.trim() || null,
+  };
+  if (_editId) body.change_reason = document.getElementById('fChangeReason').value.trim() || null;
+
+  const url = _editId ? `/api/counterparties/${_editId}` : '/api/counterparties';
+  const method = _editId ? 'PUT' : 'POST';
+  try {
+    const r = await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(await r.text());
+    closeModal('formModal');
+    loadList();
+    loadStats();
+  } catch(e) { alert('保存エラー: ' + e.message); }
+}
+
+// ── Detail ──────────────────────────────────────────────────────
+async function openDetail(id) {
+  document.getElementById('detailName').textContent = '読み込み中...';
+  document.getElementById('detailBody').innerHTML = '';
+  document.getElementById('detailModal').classList.add('open');
+
+  const [cr, hr] = await Promise.all([
+    fetch(`/api/counterparties/${id}`),
+    fetch(`/api/counterparties/${id}/history`),
+  ]);
+  const c = await cr.json();
+  const h = await hr.json();
+
+  document.getElementById('detailName').innerHTML = `${esc(c.name)} ${riskBadge(c.overall_risk_level)} ${c.is_sanctioned ? '<span class="badge badge-sanction">制裁</span>' : ''}`;
+
+  const scoreBar = c.credit_score !== null
+    ? `<div class="credit-score-bar"><div class="credit-score-fill" style="width:${c.credit_score}%;background:${c.credit_score>=70?'#4caf50':c.credit_score>=40?'#ff9800':'#f44336'}"></div></div>`
+    : '';
+
+  const roles = (c.roles || []).map(r => `<span class="role-tag">${ROLE_LABEL[r]||r}</span>`).join(' ');
+  const histRows = (h.histories || []).map(row => `<tr>
+    <td>${new Date(row.changed_at).toLocaleString('ja-JP')}</td>
+    <td>${row.previous_credit_score ?? '—'} → ${row.new_credit_score ?? '—'}</td>
+    <td>${row.previous_risk_level ?? '—'} → ${row.new_risk_level ?? '—'}</td>
+    <td>${esc(row.change_reason || '')}</td>
+  </tr>`).join('');
+
+  document.getElementById('detailBody').innerHTML = `
+    <div class="detail-section">
+      <h3>基本情報</h3>
+      <div class="detail-row"><span class="dk">国コード</span><span>${c.country_code || '—'}</span></div>
+      <div class="detail-row"><span class="dk">登録番号</span><span>${c.registration_number || '—'}</span></div>
+      <div class="detail-row"><span class="dk">住所</span><span>${c.address || '—'}</span></div>
+      <div class="detail-row"><span class="dk">ウェブサイト</span><span>${c.website ? `<a href="${esc(c.website)}" target="_blank">${esc(c.website)}</a>` : '—'}</span></div>
+      <div class="detail-row"><span class="dk">役割</span><span>${roles || '—'}</span></div>
+    </div>
+    <div class="detail-section">
+      <h3>与信情報</h3>
+      <div class="detail-row"><span class="dk">与信スコア</span><span>${c.credit_score ?? '—'} / 100${scoreBar}</span></div>
+      <div class="detail-row"><span class="dk">国別リスクスコア</span><span>${c.country_risk_score ?? '—'}</span></div>
+      <div class="detail-row"><span class="dk">総合リスクレベル</span><span>${riskBadge(c.overall_risk_level)}</span></div>
+    </div>
+    <div class="detail-section">
+      <h3>スクリーニング</h3>
+      <div class="detail-row"><span class="dk">制裁リスト該当</span><span>${c.is_sanctioned ? '⚠️ 該当' : '問題なし'}</span></div>
+      <div class="detail-row"><span class="dk">該当リスト</span><span>${(c.sanction_lists || []).join(', ') || '—'}</span></div>
+      <div class="detail-row"><span class="dk">最終スクリーニング</span><span>${c.last_screened_at ? new Date(c.last_screened_at).toLocaleString('ja-JP') : '未実施'}</span></div>
+    </div>
+    <div class="detail-section">
+      <h3>与信スコア変更履歴</h3>
+      ${histRows ? `<table class="history-table"><thead><tr><th>日時</th><th>与信スコア</th><th>リスクレベル</th><th>理由</th></tr></thead><tbody>${histRows}</tbody></table>` : '<p style="color:#aaa;font-size:.85rem;">履歴なし</p>'}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-edit btn-sm" onclick="closeModal('detailModal'); openEditModal(${JSON.stringify(c).replace(/"/g,'&quot;')})">編集</button>
+      <button class="btn btn-screen btn-sm" onclick="closeModal('detailModal'); runScreen('${c.id}', '${esc(c.name)}')">照合実行</button>
+    </div>
+  `;
+}
+
+// ── Screen ───────────────────────────────────────────────────────
+async function runScreen(id, name) {
+  if (!confirm(`「${name}」の制裁リストスクリーニングを実行しますか？`)) return;
+  try {
+    const r = await fetch(`/api/counterparties/${id}/screen`, { method: 'POST' });
+    const d = await r.json();
+    const hitMsg = d.is_hit ? '⚠️ 制裁リストに該当しました！' : '✅ 制裁リストに該当なし';
+    alert(`スクリーニング完了\n${hitMsg}\n新リスクレベル: ${d.company.overall_risk_level}`);
+    loadList();
+    loadStats();
+  } catch(e) { alert('スクリーニングエラー: ' + e.message); }
+}
+
+// ── Delete ───────────────────────────────────────────────────────
+async function deleteItem(id, name) {
+  if (!confirm(`「${name}」を削除しますか？`)) return;
+  try {
+    const r = await fetch(`/api/counterparties/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error(await r.text());
+    loadList();
+    loadStats();
+  } catch(e) { alert('削除エラー: ' + e.message); }
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// init
+loadStats();
+loadList();
+</script>
+</body>
+</html>
