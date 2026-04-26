@@ -187,6 +187,16 @@ _KNOWN_MODULES: list[dict] = [
         "nav_section":       "tools",
     },
     {
+        "key":               "compliance_lookup",
+        "name":              "コンプライアンス進捗管理",
+        "description":       "品目ごとの7ステージ進捗・未完了アクション・変化点タイムラインを一覧管理",
+        "base_url":          "",
+        "iframe_url":        "/ui/compliance-lookup",
+        "icon":              "🗂️",
+        "health_check_path": "",
+        "nav_section":       "tools",
+    },
+    {
         "key":               "user_guide",
         "name":              "ユーザーガイド",
         "description":       "ユースケース別の使い方ガイドと全モジュール機能一覧",
@@ -535,6 +545,12 @@ async def export_license_ui(request: Request):
 async def item_version_ui(request: Request):
     """品目バージョン管理・仕様変更コンプライアンス影響検知画面。"""
     return templates.TemplateResponse(request, "item_version.html", {})
+
+
+@router.get("/compliance-lookup", response_class=HTMLResponse, include_in_schema=False)
+async def compliance_lookup_ui(request: Request):
+    """コンプライアンス進捗管理・Lookup画面。"""
+    return templates.TemplateResponse(request, "compliance_lookup.html", {})
 
 
 @router.get("/user-guide", response_class=HTMLResponse, include_in_schema=False)

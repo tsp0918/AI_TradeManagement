@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>コンプライアンス進捗管理</title>
+<style>
+  :root {
+    --bg: #0f1117; --bg2: #1a1d27; --bg3: #222538; --border: #2e3150;
+    --text: #e2e8f0; --text2: #94a3b8; --accent: #6366f1;
+    --green: #22c55e; --yellow: #eab308; --red: #ef4444; --blue: #3b82f6; --purple: #a855f7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; }
+
+  /* ── ヘッダー ── */
+  .header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+  .header h1 { font-size: 18px; font-weight: 700; }
+  .header .sub { color: var(--text2); font-size: 12px; }
+  .btn-refresh { margin-left: auto; background: var(--accent); color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .btn-refresh:hover { opacity: .85; }
+
+  /* ── 統計グリッド ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 16px 20px; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
+  .stat-card .label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .stat-card .value { font-size: 24px; font-weight: 700; }
+  .stat-card.red .value { color: var(--red); }
+  .stat-card.yellow .value { color: var(--yellow); }
+  .stat-card.green .value { color: var(--green); }
+  .stat-card.blue .value { color: var(--blue); }
+
+  /* ── タブ ── */
+  .tabs { display: flex; gap: 0; padding: 0 20px; border-bottom: 1px solid var(--border); }
+  .tab { padding: 10px 20px; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; font-size: 13px; transition: color .2s; }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  /* ── コンテンツ ── */
+  .pane { display: none; padding: 16px 20px; }
+  .pane.active { display: block; }
+
+  /* ── パイプラインマトリクス ── */
+  .matrix-wrap { overflow-x: auto; }
+  table.matrix { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.matrix th { background: var(--bg3); border: 1px solid var(--border); padding: 8px 10px; white-space: nowrap; text-align: center; }
+  table.matrix th.item-col { text-align: left; min-width: 200px; }
+  table.matrix td { border: 1px solid var(--border); padding: 6px 8px; text-align: center; background: var(--bg2); vertical-align: middle; }
+  table.matrix td.item-info { text-align: left; background: var(--bg3); }
+  .item-name { font-weight: 600; }
+  .item-code { font-size: 11px; color: var(--text2); }
+  .stage-done { color: var(--green); font-size: 16px; cursor: default; }
+  .stage-todo { color: #4b5563; font-size: 16px; }
+  .stage-alert { position: relative; display: inline-block; }
+  .stage-alert .badge { position: absolute; top: -6px; right: -8px; background: var(--red); color: #fff; border-radius: 50%; width: 14px; height: 14px; font-size: 9px; display: flex; align-items: center; justify-content: center; }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 4px; }
+  .progress-fill { height: 100%; border-radius: 2px; background: var(--green); transition: width .3s; }
+  .progress-fill.warn { background: var(--yellow); }
+  .progress-fill.bad { background: var(--red); }
+  .pct-label { font-size: 10px; color: var(--text2); }
+  .eccn-badge { display: inline-block; background: #312e81; color: #a5b4fc; border-radius: 4px; padding: 1px 6px; font-size: 10px; margin-left: 4px; }
+
+  /* ── オープンアクション ── */
+  .actions-list { display: flex; flex-direction: column; gap: 10px; }
+  .action-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; border-left: 4px solid var(--border); }
+  .action-card.urgent { border-left-color: var(--red); }
+  .action-card.high { border-left-color: var(--yellow); }
+  .action-card.medium { border-left-color: var(--blue); }
+  .action-card .ac-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .priority-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; text-transform: uppercase; }
+  .priority-badge.urgent { background: #450a0a; color: var(--red); }
+  .priority-badge.high { background: #422006; color: var(--yellow); }
+  .priority-badge.medium { background: #172554; color: var(--blue); }
+  .action-card .ac-title { font-weight: 600; font-size: 13px; }
+  .action-card .ac-item { color: var(--text2); font-size: 12px; }
+  .action-card .ac-tasks { margin-top: 6px; padding-left: 16px; }
+  .action-card .ac-tasks li { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .tag { display: inline-block; background: var(--bg3); color: var(--text2); border-radius: 4px; padding: 1px 6px; font-size: 10px; }
+
+  /* ── 変化点タイムライン ── */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .tl-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .tl-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; }
+  .tl-body { flex: 1; }
+  .tl-title { font-weight: 600; font-size: 13px; }
+  .tl-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .tl-detail { font-size: 11px; color: var(--text2); margin-top: 4px; white-space: pre-wrap; }
+  .tl-ts { font-size: 10px; color: #4b5563; white-space: nowrap; flex-shrink: 0; padding-top: 2px; }
+  .impact-high { color: var(--red); }
+  .impact-medium { color: var(--yellow); }
+  .impact-low { color: var(--blue); }
+
+  /* ── ローディング ── */
+  .loading { color: var(--text2); text-align: center; padding: 40px; }
+  .empty { color: var(--text2); text-align: center; padding: 30px; font-size: 13px; }
+
+  /* ── フィルターバー ── */
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .filter-bar select, .filter-bar input { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 12px; }
+  .filter-bar label { font-size: 12px; color: var(--text2); }
+  .count-badge { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 2px 10px; font-size: 12px; color: var(--text2); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span style="font-size:22px">🗂️</span>
+  <div>
+    <h1>コンプライアンス進捗管理</h1>
+    <div class="sub">品目 × 7ステージ進捗 / 未完了アクション / 変化点タイムライン</div>
+  </div>
+  <button class="btn-refresh" onclick="loadAll()">⟳ 更新</button>
+</div>
+
+<!-- 統計 -->
+<div class="stats-grid" id="statsGrid">
+  <div class="loading">読み込み中…</div>
+</div>
+
+<!-- タブ -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('pipeline')">📊 パイプライン</div>
+  <div class="tab" onclick="switchTab('actions')">⚡ オープンアクション</div>
+  <div class="tab" onclick="switchTab('feed')">📰 変化点フィード</div>
+</div>
+
+<!-- パイプラインペイン -->
+<div class="pane active" id="pane-pipeline">
+  <div class="filter-bar">
+    <label>フィルター:</label>
+    <select id="filterStage" onchange="renderPipeline()">
+      <option value="">全ステージ</option>
+      <option value="incomplete">未完了あり</option>
+      <option value="alerts">アラートあり</option>
+    </select>
+    <input id="filterName" placeholder="品目名で絞込…" oninput="renderPipeline()" style="width:200px">
+    <span class="count-badge" id="pipelineCount">—</span>
+  </div>
+  <div class="matrix-wrap">
+    <div id="pipelineContent" class="loading">読み込み中…</div>
+  </div>
+</div>
+
+<!-- オープンアクションペイン -->
+<div class="pane" id="pane-actions">
+  <div class="filter-bar">
+    <label>優先度:</label>
+    <select id="filterPriority" onchange="renderActions()">
+      <option value="">すべて</option>
+      <option value="urgent">🔴 緊急</option>
+      <option value="high">🟡 高</option>
+      <option value="medium">🔵 中</option>
+    </select>
+    <select id="filterActionType" onchange="renderActions()">
+      <option value="">全種別</option>
+      <option value="compliance_event">コンプライアンスイベント</option>
+      <option value="license_expiry">輸出許可期限</option>
+      <option value="attestation_expiry">原産性証明期限</option>
+      <option value="validation_pending">AI該非判定未完了</option>
+    </select>
+    <span class="count-badge" id="actionsCount">—</span>
+  </div>
+  <div id="actionsContent" class="loading">読み込み中…</div>
+</div>
+
+<!-- 変化点フィードペイン -->
+<div class="pane" id="pane-feed">
+  <div class="filter-bar">
+    <select id="filterFeedType" onchange="renderFeed()">
+      <option value="">全種別</option>
+      <option value="version_created">バージョン登録</option>
+      <option value="compliance_event">コンプライアンスイベント</option>
+      <option value="license_updated">輸出許可更新</option>
+    </select>
+    <span class="count-badge" id="feedCount">—</span>
+  </div>
+  <div id="feedContent" class="loading">読み込み中…</div>
+</div>
+
+<script>
+let _pipeline = null;
+let _actions = null;
+let _feed = null;
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['pipeline', 'actions', 'feed'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-' + name).classList.add('active');
+}
+
+async function loadAll() {
+  loadStats();
+  loadPipeline();
+  loadActions();
+  loadFeed();
+}
+
+// ── 統計 ─────────────────────────────────────────────────
+async function loadStats() {
+  const el = document.getElementById('statsGrid');
+  try {
+    const r = await fetch('/api/compliance-lookup/stats');
+    const d = await r.json();
+    el.innerHTML = `
+      <div class="stat-card${d.high_impact_events > 0 ? ' red' : ' green'}">
+        <div class="label">🚨 HIGH イベント</div>
+        <div class="value">${d.high_impact_events}</div>
+      </div>
+      <div class="stat-card${d.open_change_events > 0 ? ' yellow' : ' green'}">
+        <div class="label">⚠️ オープンイベント</div>
+        <div class="value">${d.open_change_events}</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="label">📦 品目総数</div>
+        <div class="value">${d.total_items}</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="label">🏷️ HS分類済み</div>
+        <div class="value">${d.items_with_hs}</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="label">🔐 ECCN付番</div>
+        <div class="value">${d.items_with_eccn}</div>
+      </div>
+      <div class="stat-card green">
+        <div class="label">✅ 有効輸出許可</div>
+        <div class="value">${d.active_licenses}</div>
+      </div>
+      <div class="stat-card${d.pending_licenses > 0 ? ' yellow' : ''}">
+        <div class="label">📤 申請中許可</div>
+        <div class="value">${d.pending_licenses}</div>
+      </div>
+      <div class="stat-card green">
+        <div class="label">🔗 承認済証明</div>
+        <div class="value">${d.accepted_attestations}</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="label">🔐 AI判定 件数</div>
+        <div class="value">${d.validation_transactions}</div>
+      </div>
+    `;
+  } catch(e) {
+    el.innerHTML = '<div class="loading">統計取得に失敗しました</div>';
+  }
+}
+
+// ── パイプライン ─────────────────────────────────────────
+async function loadPipeline() {
+  document.getElementById('pipelineContent').innerHTML = '<div class="loading">読み込み中…</div>';
+  try {
+    const r = await fetch('/api/compliance-lookup/pipeline?limit=100');
+    _pipeline = await r.json();
+    renderPipeline();
+  } catch(e) {
+    document.getElementById('pipelineContent').innerHTML = '<div class="empty">パイプラインデータの取得に失敗しました</div>';
+  }
+}
+
+function renderPipeline() {
+  if (!_pipeline) return;
+  const filterStage = document.getElementById('filterStage').value;
+  const filterName = (document.getElementById('filterName').value || '').toLowerCase();
+
+  let items = _pipeline.items || [];
+  if (filterName) items = items.filter(i => i.item.name.toLowerCase().includes(filterName) || (i.item.item_code || '').toLowerCase().includes(filterName));
+  if (filterStage === 'incomplete') items = items.filter(i => i.progress_pct < 100);
+  if (filterStage === 'alerts') items = items.filter(i => i.open_change_events > 0);
+
+  document.getElementById('pipelineCount').textContent = items.length + ' 件';
+
+  if (items.length === 0) {
+    document.getElementById('pipelineContent').innerHTML = '<div class="empty">該当する品目がありません</div>';
+    return;
+  }
+
+  const stages = _pipeline.stages_def || [];
+  let html = '<table class="matrix"><thead><tr><th class="item-col">品目</th>';
+  stages.forEach(s => { html += `<th title="${s.label}">${s.icon}<br><span style="font-size:10px">${s.label}</span></th>`; });
+  html += '<th>進捗</th></tr></thead><tbody>';
+
+  items.forEach(row => {
+    html += `<tr><td class="item-info">
+      <div class="item-name">${esc(row.item.name)}</div>
+      <div class="item-code">${esc(row.item.item_code || '')}${row.item.eccn ? `<span class="eccn-badge">${esc(row.item.eccn)}</span>` : ''}</div>
+    </td>`;
+
+    stages.forEach(s => {
+      const st = (row.stages || {})[s.key] || {};
+      if (st.done) {
+        const alert = st.alert || 0;
+        if (alert > 0) {
+          html += `<td><span class="stage-alert stage-done" title="${esc(st.detail || '')}">✅<span class="badge">${alert}</span></span></td>`;
+        } else {
+          html += `<td><span class="stage-done" title="${esc(st.detail || '')}">✅</span></td>`;
+        }
+      } else {
+        html += `<td><span class="stage-todo" title="未完了">◯</span></td>`;
+      }
+    });
+
+    const pct = row.progress_pct || 0;
+    const fillClass = pct >= 80 ? '' : pct >= 50 ? 'warn' : 'bad';
+    html += `<td style="min-width:80px">
+      <div class="pct-label">${pct}%</div>
+      <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+    </td></tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('pipelineContent').innerHTML = html;
+}
+
+// ── オープンアクション ────────────────────────────────────
+async function loadActions() {
+  document.getElementById('actionsContent').innerHTML = '<div class="loading">読み込み中…</div>';
+  try {
+    const r = await fetch('/api/compliance-lookup/open-actions');
+    _actions = await r.json();
+    renderActions();
+  } catch(e) {
+    document.getElementById('actionsContent').innerHTML = '<div class="empty">アクションデータの取得に失敗しました</div>';
+  }
+}
+
+function renderActions() {
+  if (!_actions) return;
+  const fp = document.getElementById('filterPriority').value;
+  const ft = document.getElementById('filterActionType').value;
+
+  let items = _actions;
+  if (fp) items = items.filter(a => a.priority === fp);
+  if (ft) items = items.filter(a => a.type === ft);
+
+  document.getElementById('actionsCount').textContent = items.length + ' 件';
+
+  if (items.length === 0) {
+    document.getElementById('actionsContent').innerHTML = '<div class="empty">未完了アクションはありません 🎉</div>';
+    return;
+  }
+
+  const typeLabels = {
+    compliance_event: 'コンプライアンス変化',
+    license_expiry: '輸出許可期限',
+    attestation_expiry: '原産性証明期限',
+    validation_pending: 'AI該非判定',
+  };
+
+  let html = '<div class="actions-list">';
+  items.forEach(a => {
+    const taskItems = (a.actions_needed || []).map(t => `<li>${esc(t)}</li>`).join('');
+    const dateStr = a.expires_at ? `期限: ${a.expires_at.substring(0,10)}` : (a.created_at ? a.created_at.substring(0,10) : '');
+    html += `
+    <div class="action-card ${a.priority}">
+      <div class="ac-header">
+        <span class="priority-badge ${a.priority}">${a.priority === 'urgent' ? '緊急' : a.priority === 'high' ? '高' : '中'}</span>
+        <span class="ac-title">${esc(a.title)}</span>
+        <span class="tag">${esc(typeLabels[a.type] || a.type)}</span>
+        ${dateStr ? `<span class="tag">${esc(dateStr)}</span>` : ''}
+      </div>
+      <div class="ac-item">📦 ${esc(a.item_name || '—')}</div>
+      ${taskItems ? `<ul class="ac-tasks">${taskItems}</ul>` : ''}
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('actionsContent').innerHTML = html;
+}
+
+// ── 変化点フィード ─────────────────────────────────────────
+async function loadFeed() {
+  document.getElementById('feedContent').innerHTML = '<div class="loading">読み込み中…</div>';
+  try {
+    const r = await fetch('/api/compliance-lookup/change-feed?limit=50');
+    _feed = await r.json();
+    renderFeed();
+  } catch(e) {
+    document.getElementById('feedContent').innerHTML = '<div class="empty">フィードデータの取得に失敗しました</div>';
+  }
+}
+
+function renderFeed() {
+  if (!_feed) return;
+  const ft = document.getElementById('filterFeedType').value;
+  let items = _feed;
+  if (ft) items = items.filter(f => f.type === ft);
+
+  document.getElementById('feedCount').textContent = items.length + ' 件';
+
+  if (items.length === 0) {
+    document.getElementById('feedContent').innerHTML = '<div class="empty">変化点の記録がありません</div>';
+    return;
+  }
+
+  let html = '<div class="timeline">';
+  items.forEach(f => {
+    const tsStr = f.ts ? fmtTs(f.ts) : '—';
+    const impactClass = f.impact_level === 'HIGH' ? 'impact-high' : f.impact_level === 'MEDIUM' ? 'impact-medium' : f.impact_level === 'LOW' ? 'impact-low' : '';
+    html += `
+    <div class="tl-item">
+      <div class="tl-icon">${f.icon || '•'}</div>
+      <div class="tl-body">
+        <div class="tl-title ${impactClass}">${esc(f.title)}</div>
+        <div class="tl-sub">📦 ${esc(f.item_name || '—')}${f.source_system ? ` &nbsp;|&nbsp; 📡 ${esc(f.source_system)}` : ''}${f.status ? ` &nbsp;|&nbsp; ${esc(f.status)}` : ''}</div>
+        ${f.detail ? `<div class="tl-detail">${esc(f.detail)}</div>` : ''}
+      </div>
+      <div class="tl-ts">${tsStr}</div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('feedContent').innerHTML = html;
+}
+
+// ── ユーティリティ ──────────────────────────────────────────
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtTs(iso) {
+  try {
+    const d = new Date(iso);
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch { return iso; }
+}
+
+// 初期ロード
+loadAll();
+</script>
+</body>
+</html>
