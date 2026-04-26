@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+{% block title %}技術インテリジェンス — R&D リスク評価{% endblock %}
+{% block nav_academic %} active{% endblock %}
+
+{% block content %}
+<div class="page-hd">
+  <div class="breadcrumb"><a href="/ui/">R&amp;D リスク評価</a> › 技術インテリジェンス</div>
+  <h1>技術インテリジェンス</h1>
+  <p class="sub">Semantic Scholar + Lens.org の学術論文データから、ECCN別の技術動向・研究者ネットワーク・みなし輸出リスクを分析します。</p>
+</div>
+
+<!-- ── ステータスバナー ───────────────────────────────────────── -->
+<div id="status-banner" class="card" style="padding:14px 20px; display:flex; align-items:center; gap:12px; background:#f0fdf4; border:1.5px solid #bbf7d0;">
+  <span style="font-size:1.2rem;">📊</span>
+  <span id="status-text" style="font-size:.88rem; color:#065f46;">DBステータスを確認中...</span>
+</div>
+
+<!-- ── タブナビ ─────────────────────────────────────────────── -->
+<div style="display:flex; gap:4px; margin:20px 0 0; border-bottom:2px solid var(--border);">
+  <button class="tab-btn active" data-tab="search" onclick="switchTab('search')">論文検索</button>
+  <button class="tab-btn" data-tab="trend" onclick="switchTab('trend')">技術トレンド</button>
+  <button class="tab-btn" data-tab="deemed" onclick="switchTab('deemed')">みなし輸出スキャン</button>
+</div>
+
+<style>
+.tab-btn {
+  padding: 10px 20px; border: none; background: none; cursor: pointer;
+  font-size: .88rem; font-weight: 600; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: color .15s, border-color .15s;
+}
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-pane { display: none; padding-top: 24px; }
+.tab-pane.active { display: block; }
+
+.paper-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); padding: 16px 18px; margin-bottom: 12px;
+  transition: border-color .15s;
+}
+.paper-card:hover { border-color: var(--primary); }
+.paper-title { font-size: .92rem; font-weight: 700; color: var(--text-h); line-height: 1.4; }
+.paper-meta { font-size: .76rem; color: var(--muted); margin-top: 5px; display:flex; flex-wrap:wrap; gap:10px; }
+.paper-abstract { font-size: .8rem; color: var(--text); margin-top: 8px; line-height: 1.6; }
+.eccn-chip {
+  display:inline-flex; align-items:center; padding:2px 9px;
+  border-radius:999px; font-size:.7rem; font-weight:700;
+  background:#ede9fe; color:#7c3aed; border:1px solid #ddd6fe;
+}
+.score-pill {
+  display:inline-flex; align-items:center; padding:2px 9px;
+  border-radius:999px; font-size:.7rem; font-weight:700;
+  background:#f0fdf4; color:#059669;
+}
+.trend-empty { color:var(--muted); font-size:.88rem; padding:40px 0; text-align:center; }
+.risk-high   { background:#fee2e2; color:#991b1b; }
+.risk-medium { background:#fef3c7; color:#92400e; }
+</style>
+
+<!-- ======== TAB 1: 論文検索 ======================================= -->
+<div id="tab-search" class="tab-pane active">
+  <div class="card">
+    <div class="g2" style="gap:12px; align-items:end;">
+      <div class="field" style="margin:0;">
+        <label>キーワード検索（技術説明・英語推奨）</label>
+        <input type="text" id="search-q" placeholder="例: GaN HEMT power amplifier"
+               onkeydown="if(event.key==='Enter') doSearch()">
+      </div>
+      <div class="field" style="margin:0;">
+        <label>ECCN フィルタ <span class="opt">（任意）</span></label>
+        <select id="search-eccn">
+          <option value="">すべて</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center; margin-top:12px; flex-wrap:wrap;">
+      <div class="field" style="margin:0;">
+        <label style="font-size:.76rem;">最低被引用数</label>
+        <input type="number" id="search-min-cit" value="0" min="0" style="width:90px;">
+      </div>
+      <div class="field" style="margin:0;">
+        <label style="font-size:.76rem;">年 (from)</label>
+        <input type="number" id="search-year-from" placeholder="2015" min="2000" max="2030" style="width:90px;">
+      </div>
+      <button class="btn btn-primary" onclick="doSearch()" style="margin-top:18px;">検索</button>
+      <button class="btn btn-ghost" onclick="clearSearch()" style="margin-top:18px;">クリア</button>
+    </div>
+  </div>
+
+  <div id="search-results"></div>
+</div>
+
+<!-- ======== TAB 2: 技術トレンド ===================================== -->
+<div id="tab-trend" class="tab-pane">
+  <div class="card">
+    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+      <div class="field" style="margin:0; flex:1; min-width:200px;">
+        <label>ECCN コード</label>
+        <select id="trend-eccn" onchange="loadTrend()">
+          <option value="">選択してください</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div id="trend-results"></div>
+
+  <div class="card" id="trend-papers-wrap" style="display:none;">
+    <div class="card-title">関連論文（被引用数 Top20）</div>
+    <div id="trend-papers"></div>
+  </div>
+</div>
+
+<!-- ======== TAB 3: みなし輸出スキャン ================================= -->
+<div id="tab-deemed" class="tab-pane">
+  <div class="card">
+    <div class="card-title">みなし輸出リスクスキャン設定</div>
+    <div class="g2" style="gap:14px;">
+      <div class="field">
+        <label>対象 ECCN コード <span class="opt">（複数選択可）</span></label>
+        <div class="toggles" id="deemed-eccn-toggles"></div>
+      </div>
+      <div class="field">
+        <label>懸念国・研究者国籍 <span class="opt">（カンマ区切りで国コード）</span></label>
+        <input type="text" id="deemed-countries" value="CN,RU"
+               placeholder="例: CN, RU, KP, IR">
+        <div class="hint">EAR ハイリスク国 (CN/RU/KP/IR/SY) はデフォルトで適用されます</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="runDeemedScan()">スキャン実行</button>
+  </div>
+  <div id="deemed-results"></div>
+</div>
+
+<script>
+// ── 初期化 ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  checkStatus();
+  loadEccnList();
+});
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+}
+
+// ── DB ステータス ─────────────────────────────────────────────────────────
+async function checkStatus() {
+  try {
+    const r = await fetch('/api/v1/academic/eccn-list');
+    if (!r.ok) throw new Error('not ready');
+    const d = await r.json();
+    const total = d.eccn_list.reduce((s, e) => s + e.paper_count, 0);
+    const eccnCount = d.eccn_list.length;
+    document.getElementById('status-text').textContent =
+      `DB 準備完了 — ${eccnCount} ECCN / ${total.toLocaleString()} 論文がインデックス済み`;
+  } catch {
+    document.getElementById('status-banner').style.background = '#fef3c7';
+    document.getElementById('status-banner').style.borderColor = '#fde68a';
+    document.getElementById('status-text').style.color = '#92400e';
+    document.getElementById('status-text').textContent =
+      'DB 未構築 — scripts/collect_academic_papers.py --all を実行してからデータ収集してください';
+  }
+}
+
+// ── ECCN リスト読み込み ────────────────────────────────────────────────────
+async function loadEccnList() {
+  try {
+    const r = await fetch('/api/v1/academic/eccn-list');
+    if (!r.ok) return;
+    const d = await r.json();
+    const list = d.eccn_list;
+
+    // 検索フィルタ
+    const searchSel = document.getElementById('search-eccn');
+    list.forEach(e => {
+      const opt = new Option(`${e.eccn} — ${e.label} (${e.paper_count}件)`, e.eccn);
+      searchSel.appendChild(opt);
+    });
+
+    // トレンド選択
+    const trendSel = document.getElementById('trend-eccn');
+    list.forEach(e => {
+      const opt = new Option(`${e.eccn} — ${e.label}`, e.eccn);
+      trendSel.appendChild(opt);
+    });
+
+    // みなし輸出チェックボックス (上位8件)
+    const toggles = document.getElementById('deemed-eccn-toggles');
+    list.slice(0, 8).forEach(e => {
+      const id = `toggle-${e.eccn}`;
+      toggles.innerHTML += `
+        <label class="toggle" for="${id}">
+          <input type="checkbox" id="${id}" value="${e.eccn}">
+          ${e.eccn}
+        </label>`;
+    });
+  } catch {}
+}
+
+// ── 論文検索 ──────────────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('search-q').value.trim();
+  const eccn = document.getElementById('search-eccn').value;
+  const minCit = document.getElementById('search-min-cit').value || 0;
+  const yearFrom = document.getElementById('search-year-from').value;
+
+  const results = document.getElementById('search-results');
+  results.innerHTML = '<div class="trend-empty">検索中...</div>';
+
+  let url;
+  if (q) {
+    // セマンティック検索 (Layer D)
+    const p = new URLSearchParams({ q, top_k: 30 });
+    if (eccn) p.set('eccn', eccn);
+    url = '/api/v1/academic/search?' + p;
+  } else {
+    // DB 直接検索
+    const p = new URLSearchParams({ top_k: 50, min_citations: minCit });
+    if (eccn) p.set('eccn', eccn);
+    if (yearFrom) p.set('year_from', yearFrom);
+    url = '/api/v1/academic/papers?' + p;
+  }
+
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    renderPapers(results, d.papers || [], d.source);
+  } catch(e) {
+    results.innerHTML = `<div class="trend-empty" style="color:var(--danger);">エラー: ${e.message}</div>`;
+  }
+}
+
+function clearSearch() {
+  document.getElementById('search-q').value = '';
+  document.getElementById('search-eccn').value = '';
+  document.getElementById('search-min-cit').value = '0';
+  document.getElementById('search-year-from').value = '';
+  document.getElementById('search-results').innerHTML = '';
+}
+
+function renderPapers(container, papers, source) {
+  if (!papers.length) {
+    container.innerHTML = '<div class="trend-empty">論文が見つかりません。データ収集を実行してください。</div>';
+    return;
+  }
+  const sourceLabel = source === 'faiss_layer_d' ? 'セマンティック検索 (Layer D)' : 'DB 検索';
+  container.innerHTML = `<div class="txt-muted mb-2">${papers.length} 件 — ${sourceLabel}</div>` +
+    papers.map(p => renderPaperCard(p)).join('');
+}
+
+function renderPaperCard(p) {
+  const eccnChips = (p.eccn_tags || []).map(e =>
+    `<span class="eccn-chip">${e}</span>`).join(' ');
+  const score = p.score != null
+    ? `<span class="score-pill">スコア ${p.score}</span>` : '';
+  const srcBadge = p.source === 'lens'
+    ? '<span style="font-size:.7rem;background:#e0f2fe;color:#0369a1;padding:2px 7px;border-radius:999px;font-weight:700;">Lens.org</span>'
+    : '<span style="font-size:.7rem;background:#f3e8ff;color:#7c3aed;padding:2px 7px;border-radius:999px;font-weight:700;">S2</span>';
+  const doi = (() => {
+    try {
+      const ext = JSON.parse(p.external_ids || '{}');
+      const doiVal = ext.DOI || ext.doi;
+      return doiVal ? `<a href="https://doi.org/${doiVal}" target="_blank" style="font-size:.72rem;">DOI ↗</a>` : '';
+    } catch { return ''; }
+  })();
+
+  return `<div class="paper-card">
+    <div class="paper-title">${_esc(p.title || '(タイトルなし)')}</div>
+    <div class="paper-meta">
+      <span>${p.year || '年不明'}</span>
+      <span>被引用 <strong>${(p.citation_count || 0).toLocaleString()}</strong></span>
+      <span>影響力引用 <strong>${(p.influential_citation_count || 0).toLocaleString()}</strong></span>
+      ${srcBadge}
+      ${score}
+      ${doi}
+      ${eccnChips}
+    </div>
+    ${p.abstract_snippet ? `<div class="paper-abstract">${_esc(p.abstract_snippet)}…</div>` : ''}
+  </div>`;
+}
+
+// ── 技術トレンド ──────────────────────────────────────────────────────────
+async function loadTrend() {
+  const eccn = document.getElementById('trend-eccn').value;
+  if (!eccn) return;
+
+  const trendDiv = document.getElementById('trend-results');
+  trendDiv.innerHTML = '<div class="trend-empty">読み込み中...</div>';
+
+  try {
+    const [trendR, papersR] = await Promise.all([
+      fetch(`/api/v1/academic/trend/${eccn}`),
+      fetch(`/api/v1/academic/papers?eccn=${eccn}&top_k=20&order_by=citation_count`),
+    ]);
+    const trend = await trendR.json();
+    const papersD = await papersR.json();
+
+    if (!trend.trend || !trend.trend.length) {
+      trendDiv.innerHTML = '<div class="trend-empty">このECCNの論文データがありません。データ収集を実行してください。</div>';
+      return;
+    }
+
+    renderTrendChart(trendDiv, trend);
+    const papersWrap = document.getElementById('trend-papers-wrap');
+    papersWrap.style.display = 'block';
+    renderPapers(document.getElementById('trend-papers'), papersD.papers || [], papersD.source);
+  } catch(e) {
+    trendDiv.innerHTML = `<div class="trend-empty" style="color:var(--danger);">エラー: ${e.message}</div>`;
+  }
+}
+
+function renderTrendChart(container, data) {
+  const points = data.trend;
+  const maxCount = Math.max(...points.map(p => p.paper_count), 1);
+  const maxCit   = Math.max(...points.map(p => p.total_citations), 1);
+
+  const bars = points.map(p => {
+    const h1 = Math.round((p.paper_count / maxCount) * 120);
+    const h2 = Math.round((p.total_citations / maxCit) * 120);
+    return `
+      <div style="display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; min-width:28px;">
+        <div style="font-size:.7rem; color:var(--muted); white-space:nowrap; writing-mode:vertical-rl; transform:rotate(180deg); height:40px; overflow:hidden;">${p.total_citations.toLocaleString()}</div>
+        <div style="display:flex; align-items:flex-end; gap:2px; height:120px;">
+          <div title="論文数 ${p.paper_count}" style="width:14px; height:${h1}px; background:var(--primary); border-radius:3px 3px 0 0; opacity:.8;"></div>
+          <div title="被引用数 ${p.total_citations}" style="width:14px; height:${h2}px; background:#a78bfa; border-radius:3px 3px 0 0; opacity:.8;"></div>
+        </div>
+        <div style="font-size:.7rem; color:var(--muted);">${p.year}</div>
+        <div style="font-size:.7rem; font-weight:700; color:var(--text);">${p.paper_count}</div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-title">${data.label} (${data.eccn}) — 年別論文数トレンド</div>
+      <div style="display:flex; gap:16px; margin-bottom:12px; font-size:.76rem; color:var(--muted);">
+        <span><span style="display:inline-block;width:12px;height:12px;background:var(--primary);border-radius:2px;vertical-align:middle;"></span> 論文数</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#a78bfa;border-radius:2px;vertical-align:middle;"></span> 被引用数合計</span>
+      </div>
+      <div style="display:flex; gap:4px; align-items:flex-end; overflow-x:auto; padding-bottom:8px;">${bars}</div>
+    </div>`;
+}
+
+// ── みなし輸出スキャン ────────────────────────────────────────────────────
+async function runDeemedScan() {
+  const eccnChecked = Array.from(document.querySelectorAll('#deemed-eccn-toggles input:checked'))
+    .map(el => el.value);
+  if (!eccnChecked.length) {
+    alert('ECCN コードを1件以上選択してください');
+    return;
+  }
+  const countriesRaw = document.getElementById('deemed-countries').value;
+  const countries = countriesRaw.split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
+
+  const results = document.getElementById('deemed-results');
+  results.innerHTML = '<div class="trend-empty">スキャン中...</div>';
+
+  try {
+    const r = await fetch('/api/v1/academic/deemed-scan', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ eccn_codes: eccnChecked, researcher_countries: countries, top_k: 30 }),
+    });
+    const d = await r.json();
+    renderDeemedResults(results, d);
+  } catch(e) {
+    results.innerHTML = `<div class="trend-empty" style="color:var(--danger);">エラー: ${e.message}</div>`;
+  }
+}
+
+function renderDeemedResults(container, data) {
+  if (!data.results || !data.results.length) {
+    container.innerHTML = '<div class="card trend-empty">フラグされた研究者・論文は見つかりませんでした。</div>';
+    return;
+  }
+  const rows = data.results.map(r => `
+    <tr>
+      <td><span class="badge ${r.risk_level === 'high' ? 'risk-high' : 'risk-medium'}">${r.risk_level === 'high' ? '高' : '中'}</span></td>
+      <td><strong>${r.risk_score}</strong></td>
+      <td><span class="eccn-chip">${r.eccn}</span></td>
+      <td>${_esc(r.author_name || r.author_id)}</td>
+      <td>${r.h_index ?? '—'}</td>
+      <td>${r.flagged_countries.join(', ')}</td>
+      <td style="max-width:300px;font-size:.8rem;">${_esc((r.paper_title || '').substring(0, 80))}…<br><span class="txt-muted">${r.paper_year || ''} / 被引用 ${r.citation_count}</span></td>
+    </tr>`).join('');
+
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-title">スキャン結果 — ${data.flagged_count} 件フラグ</div>
+      <div style="font-size:.8rem; color:var(--muted); margin-bottom:14px;">
+        対象ECCN: ${data.scanned_eccns.join(', ')} / 懸念国: ${data.researcher_countries.join(', ')}
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="diff-table" style="min-width:700px;">
+          <thead>
+            <tr>
+              <th>リスク</th><th>スコア</th><th>ECCN</th><th>著者</th>
+              <th>h-index</th><th>フラグ国</th><th>論文</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ── ユーティリティ ────────────────────────────────────────────────────────
+function _esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}

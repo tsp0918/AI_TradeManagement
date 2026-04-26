@@ -932,3 +932,9 @@ def personnel_delete(personnel_id: str, db: Session = Depends(get_db)):
     db.delete(person)
     db.commit()
     return RedirectResponse(url="/ui/personnel", status_code=303)
+
+
+# ── 技術インテリジェンス ──────────────────────────────────────────────────
+@router.get("/academic-intel")
+def academic_intel(request: Request):
+    return templates.TemplateResponse(request, "academic_intel.html", {})

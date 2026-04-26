@@ -1,0 +1,284 @@
+{
+  "_comment": "ECCN別技術用語辞書 — Semantic Scholar / Lens.org クエリ展開用",
+  "_version": "1.0",
+  "_updated": "2026-03-27",
+
+  "3A001": {
+    "label": "電子部品（半導体・マイクロ波）",
+    "keywords": [
+      "gallium nitride power amplifier",
+      "GaN HEMT",
+      "monolithic microwave integrated circuit",
+      "MMIC",
+      "gallium arsenide transistor",
+      "InP HEMT",
+      "high electron mobility transistor",
+      "wide bandgap semiconductor",
+      "silicon carbide power device",
+      "SiC MOSFET",
+      "radiation hardened electronics",
+      "high frequency transistor",
+      "phased array radar chip"
+    ],
+    "ipc_codes": ["H01L 29/778", "H01L 27/08", "H03F 1/02", "H01L 29/20"]
+  },
+
+  "3A002": {
+    "label": "電子試験・測定機器",
+    "keywords": [
+      "high speed oscilloscope",
+      "signal generator microwave",
+      "spectrum analyzer millimeter wave",
+      "vector network analyzer",
+      "arbitrary waveform generator",
+      "pulse generator nanosecond"
+    ],
+    "ipc_codes": ["G01R 13/00", "G01R 23/00", "H03B 1/00"]
+  },
+
+  "4A003": {
+    "label": "コンピュータ（高性能計算）",
+    "keywords": [
+      "high performance computing interconnect",
+      "GPU cluster deep learning",
+      "exascale computing",
+      "tensor processing unit",
+      "neuromorphic computing chip",
+      "photonic computing",
+      "quantum computing qubit"
+    ],
+    "ipc_codes": ["G06F 15/80", "G06N 10/00", "G06F 15/173"]
+  },
+
+  "5A001": {
+    "label": "電気通信機器",
+    "keywords": [
+      "software defined radio cognitive",
+      "phased array antenna beamforming",
+      "millimeter wave communication 5G",
+      "terahertz communication",
+      "spread spectrum low probability intercept",
+      "anti-jam communication waveform",
+      "electronic warfare receiver"
+    ],
+    "ipc_codes": ["H04B 1/00", "H01Q 3/26", "H04K 3/00"]
+  },
+
+  "5A002": {
+    "label": "情報セキュリティ・暗号",
+    "keywords": [
+      "post-quantum cryptography",
+      "lattice-based cryptography",
+      "NIST post-quantum standardization",
+      "quantum key distribution",
+      "homomorphic encryption",
+      "secure multi-party computation",
+      "side channel attack countermeasure",
+      "hardware security module",
+      "trusted execution environment"
+    ],
+    "ipc_codes": ["H04L 9/00", "G09C 1/00", "H04L 9/08"]
+  },
+
+  "6A001": {
+    "label": "音響センサー（ソナー）",
+    "keywords": [
+      "underwater acoustic array",
+      "sonar signal processing",
+      "hydrophone array beamforming",
+      "acoustic vector sensor",
+      "passive sonar detection",
+      "acoustic emission sensor"
+    ],
+    "ipc_codes": ["G01S 15/00", "H04R 1/44", "G01H 3/00"]
+  },
+
+  "6A002": {
+    "label": "光学センサー・赤外線",
+    "keywords": [
+      "infrared focal plane array",
+      "InSb detector",
+      "HgCdTe infrared sensor",
+      "SWIR imaging",
+      "LWIR thermal imaging",
+      "night vision image intensifier",
+      "laser rangefinder",
+      "LIDAR military",
+      "hyperspectral imaging sensor"
+    ],
+    "ipc_codes": ["G01J 5/00", "H01L 31/0352", "G01S 17/00"]
+  },
+
+  "7A001": {
+    "label": "航法・慣性装置",
+    "keywords": [
+      "inertial navigation system MEMS",
+      "ring laser gyroscope",
+      "fiber optic gyroscope",
+      "accelerometer MEMS navigation",
+      "GPS anti-spoofing",
+      "inertial measurement unit high accuracy",
+      "atom interferometry inertial sensor"
+    ],
+    "ipc_codes": ["G01C 19/56", "G01C 21/16", "G01P 15/08"]
+  },
+
+  "7A002": {
+    "label": "航法加速度計",
+    "keywords": [
+      "quartz accelerometer navigation grade",
+      "pendulous integrating gyroscopic accelerometer",
+      "PIGA accelerometer",
+      "MEMS accelerometer inertial grade"
+    ],
+    "ipc_codes": ["G01P 15/09", "G01C 19/02"]
+  },
+
+  "9A001": {
+    "label": "航空エンジン",
+    "keywords": [
+      "turbofan engine thrust-to-weight ratio",
+      "high bypass ratio turbofan",
+      "turbine blade cooling",
+      "single crystal turbine blade",
+      "turbofan compressor aerodynamics",
+      "jet engine afterburner",
+      "hypersonic propulsion scramjet"
+    ],
+    "ipc_codes": ["F02K 3/00", "F02C 3/00", "F02C 7/12"]
+  },
+
+  "1C350": {
+    "label": "化学兵器前駆体",
+    "keywords": [
+      "organophosphorus compound synthesis",
+      "nerve agent precursor chemistry",
+      "thiodiglycol synthesis",
+      "phosphorus oxychloride reaction",
+      "toxic industrial chemical detection",
+      "chemical agent precursor analysis"
+    ],
+    "ipc_codes": ["C07F 9/00", "C07C 323/00", "C07C 315/00"]
+  },
+
+  "1C111": {
+    "label": "ロケット推進剤材料",
+    "keywords": [
+      "ammonium perchlorate composite propellant",
+      "HTPB binder propellant",
+      "solid rocket propellant burn rate",
+      "RDX HMX explosive",
+      "energetic binder",
+      "AP propellant burning",
+      "aluminum powder propellant"
+    ],
+    "ipc_codes": ["C06B 33/00", "C06D 5/00", "C06B 45/00"]
+  },
+
+  "2B001": {
+    "label": "工作機械（精密加工）",
+    "keywords": [
+      "CNC machine tool accuracy",
+      "five-axis machining center",
+      "ultra-precision turning",
+      "diamond turning optical surface",
+      "EDM electrical discharge machining precision",
+      "laser ablation micromachining",
+      "grinding machine nanometer accuracy"
+    ],
+    "ipc_codes": ["B23B 3/00", "B23C 1/00", "B24B 1/00"]
+  },
+
+  "2B350": {
+    "label": "化学製造設備",
+    "keywords": [
+      "chemical reactor corrosion resistant",
+      "fluoropolymer lined reactor",
+      "high pressure chemical synthesis reactor",
+      "distillation column chemical weapon precursor",
+      "spray drying toxic chemical"
+    ],
+    "ipc_codes": ["B01J 19/00", "B01D 3/00"]
+  },
+
+  "0C001": {
+    "label": "核物質（ウラン・プルトニウム）",
+    "keywords": [
+      "uranium enrichment centrifuge",
+      "plutonium reprocessing",
+      "nuclear fuel cycle",
+      "isotope separation",
+      "UF6 uranium hexafluoride",
+      "criticality safety nuclear",
+      "radiation shielding nuclear material"
+    ],
+    "ipc_codes": ["G21C 1/00", "G21F 9/00", "G21D 1/00"]
+  },
+
+  "1C010": {
+    "label": "繊維・複合材料（先進材料）",
+    "keywords": [
+      "carbon fiber reinforced polymer",
+      "aramid fiber composite",
+      "ultra high molecular weight polyethylene fiber",
+      "UHMWPE ballistic fiber",
+      "boron fiber composite",
+      "ceramic matrix composite",
+      "carbon nanotube structural composite"
+    ],
+    "ipc_codes": ["D01F 9/12", "C08J 5/04", "B32B 5/02"]
+  },
+
+  "1C012": {
+    "label": "核融合・特殊材料",
+    "keywords": [
+      "tritium breeding blanket",
+      "beryllium neutron moderator",
+      "lithium-6 enrichment",
+      "hafnium neutron absorber",
+      "zirconium nuclear cladding"
+    ],
+    "ipc_codes": ["G21B 1/00", "C22C 1/00"]
+  },
+
+  "8A001": {
+    "label": "海洋船舶システム",
+    "keywords": [
+      "autonomous underwater vehicle",
+      "AUV navigation control",
+      "submarine propulsion system",
+      "underwater drone stealth",
+      "marine diesel engine military",
+      "underwater glider oceanography"
+    ],
+    "ipc_codes": ["B63G 8/00", "B63H 21/00", "G05D 1/02"]
+  },
+
+  "9A004": {
+    "label": "宇宙機器",
+    "keywords": [
+      "satellite attitude control",
+      "spacecraft propulsion electric",
+      "ion thruster spacecraft",
+      "reaction wheel satellite",
+      "star tracker attitude determination",
+      "reentry vehicle thermal protection",
+      "hypersonic vehicle aerodynamics"
+    ],
+    "ipc_codes": ["B64G 1/26", "B64G 1/40", "B64G 1/28"]
+  },
+
+  "9A610": {
+    "label": "軍用航空機システム",
+    "keywords": [
+      "radar cross section reduction stealth",
+      "electronic countermeasure aircraft",
+      "infrared signature suppression",
+      "fly-by-wire flight control system",
+      "unmanned aerial vehicle autonomous",
+      "UAV swarm coordination",
+      "directed energy weapon aircraft"
+    ],
+    "ipc_codes": ["B64C 39/02", "H01Q 17/00", "G05D 1/10"]
+  }
+}
