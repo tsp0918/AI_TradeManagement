@@ -1,10 +1,8 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-03-26 更新（P3完了・国別規制プロファイル・NACCS 9桁HS実装）
+# 2026-04-26 更新（サプライヤーポータル 実装完了）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
-> 2026-03-26 追加: P3全完了（Layer A 2,922vec再ビルド・CISTEC照合・出願人照合・制裁cron・Layer C改善）、
-> ai_classification 国別規制プロファイル（Ph.1〜5: WTO関税・Comtrade統計・EAR再輸出判定）、
-> 税関NACCSコードリストから JP 9桁統計品目番号 11,368件自動取得。
+> 2026-04-26 追加: サプライヤーポータル（外部サプライヤーが直接 Web 申告できる公開 UI・招待トークン発行）実装完了。
 
 ---
 
@@ -12,7 +10,7 @@
 
 | モジュール | ポート | DB | WAL | 安定性 | 備考 |
 |-----------|--------|-----|-----|--------|------|
-| platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 3レイヤー・知識グラフ・規制スケジューラー |
+| platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 4レイヤー（A/B/C/D）・知識グラフ・規制スケジューラー |
 | ai_validation | 8001 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent |
 | ai_classification | 8002 | SQLite | ✅ | ✅ | HS Classifier Webhook連携・ECCN付加・品目管理 |
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
@@ -38,6 +36,7 @@
 | FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ 2,922vec（P3-1完了）|
 | FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ 1,595vec |
 | FAISS Layer C（HSコード） | services/faiss_e5_service.py | ✅ 5,476vec |
+| FAISS Layer D（学術論文） | services/faiss_e5_service.py | ✅ collect_academic_papers.py + build_layer_d.py で構築 |
 | asyncio 規制動向スケジューラー | main.py (_regulatory_scheduler) | ✅ 24h周期 |
 
 ### 2-2. キャッチオール規制エンジン
@@ -244,6 +243,219 @@ ai_validation 取引審査画面 — 仕向地 EAR Country Chart リスクプロ
     リスクバッジ（green/yellow/orange/red）+ EARグループ + X列一覧をインライン表示
 ```
 
+### ✅ サプライヤー原産性証明 + De Minimis→ai_validation 連携（2026-04-26）
+
+```
+サプライヤーが BOM ノード単位で ECCN・原産地を申告し、
+FAISS Layer A による AI 自動検証と審査証跡を管理する機能。
+
+モデル（platform-core/platform_core/models/supplier_attestation.py）:
+  plat_supplier_attestation
+    フィールド: node_id(FK) / supplier_name / supplier_contact
+                claimed_eccn / claimed_country_of_origin / claimed_us_content_pct
+                is_us_origin_claimed / certificate_reference / attestation_date / expiry_date
+                status / ai_suggested_eccn / ai_confidence / ai_verdict / ai_review_detail
+                reviewed_by_user_id / reviewed_at / review_comment
+
+Alembic migrations:
+  platform-core: e3f4a5b6c7d8_add_supplier_attestation.py
+  ai_validation: d1e2f3a4b5c6_add_supply_chain_node_id.py
+                 → transactions に supply_chain_node_id / de_minimis_result 追加
+
+API（platform-core/platform_core/routers/supplier_attestation.py）:
+  GET  /api/supplier-attestations                 一覧（node_id/status/ai_verdict フィルタ）
+  POST /api/supplier-attestations                 申告登録
+  GET/PUT/DELETE /api/supplier-attestations/{id}  詳細・更新・削除
+  POST /api/supplier-attestations/{id}/ai-validate FAISS Layer A で ECCN 自動検証
+  POST /api/supplier-attestations/{id}/accept     承認（reviewed_at / review_comment 記録）
+  POST /api/supplier-attestations/{id}/reject     却下
+  GET  /api/supply-chain/nodes/{id}/attestations  ノード別証明一覧
+
+AI 検証ロジック:
+  - ノード名 + 説明を FAISS Layer A（外為法/ECCN）で検索（top_k=5）
+  - ai_verdict: match / warning / mismatch / unverifiable
+    - 申告 EAR99 + AI が管理品を示唆（conf>70%）→ warning
+    - 申告 ECCN 頭5文字が AI 提示と一致 → match
+    - 信頼度 75% 超で不一致 → mismatch
+  - 動作確認: Wolfspeed GaN HEMT（3A001申告）→ verdict=match confidence=0.86 ✅
+
+supply_chain.html 拡張:
+  - タブ構造（🌳 BOM / 📐 De Minimis / 📋 証明管理）
+  - 証明管理タブ: 申告一覧（ステータスバッジ・AI判定結果）・登録モーダル
+  - AI検証ボタン（ワンクリックで FAISS Layer A 呼出）
+  - 承認/却下ボタン（コメント入力）
+  - De Minimis タブに証明カバレッジ表示（承認済件数・要注意件数）
+
+ai_validation transaction_detail.html 拡張:
+  - Section 2c-pre「🔗 サプライチェーン / De Minimis」カード追加
+  - ノード名検索 → 選択 → De Minimis 計算 → スナップショット保存
+  - 保存済みスナップショット表示（US管理品比率・閾値・判定結果）
+  - POST /api/transactions/{id}/supply-chain でノード紐付けと結果をキャッシュ
+```
+
+### ✅ サプライヤーポータル（2026-04-26）
+
+```
+外部サプライヤーが認証不要で ECCN・原産地を Web 申告できる公開 UI。
+担当者が招待トークン URL を発行し、サプライヤーが直接フォームを送信する。
+
+モデル（platform-core/platform_core/models/supplier_portal_token.py）:
+  plat_supplier_portal_token
+    フィールド: token(64char URLsafe) / node_id / node_name(snapshot)
+                supplier_name / supplier_email / note_for_supplier
+                is_active / max_uses / use_count / expires_at / created_by_user_id
+
+Alembic migration: f4a5b6c7d8e9_add_supplier_portal_token.py
+
+管理 API（platform-core/platform_core/routers/supplier_portal.py）:
+  GET  /api/supplier-portal/tokens              トークン一覧（node_id/active_only フィルタ）
+  POST /api/supplier-portal/tokens              トークン発行（node_id 存在確認・expires_at 自動算出）
+  GET  /api/supplier-portal/tokens/{id}         トークン詳細
+  POST /api/supplier-portal/tokens/{id}/revoke  手動無効化
+
+公開ポータル（認証不要）:
+  GET  /supplier-portal/{token}         申告フォーム（supplier_portal.html）
+  POST /supplier-portal/{token}/submit  申告送信 → SupplierAttestation 自動作成 → 確認画面
+
+トークン検証ロジック（_resolve_token）:
+  - is_active チェック
+  - expires_at（timezone-aware）チェック
+  - use_count < max_uses チェック（0=無制限）
+  - 送信成功時: use_count++ / 使い切り時 is_active=False 自動セット
+
+公開 HTML テンプレート（platform-core/platform_core/templates/）:
+  - supplier_portal.html         — サプライヤー向け申告フォーム（完全スタンドアロン CSS）
+  - supplier_portal_error.html   — トークン無効/期限切れ時のエラー画面
+  - supplier_portal_confirm.html — 申告受付完了（受付番号 attestation_id 表示）
+
+supply_chain.html 拡張（証明管理タブ）:
+  - 「🔗 招待URL発行」ボタン（btnPortalToken）— ノード選択後に有効化
+  - portal token モーダル: supplier_name / email / note / expires_days / max_uses 入力
+  - 発行後: portal_url をインラインでコピーボタン付き表示
+
+外部公開 URL:
+  https://app.tsp-aitrademanagement.com/supplier-portal/{token}
+
+動作確認（2026-04-26）:
+  - GaN HEMT ノードに対してトークン発行 → URL 生成 ✅
+  - 申告フォームアクセス → SupplierAttestation status=pending で登録 ✅
+  - max_uses=1 到達時 → is_active=False・エラー画面表示 ✅
+  - 承認フロー: 証明管理タブで AI 検証 → accept ✅
+```
+
+### ✅ ③ サプライチェーン管理（2026-04-26）
+
+```
+BOM 構造管理 + EAR §734.4 De Minimis 自動計算
+
+モデル（platform-core/platform_core/models/supply_chain.py）:
+  plat_supply_chain_node  — 製品/サブアッセンブリ/部品/素材ノード
+    フィールド: name / part_number / node_type / country_of_origin / is_us_origin
+                hs_code / eccn / unit_value_usd / us_controlled_value_usd / extra
+  plat_supply_chain_edge  — BOM 親子エッジ（quantity / unit）
+
+Alembic migration: d2e3f4a5b6c7_add_supply_chain.py
+
+API（platform-core/platform_core/routers/supply_chain.py）:
+  GET  /api/supply-chain/stats                   概況サマリー
+  GET  /api/supply-chain/nodes                   ノード一覧（q/node_type/is_us_origin/eccn フィルタ）
+  POST /api/supply-chain/nodes                   ノード作成（US管理品価値 自動補完）
+  GET  /api/supply-chain/nodes/{id}              詳細（直接の子リスト付き）
+  PUT  /api/supply-chain/nodes/{id}              更新
+  DELETE /api/supply-chain/nodes/{id}            削除（エッジ cascade）
+  GET  /api/supply-chain/nodes/{id}/tree         BOM ツリー全展開（深さ最大 10）
+  POST /api/supply-chain/nodes/{id}/de-minimis   De Minimis 計算
+  POST /api/supply-chain/edges                   BOM エッジ追加（自己参照・重複チェック付き）
+  DELETE /api/supply-chain/edges/{id}            エッジ削除
+
+De Minimis エンジン（EAR §734.4）:
+  - BOM ツリー再帰走査でリーフノードの価値を積算
+  - US管理品 = is_us_origin=True かつ eccn ≠ EAR99
+  - 一般国閾値: 25%  / E:1国（KP/IR/CU/SY/SD）閾値: 10%
+  - De Minimis 免除不可 ECCN: カテゴリ 0 系・2B352（WMD/弾薬関連）
+  - 結果: eligible/total_value/us_controlled_value/us_controlled_pct/excluded_items/note
+
+UI（platform-core/platform_core/templates/supply_chain.html）:
+  - ポータルサイドバー「🔗 サプライチェーン管理」（/ui/supply-chain）
+  - 統計ダッシュボード（ノード/エッジ/US管理品数）
+  - ノード一覧テーブル（検索・種別/US原産フィルタ）
+  - BOM ツリービュー（ネスト表示・エッジ削除ボタン）
+  - BOM エッジ追加フォーム（子ノード名検索・数量/単位入力）
+  - De Minimis 計算機（仕向地入力→バー可視化→判定結果）
+
+動作確認:
+  - GaN パワーアンプ(JP製 $1,200) BOM = GaN HEMT チップ(US・3A001・$350) + RF 基板(JP・EAR99・$180) + RF パッケージ(TW・EAR99・$70×2)
+  - 総価値 $670、US管理品 $350 = 52.24%
+  - CN 向け: 52.24% > 25% → De Minimis 不可・許可申請必要 ✅
+  - KP 向け: 52.24% > 10% → De Minimis 不可・許可申請必要 ✅
+```
+
+### ✅ ② 与信管理（2026-04-26）
+
+```
+取引先与信スコア・制裁リスク・国別カントリーリスク統合管理
+
+モデル拡張（platform-core/platform_core/models/company.py）:
+  plat_company  += roles (JSONB) / credit_score / credit_data / country_risk_score / overall_risk_level
+  plat_counterparty_credit_history  新規テーブル（与信スコア変更履歴）
+
+API（platform-core/platform_core/routers/counterparty.py）:
+  GET  /api/counterparties/stats       リスクダッシュボード集計（total/by_risk_level/sanctioned）
+  GET  /api/counterparties             取引先一覧（q/risk_level/role/country_code/is_sanctioned フィルタ）
+  POST /api/counterparties             取引先登録（国コードから country_risk_score 自動算出）
+  GET  /api/counterparties/{id}        取引先詳細
+  PUT  /api/counterparties/{id}        取引先更新（スコア変化時に履歴自動記録）
+  DELETE /api/counterparties/{id}      取引先削除
+  POST /api/counterparties/{id}/screen screening モジュール(8005)呼出・結果を自動保存・リスク再評価
+  GET  /api/counterparties/{id}/history 与信スコア変更履歴
+
+リスク算出ロジック:
+  - country_risk_score: 国コード→固定テーブル（CN:75, RU:90, KP/IR:100, US/JP:5 等）
+  - overall_risk_level: credit_score × 0.4 + country_risk × 0.6 → LOW/MEDIUM/HIGH/CRITICAL
+  - is_sanctioned=true → CRITICAL 強制
+
+UI（platform-core/platform_core/templates/counterparty.html）:
+  - ポータルサイドバー「🏢 与信管理」リンク（/ui/counterparty）
+  - リスクダッシュボード（統計カード×6）
+  - 取引先テーブル（検索・リスクレベル/役割/制裁フィルタ・ページネーション）
+  - 詳細モーダル（与信スコアバー・スクリーニング結果・変更履歴テーブル）
+  - 新規登録/編集モーダル（役割チェックボックス・変更理由入力）
+  - 照合ボタン（ワンクリックでscreening API呼出）
+
+Alembic migration: c1e2f3a4b5d6_add_counterparty_credit.py
+```
+
+### ✅ 技術インテリジェンス（Ph.A〜D）: 完了済み（2026-03-27）
+
+```
+学術論文 × ECCN クロスリンク基盤（Semantic Scholar + Lens.org）
+
+Ph.A — データ収集基盤
+  - data/academic/eccn_tech_terms.json: 20 ECCN × 技術用語辞書（クエリ展開用）
+  - scripts/collect_academic_papers.py: S2 API + Lens.org バッチ収集・academic_intel.db に保存
+    DB スキーマ: papers / authors / paper_authors / paper_eccn_tags
+
+Ph.B — FAISS Layer D 追加
+  - scripts/build_layer_d.py: academic_intel.db → layer_d.index + layer_d_meta.json 構築
+  - faiss_e5_service.py: Layer D ロード・search_layer_d()・layer_d_available() 追加
+
+Ph.C — rnd_assessment 技術インテリジェンス機能
+  - modules/rnd_assessment/app/api/v1/endpoints/academic_intel.py: 5エンドポイント
+    GET /api/v1/academic/search（Layer D セマンティック検索）
+    GET /api/v1/academic/papers（DB直接検索・ECCN/year/keyword フィルタ）
+    GET /api/v1/academic/trend/{eccn}（年次トレンド集計）
+    GET /api/v1/academic/eccn-list（利用可能ECCN一覧）
+    GET /api/v1/academic/researcher/{id}（著者プロファイル）
+    POST /api/v1/academic/deemed-scan（みなし輸出リスクスキャン）
+  - rnd_assessment UI: /ui/academic-intel（論文検索・トレンドグラフ・みなし輸出スキャン）
+  - base.html ナビバー: 「技術インテリジェンス」リンク追加
+
+Ph.D — patent_search 双方向リンク
+  - modules/patent_search/app/routers/academic_links.py: 2エンドポイント
+    GET /api/patents/{number}/academic-links（特許→関連学術論文）
+    GET /api/academic/related-patents（論文キーワード→特許・Layer B 検索）
+```
+
 ---
 
 ## 5. データソース品質評価（2026-03-21）
@@ -323,5 +535,18 @@ lsof | grep ".db$" | grep -v ".venv"
 
 ---
 
-*更新: 2026-03-26（P3完了・Ph.1〜6 完了・技術的負債ゼロ）*
+## 10. 次フェーズ候補
+
+| 優先度 | タスク | 内容 |
+|--------|--------|------|
+| ★★★★★ | ④ 輸出許可申請ドラフト・期限管理ワークフロー | 申請書自動生成（EAR BIS-748P / 外為法様式）・申請期限アラート |
+| ★★★★☆ | サプライヤーポータル拡張 | メール自動送信（招待URL通知）・添付ファイルアップロード・多言語化 |
+| ★★★★☆ | 輸出許可証管理 | 許可証番号・有効期限・紐付け取引管理 |
+| ★★★☆☆ | Layer D データ収集実行 | API Key 取得後に collect_academic_papers.py を全 ECCN で実行 |
+| ★★★☆☆ | 与信データ外部連携 | TDB/TSR API（有償）連携 |
+| ★★☆☆☆ | 中国輸出管理法リスト | CCL データ取得・スクリーニング統合 |
+
+---
+
+*更新: 2026-04-26（サプライヤーポータル実装完了・③ サプライチェーン管理 + ② 与信管理 完了・技術インテリジェンス Ph.A〜D 完了・技術的負債ゼロ）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
