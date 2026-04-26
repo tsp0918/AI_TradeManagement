@@ -228,12 +228,38 @@
   <div class="modal" style="width:720px;">
     <h3>⚠️ コンプライアンス影響イベント詳細</h3>
     <div id="eventDetailBody"></div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="flex-wrap:wrap; gap:8px;">
       <button class="btn btn-ghost"   onclick="closeModal('eventDetailOverlay')">閉じる</button>
       <button class="btn btn-primary" id="btnInReview"  onclick="setInReview()">レビュー中へ</button>
       <button class="btn btn-success" id="btnResolve"   onclick="openResolveModal('resolved')">解決済み</button>
       <button class="btn btn-ghost"   id="btnDismiss"   onclick="openResolveModal('dismissed')">却下</button>
+      <div style="flex:1;"></div>
+      <button class="btn" id="btnRequestValidation"
+        style="background:#7c3aed; color:#fff;"
+        onclick="requestValidation()">🔐 AI再判定</button>
+      <button class="btn" id="btnCreateLicense"
+        style="background:#0f766e; color:#fff; display:none;"
+        onclick="createLicenseFromEvent()">📋 輸出許可申請を作成</button>
     </div>
+  </div>
+</div>
+
+<!-- ── Validation Result Toast ── -->
+<div id="validationToast" style="
+  display:none; position:fixed; bottom:24px; right:24px; z-index:2000;
+  background:#1a1d27; border:1px solid #6366f1; border-radius:10px;
+  padding:16px 20px; min-width:320px; box-shadow:0 8px 32px #0008;">
+  <div style="font-weight:700; margin-bottom:8px;">🔐 AI判定トランザクション作成済み</div>
+  <div id="validationToastBody" style="font-size:.88rem; color:#94a3b8;"></div>
+  <div style="margin-top:12px; display:flex; gap:8px;">
+    <a id="validationToastLink" href="#" target="_blank"
+      style="background:#6366f1; color:#fff; padding:6px 14px; border-radius:6px; font-size:.85rem; text-decoration:none;">
+      判定画面へ →
+    </a>
+    <button onclick="document.getElementById('validationToast').style.display='none'"
+      style="background:none; border:1px solid #2e3150; color:#94a3b8; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:.85rem;">
+      閉じる
+    </button>
   </div>
 </div>
 
@@ -469,6 +495,14 @@ async function openEventDetail(eventId) {
   document.getElementById('btnResolve').style.display   = isOpen ? '' : 'none';
   document.getElementById('btnDismiss').style.display   = isOpen ? '' : 'none';
 
+  // AI再判定ボタン: open/in_review かつ re_validate アクションがある場合に表示
+  const needsValidation = isOpen && (e.action_required || []).some(a => a.type === 're_validate');
+  document.getElementById('btnRequestValidation').style.display = needsValidation ? '' : 'none';
+  // 輸出許可申請ボタン: ECCN変更 HIGH イベントで open の場合に表示
+  const needsLicense = isOpen && e.impact_level === 'HIGH' &&
+    ['eccn_change', 'composition_change'].includes(e.change_category);
+  document.getElementById('btnCreateLicense').style.display = needsLicense ? '' : 'none';
+
   document.getElementById('eventDetailOverlay').classList.add('open');
 }
 
@@ -497,6 +531,60 @@ async function submitResolve() {
   closeModal('resolveOverlay');
   closeModal('eventDetailOverlay');
   loadEvents(); loadStats();
+}
+
+// ── Integration A: AI再判定 ────────────────────────────────────────────
+async function requestValidation() {
+  if (!_currentEventId) return;
+  const btn = document.getElementById('btnRequestValidation');
+  btn.disabled = true;
+  btn.textContent = '処理中…';
+  try {
+    const r = await fetch(`/api/item-versions/events/${_currentEventId}/request-validation`, { method: 'POST' });
+    const data = await r.json();
+    if (!r.ok) { alert('エラー: ' + (data.detail || JSON.stringify(data))); return; }
+    const toast = document.getElementById('validationToast');
+    document.getElementById('validationToastBody').textContent =
+      `案件番号: ${data.case_no}  /  TX ID: ${data.tx_id}`;
+    document.getElementById('validationToastLink').href = data.redirect_url;
+    toast.style.display = 'block';
+    closeModal('eventDetailOverlay');
+    loadEvents(); loadStats();
+  } catch(e) {
+    alert('ai_validation への接続に失敗しました: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔐 AI再判定';
+  }
+}
+
+// ── Integration B: 輸出許可申請を作成（イベントの ECCN 情報から） ──────────
+let _lastValidationTxId = null;
+
+async function createLicenseFromEvent() {
+  if (!_currentEventId) return;
+  // 先に AI再判定を実施済みなら tx_id を利用、なければ空ドラフトで開く
+  const licenseType = prompt('許可申請種別を選択: EAR または FEFTA', 'EAR');
+  if (!licenseType) return;
+  const body = {
+    transaction_id: _lastValidationTxId || 0,
+    license_type: licenseType.toUpperCase() === 'FEFTA' ? 'FEFTA' : 'EAR',
+  };
+  // tx_id がなければ空ドラフト作成（draft-from-transaction は tx_id=0 でも動く）
+  const r = await fetch('/api/export-licenses/draft-from-transaction', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) { alert('輸出許可申請の作成に失敗しました'); return; }
+  const lic = await r.json();
+  closeModal('eventDetailOverlay');
+  // 輸出許可申請画面に遷移（親フレームへの通知）
+  if (window.parent && window.parent !== window) {
+    window.parent.location.href = '/ui/export-license';
+  } else {
+    window.location.href = '/ui/export-license';
+  }
 }
 
 // ── items ─────────────────────────────────────────────────────────────

@@ -71,7 +71,27 @@
       </button>
       {% endif %}
     </form>
+    <button class="btn btn-ghost btn-sm" onclick="createExportLicense({{ tx.id }})"
+      style="background:#0f766e22; color:#5eead4; border:1px solid #0f766e66;"
+      title="この判定結果から輸出許可申請ドラフトを作成する">
+      📋 輸出許可申請
+    </button>
   </div>
+<script>
+async function createExportLicense(txId) {
+  const licType = prompt('許可種別: EAR または FEFTA', 'EAR');
+  if (!licType) return;
+  const r = await fetch('/api/export-licenses/draft-from-transaction', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transaction_id: txId, license_type: licType.toUpperCase() === 'FEFTA' ? 'FEFTA' : 'EAR' }),
+  });
+  if (!r.ok) { alert('作成エラー: ' + r.status); return; }
+  const d = await r.json();
+  alert('✅ 輸出許可申請ドラフトを作成しました\nID: ' + d.id.slice(0,8));
+  window.open('/ui/export-license', '_blank');
+}
+</script>
 </div>
 
 <!-- ページ見出し -->

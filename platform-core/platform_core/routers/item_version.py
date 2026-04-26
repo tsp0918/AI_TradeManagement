@@ -9,6 +9,7 @@
 - POST /api/item-versions/webhook                            外部システムWebhook受信
 - GET  /api/item-versions/events                             コンプライアンス影響イベント一覧
 - GET  /api/item-versions/events/{event_id}                  イベント詳細
+- POST /api/item-versions/events/{event_id}/request-validation  AI該非判定トランザクション作成
 - POST /api/item-versions/events/{event_id}/resolve          イベント解決
 - POST /api/item-versions/events/{event_id}/dismiss          イベント却下
 """
@@ -564,6 +565,52 @@ async def get_event(event_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     if not e:
         raise HTTPException(404, "イベントが見つかりません")
     return _ser_event(e)
+
+
+@router.post("/events/{event_id}/request-validation", status_code=201)
+async def request_validation(event_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """コンプライアンス変化イベントから ai_validation に AI該非判定トランザクションを新規作成する。"""
+    event = await db.get(ComplianceChangeEvent, event_id)
+    if not event:
+        raise HTTPException(404, "イベントが見つかりません")
+
+    item = await db.get(Item, event.item_id)
+    if not item:
+        raise HTTPException(404, "品目が見つかりません")
+
+    version = await db.get(ItemVersion, event.to_version_id) if event.to_version_id else None
+
+    eccn_note = f"（ECCN: {version.eccn}）" if version and version.eccn else ""
+    details = event.impact_details or {}
+    if details.get("from") is not None:
+        change_text = f"{details.get('field', '')} 変更: {details.get('from')} → {details.get('to')}"
+    else:
+        change_text = details.get("note") or event.change_category or "仕様変更"
+
+    payload = {
+        "title": f"{item.name}{eccn_note} — 再判定リクエスト",
+        "items": [{"item_name": item.name, "item_description": item.description or ""}],
+        "usage_requirements": [
+            {"source": "item_version", "text": f"仕様変更（{event.change_category}）に伴う再判定。{change_text}"}
+        ],
+        "source_module": "item_version",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.post(f"{_VALIDATION_BASE}/api/transactions", json=payload)
+        if r.status_code == 201:
+            data = r.json()
+            return {
+                "ok": True,
+                "tx_id": data["id"],
+                "case_no": data["case_no"],
+                "url": data["url"],
+                "redirect_url": f"/proxy/ai_validation/ui/transactions/{data['id']}",
+            }
+        raise HTTPException(502, f"ai_validation エラー: HTTP {r.status_code}")
+    except httpx.RequestError:
+        raise HTTPException(503, "ai_validation に接続できません。ポート 8011 を確認してください。")
 
 
 @router.post("/events/{event_id}/resolve")

@@ -136,16 +136,23 @@ async def get_pipeline(
         }
 
         # Stage 6: サプライチェーン
-        # plat_item と supply_chain_node は item_code / name でベストエフォート照合
+        # item_id FK 照合（正式紐付け優先）、未紐付けの場合は名前ベースのフォールバック
         sc_node = (await db.execute(
             select(SupplyChainNode).where(
-                SupplyChainNode.name.ilike(f"%{item.name}%")
+                SupplyChainNode.item_id == item.id
             ).limit(1)
         )).scalar_one_or_none()
+        if sc_node is None:
+            sc_node = (await db.execute(
+                select(SupplyChainNode).where(
+                    SupplyChainNode.name.ilike(f"%{item.name}%")
+                ).limit(1)
+            )).scalar_one_or_none()
         stages["supply_chain_ok"] = {
             "done": sc_node is not None,
             "detail": sc_node.name if sc_node else None,
             "node_id": str(sc_node.id) if sc_node else None,
+            "linked_by_fk": sc_node is not None and sc_node.item_id == item.id if sc_node else False,
         }
 
         # Stage 7: 輸出許可

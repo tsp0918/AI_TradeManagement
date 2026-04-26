@@ -138,6 +138,7 @@ class NodeCreate(BaseModel):
     description: str | None = None
     extra: dict | None = None
     tenant_id: str | None = None
+    item_id: str | None = None  # plat_item.id との正式紐付け
 
 
 class NodeUpdate(BaseModel):
@@ -152,6 +153,7 @@ class NodeUpdate(BaseModel):
     us_controlled_value_usd: float | None = None
     description: str | None = None
     extra: dict | None = None
+    item_id: str | None = None  # plat_item.id との正式紐付け
 
 
 class EdgeCreate(BaseModel):
@@ -176,6 +178,7 @@ def _serialize_node(n: SupplyChainNode, children: list[dict] | None = None) -> d
         "unit_value_usd": n.unit_value_usd,
         "us_controlled_value_usd": n.us_controlled_value_usd,
         "description": n.description,
+        "item_id": str(n.item_id) if n.item_id else None,
         "created_at": n.created_at.isoformat(),
         "updated_at": n.updated_at.isoformat(),
     }
@@ -273,6 +276,7 @@ async def create_node(body: NodeCreate, db: AsyncSession = Depends(get_db)):
         us_controlled_value_usd=us_ctrl,
         description=body.description,
         extra=body.extra,
+        item_id=uuid.UUID(body.item_id) if body.item_id else None,
     )
     db.add(node)
     await db.commit()
@@ -323,6 +327,8 @@ async def update_node(node_id: str, body: NodeUpdate, db: AsyncSession = Depends
         val = getattr(body, f)
         if val is not None:
             setattr(node, f, val)
+    if body.item_id is not None:
+        node.item_id = uuid.UUID(body.item_id) if body.item_id else None
     # us_controlled_value_usd 自動補完
     if node.is_us_origin and node.eccn and node.eccn.upper() != "EAR99" \
             and node.us_controlled_value_usd is None and node.unit_value_usd is not None:

@@ -184,6 +184,7 @@ class TransactionCreateRequest(BaseModel):
     destination_country: Optional[str] = None
     items: List[_ItemIn] = []
     usage_requirements: List[_UsageIn] = []
+    source_module: Optional[str] = None  # "dap" | "item_version" | etc.
 
 
 def _make_case_no_api() -> str:
@@ -208,7 +209,7 @@ def create_transaction_api(
         title=body.title.strip() or "新規審査",
         status="draft",
         counterparty_name=body.counterparty_name.strip() if body.counterparty_name else None,
-        source_module="dap",
+        source_module=body.source_module or "dap",
     )
     # destination_country は extra_info 等に保存（モデルにフィールドがない場合は title に付与）
     if body.destination_country and not hasattr(Transaction, "destination_country"):
