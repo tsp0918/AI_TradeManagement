@@ -176,6 +176,16 @@ _KNOWN_MODULES: list[dict] = [
         "health_check_path": "",
         "nav_section":       "tools",
     },
+    {
+        "key":               "user_guide",
+        "name":              "ユーザーガイド",
+        "description":       "ユースケース別の使い方ガイドと全モジュール機能一覧",
+        "base_url":          "",
+        "iframe_url":        "/ui/user-guide",
+        "icon":              "📖",
+        "health_check_path": "",
+        "nav_section":       "tools",
+    },
 ]
 
 
@@ -509,6 +519,12 @@ async def supply_chain_ui(request: Request):
 async def export_license_ui(request: Request):
     """輸出許可申請管理画面。"""
     return templates.TemplateResponse(request, "export_license.html", {})
+
+
+@router.get("/user-guide", response_class=HTMLResponse, include_in_schema=False)
+async def user_guide_ui(request: Request):
+    """ユーザーガイド画面。"""
+    return templates.TemplateResponse(request, "user_guide.html", {})
 
 
 @router.post("/stop/{module_key}", include_in_schema=False)

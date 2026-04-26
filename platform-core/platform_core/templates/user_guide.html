@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ユーザーガイド — AI Trade Management</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #1a202c; line-height: 1.65; }
+
+    /* レイアウト */
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; flex-shrink: 0; background: #1e293b; color: #cbd5e1; position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 24px 0; }
+    .sidebar-title { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #64748b; padding: 0 20px 8px; }
+    .sidebar a { display: block; padding: 7px 20px; font-size: .84rem; color: #94a3b8; text-decoration: none; border-left: 3px solid transparent; transition: all .12s; }
+    .sidebar a:hover, .sidebar a.active { color: #e2e8f0; background: rgba(255,255,255,.05); border-left-color: #3b82f6; }
+    .sidebar .section-gap { margin-top: 18px; }
+    .main { flex: 1; padding: 40px 48px; max-width: 900px; }
+
+    /* タイポグラフィ */
+    h1 { font-size: 1.7rem; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+    .lead { font-size: 1rem; color: #475569; margin-bottom: 32px; border-bottom: 1px solid #e2e8f0; padding-bottom: 20px; }
+    h2 { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin: 40px 0 16px; padding-top: 8px; border-top: 2px solid #e2e8f0; }
+    h2:first-of-type { border-top: none; margin-top: 0; }
+    h3 { font-size: 1rem; font-weight: 700; color: #1e40af; margin: 24px 0 10px; }
+    h4 { font-size: .88rem; font-weight: 700; color: #374151; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .04em; }
+    p { margin-bottom: 10px; font-size: .92rem; color: #374151; }
+
+    /* ユースケース */
+    .uc-header { background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%); color: #fff; border-radius: 10px; padding: 18px 22px; margin-bottom: 16px; }
+    .uc-header .uc-num { font-size: .72rem; font-weight: 700; opacity: .7; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+    .uc-header .uc-title { font-size: 1.05rem; font-weight: 700; }
+    .uc-header .uc-desc { font-size: .85rem; opacity: .85; margin-top: 6px; }
+    .uc-persona { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,.15); border-radius: 99px; padding: 3px 10px; font-size: .75rem; margin-top: 8px; }
+
+    /* ステップ */
+    .steps { counter-reset: step; }
+    .step { display: flex; gap: 14px; margin-bottom: 14px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 14px 16px; }
+    .step-num { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: #1e40af; color: #fff; font-size: .78rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+    .step-body { flex: 1; }
+    .step-title { font-size: .9rem; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+    .step-detail { font-size: .84rem; color: #475569; }
+    .step-detail code { background: #f1f5f9; border-radius: 4px; padding: 1px 5px; font-family: monospace; font-size: .82rem; color: #0f172a; }
+    .step-detail strong { color: #1e40af; }
+    .step-nav { display: inline-flex; align-items: center; gap: 5px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 5px; padding: 3px 9px; font-size: .78rem; font-weight: 600; margin-top: 5px; }
+
+    /* バッジ・ラベル */
+    .badge { display: inline-block; border-radius: 99px; padding: 2px 9px; font-size: .72rem; font-weight: 700; vertical-align: middle; }
+    .badge-module { background: #ede9fe; color: #5b21b6; }
+    .badge-api { background: #d1fae5; color: #065f46; font-family: monospace; }
+    .badge-ui { background: #fce7f3; color: #9d174d; }
+    .badge-warn { background: #fef3c7; color: #92400e; }
+
+    /* ヒント・注意 */
+    .tip { background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 6px 6px 0; padding: 10px 14px; margin: 12px 0; font-size: .84rem; color: #1e40af; }
+    .warn { background: #fff7ed; border-left: 4px solid #f59e0b; border-radius: 0 6px 6px 0; padding: 10px 14px; margin: 12px 0; font-size: .84rem; color: #92400e; }
+
+    /* 機能一覧テーブル */
+    .module-section { margin-bottom: 36px; }
+    .module-header { display: flex; align-items: center; gap: 10px; background: #f1f5f9; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
+    .module-icon { font-size: 1.4rem; }
+    .module-name { font-size: 1rem; font-weight: 700; color: #0f172a; }
+    .module-port { font-size: .75rem; color: #64748b; font-family: monospace; background: #e2e8f0; padding: 1px 6px; border-radius: 3px; }
+    .module-desc { font-size: .84rem; color: #475569; margin-left: auto; max-width: 300px; text-align: right; }
+    table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    th { background: #f8fafc; color: #374151; font-weight: 700; padding: 8px 12px; border: 1px solid #e2e8f0; text-align: left; }
+    td { padding: 8px 12px; border: 1px solid #e2e8f0; vertical-align: top; }
+    td:first-child { font-weight: 600; color: #1e293b; white-space: nowrap; }
+    td:nth-child(2) { color: #374151; }
+    td:nth-child(3) { color: #475569; }
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    /* フロー図 */
+    .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin: 12px 0; }
+    .flow-node { background: #fff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; font-size: .78rem; font-weight: 600; color: #1e293b; white-space: nowrap; }
+    .flow-arrow { color: #94a3b8; padding: 0 4px; font-size: .9rem; }
+    .flow-node.highlight { background: #eff6ff; border-color: #3b82f6; color: #1e40af; }
+
+    /* TOC アンカー */
+    :target { scroll-margin-top: 20px; }
+
+    @media (max-width: 768px) {
+      .layout { flex-direction: column; }
+      .sidebar { width: 100%; height: auto; position: static; }
+      .main { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+<!-- サイドバー -->
+<nav class="sidebar">
+  <div class="sidebar-title">ユーザーガイド</div>
+  <a href="#overview">プラットフォーム概要</a>
+  <a href="#uc1">UC1: 新規品目の輸出審査</a>
+  <a href="#uc2">UC2: サプライヤー証明管理</a>
+  <a href="#uc3">UC3: みなし輸出審査</a>
+  <a href="#uc4">UC4: 取引先デューデリジェンス</a>
+  <a href="#uc5">UC5: 輸出許可申請ドラフト</a>
+  <a href="#uc6">UC6: 技術インテリジェンス調査</a>
+  <div class="section-gap">
+    <div class="sidebar-title">機能一覧</div>
+    <a href="#feat-platform">platform-core</a>
+    <a href="#feat-validation">ai_validation</a>
+    <a href="#feat-classification">ai_classification</a>
+    <a href="#feat-rnd">rnd_assessment</a>
+    <a href="#feat-patent">patent_search</a>
+    <a href="#feat-screening">screening</a>
+    <a href="#feat-hs">hs_classifier</a>
+    <a href="#feat-dap">DAP</a>
+  </div>
+</nav>
+
+<!-- メインコンテンツ -->
+<main class="main">
+
+<!-- ─── 概要 ─── -->
+<section id="overview">
+  <h1>AI Trade Management — ユーザーガイド</h1>
+  <p class="lead">
+    本ガイドでは、代表的な 6 つのユースケースを通じて、プラットフォームの使い方を手順ごとに解説します。
+    後半には全モジュールの機能一覧表を掲載しています。
+  </p>
+
+  <h3>モジュール構成と URL</h3>
+  <div class="flow">
+    <div class="flow-node highlight">portal<br><span style="font-size:.7rem">:8000</span></div><div class="flow-arrow">→</div>
+    <div class="flow-node">ai_validation<br><span style="font-size:.7rem">:8001</span></div><div class="flow-arrow">→</div>
+    <div class="flow-node">ai_classification<br><span style="font-size:.7rem">:8002</span></div><div class="flow-arrow">→</div>
+    <div class="flow-node">rnd_assessment<br><span style="font-size:.7rem">:8003</span></div><div class="flow-arrow">→</div>
+    <div class="flow-node">patent_search<br><span style="font-size:.7rem">:8004</span></div>
+  </div>
+  <div class="flow" style="margin-top:4px;">
+    <div class="flow-node">screening<br><span style="font-size:.7rem">:8005</span></div><div class="flow-arrow">→</div>
+    <div class="flow-node">hs_classifier<br><span style="font-size:.7rem">:8006</span></div><div class="flow-arrow">→</div>
+    <div class="flow-node">DAP<br><span style="font-size:.7rem">:8010</span></div>
+  </div>
+  <p style="margin-top:10px;">ポータル入口: <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">https://app.tsp-aitrademanagement.com</code></p>
+</section>
+
+<!-- ─── UC1 ─── -->
+<section id="uc1">
+  <h2>ユースケース 1: 新規品目の輸出審査フロー</h2>
+  <div class="uc-header">
+    <div class="uc-num">Use Case 01</div>
+    <div class="uc-title">EAR 規制品を中国向けに初めて輸出する</div>
+    <div class="uc-desc">半導体や通信機器など EAR 規制対象品を新規輸出する際の、品目登録から審査完了までの標準フロー。</div>
+    <div class="uc-persona">👤 輸出管理担当者</div>
+  </div>
+
+  <div class="flow" style="margin-bottom:16px;">
+    <div class="flow-node highlight">品目登録</div><div class="flow-arrow">→</div>
+    <div class="flow-node">HS 判定</div><div class="flow-arrow">→</div>
+    <div class="flow-node">ECCN 判定</div><div class="flow-arrow">→</div>
+    <div class="flow-node">制裁照合</div><div class="flow-arrow">→</div>
+    <div class="flow-node">De Minimis</div><div class="flow-arrow">→</div>
+    <div class="flow-node highlight">審査完了</div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">品目を登録する <span class="badge badge-module">ai_classification</span></div>
+        <div class="step-detail">
+          サイドバーの <strong>「品目管理」</strong> を開き、「＋ 新規登録」から品目名・型番・仕様を入力して登録する。<br>
+          <span class="step-nav">🗂 ai_classification → 品目管理</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">HS コードを AI 判定する <span class="badge badge-module">hs_classifier</span></div>
+        <div class="step-detail">
+          品目詳細モーダルの <strong>「HS コード判定」</strong> ボタンをクリックし、AI が上位 5 候補を提示するので
+          適切な HS コードを選んで「反映」する。ECCN も同時に付加される。<br>
+          <span class="step-nav">🗂 ai_classification → 品目詳細 → HS コード判定</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">輸出取引を審査する <span class="badge badge-module">ai_validation</span></div>
+        <div class="step-detail">
+          <strong>「AI 該非判定」</strong> モジュールで取引を新規登録。品名・ECCN・仕向地・需要者・用途を入力して
+          審査開始。7 ステップパイプライン（FAISS Layer A 照合・EAR Country Chart・Red Flag チェック等）が自動実行される。<br>
+          判定結果: <strong>CLEAR / REVIEW / REQUIRES_PERMIT</strong><br>
+          <span class="step-nav">🗂 ai_validation → 新規取引</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">仕向地の EAR Country Chart リスクを確認する <span class="badge badge-module">ai_validation</span></div>
+        <div class="step-detail">
+          取引詳細画面の仕向地欄に国コード（例: <code>CN</code>）を入力すると、EAR Country Chart の
+          該当列（AT/NP/NS 等）とリスクバッジが自動表示される。E:1 国（KP/IR/CU/SY/SD）は即時 <strong>REQUIRES_PERMIT</strong>。<br>
+          <span class="step-nav">🗂 ai_validation → 取引詳細 → 仕向地リスク</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">取引先を制裁リストで照合する <span class="badge badge-module">screening</span></div>
+        <div class="step-detail">
+          取引詳細の制裁スクリーニングセクションから照合を実行。OFAC SDN / BIS Entity List を自動照合し、
+          ヒットした場合は警告バナーを表示。<strong>制裁対象者との取引は法律で禁止されている。</strong><br>
+          <span class="step-nav">🗂 ai_validation → 取引詳細 → 制裁スクリーニング</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <div class="step-title">サプライチェーンを紐付けて De Minimis を確認する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          取引詳細の <strong>「🔗 サプライチェーン / De Minimis」</strong> カードからノードを検索・選択。
+          仕向地を入力して De Minimis 計算を実行。US 管理品の比率が閾値（一般 25% / E:1 国 10%）を超える場合、
+          De Minimis ルールは適用不可となる。<br>
+          <span class="step-nav">🗂 ai_validation → 取引詳細 → サプライチェーン</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <div class="step-title">許可申請ドラフトを生成する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          <strong>「📋 輸出許可申請」</strong> メニューから「⚡ 取引から生成」を選択し、取引 ID を入力すると
+          BIS-748P（EAR）または外為法様式第1 のドラフトが自動生成される。
+          「フォームプレビュー」で内容を確認し、申請済みに変更後、承認番号を登録して管理する。<br>
+          <span class="step-nav">🗂 platform-core → 輸出許可申請</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tip">
+    <strong>ポイント:</strong> REQUIRES_PERMIT の場合、輸出許可証を取得してから出荷すること。
+    DAP（先輩担当者モード）に状況を説明すると、次のアクションを具体的にガイドしてくれる。
+  </div>
+</section>
+
+<!-- ─── UC2 ─── -->
+<section id="uc2">
+  <h2>ユースケース 2: サプライヤー原産性証明の取得と AI 検証</h2>
+  <div class="uc-header" style="background: linear-gradient(135deg, #065f46 0%, #047857 100%);">
+    <div class="uc-num">Use Case 02</div>
+    <div class="uc-title">BOM 部品のサプライヤーから原産地・ECCN 証明を取得し AI で検証する</div>
+    <div class="uc-desc">De Minimis 計算の精度向上と原産性コンプライアンスの強化のため、部品ごとにサプライヤー申告を収集・管理する。</div>
+    <div class="uc-persona">👤 輸出管理担当者 / 調達担当者</div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">BOM ノードを登録する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          <strong>「🔗 サプライチェーン管理」</strong> から「＋ ノード登録」で品目（製品/サブアッセンブリ/部品/素材）を登録。
+          原産国・is_us_origin・ECCN・HSコード・価格を入力する。<br>
+          <span class="step-nav">🗂 platform-core → サプライチェーン管理</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">BOM ツリーを構築する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          親ノードを選択してツリーを表示し、<strong>「エッジ追加」</strong> から子ノードを検索して接続。
+          数量・単位を入力して BOM 構造を完成させる。<br>
+          <span class="step-nav">🗂 サプライチェーン管理 → ノード選択 → BOM タブ</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">招待 URL を発行してサプライヤーに送付する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          証明管理タブの <strong>「🔗 招待URL発行」</strong> ボタンからモーダルを開き、
+          サプライヤー名・メール・備考・有効日数・最大送信回数を設定して URL を発行。
+          生成された URL（<code>https://app.tsp-aitrademanagement.com/supplier-portal/...</code>）を
+          サプライヤーのメール/チャットで共有する。<br>
+          <span class="step-nav">🗂 サプライチェーン管理 → 証明管理タブ → 招待URL発行</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">（サプライヤー操作）ポータルにアクセスして申告する</div>
+        <div class="step-detail">
+          サプライヤーは受け取った URL をブラウザで開くと申告フォームが表示される。
+          ECCN・原産国・米国原産コンテンツ比率・証明書参照番号を入力して送信。
+          送信後、受付番号が表示され、担当者側に <strong>SupplierAttestation</strong> が自動登録される。
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">AI 自動検証を実行する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          証明管理タブの申告カードから <strong>「AI 検証」</strong> ボタンをクリック。
+          FAISS Layer A（外為法/ECCN 規制テキスト 2,922 件）を使って申告 ECCN と品目説明を照合し、
+          <strong>match / warning / mismatch / unverifiable</strong> の 4 段階で判定する。<br>
+          <span class="step-nav">🗂 サプライチェーン管理 → 証明管理タブ → AI 検証ボタン</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <div class="step-title">人間が審査して承認・却下する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          AI 判定結果を確認し、<strong>「承認」</strong>または<strong>「却下」</strong>を選択。コメントを記録できる。
+          承認済みの証明は De Minimis 計算の「証明カバレッジ」として De Minimis タブに反映される。<br>
+          <span class="step-nav">🗂 サプライチェーン管理 → 証明管理タブ → 承認/却下ボタン</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="warn">
+    <strong>注意:</strong> AI verdict が <strong>mismatch</strong> の場合、申告 ECCN に誤りがある可能性が高い。
+    サプライヤーに確認を求め、必要に応じて再申告を依頼すること。
+  </div>
+</section>
+
+<!-- ─── UC3 ─── -->
+<section id="uc3">
+  <h2>ユースケース 3: みなし輸出審査（外国人研究者の採用）</h2>
+  <div class="uc-header" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);">
+    <div class="uc-num">Use Case 03</div>
+    <div class="uc-title">外国籍の研究者・技術者を採用する際のみなし輸出規制チェック</div>
+    <div class="uc-desc">外為法のみなし輸出規制（外国人へのノウハウ提供が「輸出」とみなされる）に基づき、採用前にリスクを評価する。</div>
+    <div class="uc-persona">👤 人事担当者 / R&D コンプライアンス担当者</div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">R&D 案件を登録する <span class="badge badge-module">rnd_assessment</span></div>
+        <div class="step-detail">
+          <strong>「R&D リスク評価」</strong> モジュールで案件（プロジェクト名・研究分野・技術カテゴリ）を新規登録。<br>
+          <span class="step-nav">🗂 rnd_assessment → R&D 案件管理</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">研究者・採用候補者を人物として登録する <span class="badge badge-module">rnd_assessment</span></div>
+        <div class="step-detail">
+          案件詳細から <strong>「人物を登録」</strong> ボタンをクリック。氏名・国籍・所属・専門分野を入力して登録する。
+          国籍が E:1 国（北朝鮮・イラン等）の場合は即座に <strong>HIGH リスク</strong> 警告が表示される。<br>
+          <span class="step-nav">🗂 rnd_assessment → 案件詳細 → 人物を登録</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">制裁リストで人物照合する <span class="badge badge-module">screening</span></div>
+        <div class="step-detail">
+          <strong>「制裁スクリーニング」</strong> モジュールで採用候補者の氏名を照合。
+          OFAC SDN リストや BIS Entity List に登録されている人物との取引・提供は禁止されている。
+          類似名称マッチングでヒット候補が表示される場合は、本人確認書類で照合すること。<br>
+          <span class="step-nav">🗂 screening → 制裁リストスクリーニング</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">みなし輸出 AI 判定を実行する <span class="badge badge-module">rnd_assessment</span></div>
+        <div class="step-detail">
+          案件詳細のみなし輸出判定セクションで判定を実行。
+          研究分野と外為法規制カテゴリ（FEFTA カテゴリ）を照合し、
+          <strong>リスクレベル（HIGH/MEDIUM/LOW）</strong> と推奨アクション（許可申請要否・社内承認ルート）を提示する。<br>
+          <span class="step-nav">🗂 rnd_assessment → 案件詳細 → みなし輸出判定</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">DAP に相談して対応方針を確認する <span class="badge badge-module">DAP</span></div>
+        <div class="step-detail">
+          画面右下の <strong>DAP（先輩担当者モード）</strong> チャットに状況を入力。
+          「中国籍研究者を GaN 研究プロジェクトに参加させる場合の対応を教えてください」のように質問すると、
+          外為法・EAR の該当条項と対応手順を具体的に案内する。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tip">
+    <strong>ポイント:</strong> みなし輸出規制は外為法 25 条 1 項に基づく。技術提供（口頭・メール・デモ等）も対象。
+    採用後の技術アクセス範囲の管理も継続して行うこと。
+  </div>
+</section>
+
+<!-- ─── UC4 ─── -->
+<section id="uc4">
+  <h2>ユースケース 4: 新規取引先のデューデリジェンス</h2>
+  <div class="uc-header" style="background: linear-gradient(135deg, #b45309 0%, #d97706 100%);">
+    <div class="uc-num">Use Case 04</div>
+    <div class="uc-title">新規取引先（販売代理店・仕入先）の与信審査と制裁チェック</div>
+    <div class="uc-desc">新規取引開始前に制裁対象でないことを確認し、カントリーリスクと与信スコアを評価して取引可否を判断する。</div>
+    <div class="uc-persona">👤 営業担当者 / 経営管理部門</div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">取引先を登録する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          <strong>「🏢 与信管理」</strong> から「＋ 新規登録」。会社名・国コード・役割（Customer/Supplier/Distributor 等）・
+          与信スコア初期値を入力して登録する。<br>
+          <span class="step-nav">🗂 platform-core → 与信管理</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">制裁リスト照合を実行する <span class="badge badge-module">screening</span></div>
+        <div class="step-detail">
+          取引先詳細モーダルの <strong>「照合実行」</strong> ボタンをクリック。
+          screening モジュール（OFAC SDN / BIS Entity List）に照合し、結果が即座に反映される。
+          制裁対象の場合は overall_risk_level が自動で <strong>CRITICAL</strong> に変更される。<br>
+          <span class="step-nav">🗂 与信管理 → 取引先詳細 → 照合実行</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">カントリーリスクと総合リスクを確認する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          詳細モーダルに表示される <strong>カントリーリスクスコア</strong>（例: CN=75 / RU=90 / KP=100）と
+          <strong>総合リスクレベル</strong>（LOW/MEDIUM/HIGH/CRITICAL）を確認。
+          算出式: <code>(100-与信スコア)×0.4 + カントリーリスク×0.6</code>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">与信スコアを更新して履歴に残す <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          審査結果に基づいて与信スコアを更新。変更理由を記録すると <strong>与信変更履歴</strong> に自動保存され、
+          いつ誰がどのような理由でスコアを変更したかが追跡できる。
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">ダッシュボードでポートフォリオを俯瞰する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          与信管理トップの <strong>統計ダッシュボード</strong>（合計/リスク別/制裁対象数）で
+          全取引先ポートフォリオのリスク分布を確認。CRITICAL/HIGH の取引先を優先してフォローする。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── UC5 ─── -->
+<section id="uc5">
+  <h2>ユースケース 5: 輸出許可申請ドラフトの作成と管理</h2>
+  <div class="uc-header" style="background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);">
+    <div class="uc-num">Use Case 05</div>
+    <div class="uc-title">輸出許可（EAR BIS-748P / 外為法）の申請ドラフトを作成し期限を管理する</div>
+    <div class="uc-desc">審査で REQUIRES_PERMIT となった取引について、申請書ドラフトを自動生成し、申請〜承認〜期限管理まで一元管理する。</div>
+    <div class="uc-persona">👤 輸出管理担当者</div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">取引データからドラフトを自動生成する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          <strong>「📋 輸出許可申請」</strong> メニューの <strong>「⚡ 取引から生成」</strong> ボタンをクリック。
+          ai_validation の取引 ID を入力し、申請種別（EAR / 外為法）を選択して生成。
+          品名・ECCN・仕向地・需要者が自動入力されたドラフトが作成される。<br>
+          <span class="step-nav">🗂 platform-core → 輸出許可申請 → 取引から生成</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">フォームプレビューで内容を確認する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          申請詳細の <strong>「📄 フォームプレビュー」</strong> をクリックすると、
+          <strong>BIS-748P（米国商務省様式）</strong> または <strong>外為法 様式第1</strong> の
+          HTML プレビューが別タブで開く。内容を確認・印刷して正式申請の下書きとして使用する。
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">申請済みステータスに変更する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          実際の申請（BIS SNAP-R / 経済産業局窓口）が完了したら、詳細画面の
+          <strong>「申請済みに変更」</strong> ボタンをクリックして submitted_at を記録する。
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">承認後に許可番号を登録する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          許可証が交付されたら <strong>「承認・許可番号登録」</strong> から許可番号・発行機関・有効期限・
+          許可金額を登録。ステータスが <strong>approved</strong> に変更され、期限管理が開始される。
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">期限アラートを定期確認する <span class="badge badge-module">platform-core</span></div>
+        <div class="step-detail">
+          輸出許可申請トップの <strong>ダッシュボード統計</strong> で「30日以内に期限」「期限切れ」の件数を確認。
+          期限切れ前に更新申請を行うこと（許可証の期限切れ後の輸出は違法）。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="warn">
+    <strong>重要:</strong> 本プラットフォームが生成するドラフトは内部確認用であり、法的効力のある正式申請書ではありません。
+    EAR は BIS SNAP-R システム、外為法は管轄経済産業局から正式申請してください。
+  </div>
+</section>
+
+<!-- ─── UC6 ─── -->
+<section id="uc6">
+  <h2>ユースケース 6: 技術インテリジェンス調査</h2>
+  <div class="uc-header" style="background: linear-gradient(135deg, #be185d 0%, #db2777 100%);">
+    <div class="uc-num">Use Case 06</div>
+    <div class="uc-title">競合他社の特許調査と関連学術論文から技術流出リスクを評価する</div>
+    <div class="uc-desc">研究開発前に競合特許・学術論文を調査し、ECCN 該当技術の外部流出リスクと、採用候補者の研究実績を評価する。</div>
+    <div class="uc-persona">👤 知財担当者 / R&D マネージャー</div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">特許を検索する <span class="badge badge-module">patent_search</span></div>
+        <div class="step-detail">
+          <strong>「特許検索」</strong> モジュールでキーワード・出願人・発明者名で検索。
+          BigQuery 未設定の場合は J-PlatPat API に自動フォールバックして検索する。
+          ECCN 関連特許については制裁リスト照合結果も参照できる。<br>
+          <span class="step-nav">🗂 patent_search → 特許検索</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">特許に関連する学術論文を確認する <span class="badge badge-module">patent_search</span></div>
+        <div class="step-detail">
+          特許詳細から <strong>「関連学術論文」</strong> タブを開くと、FAISS Layer B（特許チャンク）と
+          Layer D（学術論文）のセマンティック検索で関連論文リストが表示される。<br>
+          <span class="step-nav">🗂 patent_search → 特許詳細 → 関連学術論文</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">技術インテリジェンス検索で ECCN 別トレンドを分析する <span class="badge badge-module">rnd_assessment</span></div>
+        <div class="step-detail">
+          <strong>「技術インテリジェンス」</strong> 画面の ECCN 別論文トレンドで、
+          特定 ECCN（例: 3A001=半導体、5E001=通信技術）の年次発表論文数の推移を確認。
+          急増している ECCN は技術流出リスクが高い可能性がある。<br>
+          <span class="step-nav">🗂 rnd_assessment → 技術インテリジェンス</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">採用候補者の研究実績をみなし輸出の観点でスキャンする <span class="badge badge-module">rnd_assessment</span></div>
+        <div class="step-detail">
+          技術インテリジェンス画面の <strong>「みなし輸出リスクスキャン」</strong> タブに
+          研究者名や研究キーワードを入力してスキャン。
+          ECCN 管理品に関する論文への関与度から技術保有リスクを評価する。
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">HS コードから国別規制プロファイルを確認する <span class="badge badge-module">ai_classification</span></div>
+        <div class="step-detail">
+          研究成果が製品化された場合の輸出先リスクを事前に把握するため、
+          ai_classification の <strong>「国別規制プロファイル」</strong> で HS コードと仕向地の組み合わせを確認。
+          EAR Country Chart の X 列（許可必要）や MFN 税率、貿易統計が確認できる。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 機能一覧 ─── -->
+<section id="features">
+  <h2>全モジュール 機能一覧</h2>
+
+  <!-- platform-core -->
+  <div class="module-section" id="feat-platform">
+    <div class="module-header">
+      <span class="module-icon">🏛</span>
+      <span class="module-name">platform-core</span>
+      <span class="module-port">:8000</span>
+      <span class="module-desc">共通基盤・認証・ナレッジグラフ・FAISS・複合管理機能</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>与信管理</td><td>取引先リスク評価</td><td>与信スコア・カントリーリスク・制裁照合結果を統合してリスクレベル（LOW〜CRITICAL）を自動算出。変更履歴を保持。</td></tr>
+        <tr><td>サプライチェーン管理</td><td>BOM 構造管理</td><td>製品/サブアッセンブリ/部品/素材のノードとエッジで BOM ツリーを構築。HS コード・ECCN・原産国・価格を管理。</td></tr>
+        <tr><td>De Minimis 計算エンジン</td><td>EAR §734.4 判定</td><td>BOM ツリーを再帰走査して US 管理品比率を自動計算。仕向地別閾値（一般 25% / E:1 国 10%）と AT1 除外ロジックを内蔵。</td></tr>
+        <tr><td>原産性証明管理</td><td>サプライヤー申告の管理・検証</td><td>ECCN・原産国・米国コンテンツ比率の申告を記録し、FAISS Layer A による AI 自動検証（match/warning/mismatch）と人間審査の証跡を管理。</td></tr>
+        <tr><td>サプライヤーポータル</td><td>外部サプライヤーの直接申告</td><td>招待トークン URL を発行し、外部サプライヤーがログイン不要で ECCN・原産地を Web フォームから申告できる公開 UI。</td></tr>
+        <tr><td>輸出許可申請管理</td><td>許可申請のライフサイクル管理</td><td>BIS-748P（EAR）/ 外為法様式第1 のドラフト自動生成。draft→submitted→approved のステータス管理と期限アラート。</td></tr>
+        <tr><td>規制動向モニタリング</td><td>法規制変更の自動検知</td><td>e-Gov・BIS サイトを 24 時間周期でクロールし、規制変更をダッシュボードのアラートバナーで通知。</td></tr>
+        <tr><td>FAISS 検索 API</td><td>外為法/ECCN セマンティック検索</td><td>Layer A（外為法/ECCN 2,922 件）・Layer B（特許 1,595 件）・Layer C（HS コード 5,476 件）・Layer D（学術論文）の 4 レイヤー検索。</td></tr>
+        <tr><td>知識グラフ</td><td>規制ノード間の関係表現</td><td>外為法 191 件・EAR/ECCN 84 件・Wassenaar 165 件・HS コード 281 件・特許 67 件のノードと IPC→ECCN/FEFTA 996 エッジを保持。</td></tr>
+        <tr><td>HanteiAgent</td><td>AI 該非判定エンジン</td><td>キャッチオールエンジン（6 ステップ決定論的ルール）と FAISS 検索を組み合わせて CLEAR/REVIEW/REQUIRES_PERMIT を自動判定。</td></tr>
+        <tr><td>認証・ユーザー管理</td><td>アクセス制御</td><td>ローカル JWT 認証・Google SSO・Microsoft SSO に対応。テナント・ユーザー・モジュール権限を管理。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ai_validation -->
+  <div class="module-section" id="feat-validation">
+    <div class="module-header">
+      <span class="module-icon">⚖️</span>
+      <span class="module-name">ai_validation</span>
+      <span class="module-port">:8001</span>
+      <span class="module-desc">輸出取引 AI 該非判定・審査レポート生成</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>輸出取引審査</td><td>取引の該非判定</td><td>品名・ECCN・仕向地・需要者・用途を入力して 7 ステップパイプライン（usage_expand → matrix_match → dual_list_check → patent_retrieve → catchall_assess → export_control_evaluate → finalize）を実行。</td></tr>
+        <tr><td>EAR Country Chart 照合</td><td>仕向地リスク確認</td><td>国コード入力で 13 列（AT/CB/CW/EI/FC/MT/NS/NP/RS/RW/SL/SS/XP）の管理ステータスとリスクバッジを自動表示。</td></tr>
+        <tr><td>キャッチオール Section 4</td><td>汎用輸出管理審査</td><td>EAR グループ・Red Flag 7 項目・ホワイト国判定・推奨アクション含む詳細レポートを PDF/HTML で出力。</td></tr>
+        <tr><td>制裁スクリーニング連携</td><td>取引先照合</td><td>取引詳細から screening モジュール（port 8005）に照合を実行し、結果をスナップショットとして保存。</td></tr>
+        <tr><td>サプライチェーン紐付け</td><td>BOM×取引の連携</td><td>取引に BOM ノードを紐付け、De Minimis 計算結果をスナップショットとして保存。後から BOM が変わっても審査時点の状態を保持。</td></tr>
+        <tr><td>審査レポート出力</td><td>証跡管理</td><td>PDF・HTML 形式で審査結果レポートを生成。コンプライアンス証跡として保管できる。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ai_classification -->
+  <div class="module-section" id="feat-classification">
+    <div class="module-header">
+      <span class="module-icon">🗂</span>
+      <span class="module-name">ai_classification</span>
+      <span class="module-port">:8002</span>
+      <span class="module-desc">品目管理・HS コード AI 判定・国別規制プロファイル</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>品目管理</td><td>製品マスタ管理</td><td>品名・型番・仕様・SDS 情報を管理。HS コード・ECCN と紐付けて貿易コンプライアンス上の品目台帳として機能。</td></tr>
+        <tr><td>HS コード AI 判定</td><td>HS 番号の自動分類</td><td>FAISS Layer C（HS コード 5,476 件）で品名・仕様からセマンティック検索し、上位 5 候補を提示。ECCN も同時付加。</td></tr>
+        <tr><td>ECCN マッピング</td><td>HS→ECCN 自動付加</td><td>HS 見出し（4 桁）→ ECCN マッピング 50 エントリ + チャプター（2 桁）フォールバック 8 件。カバレッジ 100%。</td></tr>
+        <tr><td>国別規制プロファイル</td><td>仕向地別規制情報</td><td>HS コード + 仕向地の組み合わせで、WTO MFN 関税率・UN Comtrade 貿易統計・EAR Country Chart・再輸出規制を一覧表示。</td></tr>
+        <tr><td>NACCS コード補完</td><td>日本税関申告対応</td><td>9 桁 NACCS コード 11,368 件から輸出入統計品目番号を自動補完。</td></tr>
+        <tr><td>SDS/GHS 管理</td><td>化学品規制対応</td><td>SDS（安全データシート）情報と品目を紐付け、危険有害性分類（GHS）に基づく輸送・輸出規制を管理。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- rnd_assessment -->
+  <div class="module-section" id="feat-rnd">
+    <div class="module-header">
+      <span class="module-icon">🔬</span>
+      <span class="module-name">rnd_assessment</span>
+      <span class="module-port">:8003</span>
+      <span class="module-desc">R&D リスク評価・みなし輸出審査・技術インテリジェンス</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>R&D 案件管理</td><td>研究プロジェクトの輸出管理</td><td>研究テーマ・技術カテゴリ・FEFTA カテゴリ・リスクレベルを管理。案件ごとに人物・みなし輸出判定を紐付け。</td></tr>
+        <tr><td>みなし輸出判定</td><td>外国人への技術提供リスク評価</td><td>研究分野と外為法規制カテゴリを照合し、HIGH/MEDIUM/LOW リスクと推奨アクション（許可申請要否）を判定。</td></tr>
+        <tr><td>人物管理</td><td>研究者・採用候補者の管理</td><td>氏名・国籍・所属・専門分野を登録。E:1 国籍者は HIGH リスク警告。案件詳細にリスト表示。</td></tr>
+        <tr><td>技術インテリジェンス — 論文検索</td><td>ECCN 別学術論文調査</td><td>FAISS Layer D（学術論文）を使ったセマンティック検索。Semantic Scholar + Lens.org のデータを活用。</td></tr>
+        <tr><td>技術インテリジェンス — トレンド分析</td><td>技術動向の把握</td><td>ECCN 別の年次論文発表数推移グラフ。新興技術の動向と規制強化リスクを把握。</td></tr>
+        <tr><td>みなし輸出リスクスキャン</td><td>研究者の技術保有リスク評価</td><td>研究者名・キーワードで論文データベースを検索し、ECCN 管理品に関する論文への関与度を評価。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- patent_search -->
+  <div class="module-section" id="feat-patent">
+    <div class="module-header">
+      <span class="module-icon">📜</span>
+      <span class="module-name">patent_search</span>
+      <span class="module-port">:8004</span>
+      <span class="module-desc">特許検索・IPC→ECCN/FEFTA リンク・学術論文双方向検索</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>特許検索</td><td>競合・先行技術調査</td><td>BigQuery（Lens.org）連携。未設定時は J-PlatPat API に自動フォールバック。キーワード・出願人・発明者で検索。</td></tr>
+        <tr><td>IPC→ECCN/FEFTA マッピング</td><td>特許の輸出管理分類</td><td>IPC 分類コードから ECCN・外為法カテゴリへのエッジ 996 件。特許の該非可能性を自動評価。</td></tr>
+        <tr><td>制裁リスト照合</td><td>特許出願人の制裁チェック</td><td>特許出願人名を screening モジュールで一括照合。制裁対象組織の特許技術を取引に使う際のリスクを検知。</td></tr>
+        <tr><td>特許↔学術論文リンク</td><td>技術インテリジェンスの統合</td><td>特許番号から関連学術論文（FAISS Layer D 検索）、および論文キーワードから関連特許（FAISS Layer B 検索）を双方向検索。</td></tr>
+        <tr><td>FAISS Layer B 検索</td><td>特許テキストのセマンティック検索</td><td>特許チャンク 1,595 件のベクトル検索。技術的に類似した特許群をクラスタリングして発見。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- screening -->
+  <div class="module-section" id="feat-screening">
+    <div class="module-header">
+      <span class="module-icon">🛡</span>
+      <span class="module-name">screening</span>
+      <span class="module-port">:8005</span>
+      <span class="module-desc">OFAC/BIS 制裁リストスクリーニング・月次自動同期</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>制裁リストスクリーニング</td><td>取引先・人物の禁止リスト照合</td><td>OFAC SDN（特別指定国籍者）/ BIS Entity List に対して名称ベースで照合。類似名称ファジーマッチングで名義変更にも対応。</td></tr>
+        <tr><td>月次自動同期</td><td>制裁リストの最新化</td><td>OFAC/BIS の公式ソースから月次スケジューラーで自動ダウンロード・更新。手動更新不要。</td></tr>
+        <tr><td>スクリーニング API</td><td>他モジュールからの照合連携</td><td>platform-core（与信管理）・ai_validation（取引審査）・rnd_assessment（人物審査）から HTTP で呼び出し可能な統一 API。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- hs_classifier -->
+  <div class="module-section" id="feat-hs">
+    <div class="module-header">
+      <span class="module-icon">🔢</span>
+      <span class="module-name">hs_classifier</span>
+      <span class="module-port">:8006</span>
+      <span class="module-desc">HS コード AI 分類エンジン（FAISS Layer C）</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>HS コード同期検索</td><td>即時 HS 分類</td><td>品名・仕様テキストを FAISS Layer C（5,476 件）でセマンティック検索して類似 HS コードの上位候補を即時返却。</td></tr>
+        <tr><td>HS コード非同期判定</td><td>Webhook 連携対応</td><td><code>POST /classify</code> で非同期判定を開始し、完了後に Webhook URL へ結果を通知。外部システムとの連携に対応。</td></tr>
+        <tr><td>heading 単位再ランキング</td><td>分類精度向上</td><td>FAISS 検索結果を HS heading（4 桁）単位でクラスタリングして重複を吸収し、見出しレベルで上位 5 件を精度よく提示。</td></tr>
+        <tr><td>HS コード詳細検索</td><td>コード情報参照</td><td>HS コードを指定して品目説明・FEFTA ラベル・関連 ECCN を参照。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- DAP -->
+  <div class="module-section" id="feat-dap">
+    <div class="module-header">
+      <span class="module-icon">🤖</span>
+      <span class="module-name">DAP（先輩担当者モード）</span>
+      <span class="module-port">:8010</span>
+      <span class="module-desc">Claude API ベースの AIアシスタント・全モジュール横断ガイダンス</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>先輩担当者モード</td><td>輸出管理の実務相談</td><td>外為法・EAR・Wassenaar の専門知識を持つ AIアシスタント。「この品目を中国に輸出する際の注意点は？」のような自然言語での相談に対応。</td></tr>
+        <tr><td>Intake Mode（ヒアリング）</td><td>情報収集の自動化</td><td>初回相談時に品目・仕向地・用途を段階的にヒアリングしてコンプライアンスチェックに必要な情報を収集。</td></tr>
+        <tr><td>ワークフロー Intelligence</td><td>次アクションのガイダンス</td><td>ユーザーの現在の画面・操作状態を把握し、次に行うべき操作（ボタン位置・入力項目）を具体的に案内。</td></tr>
+        <tr><td>FAISS RAG 連携</td><td>規制テキストに基づく回答</td><td>FAISS Layer A（外為法/ECCN 規制テキスト）を RAG として使用し、根拠となる規制条文を参照しながら回答。</td></tr>
+        <tr><td>アラートバナー</td><td>プロアクティブな警告</td><td>ユーザーが見落としそうなリスク（E:1 国への輸出・Red Flag 等）をページロード時に自発的にバナー表示。</td></tr>
+        <tr><td>全モジュール埋め込み</td><td>どこでも相談できる</td><td>ai_validation / ai_classification / rnd_assessment / patent_search / screening / hs_classifier の全画面右下にチャットウィジェットを配置。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</section>
+
+<div style="margin-top:48px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:.78rem;color:#94a3b8;text-align:center;">
+  AI Trade Management — ユーザーガイド v1.0 &nbsp;|&nbsp; 2026-04-26 &nbsp;|&nbsp; platform-core v0.1.0
+</div>
+
+</main>
+</div>
+
+<script>
+// アクティブリンクのハイライト
+const links = document.querySelectorAll('.sidebar a');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.sidebar a[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
