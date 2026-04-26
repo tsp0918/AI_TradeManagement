@@ -554,11 +554,34 @@ lsof | grep ".db$" | grep -v ".venv"
   - export_license.html: 期限ダッシュボード・申請一覧・承認モーダル・プレビュー
 ```
 
-## 11. 次フェーズ候補
+## 11. 完了済み機能（⑤ 品目バージョン管理）
+
+```
+⑤ 品目バージョン管理 + 仕様変更コンプライアンス影響検知（2026-04-26 完了）
+  - plat_item_version / plat_compliance_change_event（Alembic: b2c3d4e5f6a7）
+  - platform-core/routers/item_version.py
+    - GET  /api/item-versions/stats            ダッシュボード統計
+    - GET  /api/item-versions/items            品目一覧（現行バージョン付き）
+    - GET  /api/item-versions/items/{id}       品目詳細（全バージョン履歴 + 影響イベント）
+    - POST /api/item-versions/items/{id}/versions  新バージョン登録 + 自動アセスメント
+    - POST /api/item-versions/webhook          外部システムWebhook受信（PLM/SDS/ERP）
+    - GET  /api/item-versions/events           影響イベント一覧（フィルタ対応）
+    - POST /api/item-versions/events/{id}/resolve  解決
+    - POST /api/item-versions/events/{id}/dismiss  却下
+  - 差分アセスメントエンジン:
+    - ECCN変更       → HIGH（AI再判定・ライセンス更新アクション）
+    - 原産国変更     → HIGH（De Minimis 再計算・原産性証明再取得）
+    - 組成変更       → HIGH（SDS/GHS 再確認）
+    - 工程変更       → MEDIUM / サプライヤー変更 → MEDIUM
+    - US content 率が De Minimis 閾値（10%/25%）を跨ぐ → HIGH 昇格
+  - item_version.html: 影響イベント一覧・バージョン履歴・新バージョン登録 UI
+```
+
+## 12. 次フェーズ候補
 
 | 優先度 | タスク | 内容 |
 |--------|--------|------|
-| ★★★★★ | ⑤ 品目バージョン管理 + 仕様変更コンプライアンス影響検知 | plat_item_version + plat_compliance_change_event・Webhook連携・AI影響評価（ECCN変更/COO変更/サプライヤー変更） |
+| ★★★★☆ | 品目バージョン管理拡張 | Webhook 認証（APIキー）・変更申請承認ワークフロー・PLM/SDS 実連携 |
 | ★★★★☆ | サプライヤーポータル拡張 | メール自動送信（招待URL通知）・添付ファイルアップロード |
 | ★★★★☆ | 輸出許可申請拡張 | 申請番号体系・利用額追跡（value_remaining）・期限アラートメール |
 | ★★★☆☆ | Layer D データ収集実行 | API Key 取得後に collect_academic_papers.py を全 ECCN で実行 |
