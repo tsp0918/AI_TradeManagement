@@ -582,9 +582,9 @@ lsof | grep ".db$" | grep -v ".venv"
 
 | 優先度 | タスク | 内容 |
 |--------|--------|------|
-| ★★★★★ | 連携パス実装 (Integration A) | ItemVersion → AI Validation: 「AI再判定」ボタンから直接トランザクション作成 |
-| ★★★★★ | 連携パス実装 (Integration B) | AI Validation → 輸出許可申請: 判定結果から許可申請ドラフト自動生成リンク |
-| ★★★★☆ | 連携パス実装 (Integration C) | SupplyChainNode ↔ plat_item: UUID外部キー正式紐付け（現在は名前ベースのみ） |
+| ✅ | Integration A | ItemVersion → AI Validation: 「AI再判定」ボタン / POST /api/item-versions/events/{id}/request-validation |
+| ✅ | Integration B | AI Validation → 輸出許可申請: transaction_detail.html に「📋 輸出許可申請」ボタン |
+| ✅ | Integration C | SupplyChainNode ↔ plat_item: item_id UUID外部キー正式紐付け (Alembic c3d4e5f6a7b8) |
 | ★★★★☆ | 品目バージョン管理拡張 | Webhook 認証（APIキー）・変更申請承認ワークフロー・PLM/SDS 実連携 |
 | ★★★★☆ | サプライヤーポータル拡張 | メール自動送信（招待URL通知）・添付ファイルアップロード |
 | ★★★★☆ | 輸出許可申請拡張 | 申請番号体系・利用額追跡（value_remaining）・期限アラートメール |
