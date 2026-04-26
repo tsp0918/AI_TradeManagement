@@ -324,3 +324,26 @@ def get_stuck_transactions(
             break
 
     return {"stuck_transactions": stuck, "total": len(stuck)}
+
+
+# ── De Minimis スナップショット保存 ───────────────────────────────
+
+class SupplyChainLinkBody(BaseModel):
+    supply_chain_node_id: Optional[str] = None
+    de_minimis_result: Optional[Dict[str, Any]] = None
+
+
+@router.post("/{tx_id}/supply-chain")
+def save_supply_chain_link(
+    tx_id: int,
+    body: SupplyChainLinkBody,
+    db: Session = Depends(get_db),
+):
+    """サプライチェーンノードと De Minimis 計算結果を取引に紐付ける。"""
+    tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
+    if tx is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    tx.supply_chain_node_id = body.supply_chain_node_id
+    tx.de_minimis_result = body.de_minimis_result
+    db.commit()
+    return {"ok": True, "tx_id": tx_id}

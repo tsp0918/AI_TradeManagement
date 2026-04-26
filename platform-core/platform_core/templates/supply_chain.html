@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>サプライチェーン管理 — AI Trade Management</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; color: #1a1a2e; }
+  .topbar { background: #1a1a2e; color: #fff; padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
+  .topbar h1 { font-size: 1.1rem; font-weight: 600; }
+  .topbar a { color: #90caf9; font-size: 0.85rem; text-decoration: none; }
+  .container { max-width: 1400px; margin: 24px auto; padding: 0 20px; }
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 1fr 420px; gap: 20px; }
+  @media(max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  /* Stats */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: #fff; border-radius: 10px; padding: 14px 18px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .stat-card .val { font-size: 1.8rem; font-weight: 700; color: #1976d2; }
+  .stat-card .lbl { font-size: 0.75rem; color: #666; margin-top: 2px; }
+  .stat-card.warn .val { color: #e65100; }
+  /* Card */
+  .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; }
+  .card-header { padding: 14px 18px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+  .card-header h2 { font-size: 0.95rem; font-weight: 600; }
+  .card-body { padding: 16px 18px; }
+  /* Toolbar */
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .toolbar input, .toolbar select { padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; }
+  .toolbar input { flex: 1; min-width: 160px; }
+  .btn { padding: 7px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+  .btn-primary { background: #1976d2; color: #fff; }
+  .btn-primary:hover { background: #1565c0; }
+  .btn-success { background: #2e7d32; color: #fff; }
+  .btn-success:hover { background: #1b5e20; }
+  .btn-sm { padding: 3px 9px; font-size: 0.78rem; border-radius: 4px; }
+  .btn-edit { background: #0288d1; color: #fff; }
+  .btn-del { background: #c62828; color: #fff; }
+  .btn-tree { background: #7b1fa2; color: #fff; }
+  .btn-deminimis { background: #00695c; color: #fff; }
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: #f5f7fa; padding: 9px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 1px solid #e0e0e0; white-space: nowrap; }
+  td { padding: 9px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f9faff; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
+  .badge-us { background: #e3f2fd; color: #0d47a1; }
+  .badge-eccn { background: #fff3e0; color: #bf360c; }
+  .badge-ear99 { background: #f1f8e9; color: #33691e; }
+  .badge-type-product { background: #e8eaf6; color: #283593; }
+  .badge-type-subassembly { background: #e0f2f1; color: #00695c; }
+  .badge-type-component { background: #fce4ec; color: #880e4f; }
+  .badge-type-material { background: #f3e5f5; color: #4a148c; }
+  .action-btns { display: flex; gap: 3px; flex-wrap: wrap; }
+  .empty { text-align: center; color: #aaa; padding: 36px; }
+  /* BOM tree */
+  .tree-area { max-height: 500px; overflow-y: auto; font-size: 0.85rem; }
+  .tree-node { margin-left: 16px; border-left: 2px solid #e0e0e0; padding-left: 10px; margin-top: 4px; }
+  .tree-node-root { margin-left: 0; border-left: none; padding-left: 0; }
+  .tree-node-label { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; cursor: pointer; }
+  .tree-node-label:hover { background: #f0f4ff; }
+  .tree-qty { font-size: 0.72rem; color: #888; background: #f5f5f5; padding: 1px 5px; border-radius: 3px; }
+  .tree-us { font-size: 0.7rem; color: #1976d2; font-weight: 600; }
+  .tree-eccn { font-size: 0.7rem; color: #e65100; }
+  /* De Minimis Result */
+  .dm-result { background: #f9fbe7; border-radius: 8px; padding: 14px; margin-top: 12px; font-size: 0.88rem; }
+  .dm-result.eligible { background: #e8f5e9; border-left: 4px solid #2e7d32; }
+  .dm-result.ineligible { background: #fce4ec; border-left: 4px solid #c62828; }
+  .dm-result.warn { background: #fff8e1; border-left: 4px solid #f9a825; }
+  .dm-bar-wrap { height: 12px; background: #e0e0e0; border-radius: 6px; margin: 8px 0; position: relative; }
+  .dm-bar { height: 100%; border-radius: 6px; transition: width .4s; }
+  .dm-threshold-line { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #333; }
+  .dm-row { display: flex; justify-content: space-between; margin: 4px 0; }
+  .dm-row .dk { color: #666; }
+  .dm-note { margin-top: 8px; font-weight: 500; }
+  .excl-item { background: #fff; border-radius: 4px; padding: 4px 8px; margin-top: 4px; font-size: 0.8rem; border-left: 3px solid #c62828; }
+  /* Form */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-grid .full { grid-column: 1/-1; }
+  .form-group label { display: block; font-size: 0.8rem; color: #555; margin-bottom: 3px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 7px 9px; border: 1px solid #ddd; border-radius: 5px; font-size: 0.85rem;
+  }
+  .form-group textarea { height: 60px; resize: vertical; }
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; }
+  .modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+  .modal { background: #fff; border-radius: 12px; padding: 24px; width: 580px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal h2 { font-size: 1rem; margin-bottom: 16px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .btn-cancel { background: #eee; color: #333; }
+  /* Pagination */
+  .pagination { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 12px; font-size: 0.85rem; }
+  .pagination button { padding: 3px 10px; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; }
+  .pagination button:disabled { opacity: .4; cursor: default; }
+  /* Tabs */
+  .tabs { display: flex; gap: 0; margin-bottom: 0; border-bottom: 2px solid #e0e0e0; }
+  .tab { padding: 8px 18px; cursor: pointer; font-size: 0.88rem; border-bottom: 2px solid transparent; margin-bottom: -2px; color: #666; }
+  .tab.active { border-bottom-color: #1976d2; color: #1976d2; font-weight: 600; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  /* Attestation */
+  .attest-card { background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; padding: 12px 14px; margin-bottom: 8px; font-size: 0.84rem; }
+  .attest-card .attest-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .attest-card .attest-name { font-weight: 600; }
+  .verdict-match { color: #2e7d32; font-weight: 600; }
+  .verdict-warning { color: #f57c00; font-weight: 600; }
+  .verdict-mismatch { color: #c62828; font-weight: 600; }
+  .verdict-unverifiable { color: #888; }
+  .status-accepted { background: #e8f5e9; color: #2e7d32; padding: 1px 8px; border-radius: 10px; font-size:.75rem; font-weight:600; }
+  .status-rejected { background: #fce4ec; color: #c62828; padding: 1px 8px; border-radius: 10px; font-size:.75rem; font-weight:600; }
+  .status-ai_reviewed { background: #e3f2fd; color: #1565c0; padding: 1px 8px; border-radius: 10px; font-size:.75rem; font-weight:600; }
+  .status-pending { background: #f5f5f5; color: #666; padding: 1px 8px; border-radius: 10px; font-size:.75rem; font-weight:600; }
+  .attest-actions { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+  .btn-validate { background: #1565c0; color: #fff; }
+  .btn-accept { background: #2e7d32; color: #fff; }
+  .btn-reject { background: #c62828; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🔗 サプライチェーン管理</h1>
+  <a href="/ui">← ポータルへ戻る</a>
+</div>
+
+<div class="container">
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="val" id="statNodes">—</div><div class="lbl">ノード総数</div></div>
+    <div class="stat-card"><div class="val" id="statEdges">—</div><div class="lbl">BOM エッジ数</div></div>
+    <div class="stat-card warn"><div class="val" id="statControlled">—</div><div class="lbl">US管理品ノード</div></div>
+    <div class="stat-card"><div class="val" id="statUsOrigin">—</div><div class="lbl">US原産ノード</div></div>
+  </div>
+
+  <div class="layout">
+    <!-- Left: Node list -->
+    <div>
+      <div class="card">
+        <div class="card-header">
+          <h2>部品・製品ノード一覧</h2>
+          <button class="btn btn-primary btn-sm" onclick="openNodeModal()">＋ ノード追加</button>
+        </div>
+        <div class="card-body">
+          <div class="toolbar">
+            <input id="searchInput" type="text" placeholder="品名・部品番号で検索..." oninput="debounce()">
+            <select id="filterType" onchange="loadNodes()">
+              <option value="">種別（全）</option>
+              <option value="product">製品</option>
+              <option value="subassembly">サブアッセンブリ</option>
+              <option value="component">部品</option>
+              <option value="material">素材</option>
+            </select>
+            <select id="filterUS" onchange="loadNodes()">
+              <option value="">US原産（全）</option>
+              <option value="true">US原産のみ</option>
+              <option value="false">非US原産</option>
+            </select>
+          </div>
+          <table>
+            <thead>
+              <tr><th>品名</th><th>種別</th><th>原産国</th><th>ECCN</th><th>単価(USD)</th><th>操作</th></tr>
+            </thead>
+            <tbody id="nodeTableBody">
+              <tr><td colspan="6" class="empty">読み込み中...</td></tr>
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span id="pageInfo"></span>
+            <button id="btnPrev" onclick="prevPage()" disabled>‹</button>
+            <button id="btnNext" onclick="nextPage()">›</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: タブパネル（BOM / De Minimis / 証明管理） -->
+    <div>
+      <div class="card">
+        <div class="tabs">
+          <div class="tab active" id="tabBom" onclick="switchTab('bom')">🌳 BOM ツリー</div>
+          <div class="tab" id="tabDm" onclick="switchTab('dm')">📐 De Minimis</div>
+          <div class="tab" id="tabAttest" onclick="switchTab('attest')">📋 証明管理</div>
+        </div>
+
+        <!-- BOM ツリー -->
+        <div class="tab-panel active card-body" id="panelBom">
+          <p style="font-size:.82rem;color:#888;margin-bottom:8px;">ノード一覧の「ツリー」ボタンで BOM 構造を表示します。</p>
+          <div class="tree-area" id="treeArea"><p class="empty">未選択</p></div>
+          <div style="margin-top:12px;border-top:1px solid #f0f0f0;padding-top:12px;" id="edgeForm">
+            <p style="font-size:.8rem;font-weight:600;color:#555;margin-bottom:6px;">BOM エッジ追加</p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;">
+              <div class="form-group" style="flex:1;min-width:120px;">
+                <label>親ノードID（現在表示中）</label>
+                <input id="edgeParentId" type="text" readonly style="background:#f5f5f5;">
+              </div>
+              <div class="form-group" style="flex:2;min-width:140px;">
+                <label>子ノード名で検索</label>
+                <input id="edgeChildSearch" type="text" placeholder="品名を入力...">
+              </div>
+            </div>
+            <div id="edgeChildResults" style="margin:6px 0;"></div>
+            <div style="display:flex;gap:6px;align-items:flex-end;margin-top:6px;">
+              <div class="form-group" style="width:90px;"><label>数量</label>
+                <input id="edgeQty" type="number" value="1" min="0.001" step="any"></div>
+              <div class="form-group" style="width:80px;"><label>単位</label>
+                <select id="edgeUnit"><option>each</option><option>kg</option><option>m</option><option>L</option></select></div>
+              <button class="btn btn-success btn-sm" onclick="addEdge()" style="margin-bottom:1px;">追加</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- De Minimis -->
+        <div class="tab-panel card-body" id="panelDm">
+          <p style="font-size:.82rem;color:#888;margin-bottom:10px;">ツリー表示中の製品について De Minimis ルールを計算します。</p>
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:120px;">
+              <label>仕向地国コード（ISO 2文字）</label>
+              <input id="dmCountry" type="text" placeholder="例: CN, US, KP" maxlength="3">
+            </div>
+            <button class="btn btn-deminimis btn-sm" onclick="runDeMinimis()" style="margin-bottom:1px;">計算実行</button>
+          </div>
+          <div id="dmResult"></div>
+          <!-- 証明カバレッジ -->
+          <div id="dmAttestCoverage"></div>
+        </div>
+
+        <!-- 証明管理 -->
+        <div class="tab-panel card-body" id="panelAttest">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <p id="attestNodeLabel" style="font-size:.82rem;color:#888;">ツリーを表示すると証明を管理できます</p>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-primary btn-sm" onclick="openAttestModal()" id="btnAddAttest" disabled>＋ 申告登録</button>
+              <button class="btn btn-sm" style="background:#0e9f6e;color:#fff;" onclick="openPortalTokenModal()" id="btnPortalToken" disabled>🔗 招待URL発行</button>
+            </div>
+          </div>
+          <div id="attestList"><p class="empty">未選択</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Attestation Modal -->
+<div class="modal-overlay" id="attestModal">
+  <div class="modal" style="width:560px;">
+    <h2>サプライヤー原産性証明 申告登録</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>サプライヤー名 *</label>
+        <input id="aSupplier" type="text" placeholder="例: Acme Semiconductor Inc.">
+      </div>
+      <div class="form-group full">
+        <label>担当者・連絡先</label>
+        <input id="aContact" type="text" placeholder="例: export@acme.com">
+      </div>
+      <div class="form-group">
+        <label>申告 ECCN</label>
+        <input id="aECCN" type="text" placeholder="例: 3A001, EAR99">
+      </div>
+      <div class="form-group">
+        <label>申告原産国（ISO 2文字）</label>
+        <input id="aCountry" type="text" placeholder="例: US, JP, CN">
+      </div>
+      <div class="form-group">
+        <label>US コンテンツ比率（%）</label>
+        <input id="aUSPct" type="number" step="any" min="0" max="100" placeholder="例: 85">
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:6px;">
+        <label><input id="aIsUS" type="checkbox"> US 原産申告</label>
+      </div>
+      <div class="form-group">
+        <label>証明書参照番号</label>
+        <input id="aCertRef" type="text" placeholder="例: COO-2026-001">
+      </div>
+      <div class="form-group">
+        <label>証明日</label>
+        <input id="aAttestDate" type="date">
+      </div>
+      <div class="form-group">
+        <label>有効期限</label>
+        <input id="aExpiry" type="date">
+      </div>
+      <div class="form-group full">
+        <label>備考</label>
+        <textarea id="aNotes" placeholder="コメント・資料参照など" style="height:50px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('attestModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitAttestation()">登録</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Supplier Portal Token Modal -->
+<div class="modal-overlay" id="portalTokenModal">
+  <div class="modal" style="width:520px;">
+    <h2>🔗 サプライヤーポータル 招待URL発行</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>サプライヤー名 *</label>
+        <input id="ptSupplierName" type="text" placeholder="例: Acme Semiconductor Inc.">
+      </div>
+      <div class="form-group full">
+        <label>メールアドレス（任意）</label>
+        <input id="ptSupplierEmail" type="email" placeholder="例: export@acme.com">
+      </div>
+      <div class="form-group full">
+        <label>サプライヤーへの備考（フォームに表示されます）</label>
+        <textarea id="ptNote" style="height:56px;" placeholder="申告時の注意事項など（任意）"></textarea>
+      </div>
+      <div class="form-group">
+        <label>有効日数</label>
+        <input id="ptExpiresDays" type="number" value="30" min="1" max="365">
+      </div>
+      <div class="form-group">
+        <label>最大送信回数（0=無制限）</label>
+        <input id="ptMaxUses" type="number" value="1" min="0" max="99">
+      </div>
+    </div>
+    <!-- 発行済み URL 表示 -->
+    <div id="ptResult" style="display:none;margin-top:12px;padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:.84rem;">
+      <div style="color:#065f46;font-weight:600;margin-bottom:6px;">招待URL（サプライヤーに共有してください）</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input id="ptUrlBox" type="text" readonly style="flex:1;background:#fff;border:1px solid #d1fae5;padding:6px 10px;border-radius:6px;font-family:monospace;font-size:.82rem;color:#1f2937;" />
+        <button class="btn btn-sm" style="background:#1a56db;color:#fff;white-space:nowrap;" onclick="copyPortalUrl()">コピー</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('portalTokenModal')">閉じる</button>
+      <button class="btn btn-primary" id="ptIssueBtn" onclick="issuePortalToken()">URL を発行</button>
+    </div>
+  </div>
+</div>
+
+<!-- Node Modal -->
+<div class="modal-overlay" id="nodeModal">
+  <div class="modal">
+    <h2 id="nodeModalTitle">ノード追加</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>品名 *</label>
+        <input id="nName" type="text" placeholder="例: GaN パワーアンプモジュール">
+      </div>
+      <div class="form-group">
+        <label>部品番号</label>
+        <input id="nPartNum" type="text" placeholder="例: PA-GaN-001">
+      </div>
+      <div class="form-group">
+        <label>種別</label>
+        <select id="nType">
+          <option value="product">製品</option>
+          <option value="subassembly">サブアッセンブリ</option>
+          <option value="component" selected>部品</option>
+          <option value="material">素材</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>原産国（ISO 2/3文字）</label>
+        <input id="nCountry" type="text" placeholder="例: US, JP, CN">
+      </div>
+      <div class="form-group">
+        <label><input id="nIsUS" type="checkbox"> US 原産品</label>
+      </div>
+      <div class="form-group">
+        <label>HS コード</label>
+        <input id="nHS" type="text" placeholder="例: 8542.31">
+      </div>
+      <div class="form-group">
+        <label>ECCN</label>
+        <input id="nECCN" type="text" placeholder="例: 3A001, EAR99">
+      </div>
+      <div class="form-group">
+        <label>単価 (USD)</label>
+        <input id="nValue" type="number" step="any" min="0" placeholder="例: 250.00">
+      </div>
+      <div class="form-group">
+        <label>US管理品価値 (USD / 未入力=自動)</label>
+        <input id="nUSCtrl" type="number" step="any" min="0" placeholder="省略時: US原産×ECCN≠EAR99 なら単価と同値">
+      </div>
+      <div class="form-group full">
+        <label>説明</label>
+        <textarea id="nDesc" placeholder="用途・備考"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('nodeModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitNode()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let _page = 0;
+const _limit = 20;
+let _total = 0;
+let _searchTimer = null;
+let _editNodeId = null;
+let _currentTreeNodeId = null;
+let _selectedChildNodeId = null;
+
+const TYPE_LABEL = { product:'製品', subassembly:'サブアッセンブリ', component:'部品', material:'素材' };
+const TYPE_CLASS = { product:'product', subassembly:'subassembly', component:'component', material:'material' };
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch('/api/supply-chain/stats');
+    const d = await r.json();
+    document.getElementById('statNodes').textContent = d.total_nodes;
+    document.getElementById('statEdges').textContent = d.total_edges;
+    document.getElementById('statControlled').textContent = d.us_controlled_nodes;
+    document.getElementById('statUsOrigin').textContent = d.us_origin_nodes;
+  } catch(e) {}
+}
+
+async function loadNodes() {
+  const q = document.getElementById('searchInput').value.trim();
+  const nt = document.getElementById('filterType').value;
+  const us = document.getElementById('filterUS').value;
+  const params = new URLSearchParams({ limit: _limit, offset: _page * _limit });
+  if (q) params.set('q', q);
+  if (nt) params.set('node_type', nt);
+  if (us) params.set('is_us_origin', us);
+
+  document.getElementById('nodeTableBody').innerHTML = '<tr><td colspan="6" class="empty">読み込み中...</td></tr>';
+  try {
+    const r = await fetch('/api/supply-chain/nodes?' + params);
+    const d = await r.json();
+    _total = d.total;
+    renderNodeTable(d.items);
+    updatePagination();
+  } catch(e) {
+    document.getElementById('nodeTableBody').innerHTML = '<tr><td colspan="6" class="empty">エラー</td></tr>';
+  }
+}
+
+function renderNodeTable(items) {
+  if (!items.length) {
+    document.getElementById('nodeTableBody').innerHTML = '<tr><td colspan="6" class="empty">データなし</td></tr>';
+    return;
+  }
+  const rows = items.map(n => {
+    const eccnBadge = n.eccn
+      ? `<span class="badge ${n.eccn.toUpperCase()==='EAR99'?'badge-ear99':'badge-eccn'}">${esc(n.eccn)}</span>`
+      : '—';
+    const usBadge = n.is_us_origin ? '<span class="badge badge-us">US</span>' : '';
+    const typeC = TYPE_CLASS[n.node_type] || 'component';
+    return `<tr>
+      <td><strong>${esc(n.name)}</strong>${usBadge}${n.part_number?` <small style="color:#888">${esc(n.part_number)}</small>`:''}</td>
+      <td><span class="badge badge-type-${typeC}">${TYPE_LABEL[n.node_type]||n.node_type}</span></td>
+      <td>${n.country_of_origin||'—'}</td>
+      <td>${eccnBadge}</td>
+      <td>${n.unit_value_usd!=null?'$'+n.unit_value_usd.toFixed(2):'—'}</td>
+      <td class="action-btns">
+        <button class="btn btn-sm btn-tree" onclick="loadTree('${n.id}','${esc(n.name)}')">ツリー</button>
+        <button class="btn btn-sm btn-edit" onclick="openEditNode(${JSON.stringify(n).replace(/"/g,'&quot;')})">編集</button>
+        <button class="btn btn-sm btn-del" onclick="deleteNode('${n.id}','${esc(n.name)}')">削除</button>
+      </td>
+    </tr>`;
+  });
+  document.getElementById('nodeTableBody').innerHTML = rows.join('');
+}
+
+function updatePagination() {
+  const start = _page * _limit + 1;
+  const end = Math.min((_page+1)*_limit, _total);
+  document.getElementById('pageInfo').textContent = _total ? `${start}–${end}/${_total}` : '0件';
+  document.getElementById('btnPrev').disabled = _page === 0;
+  document.getElementById('btnNext').disabled = (_page+1)*_limit >= _total;
+}
+function prevPage() { if (_page>0){_page--;loadNodes();} }
+function nextPage() { if ((_page+1)*_limit<_total){_page++;loadNodes();} }
+function debounce() {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(()=>{ _page=0; loadNodes(); }, 300);
+}
+
+// ── BOM Tree ────────────────────────────────────────────────────
+async function loadTree(nodeId, nodeName) {
+  _currentTreeNodeId = nodeId;
+  document.getElementById('treeTitle').textContent = `BOM ツリー: ${nodeName}`;
+  document.getElementById('treeArea').innerHTML = '<p class="empty">読み込み中...</p>';
+  document.getElementById('edgeParentId').value = nodeId;
+  document.getElementById('edgeForm') && (document.getElementById('edgeForm').style.display = '');
+  document.getElementById('dmResult').innerHTML = '';
+  try {
+    const r = await fetch(`/api/supply-chain/nodes/${nodeId}/tree`);
+    const tree = await r.json();
+    document.getElementById('treeArea').innerHTML = renderTree(tree, true);
+  } catch(e) {
+    document.getElementById('treeArea').innerHTML = '<p class="empty">読み込みエラー</p>';
+  }
+}
+
+function renderTree(node, isRoot) {
+  if (!node || !node.id) return '';
+  const eccn = node.eccn ? `<span class="tree-eccn">[${esc(node.eccn)}]</span>` : '';
+  const us = node.is_us_origin ? '<span class="tree-us">🇺🇸US</span>' : '';
+  const val = node.unit_value_usd != null ? `<span style="font-size:.72rem;color:#888">$${node.unit_value_usd}</span>` : '';
+  const label = `<div class="tree-node-label">
+    <span style="font-size:.8rem;">${typeIcon(node.node_type)}</span>
+    <span><strong>${esc(node.name)}</strong>${node.part_number?` <small style="color:#aaa">${esc(node.part_number)}</small>`:''}</span>
+    ${eccn}${us}${val}
+  </div>`;
+  const children = (node.children||[]).map(c => {
+    const qty = `<span class="tree-qty">×${c.quantity} ${c.unit}</span>`;
+    return `<div class="tree-node">
+      <div class="tree-node-label">
+        <span style="font-size:.8rem;">${typeIcon(c.node_type)}</span>
+        ${qty}
+        <span><strong>${esc(c.name)}</strong>${c.part_number?` <small style="color:#aaa">${esc(c.part_number)}</small>`:''}</span>
+        ${c.eccn?`<span class="tree-eccn">[${esc(c.eccn)}]</span>`:''}
+        ${c.is_us_origin?'<span class="tree-us">🇺🇸US</span>':''}
+        ${c.unit_value_usd!=null?`<span style="font-size:.72rem;color:#888">$${c.unit_value_usd}</span>`:''}
+        <button class="btn btn-del btn-sm" style="margin-left:auto;padding:1px 6px;font-size:.7rem;" onclick="removeEdge(${c.edge_id})">×</button>
+      </div>
+      ${renderSubTree(c)}
+    </div>`;
+  }).join('');
+  return `<div class="${isRoot?'tree-node-root':'tree-node'}">${label}${children}</div>`;
+}
+
+function renderSubTree(node) {
+  if (!node.children || !node.children.length) return '';
+  return node.children.map(c => `<div class="tree-node">
+    <div class="tree-node-label">
+      <span style="font-size:.8rem;">${typeIcon(c.node_type)}</span>
+      <span class="tree-qty">×${c.quantity} ${c.unit}</span>
+      <strong>${esc(c.name)}</strong>
+      ${c.eccn?`<span class="tree-eccn">[${esc(c.eccn)}]</span>`:''}
+      ${c.is_us_origin?'<span class="tree-us">🇺🇸US</span>':''}
+    </div>
+    ${renderSubTree(c)}
+  </div>`).join('');
+}
+
+function typeIcon(t) {
+  return {product:'📦', subassembly:'🔩', component:'⚙️', material:'🧱'}[t] || '📎';
+}
+
+// ── Edge Search ─────────────────────────────────────────────────
+let _edgeSearchTimer = null;
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('edgeChildSearch');
+  if (el) el.addEventListener('input', () => {
+    clearTimeout(_edgeSearchTimer);
+    _edgeSearchTimer = setTimeout(searchEdgeChild, 300);
+  });
+});
+
+async function searchEdgeChild() {
+  const q = document.getElementById('edgeChildSearch').value.trim();
+  if (!q) { document.getElementById('edgeChildResults').innerHTML = ''; return; }
+  const r = await fetch(`/api/supply-chain/nodes?q=${encodeURIComponent(q)}&limit=5`);
+  const d = await r.json();
+  if (!d.items.length) {
+    document.getElementById('edgeChildResults').innerHTML = '<p style="font-size:.78rem;color:#aaa;">見つかりません</p>';
+    return;
+  }
+  const html = d.items.map(n => `<div style="padding:4px 8px;cursor:pointer;border-radius:4px;font-size:.82rem;background:#f9f9f9;margin:2px 0;"
+    onclick="selectChildNode('${n.id}','${esc(n.name)}')">${esc(n.name)}${n.part_number?` <span style='color:#aaa'>(${esc(n.part_number)})</span>`:''}</div>`).join('');
+  document.getElementById('edgeChildResults').innerHTML = html;
+}
+
+function selectChildNode(id, name) {
+  _selectedChildNodeId = id;
+  document.getElementById('edgeChildSearch').value = name;
+  document.getElementById('edgeChildResults').innerHTML = `<p style="font-size:.78rem;color:#2e7d32;">✓ 選択済: ${esc(name)}</p>`;
+}
+
+async function addEdge() {
+  if (!_currentTreeNodeId) { alert('先にツリーを表示してください'); return; }
+  if (!_selectedChildNodeId) { alert('子ノードを検索・選択してください'); return; }
+  const qty = parseFloat(document.getElementById('edgeQty').value) || 1;
+  const unit = document.getElementById('edgeUnit').value;
+  try {
+    const r = await fetch('/api/supply-chain/edges', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ parent_node_id: _currentTreeNodeId, child_node_id: _selectedChildNodeId, quantity: qty, unit }),
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.detail); }
+    document.getElementById('edgeChildSearch').value = '';
+    document.getElementById('edgeChildResults').innerHTML = '';
+    _selectedChildNodeId = null;
+    await loadTree(_currentTreeNodeId, document.getElementById('treeTitle').textContent.replace('BOM ツリー: ',''));
+    loadStats();
+  } catch(e) { alert('エッジ追加エラー: ' + e.message); }
+}
+
+async function removeEdge(edgeId) {
+  if (!confirm('このBOMリンクを削除しますか？')) return;
+  try {
+    await fetch(`/api/supply-chain/edges/${edgeId}`, { method: 'DELETE' });
+    await loadTree(_currentTreeNodeId, document.getElementById('treeTitle').textContent.replace('BOM ツリー: ',''));
+    loadStats();
+  } catch(e) { alert('削除エラー: ' + e.message); }
+}
+
+// ── De Minimis ──────────────────────────────────────────────────
+async function runDeMinimis() {
+  if (!_currentTreeNodeId) { alert('先にBOMツリーを表示してください'); return; }
+  const country = document.getElementById('dmCountry').value.trim() || null;
+  const url = `/api/supply-chain/nodes/${_currentTreeNodeId}/de-minimis${country?'?destination_country='+encodeURIComponent(country):''}`;
+  document.getElementById('dmResult').innerHTML = '<p style="color:#888;font-size:.85rem;">計算中...</p>';
+  try {
+    const r = await fetch(url, { method: 'POST' });
+    const d = await r.json();
+    renderDmResult(d);
+  } catch(e) {
+    document.getElementById('dmResult').innerHTML = '<p style="color:red;">エラー: ' + e.message + '</p>';
+  }
+}
+
+function renderDmResult(d) {
+  const pct = d.us_controlled_pct;
+  const th = d.threshold_pct;
+  const cls = !d.de_minimis_eligible ? 'ineligible' : pct > th*0.8 ? 'warn' : 'eligible';
+  const barColor = !d.de_minimis_eligible ? '#c62828' : pct > th*0.8 ? '#f9a825' : '#2e7d32';
+  const barWidth = Math.min(100, (pct / (th+5)) * 100);
+  const thLine = (th / (th+5)) * 100;
+  const excls = (d.excluded_items||[]).map(e =>
+    `<div class="excl-item">⛔ ${esc(e.name)} — ECCN: ${esc(e.eccn)} — ${esc(e.reason)}</div>`
+  ).join('');
+
+  document.getElementById('dmResult').innerHTML = `
+    <div class="dm-result ${cls}" style="margin-top:12px;">
+      <strong>${d.de_minimis_eligible ? '✅ De Minimis 適用可能' : '❌ De Minimis 適用不可'}</strong>
+      <div class="dm-bar-wrap" title="${pct}% vs threshold ${th}%">
+        <div class="dm-bar" style="width:${barWidth}%;background:${barColor};"></div>
+        <div class="dm-threshold-line" style="left:${thLine}%;"></div>
+      </div>
+      <div class="dm-row"><span class="dk">製品名</span><span>${esc(d.node_name)}</span></div>
+      <div class="dm-row"><span class="dk">仕向地</span><span>${d.destination_country||'未指定'}</span></div>
+      <div class="dm-row"><span class="dk">総価値</span><span>$${d.total_value_usd.toLocaleString()}</span></div>
+      <div class="dm-row"><span class="dk">US管理品価値</span><span>$${d.us_controlled_value_usd.toLocaleString()}</span></div>
+      <div class="dm-row"><span class="dk">US管理品比率</span><span><strong>${pct}%</strong></span></div>
+      <div class="dm-row"><span class="dk">閾値</span><span>${th}%${d.destination_country&&['CU','IR','KP','SY','SD'].includes(d.destination_country.toUpperCase())?' (E:1国)':' (一般)'}</span></div>
+      ${excls ? `<div style="margin-top:6px;"><strong style="font-size:.8rem;">⚠️ De Minimis 免除不可品目</strong>${excls}</div>` : ''}
+      <p class="dm-note">${esc(d.note)}</p>
+    </div>`;
+}
+
+// ── Node CRUD ────────────────────────────────────────────────────
+function openNodeModal() {
+  _editNodeId = null;
+  document.getElementById('nodeModalTitle').textContent = 'ノード追加';
+  clearNodeForm();
+  document.getElementById('nodeModal').classList.add('open');
+}
+
+function openEditNode(n) {
+  _editNodeId = n.id;
+  document.getElementById('nodeModalTitle').textContent = 'ノード編集';
+  document.getElementById('nName').value = n.name || '';
+  document.getElementById('nPartNum').value = n.part_number || '';
+  document.getElementById('nType').value = n.node_type || 'component';
+  document.getElementById('nCountry').value = n.country_of_origin || '';
+  document.getElementById('nIsUS').checked = n.is_us_origin;
+  document.getElementById('nHS').value = n.hs_code || '';
+  document.getElementById('nECCN').value = n.eccn || '';
+  document.getElementById('nValue').value = n.unit_value_usd != null ? n.unit_value_usd : '';
+  document.getElementById('nUSCtrl').value = n.us_controlled_value_usd != null ? n.us_controlled_value_usd : '';
+  document.getElementById('nDesc').value = n.description || '';
+  document.getElementById('nodeModal').classList.add('open');
+}
+
+function clearNodeForm() {
+  ['nName','nPartNum','nCountry','nHS','nECCN','nValue','nUSCtrl','nDesc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('nType').value = 'component';
+  document.getElementById('nIsUS').checked = false;
+}
+
+async function submitNode() {
+  const name = document.getElementById('nName').value.trim();
+  if (!name) { alert('品名は必須です'); return; }
+  const val = document.getElementById('nValue').value;
+  const usCtrl = document.getElementById('nUSCtrl').value;
+  const body = {
+    name,
+    part_number: document.getElementById('nPartNum').value.trim() || null,
+    node_type: document.getElementById('nType').value,
+    country_of_origin: document.getElementById('nCountry').value.trim() || null,
+    is_us_origin: document.getElementById('nIsUS').checked,
+    hs_code: document.getElementById('nHS').value.trim() || null,
+    eccn: document.getElementById('nECCN').value.trim() || null,
+    unit_value_usd: val !== '' ? parseFloat(val) : null,
+    us_controlled_value_usd: usCtrl !== '' ? parseFloat(usCtrl) : null,
+    description: document.getElementById('nDesc').value.trim() || null,
+  };
+  const url = _editNodeId ? `/api/supply-chain/nodes/${_editNodeId}` : '/api/supply-chain/nodes';
+  const method = _editNodeId ? 'PUT' : 'POST';
+  try {
+    const r = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(await r.text());
+    closeModal('nodeModal');
+    loadNodes();
+    loadStats();
+  } catch(e) { alert('保存エラー: ' + e.message); }
+}
+
+async function deleteNode(id, name) {
+  if (!confirm(`「${name}」を削除しますか？関連する BOM エッジも削除されます。`)) return;
+  try {
+    const r = await fetch(`/api/supply-chain/nodes/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error(await r.text());
+    if (_currentTreeNodeId === id) {
+      _currentTreeNodeId = null;
+      document.getElementById('treeArea').innerHTML = '<p class="empty">未選択</p>';
+      document.getElementById('treeTitle').textContent = 'BOM ツリー';
+    }
+    loadNodes();
+    loadStats();
+  } catch(e) { alert('削除エラー: ' + e.message); }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// init
+loadStats();
+loadNodes();
+
+// ── Tab switching ────────────────────────────────────────────────
+function switchTab(name) {
+  ['bom','dm','attest'].forEach(t => {
+    document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active', t===name);
+    document.getElementById('panel'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active', t===name);
+  });
+  if (name === 'attest' && _currentTreeNodeId) loadAttestations(_currentTreeNodeId);
+  if (name === 'dm' && !document.getElementById('dmResult').innerHTML) {
+    document.getElementById('dmResult').innerHTML = '<p style="font-size:.82rem;color:#aaa;margin-top:8px;">仕向地コードを入力して「計算実行」してください。</p>';
+  }
+}
+// Override to also handle panel names properly
+function switchTab(name) {
+  const map = { bom: 'Bom', dm: 'Dm', attest: 'Attest' };
+  Object.keys(map).forEach(k => {
+    const suffix = map[k];
+    document.getElementById('tab'+suffix).classList.toggle('active', k===name);
+    document.getElementById('panel'+suffix).classList.toggle('active', k===name);
+  });
+  if (name === 'attest' && _currentTreeNodeId) loadAttestations(_currentTreeNodeId);
+}
+
+// Override loadTree to also update tab state
+const _origLoadTree = loadTree;
+loadTree = async function(nodeId, nodeName) {
+  await _origLoadTree(nodeId, nodeName);
+  document.getElementById('attestNodeLabel').textContent = `ノード: ${nodeName}`;
+  document.getElementById('btnAddAttest').disabled = false;
+  document.getElementById('btnPortalToken').disabled = false;
+  if (document.getElementById('panelAttest').classList.contains('active')) {
+    loadAttestations(nodeId);
+  }
+  // 証明カバレッジもリセット
+  document.getElementById('dmAttestCoverage').innerHTML = '';
+};
+
+// ── Attestation CRUD ─────────────────────────────────────────────
+async function loadAttestations(nodeId) {
+  document.getElementById('attestList').innerHTML = '<p class="empty">読み込み中...</p>';
+  try {
+    const r = await fetch(`/api/supply-chain/nodes/${nodeId}/attestations`);
+    const items = await r.json();
+    renderAttestations(items);
+  } catch(e) {
+    document.getElementById('attestList').innerHTML = '<p class="empty">エラー</p>';
+  }
+}
+
+const VERDICT_LABEL = { match: '✅ 一致', warning: '⚠️ 要注意', mismatch: '❌ 不一致', unverifiable: '— 検証不可' };
+const VERDICT_CLASS = { match: 'verdict-match', warning: 'verdict-warning', mismatch: 'verdict-mismatch', unverifiable: 'verdict-unverifiable' };
+
+function renderAttestations(items) {
+  if (!items.length) {
+    document.getElementById('attestList').innerHTML = '<p class="empty">証明申告なし</p>';
+    return;
+  }
+  const html = items.map(a => {
+    const vLabel = a.ai_verdict ? VERDICT_LABEL[a.ai_verdict]||a.ai_verdict : '—';
+    const vClass = a.ai_verdict ? VERDICT_CLASS[a.ai_verdict]||'' : '';
+    const conf = a.ai_confidence != null ? ` (${(a.ai_confidence*100).toFixed(0)}%)` : '';
+    const expiry = a.expiry_date ? `<span style="font-size:.75rem;color:${new Date(a.expiry_date)<new Date()?'#c62828':'#888'}">期限: ${a.expiry_date}</span>` : '';
+    return `<div class="attest-card">
+      <div class="attest-header">
+        <span class="attest-name">${esc(a.supplier_name)}</span>
+        <span class="status-${a.status}">${statusLabel(a.status)}</span>
+        ${expiry}
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.82rem;margin-bottom:4px;">
+        <span>申告ECCN: <strong>${esc(a.claimed_eccn||'—')}</strong></span>
+        <span>原産国: <strong>${a.claimed_country_of_origin||'—'}</strong></span>
+        ${a.claimed_us_content_pct!=null?`<span>USコンテンツ: <strong>${a.claimed_us_content_pct}%</strong></span>`:''}
+        ${a.certificate_reference?`<span>証書番号: ${esc(a.certificate_reference)}</span>`:''}
+      </div>
+      ${a.ai_suggested_eccn ? `<div style="font-size:.8rem;">AI提示ECCN: <strong>${esc(a.ai_suggested_eccn)}</strong>${conf} — <span class="${vClass}">${vLabel}</span></div>` : ''}
+      ${a.review_comment ? `<div style="font-size:.78rem;color:#555;margin-top:2px;">審査コメント: ${esc(a.review_comment)}</div>` : ''}
+      <div class="attest-actions">
+        <button class="btn btn-sm btn-validate" onclick="runAiValidate('${a.id}')">🤖 AI検証</button>
+        ${a.status!=='accepted'?`<button class="btn btn-sm btn-accept" onclick="reviewAttest('${a.id}','accept')">✅ 承認</button>`:''}
+        ${a.status!=='rejected'?`<button class="btn btn-sm btn-reject" onclick="reviewAttest('${a.id}','reject')">❌ 却下</button>`:''}
+        <button class="btn btn-sm btn-del" onclick="deleteAttest('${a.id}')">削除</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('attestList').innerHTML = html;
+}
+
+function statusLabel(s) {
+  return { pending:'未審査', ai_reviewed:'AI検証済', accepted:'承認済', rejected:'却下', expired:'期限切' }[s] || s;
+}
+
+function openAttestModal() {
+  if (!_currentTreeNodeId) { alert('ノードを選択してください'); return; }
+  ['aSupplier','aContact','aECCN','aCountry','aUSPct','aCertRef','aNotes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('aIsUS').checked = false;
+  document.getElementById('aAttestDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('aExpiry').value = '';
+  document.getElementById('attestModal').classList.add('open');
+}
+
+async function submitAttestation() {
+  const supplier = document.getElementById('aSupplier').value.trim();
+  if (!supplier) { alert('サプライヤー名は必須です'); return; }
+  const usPct = document.getElementById('aUSPct').value;
+  const body = {
+    node_id: _currentTreeNodeId,
+    supplier_name: supplier,
+    supplier_contact: document.getElementById('aContact').value.trim()||null,
+    claimed_eccn: document.getElementById('aECCN').value.trim()||null,
+    claimed_country_of_origin: document.getElementById('aCountry').value.trim()||null,
+    claimed_us_content_pct: usPct!==''?parseFloat(usPct):null,
+    is_us_origin_claimed: document.getElementById('aIsUS').checked,
+    certificate_reference: document.getElementById('aCertRef').value.trim()||null,
+    attestation_date: document.getElementById('aAttestDate').value||null,
+    expiry_date: document.getElementById('aExpiry').value||null,
+    notes: document.getElementById('aNotes').value.trim()||null,
+  };
+  try {
+    const r = await fetch('/api/supplier-attestations', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(await r.text());
+    closeModal('attestModal');
+    loadAttestations(_currentTreeNodeId);
+  } catch(e) { alert('登録エラー: '+e.message); }
+}
+
+async function runAiValidate(attestId) {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = '🤖 検証中...';
+  try {
+    const r = await fetch(`/api/supplier-attestations/${attestId}/ai-validate`, { method:'POST' });
+    if (!r.ok) throw new Error(await r.text());
+    loadAttestations(_currentTreeNodeId);
+  } catch(e) { alert('AI検証エラー: '+e.message); }
+  finally { btn.disabled = false; btn.textContent = '🤖 AI検証'; }
+}
+
+async function reviewAttest(attestId, action) {
+  const comment = prompt(action==='accept'?'承認コメント（任意）:':'却下理由:','') ;
+  if (comment === null) return;
+  try {
+    const r = await fetch(`/api/supplier-attestations/${attestId}/${action}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ review_comment: comment||null })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    loadAttestations(_currentTreeNodeId);
+  } catch(e) { alert('エラー: '+e.message); }
+}
+
+async function deleteAttest(attestId) {
+  if (!confirm('この証明申告を削除しますか？')) return;
+  try {
+    await fetch(`/api/supplier-attestations/${attestId}`, { method:'DELETE' });
+    loadAttestations(_currentTreeNodeId);
+  } catch(e) { alert('削除エラー: '+e.message); }
+}
+
+// ── サプライヤーポータル 招待URL発行 ────────────────────────────
+function openPortalTokenModal() {
+  if (!_currentTreeNodeId) return;
+  document.getElementById('ptSupplierName').value = '';
+  document.getElementById('ptSupplierEmail').value = '';
+  document.getElementById('ptNote').value = '';
+  document.getElementById('ptExpiresDays').value = '30';
+  document.getElementById('ptMaxUses').value = '1';
+  document.getElementById('ptResult').style.display = 'none';
+  document.getElementById('ptIssueBtn').disabled = false;
+  document.getElementById('portalTokenModal').classList.add('open');
+}
+
+async function issuePortalToken() {
+  const supplierName = document.getElementById('ptSupplierName').value.trim();
+  if (!supplierName) { alert('サプライヤー名を入力してください'); return; }
+  if (!_currentTreeNodeId) return;
+
+  const nodeName = document.getElementById('attestNodeLabel').textContent.replace('ノード: ','');
+  document.getElementById('ptIssueBtn').disabled = true;
+  try {
+    const r = await fetch('/api/supplier-portal/tokens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        node_id: _currentTreeNodeId,
+        supplier_name: supplierName,
+        supplier_email: document.getElementById('ptSupplierEmail').value.trim() || null,
+        note_for_supplier: document.getElementById('ptNote').value.trim() || null,
+        expires_days: parseInt(document.getElementById('ptExpiresDays').value) || 30,
+        max_uses: parseInt(document.getElementById('ptMaxUses').value) || 1,
+      })
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.detail || r.status); }
+    const data = await r.json();
+    document.getElementById('ptUrlBox').value = data.portal_url;
+    document.getElementById('ptResult').style.display = 'block';
+    document.getElementById('ptIssueBtn').textContent = '再発行';
+    document.getElementById('ptIssueBtn').disabled = false;
+  } catch(e) {
+    alert('エラー: ' + e.message);
+    document.getElementById('ptIssueBtn').disabled = false;
+  }
+}
+
+function copyPortalUrl() {
+  const box = document.getElementById('ptUrlBox');
+  box.select();
+  navigator.clipboard.writeText(box.value).then(() => alert('URLをクリップボードにコピーしました'));
+}
+
+// ── De Minimis に証明カバレッジを追加 ────────────────────────────
+const _origRenderDmResult = renderDmResult;
+renderDmResult = async function(d) {
+  _origRenderDmResult(d);
+  // 証明カバレッジを取得して表示
+  if (_currentTreeNodeId) {
+    try {
+      const r = await fetch(`/api/supply-chain/nodes/${_currentTreeNodeId}/attestations`);
+      const attests = await r.json();
+      const total = attests.length;
+      const accepted = attests.filter(a => a.status==='accepted').length;
+      const warned = attests.filter(a => a.ai_verdict==='warning'||a.ai_verdict==='mismatch').length;
+      const color = warned>0?'#c62828':accepted===total&&total>0?'#2e7d32':'#f57c00';
+      document.getElementById('dmAttestCoverage').innerHTML = `
+        <div style="margin-top:10px;padding:10px 12px;background:#f9f9f9;border-radius:6px;font-size:.84rem;border-left:3px solid ${color};">
+          <strong>📋 原産性証明カバレッジ</strong><br>
+          申告数: ${total}件 / 承認済: ${accepted}件${warned>0?` / <span style="color:#c62828">⚠️ 要注意: ${warned}件</span>`:''}
+          ${total===0?'<br><span style="color:#888">証明タブから申告を登録してください。</span>':''}
+        </div>`;
+    } catch(e) {}
+  }
+};
+</script>
+</body>
+</html>

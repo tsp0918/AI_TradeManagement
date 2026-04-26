@@ -67,6 +67,10 @@ class Transaction(Base, TimestampMixin):
     parent_transaction_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True)
     rnd_case_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)             # RND case_id（表示用・非正規化）
 
+    # サプライチェーン連携（De Minimis）
+    supply_chain_node_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)    # platform-core plat_supply_chain_node UUID
+    de_minimis_result: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)  # 取引審査時点の De Minimis 計算スナップショット
+
     items: Mapped[List["TransactionItem"]] = relationship(
         back_populates="transaction",
         cascade="all, delete-orphan",

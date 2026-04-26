@@ -345,6 +345,49 @@
   {% endif %}
 </div>
 
+<!-- ===== Section 2c-pre: サプライチェーン / De Minimis ===== -->
+<div class="card" style="margin-bottom:14px;" id="sc-deminimis-card">
+  <div class="card-section-title">🔗 サプライチェーン / De Minimis（EAR §734.4）</div>
+
+  {% if tx.de_minimis_result %}
+  <!-- 保存済みスナップショット表示 -->
+  {% set dm = tx.de_minimis_result %}
+  <div id="dm-snapshot" style="font-size:.88rem;">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+      <span>製品: <strong>{{ dm.node_name }}</strong></span>
+      <span>US管理品比率: <strong style="color:{% if not dm.de_minimis_eligible %}#c62828{% else %}#2e7d32{% endif %}">{{ dm.us_controlled_pct }}%</strong></span>
+      <span>閾値: {{ dm.threshold_pct }}%</span>
+      <span style="padding:1px 8px;border-radius:10px;font-size:.8rem;font-weight:600;
+        background:{% if not dm.de_minimis_eligible %}#fce4ec{% else %}#e8f5e9{% endif %};
+        color:{% if not dm.de_minimis_eligible %}#c62828{% else %}#2e7d32{% endif %};">
+        {{ "❌ De Minimis 不可" if not dm.de_minimis_eligible else "✅ De Minimis 適用可" }}
+      </span>
+    </div>
+    <p style="color:var(--muted);font-size:.82rem;margin:0 0 8px;">{{ dm.note }}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a href="/ui/supply-chain" target="_blank" class="btn btn-sm">🔗 サプライチェーン管理へ</a>
+      <button class="btn btn-sm" onclick="refreshDeMinimis()" style="background:#e3f2fd;color:#1565c0;">🔄 再計算</button>
+    </div>
+  </div>
+  {% else %}
+  <!-- ノード未リンク -->
+  <p style="font-size:.84rem;color:var(--muted);margin:0 0 10px;">
+    BOM ノードを紐付けることで、製品の De Minimis（US 原産管理品比率）を取引審査に反映できます。
+  </p>
+  <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+    <div style="flex:1;min-width:180px;">
+      <label style="font-size:.8rem;color:#555;display:block;margin-bottom:3px;">製品ノード名で検索</label>
+      <input id="scNodeSearch" type="text" placeholder="例: GaN パワーアンプ"
+        style="width:100%;padding:7px 9px;border:1px solid #ddd;border-radius:5px;font-size:.85rem;"
+        oninput="searchScNode()">
+    </div>
+    <button class="btn btn-primary" style="font-size:.84rem;" onclick="linkScNode()">📐 De Minimis 計算</button>
+  </div>
+  <div id="scNodeResults" style="margin-top:6px;"></div>
+  <div id="scDeMinimisResult" style="margin-top:10px;"></div>
+  {% endif %}
+</div>
+
 <!-- ===== Section 2c: NeuroSymbolic 該非判定エージェント ===== -->
 <div class="card" style="margin-bottom:14px;" id="agent-card">
   <div class="card-section-title">🤖 該非判定エージェント（NeuroSymbolic）</div>
@@ -663,6 +706,101 @@
     document.getElementById("agent-candidates-count").textContent = "";
   };
 })();
+</script>
+
+<script>
+// ── サプライチェーン / De Minimis 連携 ──────────────────────────
+const _TX_ID = {{ tx.id }};
+const _PLATFORM_URL = 'http://localhost:8000';
+let _selectedScNodeId = null;
+let _scSearchTimer = null;
+
+function searchScNode() {
+  clearTimeout(_scSearchTimer);
+  _scSearchTimer = setTimeout(_doSearchScNode, 300);
+}
+
+async function _doSearchScNode() {
+  const q = document.getElementById('scNodeSearch')?.value?.trim();
+  if (!q) { document.getElementById('scNodeResults').innerHTML = ''; return; }
+  try {
+    const r = await fetch(`${_PLATFORM_URL}/api/supply-chain/nodes?q=${encodeURIComponent(q)}&limit=5`);
+    const d = await r.json();
+    if (!d.items.length) {
+      document.getElementById('scNodeResults').innerHTML = '<p style="font-size:.78rem;color:#aaa;">見つかりません</p>';
+      return;
+    }
+    const html = d.items.map(n =>
+      `<div style="padding:4px 8px;cursor:pointer;border-radius:4px;font-size:.82rem;background:#f9f9f9;margin:2px 0;"
+        onclick="selectScNode('${n.id}','${n.name.replace(/'/g,"\\'")}')">
+        ${n.name}${n.part_number?` <span style='color:#aaa'>(${n.part_number})</span>`:''}
+        <span style='font-size:.72rem;color:#1976d2'>${n.node_type}</span>
+      </div>`
+    ).join('');
+    document.getElementById('scNodeResults').innerHTML = html;
+  } catch(e) {}
+}
+
+function selectScNode(id, name) {
+  _selectedScNodeId = id;
+  if (document.getElementById('scNodeSearch')) {
+    document.getElementById('scNodeSearch').value = name;
+  }
+  document.getElementById('scNodeResults').innerHTML =
+    `<p style="font-size:.78rem;color:#2e7d32;">✓ 選択: ${name}</p>`;
+}
+
+async function linkScNode() {
+  if (!_selectedScNodeId) { alert('ノードを検索・選択してください'); return; }
+  const country = prompt('仕向地国コード（ISO 2文字、省略可）:', '') || '';
+  const url = `${_PLATFORM_URL}/api/supply-chain/nodes/${_selectedScNodeId}/de-minimis${country?'?destination_country='+encodeURIComponent(country):''}`;
+  document.getElementById('scDeMinimisResult').innerHTML = '<p style="font-size:.84rem;color:#888;">計算中...</p>';
+  try {
+    const r = await fetch(url, { method: 'POST' });
+    const dm = await r.json();
+    renderScDmResult(dm);
+    // 結果をサーバー側に保存
+    await saveDeMinimisSnapshot(dm);
+  } catch(e) {
+    document.getElementById('scDeMinimisResult').innerHTML = `<p style="color:red;">エラー: ${e.message}</p>`;
+  }
+}
+
+async function refreshDeMinimis() {
+  const nodeId = '{{ tx.supply_chain_node_id or "" }}';
+  if (!nodeId) { alert('ノードが紐付いていません'); return; }
+  const country = prompt('仕向地国コード（ISO 2文字、省略可）:', '') || '';
+  const url = `${_PLATFORM_URL}/api/supply-chain/nodes/${nodeId}/de-minimis${country?'?destination_country='+encodeURIComponent(country):''}`;
+  try {
+    const r = await fetch(url, { method: 'POST' });
+    const dm = await r.json();
+    await saveDeMinimisSnapshot(dm);
+    location.reload();
+  } catch(e) { alert('再計算エラー: ' + e.message); }
+}
+
+async function saveDeMinimisSnapshot(dm) {
+  try {
+    await fetch(`/api/transactions/${_TX_ID}/supply-chain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supply_chain_node_id: _selectedScNodeId || null, de_minimis_result: dm }),
+    });
+  } catch(e) { console.warn('スナップショット保存失敗', e); }
+}
+
+function renderScDmResult(d) {
+  const el = document.getElementById('scDeMinimisResult');
+  if (!el) return;
+  const color = !d.de_minimis_eligible ? '#c62828' : '#2e7d32';
+  el.innerHTML = `
+    <div style="background:#f9f9f9;border-radius:8px;padding:12px;border-left:3px solid ${color};font-size:.85rem;margin-top:8px;">
+      <strong>${d.de_minimis_eligible ? '✅ De Minimis 適用可' : '❌ De Minimis 不可'}</strong><br>
+      US管理品比率: <strong style="color:${color}">${d.us_controlled_pct}%</strong> / 閾値: ${d.threshold_pct}%<br>
+      総価値: $${d.total_value_usd.toLocaleString()} / US管理品価値: $${d.us_controlled_value_usd.toLocaleString()}<br>
+      <span style="color:#555;font-size:.82rem;">${d.note}</span>
+    </div>`;
+}
 </script>
 
 <!-- ===== Section 3: 取引情報（折りたたみ） ===== -->
