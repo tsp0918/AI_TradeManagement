@@ -101,7 +101,11 @@
   <a href="#uc6">UC6: 技術インテリジェンス調査</a>
   <div class="section-gap">
     <div class="sidebar-title">機能一覧</div>
-    <a href="#feat-platform">platform-core</a>
+    <a href="#feat-platform">platform-core 基盤</a>
+    <a href="#feat-counterparty">与信管理</a>
+    <a href="#feat-supply-chain">サプライチェーン管理</a>
+    <a href="#feat-attestation">原産性証明・ポータル</a>
+    <a href="#feat-export-license">輸出許可申請</a>
     <a href="#feat-validation">ai_validation</a>
     <a href="#feat-classification">ai_classification</a>
     <a href="#feat-rnd">rnd_assessment</a>
@@ -624,169 +628,301 @@
 <section id="features">
   <h2>全モジュール 機能一覧</h2>
 
-  <!-- platform-core -->
+  <!-- ══ platform-core 基盤 ══ -->
   <div class="module-section" id="feat-platform">
     <div class="module-header">
       <span class="module-icon">🏛</span>
-      <span class="module-name">platform-core</span>
+      <span class="module-name">platform-core — 共通基盤・AI エンジン</span>
       <span class="module-port">:8000</span>
-      <span class="module-desc">共通基盤・認証・ナレッジグラフ・FAISS・複合管理機能</span>
+      <span class="module-desc">認証・ナレッジグラフ・FAISS・規制スケジューラー・エージェント</span>
     </div>
     <table>
       <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
       <tbody>
-        <tr><td>与信管理</td><td>取引先リスク評価</td><td>与信スコア・カントリーリスク・制裁照合結果を統合してリスクレベル（LOW〜CRITICAL）を自動算出。変更履歴を保持。</td></tr>
-        <tr><td>サプライチェーン管理</td><td>BOM 構造管理</td><td>製品/サブアッセンブリ/部品/素材のノードとエッジで BOM ツリーを構築。HS コード・ECCN・原産国・価格を管理。</td></tr>
-        <tr><td>De Minimis 計算エンジン</td><td>EAR §734.4 判定</td><td>BOM ツリーを再帰走査して US 管理品比率を自動計算。仕向地別閾値（一般 25% / E:1 国 10%）と AT1 除外ロジックを内蔵。</td></tr>
-        <tr><td>原産性証明管理</td><td>サプライヤー申告の管理・検証</td><td>ECCN・原産国・米国コンテンツ比率の申告を記録し、FAISS Layer A による AI 自動検証（match/warning/mismatch）と人間審査の証跡を管理。</td></tr>
-        <tr><td>サプライヤーポータル</td><td>外部サプライヤーの直接申告</td><td>招待トークン URL を発行し、外部サプライヤーがログイン不要で ECCN・原産地を Web フォームから申告できる公開 UI。</td></tr>
-        <tr><td>輸出許可申請管理</td><td>許可申請のライフサイクル管理</td><td>BIS-748P（EAR）/ 外為法様式第1 のドラフト自動生成。draft→submitted→approved のステータス管理と期限アラート。</td></tr>
-        <tr><td>規制動向モニタリング</td><td>法規制変更の自動検知</td><td>e-Gov・BIS サイトを 24 時間周期でクロールし、規制変更をダッシュボードのアラートバナーで通知。</td></tr>
-        <tr><td>FAISS 検索 API</td><td>外為法/ECCN セマンティック検索</td><td>Layer A（外為法/ECCN 2,922 件）・Layer B（特許 1,595 件）・Layer C（HS コード 5,476 件）・Layer D（学術論文）の 4 レイヤー検索。</td></tr>
-        <tr><td>知識グラフ</td><td>規制ノード間の関係表現</td><td>外為法 191 件・EAR/ECCN 84 件・Wassenaar 165 件・HS コード 281 件・特許 67 件のノードと IPC→ECCN/FEFTA 996 エッジを保持。</td></tr>
-        <tr><td>HanteiAgent</td><td>AI 該非判定エンジン</td><td>キャッチオールエンジン（6 ステップ決定論的ルール）と FAISS 検索を組み合わせて CLEAR/REVIEW/REQUIRES_PERMIT を自動判定。</td></tr>
-        <tr><td>認証・ユーザー管理</td><td>アクセス制御</td><td>ローカル JWT 認証・Google SSO・Microsoft SSO に対応。テナント・ユーザー・モジュール権限を管理。</td></tr>
+        <tr><td>認証（ローカル JWT）</td><td>ログイン・セッション管理</td><td>メールアドレス + パスワードで JWT トークンを発行。トークンは全 API リクエストで Bearer 認証。リフレッシュトークンにより長期セッションを維持。</td></tr>
+        <tr><td>Google SSO / Microsoft SSO</td><td>シングルサインオン</td><td>OAuth2 / OIDC による外部 IdP 連携。社内 Google Workspace や Microsoft 365 のアカウントでログイン可能。</td></tr>
+        <tr><td>テナント管理</td><td>マルチテナント対応</td><td>組織単位でデータを分離するテナント管理。plan（standard/pro/enterprise）別の機能制限に対応。</td></tr>
+        <tr><td>ユーザー・権限管理</td><td>ロールベースアクセス制御</td><td>ユーザーごとにモジュール別アクセス権限を設定。管理者・審査担当・閲覧専用などのロール管理。</td></tr>
+        <tr><td>FAISS Layer A（外為法/ECCN）</td><td>規制テキストのセマンティック検索</td><td>外為法省令 191 件・EAR/ECCN 84 件・Wassenaar 165 件・Entity List 835 件など 2,922 ベクトルを保持。クエリに対して意味的に近い規制条文をリアルタイム検索。</td></tr>
+        <tr><td>FAISS Layer B（特許チャンク）</td><td>特許テキスト検索</td><td>特許明細書をチャンク分割した 1,595 ベクトル。技術説明から類似特許群をセマンティック検索。</td></tr>
+        <tr><td>FAISS Layer C（HS コード）</td><td>HS コードのセマンティック検索</td><td>HS コード品目説明 5,476 ベクトル。品名・仕様テキストから近傍 HS コードを高速検索。日本語 FEFTA ラベルを除外して精度を確保。</td></tr>
+        <tr><td>FAISS Layer D（学術論文）</td><td>技術インテリジェンス検索</td><td>Semantic Scholar + Lens.org から収集した学術論文の要旨ベクトル。ECCN 別技術用語辞書（20 ECCN × 技術用語）で収集・タグ付けし Layer D に格納。</td></tr>
+        <tr><td>知識グラフ（NeuroSymbolic）</td><td>規制ルールの構造化表現</td><td>外為法 191 件・EAR/ECCN 84 件・Wassenaar 165 件・HS 281 件・特許 67 件のノードに、IPC→ECCN/FEFTA エッジ 996 件を追加した 788 ノードのグラフ。HanteiAgent の推論基盤。</td></tr>
+        <tr><td>HanteiAgent（該非判定 AI）</td><td>AI 自律判定エンジン</td><td>知識グラフ + FAISS を組み合わせた 7 ツール構成のエージェント。usage_expand（用途拡張）→ matrix_match（規制マトリクス照合）→ dual_list_check（二重用途チェック）→ patent_retrieve（特許照合）→ catchall_assess（汎用評価）→ export_control_evaluate（輸出規制評価）→ finalize（判定確定）の順に自律実行。</td></tr>
+        <tr><td>キャッチオールエンジン</td><td>汎用輸出管理の決定論的判定</td><td>6 ステップの決定論的ルール: E:1 国チェック → ホワイト国チェック → EAR Country Chart 照合（13 列）→ Red Flag 7 項目チェック → 総合スコアリング → REQUIRES_PERMIT / REVIEW / CLEAR 判定。</td></tr>
+        <tr><td>規制動向モニタリング</td><td>法規制変更の自動検知</td><td>e-Gov（日本）・BIS（米国）を 24 時間周期で自動クロールし、差分を RegulatoryChange テーブルに記録。ダッシュボードのアラートバナーで担当者に通知。severity（info/warning/danger）で重要度分類。</td></tr>
+        <tr><td>モジュールレジストリ</td><td>サービス間通信の管理</td><td>各モジュール（8001〜8010）を動的に登録・ヘルスチェック。ポータルからすべてのモジュールを統一的に起動・停止・状態確認。</td></tr>
+        <tr><td>プロキシルーター</td><td>モジュール間通信の透過的転送</td><td>ポータルから <code>/proxy/{module_key}/</code> で各モジュール UI へアクセス。認証トークンをヘッダーに付与して転送。</td></tr>
+        <tr><td>KPI メトリクス集計</td><td>コンプライアンス状況の可視化</td><td>全モジュール横断の審査件数・判定分布・許可申請状況などの KPI を集計し、ダッシュボードに表示。</td></tr>
+        <tr><td>月次制裁リスト同期スケジューラー</td><td>制裁リストの自動更新</td><td>OFAC SDN / BIS Entity List を月次スケジューラーで自動ダウンロード・更新。screening モジュールのデータを最新に保つ。</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- ai_validation -->
+  <!-- ══ 与信管理 ══ -->
+  <div class="module-section" id="feat-counterparty">
+    <div class="module-header">
+      <span class="module-icon">🏢</span>
+      <span class="module-name">与信管理</span>
+      <span class="module-port">platform-core :8000</span>
+      <span class="module-desc">取引先の与信スコア・制裁リスク・国別カントリーリスクの統合管理</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>取引先マスタ管理</td><td>取引先情報の一元管理</td><td>会社名・国コード・役割（Customer / Supplier / Distributor / Agent / Manufacturer）・与信スコア・与信データ（JSONB）を登録・更新。役割は複数選択可能。</td></tr>
+        <tr><td>カントリーリスクスコア自動算出</td><td>国別リスクの定量化</td><td>国コードに基づいてリスクスコアを自動付与（KP/IR=100、RU=90、CN=75、IN=45、JP/US=5 等）。登録時・更新時に自動計算。</td></tr>
+        <tr><td>総合リスクレベル自動判定</td><td>複合リスクの統合評価</td><td>与信スコアとカントリーリスクを重み付け合成（<code>(100−与信スコア)×0.4 + カントリーリスク×0.6</code>）して LOW / MEDIUM / HIGH / CRITICAL を自動判定。制裁対象は問答無用で CRITICAL。</td></tr>
+        <tr><td>制裁リストスクリーニング連携</td><td>OFAC/BIS リストとのワンクリック照合</td><td>取引先詳細から「照合実行」ボタンで screening モジュールに照合を送信。結果（ヒット有無・一致スコア・リスト名）を取引先レコードに自動保存し、is_sanctioned フラグを更新。</td></tr>
+        <tr><td>与信変更履歴管理</td><td>与信スコア変更の証跡保存</td><td>与信スコアを変更するたびに plat_counterparty_credit_history に前後の値・変更理由・変更日時を記録。監査・内部統制対応。</td></tr>
+        <tr><td>リスクダッシュボード</td><td>ポートフォリオ全体の俯瞰</td><td>取引先総数・リスクレベル別件数（LOW/MEDIUM/HIGH/CRITICAL）・制裁対象件数・平均与信スコアを集計表示。</td></tr>
+        <tr><td>取引先一覧・フィルタ検索</td><td>必要な取引先への素早いアクセス</td><td>会社名・国コード・役割・リスクレベル・制裁フラグでフィルタリング。ページネーション対応。</td></tr>
+        <tr><td>取引先詳細モーダル</td><td>詳細情報の確認・編集</td><td>与信スコアゲージ・スクリーニング結果・変更履歴テーブルを一画面で確認。インライン編集モーダルから役割・スコア・変更理由を入力して更新。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ サプライチェーン管理 ══ -->
+  <div class="module-section" id="feat-supply-chain">
+    <div class="module-header">
+      <span class="module-icon">🔗</span>
+      <span class="module-name">サプライチェーン管理</span>
+      <span class="module-port">platform-core :8000</span>
+      <span class="module-desc">BOM 構造管理・EAR §734.4 De Minimis 自動計算・証明カバレッジ可視化</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>BOM ノード管理</td><td>部品表のデジタル管理</td><td>製品 / サブアッセンブリ / 部品 / 素材の 4 種別でノードを登録。品番・HS コード・ECCN・原産国・is_us_origin・単価（USD）・US 管理品価値を管理。</td></tr>
+        <tr><td>BOM エッジ管理（親子関係）</td><td>BOM 構造の構築</td><td>ノード間に親子エッジを追加し、数量と単位を設定して BOM 構造を表現。自己参照（循環）チェック・重複エッジチェックあり。</td></tr>
+        <tr><td>BOM ツリービュー</td><td>構造の視覚的確認</td><td>ノード選択後にネスト表示でツリーを展開（最大 10 階層）。各ノードの種別・ECCN・原産国・価格をインライン表示。エッジの削除ボタンも同一画面に配置。</td></tr>
+        <tr><td>De Minimis 計算エンジン（EAR §734.4）</td><td>米国原産管理品比率の自動算出</td><td>BOM ツリーをリーフノードまで再帰走査し、US 管理品（is_us_origin=True かつ ECCN≠EAR99）の価値を積算。総価値に対する比率を算出。</td></tr>
+        <tr><td>仕向地別 De Minimis 閾値判定</td><td>輸出可否の自動判定</td><td>一般国: 25%、E:1 国（KP/IR/CU/SY/SD）: 10% の閾値と比率を比較して De Minimis 適用可否を判定。AT1 管理品（0 系 ECCN・2B352）は閾値未満でも除外対象として表示。</td></tr>
+        <tr><td>De Minimis バーグラフ可視化</td><td>比率の直感的確認</td><td>US 管理品比率を水平バーチャートで表示。閾値ラインを重ねて適用可否を一目で把握できる。除外品目リストも併記。</td></tr>
+        <tr><td>サプライチェーン×取引紐付け</td><td>審査と BOM の連携</td><td>ai_validation の取引詳細画面から BOM ノードを検索・選択して紐付け。De Minimis 計算結果をスナップショットとして保存し、BOM 変更後も審査時点の状態を保持。</td></tr>
+        <tr><td>統計ダッシュボード</td><td>BOM 全体の概況把握</td><td>登録ノード数・エッジ数・US 管理品ノード数・EAR99 ノード数を集計表示。</td></tr>
+        <tr><td>ノード一覧・検索・フィルタ</td><td>目的ノードへの素早いアクセス</td><td>名称・品番でのテキスト検索。種別（製品/部品等）・US 原産フラグ・ECCN でのフィルタリング。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ 原産性証明・サプライヤーポータル ══ -->
+  <div class="module-section" id="feat-attestation">
+    <div class="module-header">
+      <span class="module-icon">📝</span>
+      <span class="module-name">原産性証明管理・サプライヤーポータル</span>
+      <span class="module-port">platform-core :8000</span>
+      <span class="module-desc">サプライヤー申告の収集・AI 検証・人間審査・証跡管理</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>サプライヤー申告登録（手動）</td><td>社内担当者からの申告入力</td><td>サプライヤー名・担当者・申告 ECCN・原産国・米国原産コンテンツ比率・証明書参照番号・申告日・有効期限・備考を BOM ノードに紐付けて登録。</td></tr>
+        <tr><td>招待トークン発行（ポータル）</td><td>外部サプライヤーへの申告依頼</td><td>BOM ノードに対してワンタイム（または複数回利用可能な）招待 URL トークンを生成。有効日数・最大送信回数・サプライヤーへのメモを設定して発行。</td></tr>
+        <tr><td>サプライヤーポータル（公開 UI）</td><td>外部サプライヤーの直接申告</td><td>ログイン不要の公開 Web フォーム（<code>https://app.tsp-aitrademanagement.com/supplier-portal/{token}</code>）。品目名・残り有効期限・担当者からのメモを事前表示し、申告フォームで ECCN・原産国・証明書情報を送信。</td></tr>
+        <tr><td>トークンアクセス制御</td><td>不正アクセスの防止</td><td>トークンごとに有効期限・最大送信回数を管理。送信完了後に max_uses に達した場合は自動無効化。有効期限切れ・無効化済みトークンはエラー画面を表示。</td></tr>
+        <tr><td>AI 自動検証（FAISS Layer A）</td><td>申告 ECCN の妥当性チェック</td><td>BOM ノード名 + 説明を FAISS Layer A（外為法/ECCN 規制テキスト 2,922 件）でセマンティック検索し、AI が提示する ECCN と申告 ECCN を比較。信頼度スコアと verdict（match / warning / mismatch / unverifiable）を付与。</td></tr>
+        <tr><td>AI verdict 判定ロジック</td><td>リスク分類の自動化</td><td>申告が EAR99 で AI が管理品を示唆（信頼度 70% 超）→ warning。申告 ECCN 先頭 5 文字が AI 提示と一致 → match。信頼度 75% 超で不一致 → mismatch。検索結果なし → unverifiable。</td></tr>
+        <tr><td>人間審査（承認 / 却下）</td><td>最終確認と証跡記録</td><td>AI 判定結果を確認して承認または却下を選択。審査者 ID・審査日時・コメントを記録して証跡を保持。ステータス: pending → ai_reviewed → accepted / rejected。</td></tr>
+        <tr><td>証明カバレッジ表示（De Minimis 連動）</td><td>証明取得状況の可視化</td><td>De Minimis タブに承認済み件数・要注意件数をインライン表示。承認が不足しているノードを視覚的にハイライト。</td></tr>
+        <tr><td>申告一覧・フィルタ</td><td>ノード別・ステータス別の管理</td><td>BOM ノード別・ステータス別・AI verdict 別でフィルタリング。期限切れ申告の一覧確認に活用。</td></tr>
+        <tr><td>トークン管理（管理者向け）</td><td>発行済みトークンの一覧・無効化</td><td>発行済みトークン一覧（有効/期限切れ/使用済み）の確認と手動無効化。node_id でのフィルタリング対応。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ 輸出許可申請 ══ -->
+  <div class="module-section" id="feat-export-license">
+    <div class="module-header">
+      <span class="module-icon">📋</span>
+      <span class="module-name">輸出許可申請管理</span>
+      <span class="module-port">platform-core :8000</span>
+      <span class="module-desc">EAR BIS-748P / 外為法 様式第1 のドラフト生成・申請ライフサイクル・期限管理</span>
+    </div>
+    <table>
+      <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td>申請ドラフト手動作成</td><td>新規申請の登録</td><td>申請種別（EAR / 外為法）・品目・ECCN・仕向地・荷受人・最終需要者・用途・数量・金額を入力してドラフトを作成。BIS-748P または外為法様式第1 のフォームフィールドを自動構築。</td></tr>
+        <tr><td>取引データからのドラフト自動生成</td><td>審査結果を申請書に変換</td><td>ai_validation の取引 ID を指定すると、品名・ECCN・仕向地・需要者情報を自動取得してドラフトを生成。手入力の手間を削減。</td></tr>
+        <tr><td>BIS-748P フォームプレビュー（EAR）</td><td>申請書の内容確認</td><td>米国商務省 BIS の多目的申請書（BIS-748P）形式の HTML プレビューを生成。Block 1（申請者）/ Block 7（仕向地）/ Block 8（荷受人）/ Block 9（最終需要者）/ Block 11（品目・ECCN）/ Block 21（用途）等の全 Block を表示。「DRAFT」ウォーターマーク付き。</td></tr>
+        <tr><td>外為法 様式第1 プレビュー</td><td>外為法申請書の内容確認</td><td>外国為替及び外国貿易法第 48 条第 1 項に基づく輸出許可申請書（様式第1）形式の HTML プレビューを生成。申請者情報・品目・外為法令規制根拠・仕向地・最終需要者・用途を構造化表示。</td></tr>
+        <tr><td>外為法令規制根拠の自動マッピング</td><td>ECCN から外為法条文の自動参照</td><td>ECCN の先頭 2 文字（3A, 5A, 9A 等）から対応する輸出令別表第1 項番を自動マッピングして様式第1 に記載。</td></tr>
+        <tr><td>申請ライフサイクル管理</td><td>申請プロセスの進捗管理</td><td>draft（作成中）→ submitted（申請済み）→ approved（承認済み）/ denied（却下）の状態遷移をワンクリックで操作。各状態変更の日時を自動記録。</td></tr>
+        <tr><td>許可番号・発行機関の登録</td><td>許可証情報の記録</td><td>承認時に許可番号・発行機関（BIS / METI）・承認日・有効期限・許可金額残高を登録。</td></tr>
+        <tr><td>許可証期限管理ダッシュボード</td><td>期限切れリスクの早期発見</td><td>承認済みライセンスの有効期限を監視。「30 日以内に期限」「期限切れ」の件数をダッシュボード統計カードでリアルタイム表示。残日数を色付きテキストで一覧表示。</td></tr>
+        <tr><td>申請一覧・フィルタ・検索</td><td>必要な申請への素早いアクセス</td><td>ステータス・申請種別（EAR/外為法）でフィルタ。品目名・ECCN でテキスト検索。</td></tr>
+        <tr><td>取引・BOM との紐付け管理</td><td>審査証跡との連携</td><td>申請に ai_validation の取引 ID（複数）と BOM ノード ID を紐付けて保存。どの取引・部品に対する申請かを追跡可能。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ ai_validation ══ -->
   <div class="module-section" id="feat-validation">
     <div class="module-header">
       <span class="module-icon">⚖️</span>
       <span class="module-name">ai_validation</span>
       <span class="module-port">:8001</span>
-      <span class="module-desc">輸出取引 AI 該非判定・審査レポート生成</span>
+      <span class="module-desc">輸出取引 AI 該非判定・7 ステップパイプライン・審査レポート生成</span>
     </div>
     <table>
       <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
       <tbody>
-        <tr><td>輸出取引審査</td><td>取引の該非判定</td><td>品名・ECCN・仕向地・需要者・用途を入力して 7 ステップパイプライン（usage_expand → matrix_match → dual_list_check → patent_retrieve → catchall_assess → export_control_evaluate → finalize）を実行。</td></tr>
-        <tr><td>EAR Country Chart 照合</td><td>仕向地リスク確認</td><td>国コード入力で 13 列（AT/CB/CW/EI/FC/MT/NS/NP/RS/RW/SL/SS/XP）の管理ステータスとリスクバッジを自動表示。</td></tr>
-        <tr><td>キャッチオール Section 4</td><td>汎用輸出管理審査</td><td>EAR グループ・Red Flag 7 項目・ホワイト国判定・推奨アクション含む詳細レポートを PDF/HTML で出力。</td></tr>
-        <tr><td>制裁スクリーニング連携</td><td>取引先照合</td><td>取引詳細から screening モジュール（port 8005）に照合を実行し、結果をスナップショットとして保存。</td></tr>
-        <tr><td>サプライチェーン紐付け</td><td>BOM×取引の連携</td><td>取引に BOM ノードを紐付け、De Minimis 計算結果をスナップショットとして保存。後から BOM が変わっても審査時点の状態を保持。</td></tr>
-        <tr><td>審査レポート出力</td><td>証跡管理</td><td>PDF・HTML 形式で審査結果レポートを生成。コンプライアンス証跡として保管できる。</td></tr>
+        <tr><td>輸出取引審査（7 ステップパイプライン）</td><td>取引の総合的な該非判定</td><td>① usage_expand（用途の意味拡張）→ ② matrix_match（FAISS Layer A で規制マトリクス照合）→ ③ dual_list_check（二重用途チェック）→ ④ patent_retrieve（関連特許照合）→ ⑤ catchall_assess（汎用輸出管理評価）→ ⑥ export_control_evaluate（EAR/外為法評価）→ ⑦ finalize（判定確定・スコアリング）。</td></tr>
+        <tr><td>判定結果出力</td><td>審査結論の明示</td><td>CLEAR（輸出可）/ REVIEW（要確認）/ REQUIRES_PERMIT（許可申請必要）の 3 値。確信度スコア・判定理由・推奨アクションを付記。</td></tr>
+        <tr><td>取引一覧・ステータス管理</td><td>審査案件の進捗管理</td><td>取引ごとに pending / reviewing / completed / rejected のステータスを管理。一覧画面でステータス・仕向地・ECCN でフィルタリング。</td></tr>
+        <tr><td>EAR Country Chart 照合</td><td>仕向地ごとの輸出規制確認</td><td>国コード入力で AT（兵器）/ CB（化学生物）/ CW（化学兵器）/ EI（暗号化）/ FC（犯罪取締）/ MT（ミサイル）/ NS（国家安全保障）/ NP（核拡散）/ RS（地域安定）/ RW（地域武器）/ SL（射程）/ SS（宇宙船）/ XP（特殊品目）の 13 列を照合。リスクバッジ（green/yellow/orange/red）で視覚的に表示。</td></tr>
+        <tr><td>E:1 国自動検知</td><td>禁輸国への輸出防止</td><td>仕向地が北朝鮮（KP）・イラン（IR）・キューバ（CU）・シリア（SY）・スーダン（SD）の場合、EAR Country Chart 照合より前に即時 REQUIRES_PERMIT を返す。</td></tr>
+        <tr><td>キャッチオール Section 4 レポート</td><td>汎用輸出管理の詳細審査記録</td><td>EAR グループ（A:1〜A:6 / B / D:1〜D:5 / E:1〜E:2）判定・ホワイト国協定一覧・Red Flag 7 項目チェック（用途不審/最終用途虚偽/通常取引範囲外等）・推奨アクションを PDF/HTML レポートとして出力。</td></tr>
+        <tr><td>制裁スクリーニング連携</td><td>需要者・荷受人の照合</td><td>取引詳細の「制裁スクリーニング」セクションから screening モジュール（:8005）に照合リクエストを送信。ヒット結果・スコア・リスト名をスナップショットとして取引レコードに保存。</td></tr>
+        <tr><td>サプライチェーン / De Minimis 連携</td><td>BOM と取引審査の統合</td><td>取引詳細から BOM ノードを検索・選択して紐付け。仕向地を指定して De Minimis 計算を実行し、結果（比率・閾値・適用可否）をスナップショットとして JSON 保存。</td></tr>
+        <tr><td>審査レポート PDF/HTML 出力</td><td>コンプライアンス証跡の生成</td><td>取引審査の全ステップ結果を構造化した PDF・HTML レポートを生成。社内承認・外部監査の証跡資料として保管。</td></tr>
+        <tr><td>LLM 活用の審査サマリー</td><td>自然言語での審査結果説明</td><td>Claude API を使って審査結果を日本語で要約。判定理由・リスクポイント・担当者への推奨アクションを平易な文章で生成。</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- ai_classification -->
+  <!-- ══ ai_classification ══ -->
   <div class="module-section" id="feat-classification">
     <div class="module-header">
       <span class="module-icon">🗂</span>
       <span class="module-name">ai_classification</span>
       <span class="module-port">:8002</span>
-      <span class="module-desc">品目管理・HS コード AI 判定・国別規制プロファイル</span>
+      <span class="module-desc">品目管理・HS コード AI 判定・国別規制プロファイル・SDS 管理</span>
     </div>
     <table>
       <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
       <tbody>
-        <tr><td>品目管理</td><td>製品マスタ管理</td><td>品名・型番・仕様・SDS 情報を管理。HS コード・ECCN と紐付けて貿易コンプライアンス上の品目台帳として機能。</td></tr>
-        <tr><td>HS コード AI 判定</td><td>HS 番号の自動分類</td><td>FAISS Layer C（HS コード 5,476 件）で品名・仕様からセマンティック検索し、上位 5 候補を提示。ECCN も同時付加。</td></tr>
-        <tr><td>ECCN マッピング</td><td>HS→ECCN 自動付加</td><td>HS 見出し（4 桁）→ ECCN マッピング 50 エントリ + チャプター（2 桁）フォールバック 8 件。カバレッジ 100%。</td></tr>
-        <tr><td>国別規制プロファイル</td><td>仕向地別規制情報</td><td>HS コード + 仕向地の組み合わせで、WTO MFN 関税率・UN Comtrade 貿易統計・EAR Country Chart・再輸出規制を一覧表示。</td></tr>
-        <tr><td>NACCS コード補完</td><td>日本税関申告対応</td><td>9 桁 NACCS コード 11,368 件から輸出入統計品目番号を自動補完。</td></tr>
-        <tr><td>SDS/GHS 管理</td><td>化学品規制対応</td><td>SDS（安全データシート）情報と品目を紐付け、危険有害性分類（GHS）に基づく輸送・輸出規制を管理。</td></tr>
+        <tr><td>品目マスタ管理</td><td>製品台帳の維持</td><td>品名・型番・仕様・品目クラス・HS コード・ECCN・SDS 情報を一元管理。複数バージョンの品目を登録可能。輸出コンプライアンスの基準品目台帳として機能。</td></tr>
+        <tr><td>HS コード AI 判定（同期）</td><td>HS コードのリアルタイム分類</td><td>品名・仕様テキストを FAISS Layer C（5,476 件）でセマンティック検索し、類似 HS コードの上位 5 候補を即時返却。hs_classifier モジュール（:8006）の <code>POST /classify/sync</code> を呼び出す。</td></tr>
+        <tr><td>HS コード AI 判定（非同期 Webhook）</td><td>外部システムとのバッチ連携</td><td>hs_classifier の <code>POST /classify</code> で非同期判定を開始し、完了後に指定 Webhook URL へ結果を通知。ERP 連携など大量品目の一括処理に対応。</td></tr>
+        <tr><td>heading 単位再ランキング</td><td>HS 判定精度の向上</td><td>FAISS 近傍検索の結果を HS heading（4 桁）単位でクラスタリングし、各見出しの最高スコア候補を上位 5 件として再ランキング。同一見出し内の重複を除去して多様なカバレッジを確保。</td></tr>
+        <tr><td>ECCN 自動付加（HS→ECCN マッピング）</td><td>分類の効率化</td><td>HS 見出し（4 桁）→ ECCN マッピング 50 エントリ + HS チャプター（2 桁）フォールバック 8 件。マッピングカバレッジ 100%。EAR99 は品目フォームに転記しない設計で誤登録を防止。</td></tr>
+        <tr><td>HS コード反映ボタン</td><td>判定結果の品目への一括転記</td><td>AI が提示した HS コード + ECCN を「反映」ボタン一クリックで品目フォームに書き込み。手動コピーの手間を削減。</td></tr>
+        <tr><td>SDS（安全データシート）管理</td><td>化学品の危険有害性情報管理</td><td>SDS 情報（GHS 危険有害性分類・組成・法規制該当情報）を品目に紐付け。SDS 改訂時の ECCN 再判定フラグを管理。化学品輸出時の品目分類精度を向上。</td></tr>
+        <tr><td>国別規制プロファイル</td><td>仕向地 × HS コードの規制一元確認</td><td>HS コード + 仕向地（国コード）の組み合わせで、WTO MFN 関税率（WTO API: HS_A_0010）・UN Comtrade 輸出入額・EAR Country Chart 再輸出規制・日本 NACCS コードを一画面に集約。</td></tr>
+        <tr><td>NACCS コード補完（9 桁）</td><td>日本税関電子申告対応</td><td>HS 6 桁コードから日本の輸出入統計品目番号（9 桁 NACCS コード）11,368 件を参照して補完。税関 NACCS 申告書の記載に利用。</td></tr>
+        <tr><td>WTO MFN 関税率自動取得</td><td>関税コスト試算</td><td>WTO API（HS_A_0010）を使って仕向地ごとの最恵国（MFN）関税率を自動取得。品目の輸出コスト試算に活用。</td></tr>
+        <tr><td>UN Comtrade 貿易統計取得</td><td>市場規模・貿易動向の把握</td><td>UN Comtrade API v2 から HS コード別の輸出入額（直近年次）を取得。特定品目・仕向地の貿易ボリュームを把握して市場分析に活用。</td></tr>
+        <tr><td>EAR Country Chart 再輸出規制判定</td><td>再輸出時の規制チェック</td><td>ECCN × 仕向地の組み合わせで EAR Country Chart の X（管理）列を照合し、再輸出許可要否を自動判定。Country Group（A:1〜E:2）も表示。</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- rnd_assessment -->
+  <!-- ══ rnd_assessment ══ -->
   <div class="module-section" id="feat-rnd">
     <div class="module-header">
       <span class="module-icon">🔬</span>
       <span class="module-name">rnd_assessment</span>
       <span class="module-port">:8003</span>
-      <span class="module-desc">R&D リスク評価・みなし輸出審査・技術インテリジェンス</span>
+      <span class="module-desc">R&D リスク評価・みなし輸出審査・技術インテリジェンス（学術論文 × ECCN）</span>
     </div>
     <table>
       <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
       <tbody>
-        <tr><td>R&D 案件管理</td><td>研究プロジェクトの輸出管理</td><td>研究テーマ・技術カテゴリ・FEFTA カテゴリ・リスクレベルを管理。案件ごとに人物・みなし輸出判定を紐付け。</td></tr>
-        <tr><td>みなし輸出判定</td><td>外国人への技術提供リスク評価</td><td>研究分野と外為法規制カテゴリを照合し、HIGH/MEDIUM/LOW リスクと推奨アクション（許可申請要否）を判定。</td></tr>
-        <tr><td>人物管理</td><td>研究者・採用候補者の管理</td><td>氏名・国籍・所属・専門分野を登録。E:1 国籍者は HIGH リスク警告。案件詳細にリスト表示。</td></tr>
-        <tr><td>技術インテリジェンス — 論文検索</td><td>ECCN 別学術論文調査</td><td>FAISS Layer D（学術論文）を使ったセマンティック検索。Semantic Scholar + Lens.org のデータを活用。</td></tr>
-        <tr><td>技術インテリジェンス — トレンド分析</td><td>技術動向の把握</td><td>ECCN 別の年次論文発表数推移グラフ。新興技術の動向と規制強化リスクを把握。</td></tr>
-        <tr><td>みなし輸出リスクスキャン</td><td>研究者の技術保有リスク評価</td><td>研究者名・キーワードで論文データベースを検索し、ECCN 管理品に関する論文への関与度を評価。</td></tr>
+        <tr><td>R&D 案件管理</td><td>研究プロジェクトのコンプライアンス管理</td><td>研究テーマ・技術カテゴリ・外為法 FEFTA カテゴリ・リスクレベル・案件ステータスを管理。案件ごとに紐付く人物・みなし輸出判定結果を一元管理。</td></tr>
+        <tr><td>みなし輸出判定（外為法第 25 条）</td><td>外国人への技術提供リスク評価</td><td>研究分野・提供する技術の FEFTA カテゴリと、対象者の国籍・所属を照合してリスクレベル（HIGH/MEDIUM/LOW）を判定。許可申請要否と社内承認ルートを提示。</td></tr>
+        <tr><td>人物管理（研究者・採用候補者）</td><td>技術提供対象者の記録と審査</td><td>氏名・国籍・所属・専門分野・FEFTA カテゴリ・リスクレベルを登録。E:1 国籍者は即時 HIGH リスク警告バナーを表示。案件詳細画面に紐付き人物のリスト一覧を表示。</td></tr>
+        <tr><td>技術インテリジェンス — セマンティック論文検索</td><td>ECCN 関連技術の学術動向調査</td><td>クエリテキストを FAISS Layer D（学術論文ベクトル）で検索し、意味的に類似した論文を上位 k 件返却。技術的な表現の揺れに対応したセマンティック検索。</td></tr>
+        <tr><td>技術インテリジェンス — DB 全文検索</td><td>著者・キーワードでの論文検索</td><td>academic_intel DB に対してキーワード・ECCN タグ・年次でフィルタリングして論文を直接検索。著者名検索にも対応。</td></tr>
+        <tr><td>技術インテリジェンス — ECCN 別トレンド分析</td><td>規制品技術の動向把握</td><td>特定 ECCN（例: 3A001=半導体、5A002=情報セキュリティ）に紐付く論文の年次発表数を集計してトレンドグラフを生成。論文数急増の ECCN は規制強化・技術流出の予兆として評価。</td></tr>
+        <tr><td>技術インテリジェンス — ECCN 利用可能リスト</td><td>対応 ECCN の確認</td><td>academic_intel DB に論文データが存在する ECCN の一覧と件数を返却。検索クエリ設計の参考に利用。</td></tr>
+        <tr><td>技術インテリジェンス — 著者プロファイル</td><td>研究者の技術背景調査</td><td>著者 ID から論文リスト・共著者・関連 ECCN タグを集計。採用候補者の技術保有リスクを定量評価。</td></tr>
+        <tr><td>みなし輸出リスクスキャン</td><td>研究者の ECCN 管理品関与度評価</td><td>研究者名・キーワードで academic_intel DB を検索し、ECCN 管理品に関する論文への関与件数・関与 ECCN リストを集計してリスクスコアを算出。</td></tr>
+        <tr><td>学術論文データ収集（collect_academic_papers.py）</td><td>技術インテリジェンス基盤の構築</td><td>Semantic Scholar API + Lens.org API を使って ECCN 別技術用語辞書（20 ECCN × 技術用語）でクエリを発行し、論文を academic_intel.db に収集。レートリミット対応・重複排除機能あり。</td></tr>
+        <tr><td>Layer D ビルドスクリプト（build_layer_d.py）</td><td>FAISS インデックスの再構築</td><td>academic_intel.db の論文要旨を E5 モデルでベクトル化して layer_d.index + layer_d_meta.json を生成。収集した論文を追加後に実行して Layer D を更新。</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- patent_search -->
+  <!-- ══ patent_search ══ -->
   <div class="module-section" id="feat-patent">
     <div class="module-header">
       <span class="module-icon">📜</span>
       <span class="module-name">patent_search</span>
       <span class="module-port">:8004</span>
-      <span class="module-desc">特許検索・IPC→ECCN/FEFTA リンク・学術論文双方向検索</span>
+      <span class="module-desc">特許検索・IPC→ECCN/FEFTA マッピング・特許↔学術論文双方向リンク</span>
     </div>
     <table>
       <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
       <tbody>
-        <tr><td>特許検索</td><td>競合・先行技術調査</td><td>BigQuery（Lens.org）連携。未設定時は J-PlatPat API に自動フォールバック。キーワード・出願人・発明者で検索。</td></tr>
-        <tr><td>IPC→ECCN/FEFTA マッピング</td><td>特許の輸出管理分類</td><td>IPC 分類コードから ECCN・外為法カテゴリへのエッジ 996 件。特許の該非可能性を自動評価。</td></tr>
-        <tr><td>制裁リスト照合</td><td>特許出願人の制裁チェック</td><td>特許出願人名を screening モジュールで一括照合。制裁対象組織の特許技術を取引に使う際のリスクを検知。</td></tr>
-        <tr><td>特許↔学術論文リンク</td><td>技術インテリジェンスの統合</td><td>特許番号から関連学術論文（FAISS Layer D 検索）、および論文キーワードから関連特許（FAISS Layer B 検索）を双方向検索。</td></tr>
-        <tr><td>FAISS Layer B 検索</td><td>特許テキストのセマンティック検索</td><td>特許チャンク 1,595 件のベクトル検索。技術的に類似した特許群をクラスタリングして発見。</td></tr>
+        <tr><td>特許検索（BigQuery / Lens.org）</td><td>競合・先行技術の体系的調査</td><td>BigQuery に接続された Lens.org 全特許データベースからキーワード・出願人・発明者・IPC 分類コード・出願年範囲で検索。1 億件超の特許に対して SQL クエリで高速検索。</td></tr>
+        <tr><td>J-PlatPat フォールバック</td><td>BigQuery 未設定時の代替検索</td><td>BigQuery が設定されていない場合は自動的に J-PlatPat API（INPIT 公式）にフォールバック。簡易キーワード・発明者・出願人検索に対応。DNS エラーも graceful に処理。</td></tr>
+        <tr><td>検索ソース表示</td><td>データ出所の明示</td><td>検索結果に <code>source: "bigquery"</code> または <code>source: "jplatpat"</code> フィールドを付与して、どのデータソースを使用したかを明示。</td></tr>
+        <tr><td>IPC → ECCN/FEFTA マッピング</td><td>特許の輸出管理分類の自動推定</td><td>IPC 分類コードから EAR/ECCN または外為法（FEFTA）カテゴリへのエッジ 996 件。特許に管理品の該非可能性スコアを自動付与。</td></tr>
+        <tr><td>特許出願人 制裁リスト一括照合</td><td>特許技術の利用リスク検知</td><td>特許の出願人・権利者名を screening モジュールに照合し、制裁対象組織の特許技術を取引・ライセンスに使用する際のリスクを事前検知。</td></tr>
+        <tr><td>特許 → 関連学術論文リンク</td><td>技術系譜の横断的調査</td><td>特許番号を指定すると、特許テキストを FAISS Layer B で検索した上で関連する学術論文（Layer D）との双方向リンクを生成。技術の論文→特許→製品の流れを追跡。</td></tr>
+        <tr><td>論文キーワード → 関連特許検索</td><td>学術成果の知財展開調査</td><td>論文のキーワード・要旨テキストを FAISS Layer B（特許チャンク 1,595 件）でセマンティック検索して関連特許を発見。学術論文の技術が特許化されているかを調査。</td></tr>
+        <tr><td>FAISS Layer B インデックス</td><td>特許テキストのベクトル検索</td><td>特許明細書・請求項をチャンク分割した 1,595 ベクトルを E5 モデルでインデックス化。技術説明のセマンティック類似度に基づいて特許群をクラスタリング。</td></tr>
+        <tr><td>検索ステータス確認</td><td>接続状態の把握</td><td><code>GET /status</code> で BigQuery 接続状態・J-PlatPat フォールバック状態・インデックス件数を確認。</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- screening -->
+  <!-- ══ screening ══ -->
   <div class="module-section" id="feat-screening">
     <div class="module-header">
       <span class="module-icon">🛡</span>
       <span class="module-name">screening</span>
       <span class="module-port">:8005</span>
-      <span class="module-desc">OFAC/BIS 制裁リストスクリーニング・月次自動同期</span>
+      <span class="module-desc">OFAC SDN / BIS Entity List スクリーニング・月次自動同期</span>
     </div>
     <table>
       <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
       <tbody>
-        <tr><td>制裁リストスクリーニング</td><td>取引先・人物の禁止リスト照合</td><td>OFAC SDN（特別指定国籍者）/ BIS Entity List に対して名称ベースで照合。類似名称ファジーマッチングで名義変更にも対応。</td></tr>
-        <tr><td>月次自動同期</td><td>制裁リストの最新化</td><td>OFAC/BIS の公式ソースから月次スケジューラーで自動ダウンロード・更新。手動更新不要。</td></tr>
-        <tr><td>スクリーニング API</td><td>他モジュールからの照合連携</td><td>platform-core（与信管理）・ai_validation（取引審査）・rnd_assessment（人物審査）から HTTP で呼び出し可能な統一 API。</td></tr>
+        <tr><td>OFAC SDN スクリーニング</td><td>米国財務省制裁対象者の照合</td><td>OFAC（米国財務省外国資産管理局）の SDN（特別指定国籍者）リストに対して名称ベースで照合。個人・法人・船舶・航空機を対象。</td></tr>
+        <tr><td>BIS Entity List スクリーニング</td><td>米国商務省輸出管理対象者の照合</td><td>BIS（米国商務省産業安全保障局）の Entity List に対して照合。対象者への輸出・再輸出には個別許可証が必要。</td></tr>
+        <tr><td>類似名称ファジーマッチング</td><td>名義変更・表記揺れへの対応</td><td>完全一致だけでなく、スペルの揺れ・略称・漢字表記の差異に対してファジーマッチングを実施。一致スコアとともにヒット候補を返却。</td></tr>
+        <tr><td>スクリーニング結果詳細</td><td>ヒット根拠の確認</td><td>一致した SDN/Entity List のエントリ名・ID・プログラム（対象制裁根拠）・住所・関連エイリアス・一致スコアを構造化して返却。</td></tr>
+        <tr><td>月次自動同期スケジューラー</td><td>制裁リストの常時最新化</td><td>OFAC/BIS の公式サイトから毎月自動でリストをダウンロード・差分更新。新規追加・削除されたエントリを検知して DB を最新状態に維持。</td></tr>
+        <tr><td>スクリーニング API（内部連携用）</td><td>他モジュールからの呼び出し</td><td>platform-core（与信管理・取引先照合）・ai_validation（取引相手照合）・rnd_assessment（人物照合）から HTTP API で統一的に呼び出し可能。認証トークン付与で内部通信をセキュア化。</td></tr>
+        <tr><td>スクリーニング履歴管理</td><td>照合証跡の保存</td><td>照合実行日時・照合対象・結果（ヒット有無・スコア）をデータベースに記録。監査時に「いつ・誰を・どのリストで照合し・結果がどうだったか」を証明。</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- hs_classifier -->
+  <!-- ══ hs_classifier ══ -->
   <div class="module-section" id="feat-hs">
     <div class="module-header">
       <span class="module-icon">🔢</span>
       <span class="module-name">hs_classifier</span>
       <span class="module-port">:8006</span>
-      <span class="module-desc">HS コード AI 分類エンジン（FAISS Layer C）</span>
+      <span class="module-desc">HS コード AI 分類エンジン（FAISS Layer C 5,476 件）</span>
     </div>
     <table>
       <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
       <tbody>
-        <tr><td>HS コード同期検索</td><td>即時 HS 分類</td><td>品名・仕様テキストを FAISS Layer C（5,476 件）でセマンティック検索して類似 HS コードの上位候補を即時返却。</td></tr>
-        <tr><td>HS コード非同期判定</td><td>Webhook 連携対応</td><td><code>POST /classify</code> で非同期判定を開始し、完了後に Webhook URL へ結果を通知。外部システムとの連携に対応。</td></tr>
-        <tr><td>heading 単位再ランキング</td><td>分類精度向上</td><td>FAISS 検索結果を HS heading（4 桁）単位でクラスタリングして重複を吸収し、見出しレベルで上位 5 件を精度よく提示。</td></tr>
-        <tr><td>HS コード詳細検索</td><td>コード情報参照</td><td>HS コードを指定して品目説明・FEFTA ラベル・関連 ECCN を参照。</td></tr>
+        <tr><td>HS コード同期検索（GET /search）</td><td>即時分類結果の取得</td><td>品名・仕様テキストを FAISS Layer C（5,476 件）でセマンティック検索し、類似 HS コードと類似度スコアを即時返却。top_k パラメータで取得件数を調整可能。</td></tr>
+        <tr><td>HS コード同期判定（POST /classify/sync）</td><td>Webhook 不要の同期 API</td><td>ai_classification から直接呼び出す同期判定エンドポイント。heading 再ランキングを含む最終推奨 5 件を即時返却。外部 Webhook が不要な内部連携に使用。</td></tr>
+        <tr><td>HS コード非同期判定（POST /classify）</td><td>大量品目の非同期バッチ処理</td><td>判定リクエストを受け付けてバックグラウンドで処理し、完了後に指定 Webhook URL へ結果を POST 通知。ERP 連携や定期バッチでの大量品目処理に対応。</td></tr>
+        <tr><td>heading（4 桁）単位クラスタリング再ランキング</td><td>分類精度の向上</td><td>FAISS 近傍検索の生の結果を HS heading（4 桁）単位でグループ化し、グループ内最高スコアの代表候補のみを残して上位 5 件を再構成。同一見出し内の重複を除去して実用的な候補セットを生成。</td></tr>
+        <tr><td>日本語 FEFTA ラベル除外</td><td>検索ノイズの低減</td><td>Layer C の embed_text から日本語の外為法（FEFTA）ラベルを除外することで、「集積回路」等の日本語クエリに対して無関係な heading（セルロース等）が上位に来るノイズを解消。</td></tr>
+        <tr><td>HS コード詳細取得（GET /hs/{code}）</td><td>コード情報の参照</td><td>HS コードを指定して品目説明・chapter 説明・heading 説明・関連 FEFTA 項番・関連 ECCN（マッピングが存在する場合）を参照。</td></tr>
+        <tr><td>インデックス状態確認（GET /index/status）</td><td>システム稼働状況の確認</td><td>Layer C インデックスのロード状態・ベクトル数・最終更新日時を確認。インデックス再構築後の反映状況の確認に使用。</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- DAP -->
+  <!-- ══ DAP ══ -->
   <div class="module-section" id="feat-dap">
     <div class="module-header">
       <span class="module-icon">🤖</span>
       <span class="module-name">DAP（先輩担当者モード）</span>
       <span class="module-port">:8010</span>
-      <span class="module-desc">Claude API ベースの AIアシスタント・全モジュール横断ガイダンス</span>
+      <span class="module-desc">Claude API ベースの AI アシスタント・全モジュール横断ガイダンス・プロアクティブ警告</span>
     </div>
     <table>
       <thead><tr><th>機能名</th><th>目的</th><th>説明</th></tr></thead>
       <tbody>
-        <tr><td>先輩担当者モード</td><td>輸出管理の実務相談</td><td>外為法・EAR・Wassenaar の専門知識を持つ AIアシスタント。「この品目を中国に輸出する際の注意点は？」のような自然言語での相談に対応。</td></tr>
-        <tr><td>Intake Mode（ヒアリング）</td><td>情報収集の自動化</td><td>初回相談時に品目・仕向地・用途を段階的にヒアリングしてコンプライアンスチェックに必要な情報を収集。</td></tr>
-        <tr><td>ワークフロー Intelligence</td><td>次アクションのガイダンス</td><td>ユーザーの現在の画面・操作状態を把握し、次に行うべき操作（ボタン位置・入力項目）を具体的に案内。</td></tr>
-        <tr><td>FAISS RAG 連携</td><td>規制テキストに基づく回答</td><td>FAISS Layer A（外為法/ECCN 規制テキスト）を RAG として使用し、根拠となる規制条文を参照しながら回答。</td></tr>
-        <tr><td>アラートバナー</td><td>プロアクティブな警告</td><td>ユーザーが見落としそうなリスク（E:1 国への輸出・Red Flag 等）をページロード時に自発的にバナー表示。</td></tr>
-        <tr><td>全モジュール埋め込み</td><td>どこでも相談できる</td><td>ai_validation / ai_classification / rnd_assessment / patent_search / screening / hs_classifier の全画面右下にチャットウィジェットを配置。</td></tr>
+        <tr><td>先輩担当者チャット</td><td>輸出管理の実務相談窓口</td><td>外為法・EAR・Wassenaar・OFAC 制裁の専門知識を持つ AI アシスタント。自然言語での質問に対して規制条文・実務手順・対応事例を日本語で回答。Claude API（claude-sonnet-4-x）を使用。</td></tr>
+        <tr><td>Intake Mode（ヒアリングモード）</td><td>初回相談時の情報収集自動化</td><td>品目・仕向地・需要者・用途を段階的にヒアリングして、コンプライアンスチェックに必要な情報を過不足なく収集。ヒアリング進捗バーで完了状況を可視化。</td></tr>
+        <tr><td>ペルソナ追跡</td><td>ユーザーの役割に応じた回答最適化</td><td>会話の流れからユーザーの役割（輸出管理担当・営業・人事・研究者等）を推定し、専門度・関心領域に合わせた回答スタイルに自動調整。</td></tr>
+        <tr><td>ワークフロー Intelligence（ガイダンス）</td><td>次に行うべき操作の具体的案内</td><td>ユーザーが現在操作している画面・入力内容を把握し、次の操作手順（navigate: 画面遷移先 / highlight: ボタン位置 / fill_hint: 入力ヒント / explain: 詳細説明 / watch: 確認を促す）を guidance ステップとして提示。</td></tr>
+        <tr><td>FAISS RAG 連携（Layer A）</td><td>規制条文に基づく根拠ある回答</td><td>質問テキストを FAISS Layer A で検索して関連する外為法・EAR の規制テキストを取得し、RAG（検索拡張生成）として LLM に提供。「根拠不明な回答」を防止し、規制条文を引用した信頼性の高い回答を生成。</td></tr>
+        <tr><td>プロアクティブ アラートバナー</td><td>見落としリスクの自発的通知</td><td>ページロード時・特定操作後に、ユーザーが見落としがちなリスク（E:1 国への輸出検知・未照合の取引先・期限切れ許可証等）をチャット外のバナーで自発的に通知。</td></tr>
+        <tr><td>クロスモジュール会話継続</td><td>ページ遷移をまたいだ相談の維持</td><td>sessionStorage を活用して、ai_validation → platform-core 等のモジュール間ページ遷移後も会話コンテキストを維持。「さっきの取引について」等の参照が可能。</td></tr>
+        <tr><td>プロアクティブ greet（行動トリガー）</td><td>操作状況に応じた先回り案内</td><td>特定の画面を開いた際（ページロード時）に自動で案内メッセージを送信（<code>POST /api/chat/greet</code>）。「輸出許可申請を開きました。期限切れが近い申請があります」等の文脈対応メッセージ。</td></tr>
+        <tr><td>行動イベントトラッキング</td><td>ユーザー操作の文脈把握</td><td><code>POST /api/chat/event</code> でユーザーのボタンクリック・フォーム入力等のイベントを受信し、DAP が現在の操作状況をリアルタイムで把握。適切なタイミングで割り込みガイダンスを提供。</td></tr>
+        <tr><td>全モジュール チャットウィジェット埋め込み</td><td>どの画面からでも相談可能</td><td>ai_validation / ai_classification / hs_classifier / patent_search / rnd_assessment / screening の全モジュール画面右下に chat-widget.js v2 を埋め込み。ページ遷移なしに即座に相談開始。</td></tr>
       </tbody>
     </table>
   </div>
