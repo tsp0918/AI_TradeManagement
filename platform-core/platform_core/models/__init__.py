@@ -17,6 +17,7 @@ from platform_core.models.supply_chain import SupplyChainEdge, SupplyChainNode  
 from platform_core.models.supplier_attestation import SupplierAttestation  # noqa: F401
 from platform_core.models.supplier_portal_token import SupplierPortalToken  # noqa: F401
 from platform_core.models.export_license import ExportLicenseApplication  # noqa: F401
+from platform_core.models.item_version import ItemVersion, ComplianceChangeEvent  # noqa: F401
 
 __all__ = [
     "Tenant",
@@ -39,4 +40,6 @@ __all__ = [
     "SupplierAttestation",
     "SupplierPortalToken",
     "ExportLicenseApplication",
+    "ItemVersion",
+    "ComplianceChangeEvent",
 ]

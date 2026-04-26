@@ -177,6 +177,16 @@ _KNOWN_MODULES: list[dict] = [
         "nav_section":       "tools",
     },
     {
+        "key":               "item_version",
+        "name":              "品目バージョン管理",
+        "description":       "仕様変更履歴の追跡とコンプライアンス影響の自動アセスメント",
+        "base_url":          "",
+        "iframe_url":        "/ui/item-version",
+        "icon":              "🔄",
+        "health_check_path": "",
+        "nav_section":       "tools",
+    },
+    {
         "key":               "user_guide",
         "name":              "ユーザーガイド",
         "description":       "ユースケース別の使い方ガイドと全モジュール機能一覧",
@@ -519,6 +529,12 @@ async def supply_chain_ui(request: Request):
 async def export_license_ui(request: Request):
     """輸出許可申請管理画面。"""
     return templates.TemplateResponse(request, "export_license.html", {})
+
+
+@router.get("/item-version", response_class=HTMLResponse, include_in_schema=False)
+async def item_version_ui(request: Request):
+    """品目バージョン管理・仕様変更コンプライアンス影響検知画面。"""
+    return templates.TemplateResponse(request, "item_version.html", {})
 
 
 @router.get("/user-guide", response_class=HTMLResponse, include_in_schema=False)
