@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     platform_log_level: str = "INFO"
 
     # Module URLs
-    module_ai_validation_url: str = "http://localhost:8001"
+    module_ai_validation_url: str = "http://localhost:8011"
     module_ai_classification_url: str = "http://localhost:8002"
     module_rnd_assessment_url: str = "http://localhost:8003"
     module_patent_search_url: str = "http://localhost:8004"

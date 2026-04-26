@@ -11,6 +11,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
+from app.db.models.transaction import Transaction
+
 logger = logging.getLogger(__name__)
 
 import os as _os

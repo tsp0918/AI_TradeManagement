@@ -31,7 +31,7 @@ router = APIRouter(prefix="/api/item-versions", tags=["item_version"])
 
 # ── AI判定連携 ─────────────────────────────────────────────────────────────
 
-_VALIDATION_BASE = "http://localhost:8001"
+_VALIDATION_BASE = "http://localhost:8011"
 
 
 # ── 影響レベルアセスメント ────────────────────────────────────────────────────

@@ -37,7 +37,7 @@ if [[ "${1:-}" == "--stop" ]]; then
     warn "PID ファイルが見つかりません。手動で確認してください。"
   fi
   # モジュールポートを強制解放
-  for PORT in 8001 8002 8003 8004 8005 8006 8010 11434; do
+  for PORT in 8011 8002 8003 8004 8005 8006 8010 11434; do
     PID_PORT=$(lsof -ti tcp:"$PORT" 2>/dev/null || true)
     if [[ -n "$PID_PORT" ]]; then
       kill "$PID_PORT" 2>/dev/null && info "ポート $PORT (PID $PID_PORT) を解放しました"
@@ -172,6 +172,22 @@ else
   warn "  インストール: brew install cloudflared"
 fi
 echo ""
+
+# ── ai_validation (port 8011) をバックグラウンドで起動 ──────────────
+# ポート 8001 は Docker (faq_fastapi) が使用中のため 8011 を使用する
+_VAL_DIR="$SCRIPT_DIR/modules/ai_validation"
+_VAL_OLD=$(lsof -ti tcp:8011 2>/dev/null || true)
+if [[ -n "$_VAL_OLD" ]]; then
+  warn "ポート 8011 の既存プロセス (PID $_VAL_OLD) を停止します…"
+  kill "$_VAL_OLD" 2>/dev/null || true
+  sleep 1
+fi
+info "ai_validation をポート 8011 で起動します…"
+(cd "$_VAL_DIR" && MODULE_AI_VALIDATION_URL=http://localhost:8011 \
+  PYTHONPATH="$_VAL_DIR:$PLATFORM_CORE" \
+  exec "$VENV/uvicorn" app.main:app \
+    --host 0.0.0.0 --port 8011) &
+ok "ai_validation 起動済み (PID $!)"
 
 # ── DAP (port 8010) をバックグラウンドで起動 ────────────────────────
 # StaticFiles が相対パス "app/static" を使うため DAP_DIR に cd してから起動する

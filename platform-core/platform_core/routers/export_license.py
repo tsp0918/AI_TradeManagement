@@ -31,7 +31,7 @@ from platform_core.models.export_license import ExportLicenseApplication
 
 router = APIRouter(tags=["export_license"])
 
-_AI_VALIDATION_URL = "http://localhost:8001"
+_AI_VALIDATION_URL = "http://localhost:8011"
 
 # ── Pydantic スキーマ ─────────────────────────────────────────────
 

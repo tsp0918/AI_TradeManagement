@@ -130,7 +130,7 @@ _KNOWN_MODULES: list[dict] = [
         "key":               "ai_validation",
         "name":              "AI該非判定",
         "description":       "外為法に基づく輸出管理の該非判定を AI で支援する",
-        "base_url":          "http://localhost:8001",
+        "base_url":          "http://localhost:8011",
         "iframe_url":        "/proxy/ai_validation/",
         "icon":              _MODULE_ICONS["ai_validation"],
         "health_check_path": "/health",
@@ -337,7 +337,7 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
 @router.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
 async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
     """案件ダッシュボード — ai_validation から直近案件を取得して表示。"""
-    ai_validation_url = "http://localhost:8001"
+    ai_validation_url = "http://localhost:8011"
     transactions: list[dict] = []
     error: str | None = None
 

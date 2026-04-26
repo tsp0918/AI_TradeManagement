@@ -20,7 +20,7 @@ router = APIRouter(prefix="/proxy", tags=["proxy"])
 
 # モジュールキー → ローカルポートのマッピング
 _MODULE_PORTS: dict[str, int] = {
-    "ai_validation":    8001,
+    "ai_validation":    8011,
     "ai_classification": 8002,
     "rnd_assessment":   8003,
     "patent_search":    8004,
