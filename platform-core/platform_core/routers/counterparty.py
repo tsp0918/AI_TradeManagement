@@ -2,29 +2,39 @@
 
 エンドポイント:
 - GET  /api/counterparties          取引先一覧（フィルタ・ページネーション）
-- POST /api/counterparties          取引先登録
+- POST /api/counterparties          取引先登録（自動スクリーニング付き）
 - GET  /api/counterparties/stats    リスクダッシュボード集計
 - GET  /api/counterparties/{id}     取引先詳細
 - PUT  /api/counterparties/{id}     取引先更新
 - DELETE /api/counterparties/{id}   取引先削除
-- POST /api/counterparties/{id}/screen   スクリーニング実行
+- POST /api/counterparties/{id}/screen   スクリーニング実行（手動再実行）
 - GET  /api/counterparties/{id}/history  与信スコア変更履歴
+
+自動スクリーニング:
+  取引先登録時（POST /api/counterparties）に screening モジュール（port 8005）
+  への照合を非同期で自動実行する。timeout=5s で応答がなければ background で継続。
 """
 
+import asyncio
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from platform_core.db.session import get_db
+from platform_core.db.session import get_db, AsyncSessionLocal
 from platform_core.models.company import Company, CompanyScreeningHistory, CounterpartyCreditHistory
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/counterparties", tags=["counterparty"])
+
+_SCREENING_URL = "http://localhost:8005"
 
 # 国別リスクスコア（0-100）
 _COUNTRY_RISK: dict[str, int] = {
@@ -194,8 +204,67 @@ async def list_counterparties(
     return {"total": total, "items": [_serialize(c) for c in page]}
 
 
+async def _run_auto_screening(company_id: uuid.UUID, company_name: str, aliases: list[str]) -> None:
+    """取引先登録後にバックグラウンドで自動スクリーニングを実行する。"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{_SCREENING_URL}/api/screen",
+                json={"company_name": company_name, "aliases": aliases},
+            )
+            if resp.status_code != 200:
+                logger.warning("auto-screening HTTP %s for %s", resp.status_code, company_name)
+                return
+            screening_result = resp.json()
+            is_hit = screening_result.get("result_status") == "hit"
+            matched_lists = list({m.get("list_type", "") for m in screening_result.get("matches", []) if m.get("list_type")})
+
+        async with AsyncSessionLocal() as db:
+            company = await db.get(Company, company_id)
+            if not company:
+                return
+
+            prev_level = company.overall_risk_level
+            company.is_sanctioned       = is_hit
+            company.sanction_lists      = matched_lists if is_hit else []
+            company.last_screened_at    = datetime.now(tz=timezone.utc)
+            company.screening_detail    = screening_result
+            company.overall_risk_level  = _calc_overall_risk(
+                company.credit_score, company.country_risk_score or 0, is_hit
+            )
+
+            hist = CompanyScreeningHistory(
+                company_id=company.id,
+                lists_checked=["OFAC_SDN", "BIS_EL", "EU_CONSOLIDATED", "UK_OFSI", "BIS_UVL", "BIS_MEU"],
+                result_is_hit=is_hit,
+                result_detail=screening_result,
+            )
+            db.add(hist)
+
+            if prev_level != company.overall_risk_level:
+                db.add(CounterpartyCreditHistory(
+                    company_id=company.id,
+                    previous_risk_level=prev_level,
+                    new_risk_level=company.overall_risk_level,
+                    change_reason="auto-screening on create",
+                ))
+
+            await db.commit()
+            logger.info(
+                "auto-screening done for %s: is_hit=%s risk=%s",
+                company_name, is_hit, company.overall_risk_level,
+            )
+    except Exception as exc:
+        logger.warning("auto-screening failed for %s: %s", company_name, exc)
+
+
 @router.post("", status_code=201)
-async def create_counterparty(body: CounterpartyCreate, db: AsyncSession = Depends(get_db)):
+async def create_counterparty(
+    body: CounterpartyCreate,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    """取引先を登録し、自動スクリーニングをバックグラウンドで実行する。"""
     if body.tenant_id:
         tenant_id = uuid.UUID(body.tenant_id)
     else:
@@ -223,7 +292,18 @@ async def create_counterparty(body: CounterpartyCreate, db: AsyncSession = Depen
     db.add(company)
     await db.commit()
     await db.refresh(company)
-    return _serialize(company)
+
+    # 自動スクリーニングをバックグラウンドで起動（応答を待たない）
+    background_tasks.add_task(
+        _run_auto_screening,
+        company.id,
+        company.name,
+        company.name_aliases or [],
+    )
+
+    result = _serialize(company)
+    result["auto_screening"] = "queued"
+    return result
 
 
 @router.get("/{company_id}")

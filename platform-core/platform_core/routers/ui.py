@@ -197,6 +197,16 @@ _KNOWN_MODULES: list[dict] = [
         "nav_section":       "tools",
     },
     {
+        "key":               "regime_check",
+        "name":              "グローバル規制レジーム照合",
+        "description":       "品目の ITAR/USML・EU Dual-Use・MTCR・NSG・AG 適用レジームを一括確認",
+        "base_url":          "",
+        "iframe_url":        "/ui/regime-check",
+        "icon":              "🌐",
+        "health_check_path": "",
+        "nav_section":       "tools",
+    },
+    {
         "key":               "user_guide",
         "name":              "ユーザーガイド",
         "description":       "ユースケース別の使い方ガイドと全モジュール機能一覧",
@@ -551,6 +561,12 @@ async def item_version_ui(request: Request):
 async def compliance_lookup_ui(request: Request):
     """コンプライアンス進捗管理・Lookup画面。"""
     return templates.TemplateResponse(request, "compliance_lookup.html", {})
+
+
+@router.get("/regime-check", response_class=HTMLResponse, include_in_schema=False)
+async def regime_check_ui(request: Request):
+    """グローバル規制レジーム照合画面。"""
+    return templates.TemplateResponse(request, "regime_check.html", {})
 
 
 @router.get("/user-guide", response_class=HTMLResponse, include_in_schema=False)

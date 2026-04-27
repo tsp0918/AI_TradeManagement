@@ -578,22 +578,52 @@ lsof | grep ".db$" | grep -v ".venv"
   - item_version.html: 影響イベント一覧・バージョン履歴・新バージョン登録 UI
 ```
 
-## 12. 次フェーズ候補
+## 12. データ拡充フェーズ D（2026-04-28 着手）
+
+### D1 フェーズ（即時対応）
+
+| 優先度 | タスク | 内容 | 状態 |
+|--------|--------|------|------|
+| D1-1 | Layer D 学術論文インデックス再構築 | collect_academic_papers.py 全ECCN実行（API Key取得後） | ⏳ API Key待ち |
+| D1-2 | 制裁リスト全量収録 | OFAC SDN全量 + EU統合制裁 + UK OFSI + BIS UVL/MEU/DPL | ✅ 完了（7ソース対応） |
+| D1-3 | BIS 3リスト完全収録 | Entity List全量 + Unverified List + MEU List | ✅ 完了（D1-2に統合） |
+| D1-4 | Fターム → 外為法/ECCNマッピング | 130テーマコード × 47 ECCN、patent_search 照合API追加 | ✅ 完了 |
+| D1-5 | IPC完全マッピング | 174エントリ完成済み（追加拡張は次サイクル） | ✅ 既存 |
+
+### D2 フェーズ（1ヶ月以内）
+
+| 優先度 | タスク | 内容 | 状態 |
+|--------|--------|------|------|
+| D2-1 | ITAR/USML 収録 | 22 CFR Part 121 全21カテゴリ + regulatory.py API | ✅ 完了 |
+| D2-2 | EU Dual-Use Regulation Annex I | EU 2021/821 全10カテゴリ + regime-check API | ✅ 完了 |
+| D2-3 | Wassenaar ML/TN リスト | Wassenaar Arrangement 武器リスト + Tier 1/2/3 | ⬜ 未着手 |
+| D2-4 | EPA/FTA 特恵税率 DB | 日本締結 21本 + RCEP 特恵税率テーブル | ⬜ 未着手 |
+| D2-5 | JP/EP特許の定期収集 | patent_search → ai_validation 連携 + 定期収集スケジューラー | ⬜ 未着手 |
+
+### D3 フェーズ（四半期以内）
+
+| タスク | 内容 |
+|--------|------|
+| 中国輸出管理法 | MOFCOM 輸出管制法リスト収録（2023年改正対応） |
+| EU TARIC / 米国 HTS | 関税番号体系の完全収録（現在: JP HS 11,368件のみ） |
+| WMD Red Flag事例DB | 実際の違反事例テキストから FAISS Layer A 拡充 |
+
+## 13. 次フェーズ候補（機能開発）
 
 | 優先度 | タスク | 内容 |
 |--------|--------|------|
-| ✅ | Integration A | ItemVersion → AI Validation: 「AI再判定」ボタン / POST /api/item-versions/events/{id}/request-validation |
-| ✅ | Integration B | AI Validation → 輸出許可申請: transaction_detail.html に「📋 輸出許可申請」ボタン |
-| ✅ | Integration C | SupplyChainNode ↔ plat_item: item_id UUID外部キー正式紐付け (Alembic c3d4e5f6a7b8) |
-| ★★★★☆ | 品目バージョン管理拡張 | Webhook 認証（APIキー）・変更申請承認ワークフロー・PLM/SDS 実連携 |
+| ✅ | Integration A | ItemVersion → AI Validation 「AI再判定」ボタン |
+| ✅ | Integration B | AI Validation → 輸出許可申請 自動ドラフト |
+| ✅ | Integration C | SupplyChainNode ↔ plat_item UUID FK 紐付け |
+| ★★★★☆ | グローバル規制レジーム UI | /ui/regime-check 画面（ITAR/EU/MTCR/NSG/AG 一括照合） |
+| ★★★★☆ | Fターム検索統合 | patent_search 検索結果に Fterm 規制フラグ自動表示 |
+| ★★★★☆ | Screening → 与信管理 自動連携 | 取引先登録時に screening API を自動呼出し |
 | ★★★★☆ | サプライヤーポータル拡張 | メール自動送信（招待URL通知）・添付ファイルアップロード |
-| ★★★★☆ | 輸出許可申請拡張 | 申請番号体系・利用額追跡（value_remaining）・期限アラートメール |
-| ★★★☆☆ | Screening → 与信管理 自動連携 | 取引先登録時に screening API を自動呼出し |
+| ★★★☆☆ | 輸出許可申請拡張 | 申請番号体系・利用額追跡（value_remaining）・期限アラートメール |
 | ★★★☆☆ | Layer D データ収集実行 | API Key 取得後に collect_academic_papers.py を全 ECCN で実行 |
-| ★★★☆☆ | 与信データ外部連携 | TDB/TSR API（有償）連携 |
-| ★★☆☆☆ | 中国輸出管理法リスト | CCL データ取得・スクリーニング統合 |
+| ★★☆☆☆ | Wassenaar D2-3 収録 | ML/TN リスト収録・regulatory API 拡張 |
 
 ---
 
-*更新: 2026-04-26（コンプライアンス進捗管理 Lookup・⑤品目バージョン管理・④輸出許可申請・ユーザーガイド・サプライヤーポータル・③サプライチェーン管理・②与信管理・技術インテリジェンス Ph.A〜D 全完了・技術的負債ゼロ）*
+*更新: 2026-04-28（データ拡充 D1-2/D1-4/D2-1/D2-2 完了 — 制裁7ソース対応/Fターム130コード/ITAR21カテゴリ/EU10カテゴリ）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
