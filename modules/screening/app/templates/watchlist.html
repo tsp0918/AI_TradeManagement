@@ -7,9 +7,17 @@
   <h1>ウォッチリスト</h1>
   <p>照合対象となる懸念エンティティのリストです。</p>
   <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-    <button id="sync-btn" onclick="syncSanctions()"
+    <button id="sync-btn" onclick="syncSanctions('all')"
       style="background:#2563eb;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:14px;">
-      制裁リスト同期 (OFAC / BIS)
+      全制裁リスト同期（OFAC / BIS / EU / UK）
+    </button>
+    <button id="sync-ofac-btn" onclick="syncSanctions('ofac_sdn')"
+      style="background:#374151;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;">
+      OFAC のみ
+    </button>
+    <button id="sync-eu-btn" onclick="syncSanctions('eu_consolidated,uk_ofsi')"
+      style="background:#374151;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;">
+      EU / UK のみ
     </button>
     <span id="sync-status" class="muted" style="font-size:13px;"></span>
   </div>
@@ -85,31 +93,48 @@ function filterRows() {
 
 load();
 
-async function syncSanctions() {
+async function syncSanctions(sources) {
   const btn = document.getElementById("sync-btn");
   const status = document.getElementById("sync-status");
-  btn.disabled = true;
+  const allBtns = [btn,
+    document.getElementById("sync-ofac-btn"),
+    document.getElementById("sync-eu-btn")];
+  allBtns.forEach(b => b && (b.disabled = true));
   btn.textContent = "同期中…";
-  status.textContent = "OFAC SDN XML を取得中（~34MB、1〜2分かかります）";
+
+  const msgs = {
+    all: "OFAC/BIS/EU/UKを取得中（合計~20,000件、2〜3分かかります）",
+    ofac_sdn: "OFAC SDN XML を取得中（~34MB）",
+    "eu_consolidated,uk_ofsi": "EU / UK 制裁リストを取得中",
+  };
+  status.textContent = msgs[sources] || "制裁リストを取得中…";
+
   try {
-    const res = await fetch("/api/admin/sync-sanctions", { method: "POST" });
+    const params = new URLSearchParams({ sources });
+    const res = await fetch(`/api/admin/sync-sanctions?${params}`, { method: "POST" });
     const data = await res.json();
     if (!res.ok) {
       status.textContent = "エラー: " + (data.detail || res.statusText);
     } else {
-      const ofac = data.ofac_sdn_fetched ?? "?";
-      const bis  = data.bis_entity_fetched ?? "?";
-      const total = data.total_inserted ?? "?";
-      const faiss = data.faiss_ntotal ?? "?";
+      const parts = [];
+      const srcLabels = {
+        ofac_sdn: "OFAC", bis_entity: "BIS-EL", bis_uvl: "BIS-UVL",
+        bis_meu: "BIS-MEU", bis_dpl: "BIS-DPL",
+        eu_consolidated: "EU", uk_ofsi: "UK"
+      };
+      for (const [key, label] of Object.entries(srcLabels)) {
+        const n = data[`${key}_fetched`];
+        if (n !== undefined) parts.push(`${label} ${n}件`);
+      }
       status.textContent =
-        `完了: OFAC ${ofac}件 + BIS ${bis}件 → 挿入 ${total}件（FAISS: ${faiss}件）`;
+        `完了: ${parts.join(" / ")} → 挿入 ${data.total_inserted ?? "?"}件（FAISS: ${data.faiss_ntotal ?? "?"}件）`;
       await load();
     }
   } catch (err) {
     status.textContent = "通信エラー: " + err.message;
   } finally {
-    btn.disabled = false;
-    btn.textContent = "制裁リスト同期 (OFAC / BIS)";
+    allBtns.forEach(b => b && (b.disabled = false));
+    btn.textContent = "全制裁リスト同期（OFAC / BIS / EU / UK）";
   }
 }
 </script>

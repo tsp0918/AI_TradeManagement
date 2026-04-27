@@ -47,12 +47,14 @@ from sentence_transformers import SentenceTransformer
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-_ROOT       = Path(__file__).resolve().parents[1]
-_STAGING    = _ROOT / "data" / "staging"
-_FEFTA_JSON = _STAGING / "fefta_law_v5.json"
-_ECCN_JSON  = _STAGING / "ccl_eccn_entries_v8.json"
-_OUT_INDEX  = _STAGING / "layer_a.index"
-_OUT_META   = _STAGING / "layer_a_meta.json"
+_ROOT           = Path(__file__).resolve().parents[1]
+_STAGING        = _ROOT / "data" / "staging"
+_FEFTA_JSON     = _STAGING / "fefta_law_v5.json"
+_ECCN_JSON      = _STAGING / "ccl_eccn_entries_v8.json"
+_USML_JSON      = _STAGING / "usml_itar_entries.json"
+_EU_DU_JSON     = _STAGING / "eu_dual_use_entries.json"
+_OUT_INDEX      = _STAGING / "layer_a.index"
+_OUT_META       = _STAGING / "layer_a_meta.json"
 
 _MODEL_NAME     = "intfloat/multilingual-e5-large"
 _PASSAGE_PREFIX = "passage: "
@@ -149,6 +151,64 @@ def _load_records() -> list[dict]:
                 "value_mm":    None,
                 "value_unit":  None,
                 "full_text":   (r.get("description") or r.get("full_text") or "").strip(),
+                "embed_text":  et,
+            })
+
+    # ── ITAR/USML (22 CFR Part 121) ───────────────────────────────────────
+    if not _USML_JSON.exists():
+        logger.warning("USML/ITAR JSON not found: %s", _USML_JSON)
+    else:
+        with open(_USML_JSON, encoding="utf-8") as f:
+            usml_data = json.load(f)
+        usml_entries = usml_data.get("entries", [])
+        logger.info("ITAR/USML categories: %d", len(usml_entries))
+        for r in usml_entries:
+            cat   = r.get("usml_category", "")
+            title = r.get("title", "")
+            desc  = r.get("description", "")
+            items = "; ".join(r.get("key_items", []))
+            full  = f"USML Category {cat}: {title}. {desc} Key items: {items}"
+            et    = _PASSAGE_PREFIX + full
+            records.append({
+                "source_type": "usml_itar",
+                "source_name": "itar_22cfr121",
+                "article_no":  f"USML-{cat}",
+                "title":       title,
+                "item_no":     f"USML-{cat}",
+                "item_label":  cat,
+                "chunk_level": "category",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
+                "embed_text":  et,
+            })
+
+    # ── EU Dual-Use Regulation Annex I ────────────────────────────────────
+    if not _EU_DU_JSON.exists():
+        logger.warning("EU Dual-Use JSON not found: %s", _EU_DU_JSON)
+    else:
+        with open(_EU_DU_JSON, encoding="utf-8") as f:
+            eu_data = json.load(f)
+        eu_entries = eu_data.get("entries", [])
+        logger.info("EU Dual-Use categories: %d", len(eu_entries))
+        for r in eu_entries:
+            cat   = r.get("eu_category", "")
+            title = r.get("title", "")
+            desc  = r.get("description", "")
+            items = "; ".join(r.get("key_controlled_items", []))
+            full  = f"EU Dual-Use Category {cat}: {title}. {desc} Key items: {items}"
+            et    = _PASSAGE_PREFIX + full
+            records.append({
+                "source_type": "eu_dual_use",
+                "source_name": "eu_regulation_2021_821",
+                "article_no":  f"EU-{cat}",
+                "title":       title,
+                "item_no":     f"EU-{cat}",
+                "item_label":  cat,
+                "chunk_level": "category",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
                 "embed_text":  et,
             })
 

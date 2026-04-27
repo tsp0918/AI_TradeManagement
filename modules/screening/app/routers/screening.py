@@ -189,45 +189,64 @@ async def deactivate_watchlist_entry(
 
 @router.post("/admin/sync-sanctions", status_code=status.HTTP_200_OK)
 async def sync_sanctions(
-    include_bis: bool = True,
-    bis_api_key: str = "DEMO_KEY",
+    sources: str = "all",
+    csl_api_key: str = "DEMO_KEY",
     db: AsyncSession = Depends(get_db),
 ):
-    """OFAC SDN / BIS Entity List を公式ソースから取得してウォッチリストを同期する。
+    """全制裁リストを公式ソースから取得してウォッチリストを同期する。
+
+    sources: カンマ区切りでソースを指定。"all" で全7ソース。
+      ofac_sdn, bis_entity, bis_uvl, bis_meu, bis_dpl, eu_consolidated, uk_ofsi
 
     処理フロー:
-      1. 公式ソースから新エントリを取得
-      2. 同名ソース（ofac_sdn / bis_entity）の既存エントリを論理削除
+      1. 各公式ソースからエントリを取得
+      2. 同ソースの既存エントリを論理削除
       3. 新エントリを一括挿入
       4. FAISS インデックスを再構築
     """
     from sqlalchemy import update as sa_update
+    from app.services.sanctions_sync import (
+        fetch_ofac_sdn,
+        fetch_bis_entity_list,
+        fetch_bis_unverified,
+        fetch_bis_meu,
+        fetch_bis_dpl,
+        fetch_eu_consolidated,
+        fetch_uk_ofsi,
+    )
 
-    from app.services.sanctions_sync import fetch_bis_entity_list, fetch_ofac_sdn
+    ALL_SOURCES = {
+        "ofac_sdn":        fetch_ofac_sdn,
+        "bis_entity":      lambda: fetch_bis_entity_list(api_key=csl_api_key),
+        "bis_uvl":         lambda: fetch_bis_unverified(api_key=csl_api_key),
+        "bis_meu":         lambda: fetch_bis_meu(api_key=csl_api_key),
+        "bis_dpl":         lambda: fetch_bis_dpl(api_key=csl_api_key),
+        "eu_consolidated": fetch_eu_consolidated,
+        "uk_ofsi":         fetch_uk_ofsi,
+    }
 
-    result_stats: dict = {}
+    requested = set(
+        ALL_SOURCES.keys() if sources.strip().lower() == "all"
+        else [s.strip() for s in sources.split(",") if s.strip() in ALL_SOURCES]
+    )
+    if not requested:
+        raise HTTPException(status_code=422, detail=f"Invalid sources: {sources}")
+
+    result_stats: dict = {"sources_requested": sorted(requested)}
     all_new: list[dict] = []
     synced_sources: list[str] = []
 
     # ── 1. データ取得 ─────────────────────────────────────────────────────
-    try:
-        ofac = fetch_ofac_sdn()
-        all_new.extend(ofac)
-        result_stats["ofac_sdn_fetched"] = len(ofac)
-        synced_sources.append("ofac_sdn")
-    except Exception as exc:
-        logger.error("OFAC SDN fetch failed: %s", exc)
-        result_stats["ofac_sdn_error"] = str(exc)
-
-    if include_bis:
+    for src_key in sorted(requested):
         try:
-            bis = fetch_bis_entity_list(api_key=bis_api_key)
-            all_new.extend(bis)
-            result_stats["bis_entity_fetched"] = len(bis)
-            synced_sources.append("bis_entity")
+            entries = ALL_SOURCES[src_key]()
+            all_new.extend(entries)
+            result_stats[f"{src_key}_fetched"] = len(entries)
+            synced_sources.append(src_key)
+            logger.info("sync-sanctions %s: %d entries", src_key, len(entries))
         except Exception as exc:
-            logger.error("BIS Entity List fetch failed: %s", exc)
-            result_stats["bis_entity_error"] = str(exc)
+            logger.error("sync-sanctions %s fetch failed: %s", src_key, exc)
+            result_stats[f"{src_key}_error"] = str(exc)
 
     if not all_new:
         raise HTTPException(
