@@ -6,10 +6,12 @@ regulatory.py — 規制動向モニタリング + グローバル規制レジ�
   POST /api/regulatory/check            モニタリング実行（外部API ポーリング）
   POST /api/regulatory/changes/{id}/dismiss  既読マーク
 
-  GET  /api/regulatory/usml/{category}  USML/ITARカテゴリ詳細
   GET  /api/regulatory/usml             USML全21カテゴリ一覧
-  GET  /api/regulatory/eu-dual-use/{category}  EU Dual-Useカテゴリ詳細
+  GET  /api/regulatory/usml/{category}  USML/ITARカテゴリ詳細
   GET  /api/regulatory/eu-dual-use      EU Dual-Use全10カテゴリ一覧
+  GET  /api/regulatory/eu-dual-use/{category}  EU Dual-Useカテゴリ詳細
+  GET  /api/regulatory/wassenaar        Wassenaar ML全22カテゴリ一覧
+  GET  /api/regulatory/wassenaar/{category}  Wassenaar MLカテゴリ詳細
   POST /api/regulatory/regime-check     品目説明からグローバル規制レジーム照合
 """
 from __future__ import annotations
@@ -49,6 +51,12 @@ def _load_usml() -> dict[str, Any]:
 @lru_cache(maxsize=1)
 def _load_eu_dual_use() -> dict[str, Any]:
     p = _DATA_DIR / "eu_dual_use_entries.json"
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {"entries": []}
+
+
+@lru_cache(maxsize=1)
+def _load_wassenaar_ml() -> dict[str, Any]:
+    p = _DATA_DIR / "wassenaar_ml_entries.json"
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {"entries": []}
 
 # ── 設定 ───────────────────────────────────────────────────────────────────────
@@ -180,6 +188,40 @@ async def get_eu_dual_use_category(category: str):
     raise HTTPException(404, f"EU Dual-Use Category {category} not found")
 
 
+# ── Wassenaar Munitions List エンドポイント ─────────────────────────────────────
+
+@router.get("/wassenaar")
+async def list_wassenaar():
+    """Wassenaar Arrangement Munitions List 全22カテゴリの一覧を返す。"""
+    data = _load_wassenaar_ml()
+    return {
+        "total":      data.get("total_categories", 22),
+        "regulation": data.get("_source", ""),
+        "categories": [
+            {
+                "category":     e["ml_category"],
+                "title":        e["title"],
+                "title_en":     e.get("title_en", ""),
+                "fefta":        e.get("fefta_category"),
+                "related_eccn": e.get("related_eccn", []),
+                "usml_parallel": e.get("usml_parallel", []),
+            }
+            for e in data.get("entries", [])
+        ],
+    }
+
+
+@router.get("/wassenaar/{category}")
+async def get_wassenaar_category(category: str):
+    """指定したWassenaar MLカテゴリの詳細を返す。例: /wassenaar/ML7"""
+    data = _load_wassenaar_ml()
+    cat  = category.strip().upper()
+    for e in data.get("entries", []):
+        if e["ml_category"].upper() == cat:
+            return e
+    raise HTTPException(404, f"Wassenaar ML Category {cat} not found")
+
+
 # ── グローバル規制レジーム照合 ────────────────────────────────────────────────────
 
 class RegimeCheckRequest(BaseModel):
@@ -286,12 +328,40 @@ async def regime_check(body: RegimeCheckRequest):
             "note": "化学・生物兵器前駆物質は化学兵器禁止条約（CWC）/生物兵器禁止条約（BWC）も確認",
         })
 
+    # Wassenaar Arrangement Munitions List チェック
+    wa_data = _load_wassenaar_ml()
+    wa_eccn_to_cat: dict[str, list[str]] = {}
+    for e in wa_data.get("entries", []):
+        for related in e.get("related_eccn", []):
+            wa_eccn_to_cat.setdefault(related, []).append(e["ml_category"])
+    wa_hits: list[str] = []
+    if eccn_upper:
+        wa_hits = wa_eccn_to_cat.get(eccn_upper, [])
+    if not wa_hits:
+        wa_keywords = ["military aircraft", "military vehicle", "military vessel",
+                       "armament", "munition", "warship", "submarine", "combat",
+                       "guided weapon", "fire control", "night vision", "targeting"]
+        if any(kw in text_lower for kw in wa_keywords):
+            wa_hits = ["ML17"]
+    if wa_hits:
+        flags.append({
+            "regime": "Wassenaar Arrangement (WA/ML)",
+            "authority": "Multi-lateral (42 participating states)",
+            "applicable": True,
+            "categories": wa_hits,
+            "note": "Wassenaar ML品目: 最終用途・需要者確認（EUC）が必要です",
+        })
+
+    risk_level = "none"
+    if flags:
+        risk_level = "high" if len(flags) >= 2 else "medium"
+
     return {
         "item_name":         body.item_name,
         "eccn":              eccn_upper or None,
         "applicable_regimes": flags,
         "total_flags":       len(flags),
-        "risk_level":        "high" if flags else "none",
+        "risk_level":        risk_level,
     }
 
 

@@ -40,6 +40,7 @@
   .regime-card.mtcr    { border-color: #f59e0b; }
   .regime-card.nsg     { border-color: #a78bfa; }
   .regime-card.ag      { border-color: #34d399; }
+  .regime-card.wa      { border-color: #fb923c; }
   .regime-name { font-size: 0.95rem; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
   .regime-authority { font-size: 0.75rem; color: #94a3b8; margin-bottom: 10px; }
   .regime-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -105,10 +106,11 @@
     <!-- レジームカード -->
     <div id="regime-cards" class="regime-grid"></div>
 
-    <!-- タブ: USML / EU Dual-Use 参照 -->
+    <!-- タブ: USML / EU Dual-Use / Wassenaar 参照 -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('usml')">📋 USML/ITAR 全カテゴリ</button>
       <button class="tab-btn" onclick="switchTab('eu')">🇪🇺 EU Dual-Use 全カテゴリ</button>
+      <button class="tab-btn" onclick="switchTab('wa')">🔫 Wassenaar ML 全カテゴリ</button>
     </div>
     <div id="tab-usml" class="tab-pane active">
       <div class="ref-section">
@@ -120,19 +122,28 @@
         <div id="eu-table-container" class="loading">読み込み中…</div>
       </div>
     </div>
+    <div id="tab-wa" class="tab-pane">
+      <div class="ref-section">
+        <div id="wa-table-container" class="loading">読み込み中…</div>
+      </div>
+    </div>
   </div>
 
-  <!-- 初期表示: USML/EU テーブル -->
+  <!-- 初期表示: USML/EU/Wassenaar テーブル -->
   <div id="ref-area">
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTabRef('usml')">📋 USML/ITAR 一覧</button>
       <button class="tab-btn" onclick="switchTabRef('eu')">🇪🇺 EU Dual-Use 一覧</button>
+      <button class="tab-btn" onclick="switchTabRef('wa')">🔫 Wassenaar ML 一覧</button>
     </div>
     <div id="ref-tab-usml" class="tab-pane active">
       <div id="usml-ref-container" class="loading">読み込み中…</div>
     </div>
     <div id="ref-tab-eu" class="tab-pane">
       <div id="eu-ref-container" class="loading">読み込み中…</div>
+    </div>
+    <div id="ref-tab-wa" class="tab-pane">
+      <div id="wa-ref-container" class="loading">読み込み中…</div>
     </div>
   </div>
 </div>
@@ -144,6 +155,7 @@ const REGIME_COLORS = {
   "MTCR": "mtcr",
   "NSG (Nuclear Suppliers Group)": "nsg",
   "Australia Group (AG)": "ag",
+  "Wassenaar Arrangement (WA/ML)": "wa",
 };
 
 function regimeClass(name) {
@@ -204,6 +216,7 @@ async function runCheck() {
     // テーブルロード
     loadUsmlTable("usml-table-container");
     loadEuTable("eu-table-container");
+    loadWassenaarTable("wa-table-container");
   } finally {
     btn.disabled = false;
     btn.textContent = "🔍 規制レジーム照合";
@@ -252,8 +265,30 @@ async function loadEuTable(containerId) {
   }
 }
 
+async function loadWassenaarTable(containerId) {
+  try {
+    const res = await fetch("/api/regulatory/wassenaar");
+    const data = await res.json();
+    const el = document.getElementById(containerId);
+    el.innerHTML = `
+      <table class="ref-table">
+        <thead><tr><th>カテゴリ</th><th>名称</th><th>関連ECCN</th><th>USML対応</th><th>外為法</th></tr></thead>
+        <tbody>${data.categories.map(c => `
+          <tr>
+            <td><strong>${c.category}</strong></td>
+            <td>${c.title}</td>
+            <td>${(c.related_eccn || []).map(e => `<span class="eccn-tag">${e}</span>`).join("")}</td>
+            <td>${(c.usml_parallel || []).map(u => `<span class="eccn-tag">${u}</span>`).join("") || "—"}</td>
+            <td>${c.fefta || "—"}</td>
+          </tr>`).join("")}</tbody>
+      </table>`;
+  } catch(e) {
+    document.getElementById(containerId).innerHTML = `<div class="loading">エラー: ${e.message}</div>`;
+  }
+}
+
 function switchTab(name) {
-  document.querySelectorAll("#result-area .tab-btn").forEach(b => b.classList.toggle("active", b.textContent.toLowerCase().includes(name)));
+  document.querySelectorAll("#result-area .tab-btn").forEach(b => b.classList.toggle("active", b.onclick.toString().includes(`'${name}'`)));
   document.querySelectorAll("#result-area .tab-pane").forEach(p => {
     p.classList.toggle("active", p.id === `tab-${name}`);
   });
@@ -266,9 +301,10 @@ function switchTabRef(name) {
   });
 }
 
-// 初期ロード: USML/EU テーブルを表示
+// 初期ロード: USML/EU/Wassenaar テーブルを表示
 loadUsmlTable("usml-ref-container");
 loadEuTable("eu-ref-container");
+loadWassenaarTable("wa-ref-container");
 </script>
 </body>
 </html>

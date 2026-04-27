@@ -53,6 +53,7 @@ _FEFTA_JSON     = _STAGING / "fefta_law_v5.json"
 _ECCN_JSON      = _STAGING / "ccl_eccn_entries_v8.json"
 _USML_JSON      = _STAGING / "usml_itar_entries.json"
 _EU_DU_JSON     = _STAGING / "eu_dual_use_entries.json"
+_WA_ML_JSON     = _STAGING / "wassenaar_ml_entries.json"
 _OUT_INDEX      = _STAGING / "layer_a.index"
 _OUT_META       = _STAGING / "layer_a_meta.json"
 
@@ -204,6 +205,35 @@ def _load_records() -> list[dict]:
                 "article_no":  f"EU-{cat}",
                 "title":       title,
                 "item_no":     f"EU-{cat}",
+                "item_label":  cat,
+                "chunk_level": "category",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
+                "embed_text":  et,
+            })
+
+    # ── Wassenaar Arrangement Munitions List ─────────────────────────────────
+    if not _WA_ML_JSON.exists():
+        logger.warning("Wassenaar ML JSON not found: %s", _WA_ML_JSON)
+    else:
+        with open(_WA_ML_JSON, encoding="utf-8") as f:
+            wa_data = json.load(f)
+        wa_entries = wa_data.get("entries", [])
+        logger.info("Wassenaar ML categories: %d", len(wa_entries))
+        for r in wa_entries:
+            cat   = r.get("ml_category", "")
+            title = r.get("title", "")
+            desc  = r.get("description", "")
+            items = "; ".join(r.get("key_items", []))
+            full  = f"Wassenaar Munitions List {cat}: {title}. {desc} Key items: {items}"
+            et    = _PASSAGE_PREFIX + full
+            records.append({
+                "source_type": "wassenaar_ml",
+                "source_name": "wassenaar_arrangement_2023",
+                "article_no":  cat,
+                "title":       title,
+                "item_no":     cat,
                 "item_label":  cat,
                 "chunk_level": "category",
                 "value_mm":    None,
