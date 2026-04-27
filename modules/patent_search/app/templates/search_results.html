@@ -20,7 +20,34 @@
     <button id="btnScreenApplicants" onclick="screenApplicants()" style="background:#1e40af;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:.85rem;">
       🔍 出願人スクリーニング
     </button>
+    <button id="btnFtermCheck" onclick="toggleFtermPanel()" style="background:#065f46;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:.85rem;">
+      📋 F-term 規制照合
+    </button>
     <span id="screeningStatus" style="font-size:.8rem;color:#6b7280;"></span>
+  </div>
+
+  <!-- F-term 規制照合パネル -->
+  <div id="ftermPanel" style="display:none; margin-bottom:16px; border:1px solid #d1fae5; border-radius:6px; overflow:hidden;">
+    <div style="background:#ecfdf5; padding:8px 14px; font-size:.85rem; font-weight:600; border-bottom:1px solid #d1fae5; display:flex; align-items:center; gap:12px;">
+      <span>📋 Fターム規制照合（ECCN / 外為法）</span>
+      <span id="ftermSuggestInfo" style="font-weight:400; color:#065f46; font-size:.8rem;"></span>
+    </div>
+    <div style="padding:12px 14px;">
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+        <input id="ftermInput" type="text" placeholder="例: 5F048, 5J104, G21C（カンマ区切りで複数入力）"
+               style="flex:1; min-width:280px; padding:6px 10px; border:1px solid #d1fae5; border-radius:4px; font-size:.85rem;"
+               onkeydown="if(event.key==='Enter') runFtermBatch()" />
+        <button onclick="runFtermBatch()"
+                style="background:#059669;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:.85rem;">
+          照合実行
+        </button>
+        <button onclick="suggestFterms()"
+                style="background:#6b7280;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:.8rem;">
+          キーワードから候補提案
+        </button>
+      </div>
+      <div id="ftermResults" style="font-size:.83rem;"></div>
+    </div>
   </div>
 
   <!-- スクリーニング結果パネル -->
@@ -193,6 +220,81 @@
 
   function _esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Fターム規制照合 ──────────────────────────────────────────────────────
+
+  function toggleFtermPanel() {
+    const p = document.getElementById('ftermPanel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function runFtermBatch() {
+    const raw = document.getElementById('ftermInput').value.trim();
+    if (!raw) { document.getElementById('ftermResults').innerHTML = '<span style="color:#9ca3af;">Fタームコードを入力してください</span>'; return; }
+    const codes = raw.split(/[\s,、]+/).filter(Boolean);
+    const el = document.getElementById('ftermResults');
+    el.innerHTML = '照合中…';
+    try {
+      const resp = await fetch(_moduleBase + '/api/fterm-compliance/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fterm_codes: codes })
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+
+      const riskColors = { high: '#fee2e2', medium: '#fffbeb', none: '#f0fdf4' };
+      const riskLabels = { high: '🔴 HIGH', medium: '⚠️ MEDIUM', none: '✅ NONE' };
+      let html = `<div style="padding:8px 10px; background:${riskColors[data.overall_risk]||'#f9fafb'}; border-radius:4px; margin-bottom:8px;">
+        <strong>総合リスク: ${riskLabels[data.overall_risk]||data.overall_risk}</strong>
+        &nbsp;|&nbsp; 照合コード: ${data.total_codes}件
+        &nbsp;|&nbsp; マッチ: ${data.matched}件`;
+      if (data.eccns_detected.length) html += `&nbsp;|&nbsp; 検出ECCN: <strong>${data.eccns_detected.join(', ')}</strong>`;
+      if (data.fefta_items.length) html += `&nbsp;|&nbsp; 外為法: <strong>${data.fefta_items.join(', ')}</strong>`;
+      html += `</div>`;
+
+      if (data.details.length) {
+        html += `<table style="width:100%; border-collapse:collapse; font-size:.8rem; margin-top:4px;">
+          <thead><tr style="background:#f9fafb;">
+            <th style="padding:4px 8px; text-align:left;">Fターム</th>
+            <th style="padding:4px 8px; text-align:left;">マッチ</th>
+            <th style="padding:4px 8px; text-align:left;">ECCN</th>
+            <th style="padding:4px 8px; text-align:left;">外為法</th>
+          </tr></thead><tbody>`;
+        data.details.forEach(r => {
+          const risk = r.high_risk ? '🔴 HIGH' : (r.found ? '⚠️ 要確認' : '— 未収録');
+          html += `<tr style="border-bottom:1px solid #e5e7eb;">
+            <td style="padding:4px 8px; font-family:monospace;">${_esc(r.fterm)}</td>
+            <td style="padding:4px 8px;">${risk}</td>
+            <td style="padding:4px 8px;">${(r.eccns||[]).map(e=>`<span style="background:#ede9fe;padding:1px 5px;border-radius:3px;font-size:.75rem;">${_esc(e)}</span>`).join(' ')}</td>
+            <td style="padding:4px 8px;">${(r.fefta_items||[]).join(', ')||'—'}</td>
+          </tr>`;
+        });
+        html += `</tbody></table>`;
+      }
+      el.innerHTML = html;
+    } catch(e) {
+      el.innerHTML = `<span style="color:#ef4444;">エラー: ${_esc(e.message)}</span>`;
+    }
+  }
+
+  async function suggestFterms() {
+    const kw = `{{ keywords }}`;
+    if (!kw || kw === 'None') { alert('検索キーワードが必要です'); return; }
+    const el = document.getElementById('ftermSuggestInfo');
+    el.textContent = 'キーワードから候補検索中…';
+    try {
+      const resp = await fetch(_moduleBase + '/api/fterm-compliance/suggest?keyword=' + encodeURIComponent(kw) + '&limit=8');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      if (!data.suggestions.length) { el.textContent = `"${kw}" に関連するFタームは見つかりませんでした`; return; }
+      const codes = data.suggestions.map(s => s.fterm).join(', ');
+      document.getElementById('ftermInput').value = codes;
+      el.textContent = `"${kw}" から ${data.suggestions.length}件提案`;
+    } catch(e) {
+      el.textContent = 'エラー: ' + e.message;
+    }
   }
 
   // ── エクスポート ─────────────────────────────────────────────────────────

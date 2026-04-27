@@ -131,6 +131,71 @@ async def get_fterms_by_eccn(eccn: str):
     return {"eccn": eccn_key, "total": len(entries), "fterms": entries}
 
 
+_EN_JA_SUGGEST: dict[str, list[str]] = {
+    "semiconductor": ["半導体", "トランジスタ", "fet"],
+    "laser": ["レーザー", "光"],
+    "cryptograph": ["暗号", "crypto"],
+    "nuclear": ["核", "原子炉", "ウラン"],
+    "missile": ["ミサイル", "ロケット"],
+    "radar": ["レーダー", "radar"],
+    "drone": ["無人機", "uav", "ドローン"],
+    "chemical": ["化学", "chemical"],
+    "biological": ["生物", "バイオ"],
+    "aircraft": ["航空機", "エンジン"],
+    "optic": ["光学", "光"],
+    "sensor": ["センサー", "検出"],
+    "robot": ["ロボット", "自動化"],
+    "material": ["材料", "合金"],
+    "computer": ["コンピュータ", "計算機"],
+    "network": ["ネットワーク", "通信"],
+}
+
+
+@router.get("/fterm-compliance/suggest",
+            summary="キーワードからFタームを提案")
+async def suggest_fterms(keyword: str, limit: int = 5):
+    """
+    検索キーワードからFタームマッピングに含まれる関連コードを提案する。
+    rationale テキストのキーワードマッチで上位 limit 件を返す。
+    英語キーワードは日本語変換テーブルでも照合する。
+    """
+    mapping = _load_mapping()
+    idx = mapping.get("fterm_to_eccn_index", {})
+    kw = keyword.strip().lower()
+    if not kw:
+        return {"keyword": keyword, "suggestions": []}
+
+    # 英語→日本語展開
+    search_terms = [kw]
+    for en_key, ja_list in _EN_JA_SUGGEST.items():
+        if kw in en_key or en_key in kw:
+            search_terms.extend(ja_list)
+
+    scored: list[tuple[int, str, list]] = []
+    for fterm, entries in idx.items():
+        score = 0
+        for e in entries:
+            rat = (e.get("rationale") or "").lower()
+            eccn = (e.get("eccn") or "").lower()
+            for term in search_terms:
+                score += rat.count(term) * 2
+            score += 1 if kw in eccn else 0
+        if score > 0:
+            scored.append((score, fterm, entries))
+
+    scored.sort(key=lambda x: -x[0])
+    suggestions = [
+        {
+            "fterm": ft,
+            "eccns": list({e["eccn"] for e in entries}),
+            "fefta": list({e["fefta"] for e in entries if e.get("fefta")}),
+            "score": sc,
+        }
+        for sc, ft, entries in scored[:limit]
+    ]
+    return {"keyword": keyword, "total": len(scored), "suggestions": suggestions}
+
+
 @router.get("/fterm-compliance/{fterm_code}",
             response_model=FtermComplianceResult,
             summary="Fターム → ECCN / 外為法照合")
