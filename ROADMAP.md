@@ -596,7 +596,7 @@ lsof | grep ".db$" | grep -v ".venv"
 |--------|--------|------|------|
 | D2-1 | ITAR/USML 収録 | 22 CFR Part 121 全21カテゴリ + regulatory.py API | ✅ 完了 |
 | D2-2 | EU Dual-Use Regulation Annex I | EU 2021/821 全10カテゴリ + regime-check API | ✅ 完了 |
-| D2-3 | Wassenaar ML/TN リスト | Wassenaar Arrangement 武器リスト + Tier 1/2/3 | ⬜ 未着手 |
+| D2-3 | Wassenaar ML/TN リスト | Wassenaar Arrangement ML全22カテゴリ + regulatory API拡張 | ✅ 完了 |
 | D2-4 | EPA/FTA 特恵税率 DB | 日本締結 21本 + RCEP 特恵税率テーブル | ⬜ 未着手 |
 | D2-5 | JP/EP特許の定期収集 | patent_search → ai_validation 連携 + 定期収集スケジューラー | ⬜ 未着手 |
 
@@ -615,15 +615,16 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | Integration A | ItemVersion → AI Validation 「AI再判定」ボタン |
 | ✅ | Integration B | AI Validation → 輸出許可申請 自動ドラフト |
 | ✅ | Integration C | SupplyChainNode ↔ plat_item UUID FK 紐付け |
-| ★★★★☆ | グローバル規制レジーム UI | /ui/regime-check 画面（ITAR/EU/MTCR/NSG/AG 一括照合） |
-| ★★★★☆ | Fターム検索統合 | patent_search 検索結果に Fterm 規制フラグ自動表示 |
-| ★★★★☆ | Screening → 与信管理 自動連携 | 取引先登録時に screening API を自動呼出し |
+| ✅ | グローバル規制レジーム UI | /ui/regime-check 画面（ITAR/EU/MTCR/NSG/AG/Wassenaar 一括照合） |
+| ✅ | Fターム検索統合 | patent_search 検索結果にF-term規制照合パネル + キーワード候補提案 |
+| ✅ | Screening → 与信管理 自動連携 | 取引先登録時に screening API を BackgroundTasks で自動呼出し |
 | ★★★★☆ | サプライヤーポータル拡張 | メール自動送信（招待URL通知）・添付ファイルアップロード |
 | ★★★☆☆ | 輸出許可申請拡張 | 申請番号体系・利用額追跡（value_remaining）・期限アラートメール |
 | ★★★☆☆ | Layer D データ収集実行 | API Key 取得後に collect_academic_papers.py を全 ECCN で実行 |
-| ★★☆☆☆ | Wassenaar D2-3 収録 | ML/TN リスト収録・regulatory API 拡張 |
+| ★★★☆☆ | D2-4 EPA/FTA 特恵税率 DB | 日本締結 21本 + RCEP 特恵税率テーブル |
+| ★★☆☆☆ | D2-5 JP/EP特許 定期収集 | patent_search → ai_validation 連携 + 定期収集スケジューラー |
 
 ---
 
-*更新: 2026-04-28（データ拡充 D1-2/D1-4/D2-1/D2-2 完了 — 制裁7ソース対応/Fターム130コード/ITAR21カテゴリ/EU10カテゴリ）*
+*更新: 2026-04-28（D2-3 Wassenaar ML22カテゴリ・Screening→与信自動連携・Fterm検索統合・グローバル規制UI 完了）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
