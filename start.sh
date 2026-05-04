@@ -37,7 +37,7 @@ if [[ "${1:-}" == "--stop" ]]; then
     warn "PID ファイルが見つかりません。手動で確認してください。"
   fi
   # モジュールポートを強制解放
-  for PORT in 8011 8002 8003 8004 8005 8006 8010 11434; do
+  for PORT in 5001 8011 8002 8003 8004 8005 8006 8010 11434; do
     PID_PORT=$(lsof -ti tcp:"$PORT" 2>/dev/null || true)
     if [[ -n "$PID_PORT" ]]; then
       kill "$PID_PORT" 2>/dev/null && info "ポート $PORT (PID $PID_PORT) を解放しました"
@@ -201,6 +201,25 @@ info "ERP Integration Adapter をポート 5001 で起動します…"
   exec "$VENV/uvicorn" modules.erp_integration.app.main:app \
     --host 0.0.0.0 --port 5001) &
 ok "ERP Integration Adapter 起動済み (PID $!)"
+
+# ── 各機能モジュール (8002–8006) をバックグラウンドで起動 ──────────────
+for _MOD_ENTRY in "ai_classification:8002" "rnd_assessment:8003" "patent_search:8004" "screening:8005" "hs_classifier:8006"; do
+  _MOD_KEY="${_MOD_ENTRY%%:*}"
+  _MOD_PORT="${_MOD_ENTRY##*:}"
+  _MOD_DIR="$SCRIPT_DIR/modules/$_MOD_KEY"
+  _MOD_OLD=$(lsof -ti tcp:"$_MOD_PORT" 2>/dev/null || true)
+  if [[ -n "$_MOD_OLD" ]]; then
+    warn "ポート $_MOD_PORT の既存プロセス (PID $_MOD_OLD) を停止します…"
+    kill "$_MOD_OLD" 2>/dev/null || true
+    sleep 0.5
+  fi
+  info "$_MOD_KEY をポート $_MOD_PORT で起動します…"
+  (cd "$_MOD_DIR" && PYTHONPATH="$_MOD_DIR:$PLATFORM_CORE" \
+    exec "$VENV/uvicorn" app.main:app \
+      --host 0.0.0.0 --port "$_MOD_PORT" \
+      >/tmp/${_MOD_KEY}.log 2>&1) &
+  ok "$_MOD_KEY 起動済み (PID $!)"
+done
 
 # ── DAP (port 8010) をバックグラウンドで起動 ────────────────────────
 # StaticFiles が相対パス "app/static" を使うため DAP_DIR に cd してから起動する
