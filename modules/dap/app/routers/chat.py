@@ -50,7 +50,7 @@ router = APIRouter(tags=["chat"])
 
 # ── モジュール名マッピング（port → 表示名）────────────────────────────
 _MODULE_MAP: dict[str, str] = {
-    "8001": "AI 該非判定（ai_validation）",
+    "8011": "AI 該非判定（ai_validation）",
     "8002": "品目管理（ai_classification）",
     "8003": "R&D リスク管理（rnd_assessment）",
     "8004": "特許検索（patent_search）",
@@ -63,13 +63,13 @@ _MODULE_MAP: dict[str, str] = {
 _WORKFLOW_STAGES: dict[str, str] = {
     "8003": "R&D審査",
     "8002": "品目管理",
-    "8001": "AI該非判定",
+    "8011": "AI該非判定",
     "8005": "スクリーニング",
     "8006": "HSコード判定",
     "8004": "特許調査",
     "8000": "プラットフォーム",
 }
-_WORKFLOW_ORDER = ["8003", "8002", "8001", "8005"]  # 推奨フロー順
+_WORKFLOW_ORDER = ["8003", "8002", "8011", "8005"]  # 推奨フロー順
 
 # ── サーバーサイド・セッションストア ─────────────────────────────────
 # {session_id: {"history": [...], "task": str}}

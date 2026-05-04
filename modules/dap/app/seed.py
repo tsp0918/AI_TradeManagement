@@ -176,7 +176,7 @@ def _ensure_ai_validation(db: Session) -> None:
         app_id=app.id,
         page_key="transaction_new",
         name="案件新規作成",
-        url_regex=r".*(localhost|127\.0\.0\.1):8001/ui/transactions/new",
+        url_regex=r".*(localhost|127\.0\.0\.1):8011/ui/transactions/new",
         must_have={},
     )
     db.add(page_new)
@@ -280,7 +280,7 @@ def _ensure_ai_validation(db: Session) -> None:
         app_id=app.id,
         page_key="transaction_detail",
         name="案件詳細",
-        url_regex=r".*(localhost|127\.0\.0\.1):8001/ui/transactions/\d+$",
+        url_regex=r".*(localhost|127\.0\.0\.1):8011/ui/transactions/\d+$",
         must_have={},
     )
     db.add(page_detail)

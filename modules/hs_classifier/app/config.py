@@ -8,12 +8,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _MODULE_DIR = Path(__file__).resolve().parents[1]   # modules/hs_classifier/
 _DATA_DIR   = _MODULE_DIR / "data"
+_ENV_FILE   = Path(__file__).resolve().parents[3] / ".env"   # AI_TradeManagement/.env
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="HS_CLASSIFIER_",
-        env_file=".env",
+        env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         extra="ignore",
     )

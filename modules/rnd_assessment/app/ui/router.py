@@ -27,7 +27,7 @@ from app.models.personnel import Personnel
 from app.services.deemed_export import run_screening as _run_deemed_screening
 
 import os as _os
-AI_VALIDATION_BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8001")
+AI_VALIDATION_BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
 SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
 
 
