@@ -133,6 +133,7 @@
     <div class="sidebar-header">🔄 品目バージョン管理</div>
     <div class="nav-item active" onclick="showTab('events')">⚠️ 影響イベント</div>
     <div class="nav-item" onclick="showTab('items')">📦 品目一覧</div>
+    <div class="nav-item" onclick="openErpSyncModal()" style="color:var(--blue);">🔗 ERP へ品目同期</div>
     <div class="nav-item" style="margin-top:auto; color:var(--muted); font-size:.8rem; cursor:default;">
       Webhook: POST /api/item-versions/webhook
     </div>
@@ -207,6 +208,7 @@
         <div class="filter-bar">
           <input type="text" id="itemSearch" placeholder="品目名で検索..." oninput="loadItems()" style="width:240px;">
           <button class="btn btn-ghost" onclick="loadItems()">🔄 更新</button>
+          <button class="btn btn-primary" onclick="openErpSyncModal()" style="margin-left:auto;">🔗 ERP へ品目同期</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -703,9 +705,66 @@ document.querySelectorAll('.overlay').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
 });
 
+// ── ERP 品目同期 ────────────────────────────────────────────────────────
+async function openErpSyncModal() {
+  document.getElementById('erpSyncBody').innerHTML = '<p style="color:var(--muted)">プレビュー取得中…</p>';
+  document.getElementById('erpSyncOverlay').classList.add('open');
+  try {
+    const r = await fetch('/api/item-versions/sync-preview');
+    const d = await r.json();
+    let html = `<p>ECCN 設定済み品目: <strong>${d.items_with_eccn}</strong> 件 / 全 ${d.total_items} 件</p>`;
+    html += `<div class="table-wrap" style="max-height:240px;overflow-y:auto;margin-top:12px;">
+      <table><thead><tr><th>品目コード</th><th>品目名</th><th>ECCN</th><th>ステータス</th></tr></thead><tbody>`;
+    for (const i of d.preview) {
+      html += `<tr><td>${i.item_code||'—'}</td><td>${escHtml(i.name)}</td>
+        <td>${i.eccn||'—'}</td><td>${i.export_control_status||'—'}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (d.items_with_eccn > d.preview.length) {
+      html += `<p style="color:var(--muted);margin-top:8px;font-size:.85rem;">※ 先頭 ${d.preview.length} 件を表示。同期実行時は全件が対象です。</p>`;
+    }
+    document.getElementById('erpSyncBody').innerHTML = html;
+    document.getElementById('btnDoSync').disabled = d.items_with_eccn === 0;
+  } catch(e) {
+    document.getElementById('erpSyncBody').innerHTML = `<p style="color:var(--red)">プレビュー取得に失敗しました: ${e}</p>`;
+  }
+}
+
+async function doErpSync() {
+  const btn = document.getElementById('btnDoSync');
+  btn.disabled = true; btn.textContent = '同期中…';
+  try {
+    const r = await fetch('/api/item-versions/sync-to-erp', { method: 'POST' });
+    const d = await r.json();
+    document.getElementById('erpSyncBody').innerHTML =
+      `<p style="color:var(--green)">✓ ${d.message}</p>`;
+    btn.textContent = '同期完了';
+  } catch(e) {
+    document.getElementById('erpSyncBody').innerHTML =
+      `<p style="color:var(--red)">同期に失敗しました: ${e}</p>`;
+    btn.disabled = false; btn.textContent = '同期する';
+  }
+}
+
 // ── init ──────────────────────────────────────────────────────────────
 loadStats();
 loadEvents();
 </script>
+
+<!-- ── ERP 品目同期モーダル ── -->
+<div class="overlay" id="erpSyncOverlay">
+  <div class="modal" style="width:680px;">
+    <h3>🔗 ERP へ品目マスタを同期</h3>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:12px;">
+      ECCN が設定された品目を ERP に一括プッシュします。<br>
+      ERP 側で AI_TM_REVIEW_STATUS / AI_TM_ITEM_ID が更新されます。
+    </p>
+    <div id="erpSyncBody"><p style="color:var(--muted)">読み込み中…</p></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('erpSyncOverlay')">キャンセル</button>
+      <button class="btn btn-primary" id="btnDoSync" onclick="doErpSync()">ERP へ同期する</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

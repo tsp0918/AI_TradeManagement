@@ -187,6 +187,16 @@ _KNOWN_MODULES: list[dict] = [
         "nav_section":       "tools",
     },
     {
+        "key":               "transaction_review",
+        "name":              "取引審査キュー",
+        "description":       "ERP 取引伝票・出荷伝票の輸出審査状況と手動承認キューを管理",
+        "base_url":          "",
+        "iframe_url":        "/ui/transaction-reviews",
+        "icon":              "📝",
+        "health_check_path": "",
+        "nav_section":       "tools",
+    },
+    {
         "key":               "compliance_lookup",
         "name":              "コンプライアンス進捗管理",
         "description":       "品目ごとの7ステージ進捗・未完了アクション・変化点タイムラインを一覧管理",
@@ -555,6 +565,12 @@ async def export_license_ui(request: Request):
 async def item_version_ui(request: Request):
     """品目バージョン管理・仕様変更コンプライアンス影響検知画面。"""
     return templates.TemplateResponse(request, "item_version.html", {})
+
+
+@router.get("/transaction-reviews", response_class=HTMLResponse, include_in_schema=False)
+async def transaction_review_ui(request: Request):
+    """取引審査キュー画面。"""
+    return templates.TemplateResponse(request, "transaction_review.html", {})
 
 
 @router.get("/compliance-lookup", response_class=HTMLResponse, include_in_schema=False)

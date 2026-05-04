@@ -1,10 +1,11 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-04-26 更新（コンプライアンス進捗管理 Lookup 実装完了）
+# 2026-04-29 更新（Layer A インデックス品質改善・5項/8項追加・ECCN embed_text 修正）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
+> 2026-04-29 追加: Layer A 再ビルド（2,922→2,999vec）。ECCN embed_text バグ修正（full body埋め込み）・外為法5項(化学/生物兵器製造装置)/8項(コンピュータ)12件ずつ追加・USML/EU/Wassenaar収録。
+> 2026-04-28 追加: D2-3 Wassenaar Arrangement ML 22カテゴリ・グローバル規制UIレジームチェック・Screening→与信管理自動連携・Fterm検索統合完了。
 > 2026-04-26 追加: 品目バージョン管理 + 仕様変更コンプライアンス影響検知 実装完了。
 > 2026-04-26 追加: コンプライアンス進捗管理 Lookup（7ステージパイプライン / オープンアクション / 変化点フィード）実装完了。
-> 2026-04-26 追加: ai_validation ポート 8001 → 8011 移行（Docker 競合解消）。
 
 ---
 
@@ -35,7 +36,7 @@
 | HanteiAgent | agent/hantei_agent.py | ✅ 完成 |
 | AgentTools（FAISS呼出・キャッチオール詳細） | agent/tools.py | ✅ 完成 |
 | キャッチオールエンジン | ontology/rules/catchall_engine.py | ✅ 完成 |
-| FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ 2,922vec（P3-1完了）|
+| FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ 2,999vec（2026-04-29再ビルド・USML/EU/Wassenaar追加・5項/8項追加・ECCN embed_text修正）|
 | FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ 1,595vec |
 | FAISS Layer C（HSコード） | services/faiss_e5_service.py | ✅ 5,476vec |
 | FAISS Layer D（学術論文） | services/faiss_e5_service.py | ✅ collect_academic_papers.py + build_layer_d.py で構築 |
@@ -217,7 +218,7 @@ search.py (GET /status):
 
 | タスク | 内容 | 状態 |
 |--------|------|------|
-| P3-1 | Layer A 再ビルド | ✅ 2,040vec → 2,922vec（law:990, entity_list:835, eccn:637, parameter:406, tsutatsu:54）|
+| P3-1 | Layer A 再ビルド（最新） | ✅ 2,999vec（law:1014, entity_list:835, eccn:637, parameter:406, tsutatsu:54, usml_itar:21, eu_dual_use:10, wassenaar_ml:22）2026-04-29 |
 | P3-2 | CISTEC対照表照合・HS→ECCNマッピング精度向上 | ✅ 90エントリ拡充・chapterフォールバック追加 |
 | P3-3 | 特許出願人制裁リスト一括照合 | ✅ patent_search × screening 連携 |
 | P3-4 | 月次制裁リスト自動同期 | ✅ OFAC SDN / BIS Entity List 月次スケジューラー |
@@ -464,7 +465,7 @@ Ph.D — patent_search 双方向リンク
 
 | データ | 優先度 | 現状 | 次のアクション |
 |--------|--------|------|-------------|
-| 外為法（FEFTA）省令 | ★★★★★ | ✅ 191/191 ノード充填済・Layer A 2,922vec 再ビルド完了 | — |
+| 外為法（FEFTA）省令 | ★★★★★ | ✅ 191/191 ノード充填済・Layer A 2,999vec 再ビルド完了（5項/8項追加・ECCN embed_text修正）| — |
 | ECCN/EAR Part774 | ★★★★☆ | ✅ 84/84 requirement_text 充填済 | 追加パラメータ精査（低優先） |
 | 制裁リスト | ★★★★★ | ✅ OFAC/BIS 公式ソース・月次自動同期（P3-4完了） | — |
 | HS コード対照表 | ★★★★☆ | ✅ v2: 1,577件・ECCN付加90エントリ・NACCS 9桁 11,368件 | — |
@@ -618,6 +619,7 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | グローバル規制レジーム UI | /ui/regime-check 画面（ITAR/EU/MTCR/NSG/AG/Wassenaar 一括照合） |
 | ✅ | Fターム検索統合 | patent_search 検索結果にF-term規制照合パネル + キーワード候補提案 |
 | ✅ | Screening → 与信管理 自動連携 | 取引先登録時に screening API を BackgroundTasks で自動呼出し |
+| ✅ | Layer A インデックス品質改善 | ECCN embed_text修正・5項(CB製造装置)/8項(コンピュータ)追加・USML/EU/Wassenaar収録 → 2,999vec |
 | ★★★★☆ | サプライヤーポータル拡張 | メール自動送信（招待URL通知）・添付ファイルアップロード |
 | ★★★☆☆ | 輸出許可申請拡張 | 申請番号体系・利用額追跡（value_remaining）・期限アラートメール |
 | ★★★☆☆ | Layer D データ収集実行 | API Key 取得後に collect_academic_papers.py を全 ECCN で実行 |
@@ -626,5 +628,5 @@ lsof | grep ".db$" | grep -v ".venv"
 
 ---
 
-*更新: 2026-04-28（D2-3 Wassenaar ML22カテゴリ・Screening→与信自動連携・Fterm検索統合・グローバル規制UI 完了）*
+*更新: 2026-04-29（Layer A 再ビルド 2,999vec・ECCN embed_text修正・外為法5項/8項追加完了）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*

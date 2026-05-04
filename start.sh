@@ -189,6 +189,19 @@ info "ai_validation をポート 8011 で起動します…"
     --host 0.0.0.0 --port 8011) &
 ok "ai_validation 起動済み (PID $!)"
 
+# ── ERP Integration Adapter (port 5001) をバックグラウンドで起動 ─────
+_ERP_INT_OLD=$(lsof -ti tcp:5001 2>/dev/null || true)
+if [[ -n "$_ERP_INT_OLD" ]]; then
+  warn "ポート 5001 の既存プロセス (PID $_ERP_INT_OLD) を停止します…"
+  kill "$_ERP_INT_OLD" 2>/dev/null || true
+  sleep 1
+fi
+info "ERP Integration Adapter をポート 5001 で起動します…"
+(cd "$SCRIPT_DIR" && PYTHONPATH="$PLATFORM_CORE" \
+  exec "$VENV/uvicorn" modules.erp_integration.app.main:app \
+    --host 0.0.0.0 --port 5001) &
+ok "ERP Integration Adapter 起動済み (PID $!)"
+
 # ── DAP (port 8010) をバックグラウンドで起動 ────────────────────────
 # StaticFiles が相対パス "app/static" を使うため DAP_DIR に cd してから起動する
 # 再起動時に旧プロセスが残っていると "address already in use" で即終了するため事前に解放する

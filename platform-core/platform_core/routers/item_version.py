@@ -3,6 +3,7 @@
 エンドポイント:
 - GET  /api/item-versions/stats                              ダッシュボード統計
 - GET  /api/item-versions/items                              品目一覧（現行バージョン付き）
+- POST /api/item-versions/items                              品目作成・upsert（item_code 重複時は更新）
 - GET  /api/item-versions/items/{item_id}                    品目詳細（全バージョン履歴）
 - POST /api/item-versions/items/{item_id}/versions           新バージョン作成（変更申請）
 - GET  /api/item-versions/versions/{version_id}              バージョン詳細
@@ -253,6 +254,16 @@ class VersionCreate(BaseModel):
     source_ref: str | None = None
 
 
+class ItemUpsert(BaseModel):
+    """品目の作成・更新（ERP 等外部システムからの同期用）。"""
+    item_code: str | None = None
+    name: str
+    description: str | None = None
+    eccn: str | None = None
+    hs_code: str | None = None
+    export_control_status: str | None = None
+
+
 class WebhookPayload(BaseModel):
     """外部システム（PLM/SDS DB/ERP）からの変更通知。"""
     item_id: str
@@ -442,6 +453,43 @@ async def list_items(
             "open_events": open_ev_cnt or 0,
         })
     return result
+
+
+@router.post("/items", status_code=201)
+async def upsert_item(body: ItemUpsert, db: AsyncSession = Depends(get_db)):
+    """品目を作成または更新する（item_code が一致する場合は更新）。ERP 同期用。"""
+    existing: Item | None = None
+    if body.item_code:
+        existing = (await db.execute(
+            select(Item).where(Item.item_code == body.item_code)
+        )).scalar_one_or_none()
+
+    if existing:
+        existing.name = body.name
+        if body.description is not None:
+            existing.description = body.description
+        if body.eccn is not None:
+            existing.eccn = body.eccn
+        if body.hs_code is not None:
+            existing.hs_code = body.hs_code
+        if body.export_control_status is not None:
+            existing.export_control_status = body.export_control_status
+        await db.commit()
+        await db.refresh(existing)
+        return {"id": str(existing.id), "item_code": existing.item_code, "created": False}
+
+    item = Item(
+        item_code=body.item_code,
+        name=body.name,
+        description=body.description,
+        eccn=body.eccn,
+        hs_code=body.hs_code,
+        export_control_status=body.export_control_status or "pending",
+    )
+    db.add(item)
+    await db.commit()
+    await db.refresh(item)
+    return {"id": str(item.id), "item_code": item.item_code, "created": True}
 
 
 @router.get("/items/{item_id}")

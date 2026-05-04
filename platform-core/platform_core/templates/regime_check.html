@@ -17,12 +17,29 @@
   .form-group { display: flex; flex-direction: column; gap: 6px; }
   .form-group.full { grid-column: 1 / -1; }
   label { font-size: 0.75rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-  input, textarea { background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; padding: 10px 14px; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
-  input:focus, textarea:focus { border-color: #6366f1; }
+  input, textarea, select { background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; padding: 10px 14px; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+  input:focus, textarea:focus, select:focus { border-color: #6366f1; }
   textarea { resize: vertical; min-height: 80px; }
   .btn-check { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; padding: 10px 28px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: opacity 0.2s; }
   .btn-check:hover { opacity: 0.9; }
   .btn-check:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* 品目セレクター */
+  .item-selector-wrap { position: relative; }
+  .item-search-input { width: 100%; }
+  .item-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #1e293b; border: 1px solid #334155; border-radius: 8px; z-index: 100; max-height: 220px; overflow-y: auto; box-shadow: 0 8px 24px #00000060; display: none; }
+  .item-dropdown.open { display: block; }
+  .item-option { padding: 9px 14px; cursor: pointer; border-bottom: 1px solid #0f172a; }
+  .item-option:last-child { border-bottom: none; }
+  .item-option:hover, .item-option.focused { background: #334155; }
+  .item-option-name { font-size: 0.88rem; color: #f1f5f9; }
+  .item-option-meta { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+  .item-option-eccn { color: #a5b4fc; font-weight: 600; }
+  .item-selected-tag { display: inline-flex; align-items: center; gap: 6px; background: #312e81; border: 1px solid #4338ca; border-radius: 6px; padding: 4px 10px; font-size: 0.82rem; color: #c7d2fe; margin-top: 6px; }
+  .item-selected-tag .clear-btn { cursor: pointer; color: #94a3b8; font-size: 1rem; line-height: 1; }
+  .item-selected-tag .clear-btn:hover { color: #f87171; }
+  .manual-toggle { font-size: 0.75rem; color: #64748b; cursor: pointer; margin-top: 6px; display: inline-block; text-decoration: underline; }
+  .manual-toggle:hover { color: #94a3b8; }
 
   /* 結果エリア */
   #result-area { display: none; }
@@ -79,7 +96,28 @@
     <div class="form-row">
       <div class="form-group">
         <label>品目名 *</label>
-        <input type="text" id="item-name" placeholder="例: GaN HEMT Power Amplifier" />
+        <!-- 登録済み品目セレクター -->
+        <div id="selector-mode">
+          <div class="item-selector-wrap" id="item-selector-wrap">
+            <input type="text" class="item-search-input" id="item-search"
+              placeholder="品目名・品目コードで検索…"
+              autocomplete="off"
+              oninput="onItemSearch(this.value)"
+              onfocus="onItemSearchFocus()"
+              onblur="onItemSearchBlur()"
+              onkeydown="onItemSearchKey(event)" />
+            <div class="item-dropdown" id="item-dropdown"></div>
+          </div>
+          <div id="item-selected-display" style="display:none"></div>
+          <span class="manual-toggle" onclick="switchToManual()">手動で品目名を入力する</span>
+        </div>
+        <!-- 手動入力モード（フォールバック） -->
+        <div id="manual-mode" style="display:none">
+          <input type="text" id="item-name-manual" placeholder="例: GaN HEMT Power Amplifier" />
+          <span class="manual-toggle" onclick="switchToSelector()">登録済み品目から選択する</span>
+        </div>
+        <!-- 実際に照合で使う品目名（hidden） -->
+        <input type="hidden" id="item-name" />
       </div>
       <div class="form-group">
         <label>ECCN（任意）</label>
@@ -166,8 +204,13 @@ function regimeClass(name) {
 }
 
 async function runCheck() {
+  // 手動モードの場合は手動入力値を hidden field にコピー
+  if (document.getElementById("manual-mode").style.display !== "none") {
+    document.getElementById("item-name").value =
+      document.getElementById("item-name-manual").value.trim();
+  }
   const name = document.getElementById("item-name").value.trim();
-  if (!name) { alert("品目名を入力してください"); return; }
+  if (!name) { alert("品目名を選択または入力してください"); return; }
   const btn = document.getElementById("check-btn");
   btn.disabled = true;
   btn.textContent = "照合中…";
@@ -299,6 +342,132 @@ function switchTabRef(name) {
   document.querySelectorAll("#ref-area .tab-pane").forEach(p => {
     p.classList.toggle("active", p.id === `ref-tab-${name}`);
   });
+}
+
+// ── 品目セレクター ────────────────────────────────────────────────────────────
+let _itemCache = [];       // 検索結果キャッシュ
+let _focusedIdx = -1;      // キーボードフォーカス位置
+let _searchTimer = null;
+let _blurTimer = null;
+
+async function onItemSearch(q) {
+  clearTimeout(_searchTimer);
+  if (!q.trim()) { renderDropdown([]); return; }
+  _searchTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/item-versions/items?q=${encodeURIComponent(q)}&limit=20`);
+      _itemCache = await res.json();
+    } catch { _itemCache = []; }
+    renderDropdown(_itemCache);
+  }, 220);
+}
+
+function onItemSearchFocus() {
+  clearTimeout(_blurTimer);
+  // フォーカス時に既存キャッシュがあれば表示
+  if (_itemCache.length) renderDropdown(_itemCache);
+  else if (!document.getElementById("item-search").value) {
+    // 空の場合は全件取得してドロップダウンを開く
+    fetch("/api/item-versions/items?limit=50")
+      .then(r => r.json())
+      .then(items => { _itemCache = items; renderDropdown(items); })
+      .catch(() => {});
+  }
+}
+
+function onItemSearchBlur() {
+  // クリック選択が先に処理されるよう遅延
+  _blurTimer = setTimeout(() => closeDropdown(), 180);
+}
+
+function onItemSearchKey(e) {
+  const opts = document.querySelectorAll("#item-dropdown .item-option");
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    _focusedIdx = Math.min(_focusedIdx + 1, opts.length - 1);
+    opts.forEach((o, i) => o.classList.toggle("focused", i === _focusedIdx));
+    opts[_focusedIdx]?.scrollIntoView({ block: "nearest" });
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    _focusedIdx = Math.max(_focusedIdx - 1, 0);
+    opts.forEach((o, i) => o.classList.toggle("focused", i === _focusedIdx));
+    opts[_focusedIdx]?.scrollIntoView({ block: "nearest" });
+  } else if (e.key === "Enter" && _focusedIdx >= 0) {
+    e.preventDefault();
+    opts[_focusedIdx]?.click();
+  } else if (e.key === "Escape") {
+    closeDropdown();
+  }
+}
+
+function renderDropdown(items) {
+  _focusedIdx = -1;
+  const dd = document.getElementById("item-dropdown");
+  if (!items.length) { dd.classList.remove("open"); dd.innerHTML = ""; return; }
+  dd.innerHTML = items.map((item, i) => `
+    <div class="item-option" onmousedown="selectItem(${i})">
+      <div class="item-option-name">${escHtml(item.name)}</div>
+      <div class="item-option-meta">
+        ${item.item_code ? `<span>${escHtml(item.item_code)}</span> &nbsp;` : ""}
+        ${item.eccn ? `<span class="item-option-eccn">ECCN: ${escHtml(item.eccn)}</span>` : ""}
+        ${item.hs_code ? ` &nbsp; HS: ${escHtml(item.hs_code)}` : ""}
+      </div>
+    </div>`).join("");
+  dd.classList.add("open");
+}
+
+function selectItem(idx) {
+  clearTimeout(_blurTimer);
+  const item = _itemCache[idx];
+  if (!item) return;
+
+  // hidden field に品目名をセット
+  document.getElementById("item-name").value = item.name;
+
+  // ECCN・説明を自動入力（空の場合のみ上書き）
+  if (item.eccn) document.getElementById("eccn").value = item.eccn;
+  if (item.description && !document.getElementById("description").value.trim())
+    document.getElementById("description").value = item.description;
+
+  // 選択済みタグ表示
+  const meta = [item.item_code, item.eccn ? `ECCN: ${item.eccn}` : ""].filter(Boolean).join(" / ");
+  document.getElementById("item-selected-display").innerHTML = `
+    <div class="item-selected-tag">
+      <span>✓ ${escHtml(item.name)}${meta ? ` <small style="color:#818cf8">(${escHtml(meta)})</small>` : ""}</span>
+      <span class="clear-btn" onclick="clearItemSelection()" title="選択解除">×</span>
+    </div>`;
+  document.getElementById("item-selected-display").style.display = "block";
+  document.getElementById("item-search").style.display = "none";
+  closeDropdown();
+}
+
+function clearItemSelection() {
+  document.getElementById("item-name").value = "";
+  document.getElementById("item-search").value = "";
+  document.getElementById("item-search").style.display = "";
+  document.getElementById("item-selected-display").style.display = "none";
+  _itemCache = [];
+  document.getElementById("item-search").focus();
+}
+
+function closeDropdown() {
+  document.getElementById("item-dropdown").classList.remove("open");
+}
+
+function switchToManual() {
+  document.getElementById("selector-mode").style.display = "none";
+  document.getElementById("manual-mode").style.display = "block";
+  document.getElementById("item-name-manual").focus();
+}
+
+function switchToSelector() {
+  document.getElementById("manual-mode").style.display = "none";
+  document.getElementById("selector-mode").style.display = "block";
+  clearItemSelection();
+}
+
+function escHtml(s) {
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
 // 初期ロード: USML/EU/Wassenaar テーブルを表示

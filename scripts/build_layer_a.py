@@ -81,20 +81,29 @@ def _embed_text_fefta(rec: dict) -> str:
 
 
 def _embed_text_eccn(rec: dict) -> str:
-    """US EAR CCL エントリ → embed_text。"""
-    parts = []
-    eccn = rec.get("eccn") or rec.get("entry_number") or ""
-    title = (rec.get("title") or "").strip()
-    desc  = (rec.get("description") or rec.get("full_text") or "").strip()
-    if eccn:
-        parts.append(eccn)
-    if title:
-        parts.append(title)
-    if desc:
-        parts.append(desc)
-    if not parts:
-        return ""
-    return _PASSAGE_PREFIX + " ".join(parts)
+    """US EAR CCL エントリ → embed_text。
+    CCL JSON の実フィールド: heading / items_controlled / technical_notes / raw_text
+    """
+    eccn    = (rec.get("eccn") or rec.get("entry_number") or "").strip()
+    heading = (rec.get("heading") or "").strip()
+    items   = (rec.get("items_controlled") or "").strip()
+    tech    = (rec.get("technical_notes") or "").strip()
+    raw     = (rec.get("raw_text") or "").strip()
+
+    # heading は "ECCN 説明文" 形式なので ECCN コードの重複を除去
+    # 最大 1200 文字に制限（e5-large の 512 token 上限を考慮）
+    body = heading
+    if items and items not in body:
+        body += " " + items
+    if tech and tech not in body:
+        body += " Technical Notes: " + tech
+    if not body and raw:
+        body = raw
+
+    body = body[:1200].strip()
+    if not body:
+        return _PASSAGE_PREFIX + eccn  # 最低限 ECCN コードだけ
+    return _PASSAGE_PREFIX + body
 
 
 # ── データ読み込み ──────────────────────────────────────────────────────────────
