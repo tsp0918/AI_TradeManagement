@@ -116,6 +116,7 @@ async def push_judgment_to_erp(
             resp = await client.post(
                 f"{settings.ERP_WEBHOOK_URL}/gts/webhook/judgment-updated",
                 json=payload,
+                headers={"Authorization": f"Bearer {settings.ERP_WEBHOOK_API_KEY}"},
             )
             resp.raise_for_status()
             logger.info("Pushed judgment to ERP for %s: %s", material_code, new_judgment)

@@ -28,6 +28,7 @@ class GaihiJudgeRequest(BaseModel):
     description: str
     hs_code: Optional[str] = None
     chemical_composition: Optional[str] = None
+    eccn: Optional[str] = None  # ERP 提供の既知 ECCN（AI 未判定の場合の fallback 用）
 
 
 class GaihiJudgeResponse(BaseModel):

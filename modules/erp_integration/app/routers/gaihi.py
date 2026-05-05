@@ -36,9 +36,13 @@ async def judge_gaihi(
         raise HTTPException(status_code=502, detail=f"FAISS search error: {exc}") from exc
 
     verdict = faiss_search.derive_judgment(hits, body.hs_code)
+
+    # AI が ECCN を特定できなかった場合は ERP 提供の ECCN を fallback として使用
+    effective_eccn = verdict["eccn"] or body.eccn
+
     response = GaihiJudgeResponse(
         judgment=verdict["judgment"],
-        eccn=verdict["eccn"],
+        eccn=effective_eccn,
         item_number=verdict["item_number"],
         rationale=verdict["rationale"],
         requires_license=verdict["requires_license"],
@@ -50,7 +54,7 @@ async def judge_gaihi(
         material_code=body.material_code,
         name=body.description[:200],
         description=body.description,
-        eccn=verdict["eccn"],
+        eccn=effective_eccn,
         hs_code=body.hs_code,
         judgment=verdict["judgment"],
     )
@@ -59,7 +63,7 @@ async def judge_gaihi(
         pc_adapter.push_judgment_to_erp,
         material_code=body.material_code,
         new_judgment=verdict["judgment"],
-        new_eccn=verdict["eccn"],
+        new_eccn=effective_eccn,
         rationale=verdict["rationale"],
     )
 
