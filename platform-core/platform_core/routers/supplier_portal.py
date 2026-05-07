@@ -267,6 +267,7 @@ async def portal_submit(request: Request, token_str: str, db: AsyncSession = Dep
     await db.flush()  # ID 確定
 
     # ファイルアップロード処理
+    _MAX_FILE_BYTES = 20 * 1024 * 1024  # 20 MB per file
     supporting_docs = []
     upload_fields = form.getlist("documents")
     if upload_fields:
@@ -278,7 +279,9 @@ async def portal_submit(request: Request, token_str: str, db: AsyncSession = Dep
                 continue
             safe_name = f"{now_str}_{uploaded.filename.replace('/', '_').replace('..', '_')}"
             dest = attest_dir / safe_name
-            content = await uploaded.read()
+            content = await uploaded.read(_MAX_FILE_BYTES + 1)
+            if len(content) > _MAX_FILE_BYTES:
+                continue  # サイズ超過ファイルはスキップ
             dest.write_bytes(content)
             supporting_docs.append({
                 "filename":    safe_name,

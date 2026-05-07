@@ -331,7 +331,7 @@ async def seed_fta_data(db: AsyncSession = Depends(get_db)):
             )
         )
         if existing.scalar_one_or_none() is None:
-            db.add(FtaRate(**{k: v for k, v in r_data.items() if k != "elimination_year" or True}, id=uuid.uuid4()))
+            db.add(FtaRate(**r_data, id=uuid.uuid4()))
             added_rates += 1
 
     await db.commit()

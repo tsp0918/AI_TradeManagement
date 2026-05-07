@@ -459,7 +459,7 @@ def run_ear_check(
 ) -> Dict[str, Any]:
     """EAR Reason for Control + License Exception 判定を実行する。"""
     import sys, pathlib
-    sys.path.insert(0, str(pathlib.Path(__file__).parents[5] / "platform-core"))
+    sys.path.insert(0, str(pathlib.Path(__file__).parents[4] / "platform-core"))
     from platform_core.ontology.rules.ear_reason_engine import EARContext, evaluate_ear
 
     ctx = EARContext(
@@ -489,7 +489,7 @@ def run_eu_dual_use_check(
 ) -> Dict[str, Any]:
     """EU Dual-Use Regulation 2021/821 判定を実行する。"""
     import sys, pathlib
-    sys.path.insert(0, str(pathlib.Path(__file__).parents[5] / "platform-core"))
+    sys.path.insert(0, str(pathlib.Path(__file__).parents[4] / "platform-core"))
     from platform_core.ontology.rules.eu_dual_use_checker import EUDualUseContext, evaluate_eu_dual_use
 
     ctx = EUDualUseContext(

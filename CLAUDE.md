@@ -8,7 +8,7 @@
 | モジュール | ポート | DB | 役割 |
 |---|---|---|---|
 | platform-core | 8000 | PostgreSQL | 共通基盤・FAISS・知識グラフ・規制スケジューラー・Agent |
-| ai_validation | 8001 | SQLite | AI該非判定（FAISS Layer A/B + HanteiAgent） |
+| ai_validation | 8011 | SQLite | AI該非判定（FAISS Layer A/B + HanteiAgent）※8001はDocker占有のため8011使用 |
 | ai_classification | 8002 | SQLite | 品目管理・SDS解析・HS分類連携・国別規制プロファイル |
 | rnd_assessment | 8003 | SQLite | R&Dリスク評価・みなし輸出・人物管理 |
 | patent_search | 8004 | SQLite | 特許検索（BigQuery + J-PlatPatフォールバック） |
