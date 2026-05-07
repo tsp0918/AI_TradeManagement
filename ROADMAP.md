@@ -1,7 +1,8 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-07 更新（Priority A 完了: US EAR規制理由・EU Dual-Use・オープンクローズ戦略・ICP自己診断）
+# 2026-05-07 更新（Priority B 完了: 輸出許可証拡張・サプライヤーポータルUL・EPA/FTA特恵税率DB）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
+> 2026-05-07（3回目）追加: Priority B — 輸出許可証 申請番号自動採番・価値消費管理・期限アラートスケジューラー / サプライヤーポータル ファイルアップロード・ダウンロードAPI・証明管理UI / EPA/FTA 特恵税率 DB（日本締結10協定・8代表HS・Alembic e5f6g7h8i9j0）。
 > 2026-05-07（2回目）追加: Priority A — US EAR規制理由エンジン（11種）・EU Dual-Use チェッカー（GEA EU001-EU008）・オープンクローズ戦略マトリクス（4象限）・ICP自己診断（CISTEC 8要素32問）。
 > 2026-05-07（1回目）追加: ①経済安保法特許非公開リスクチェック・②CISTEC様式準拠輸出審査記録7年保存・③役務取引管理（外為法第25条）・④FDPR判定エンジン（4バリアント/De Minimis閾値）。
 > 2026-04-29 追加: Layer A 再ビルド（2,922→2,999vec）。ECCN embed_text バグ修正（full body埋め込み）・外為法5項(化学/生物兵器製造装置)/8項(コンピュータ)12件ずつ追加・USML/EU/Wassenaar収録。
@@ -673,7 +674,7 @@ lsof | grep ".db$" | grep -v ".venv"
 | D2-1 | ITAR/USML 収録 | 22 CFR Part 121 全21カテゴリ + regulatory.py API | ✅ 完了 |
 | D2-2 | EU Dual-Use Regulation Annex I | EU 2021/821 全10カテゴリ + regime-check API | ✅ 完了 |
 | D2-3 | Wassenaar ML/TN リスト | Wassenaar Arrangement ML全22カテゴリ + regulatory API拡張 | ✅ 完了 |
-| D2-4 | EPA/FTA 特恵税率 DB | 日本締結 21本 + RCEP 特恵税率テーブル | ⬜ 未着手 |
+| D2-4 | EPA/FTA 特恵税率 DB | 日本締結 10協定 + 代表 HS 8コード × 複数協定税率（GET /api/fta/check・/ui/fta-check） | ✅ 完了 |
 | D2-5 | JP/EP特許の定期収集 | patent_search → ai_validation 連携 + 定期収集スケジューラー | ⬜ 未着手 |
 
 ### D3 フェーズ（四半期以内）
@@ -695,13 +696,15 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | Fターム検索統合 | patent_search 検索結果にF-term規制照合パネル + キーワード候補提案 |
 | ✅ | Screening → 与信管理 自動連携 | 取引先登録時に screening API を BackgroundTasks で自動呼出し |
 | ✅ | Layer A インデックス品質改善 | ECCN embed_text修正・5項(CB製造装置)/8項(コンピュータ)追加・USML/EU/Wassenaar収録 → 2,999vec |
-| ★★★★☆ | サプライヤーポータル拡張 | メール自動送信（招待URL通知）・添付ファイルアップロード |
-| ★★★☆☆ | 輸出許可申請拡張 | 申請番号体系・利用額追跡（value_remaining）・期限アラートメール |
+| ✅ | サプライヤーポータル ファイルアップロード | enctype="multipart/form-data" + uploads/supplier/{id}/ 保存 + ダウンロード API |
+| ✅ | 輸出許可申請拡張 | EL-{TYPE}-{YEAR}-{SEQ:04d} 自動採番・POST /use-value 価値控除・期限アラートスケジューラー |
+| ✅ | D2-4 EPA/FTA 特恵税率 DB | 日本締結10協定・代表HS 8コード税率・/ui/fta-check・ポータルナビ追加 |
+| ★★★☆☆ | サプライヤーポータル メール送信 | メール自動送信（招待URL通知）— SMTP設定後に実装可能 |
+| ★★★☆☆ | FTA 税率データ拡充 | 現在は代表HSコードのみ。実務向けに品目単位の全量収録 |
 | ★★★☆☆ | Layer D データ収集実行 | API Key 取得後に collect_academic_papers.py を全 ECCN で実行 |
-| ★★★☆☆ | D2-4 EPA/FTA 特恵税率 DB | 日本締結 21本 + RCEP 特恵税率テーブル |
 | ★★☆☆☆ | D2-5 JP/EP特許 定期収集 | patent_search → ai_validation 連携 + 定期収集スケジューラー |
 
 ---
 
-*更新: 2026-04-29（Layer A 再ビルド 2,999vec・ECCN embed_text修正・外為法5項/8項追加完了）*
+*更新: 2026-05-07（Priority B 完了: 輸出許可証拡張・サプライヤーポータルUL・EPA/FTA特恵税率DB）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
