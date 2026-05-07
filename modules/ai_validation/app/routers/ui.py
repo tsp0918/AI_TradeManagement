@@ -132,14 +132,25 @@ def _create_transaction_manual(
     case_no: Optional[str] = None,
     counterparty_name: Optional[str] = None,
     parent_transaction_id: Optional[int] = None,
+    evaluator_name: Optional[str] = None,
+    evaluator_title: Optional[str] = None,
+    destination_country: Optional[str] = None,
+    end_user_name: Optional[str] = None,
+    end_use_description: Optional[str] = None,
 ) -> Transaction:
+    resolved_case_no = case_no or _make_case_no_manual()
     tx = Transaction(
-        case_no=case_no or _make_case_no_manual(),
+        case_no=resolved_case_no,
         title=title.strip() or product_code.strip() or "新規審査",
         status="draft",
         counterparty_name=counterparty_name.strip() if counterparty_name else None,
         source_module="manual",
         parent_transaction_id=parent_transaction_id,
+        evaluator_name=evaluator_name.strip() if evaluator_name else None,
+        evaluator_title=evaluator_title.strip() if evaluator_title else None,
+        destination_country=destination_country.strip().upper() if destination_country else None,
+        end_user_name=end_user_name.strip() if end_user_name else None,
+        end_use_description=end_use_description.strip() if end_use_description else None,
     )
     db.add(tx)
     db.flush()
@@ -232,6 +243,11 @@ def transaction_new_submit(
     case_no: str = Form(""),
     counterparty_name: Optional[str] = Form(None),
     parent_transaction_id: Optional[int] = Form(None),
+    evaluator_name: Optional[str] = Form(None),
+    evaluator_title: Optional[str] = Form(None),
+    destination_country: Optional[str] = Form(None),
+    end_user_name: Optional[str] = Form(None),
+    end_use_description: Optional[str] = Form(None),
 ):
     """手動入力で新規審査を作成（AIパイプラインは実行しない）。"""
     templates = request.app.state.templates
@@ -248,6 +264,11 @@ def transaction_new_submit(
             case_no=case_no.strip() or None,
             counterparty_name=counterparty_name,
             parent_transaction_id=parent_transaction_id,
+            evaluator_name=evaluator_name,
+            evaluator_title=evaluator_title,
+            destination_country=destination_country,
+            end_user_name=end_user_name,
+            end_use_description=end_use_description,
         )
         _auto_screen(db, tx)
         db.commit()

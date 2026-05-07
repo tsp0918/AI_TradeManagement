@@ -71,6 +71,15 @@ class Transaction(Base, TimestampMixin):
     supply_chain_node_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)    # platform-core plat_supply_chain_node UUID
     de_minimis_result: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)  # 取引審査時点の De Minimis 計算スナップショット
 
+    # 輸出審査記録の法的要件（外為法 7年保存・CISTEC様式準拠）
+    evaluator_name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)         # 判定者氏名
+    evaluator_title: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)        # 判定者役職
+    judgment_no: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)             # 判定書番号
+    retention_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)      # 保存期限（+7年）
+    destination_country: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)      # 仕向国 ISO alpha-2
+    end_user_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)          # 最終需要者名
+    end_use_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)           # 最終用途
+
     items: Mapped[List["TransactionItem"]] = relationship(
         back_populates="transaction",
         cascade="all, delete-orphan",

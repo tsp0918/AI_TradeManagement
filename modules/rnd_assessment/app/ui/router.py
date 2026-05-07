@@ -178,11 +178,19 @@ def case_detail(case_id: str, request: Request, db: Session = Depends(get_db)):
         .where(Personnel.case_id == case_id)
         .order_by(Personnel.created_at.desc())
     ).all()
+
+    # 特許非公開リスクチェック（経済安全保障推進法 第4章）
+    from app.services.patent_disclosure_check import check_patent_disclosure_risk
+    patent_risk = check_patent_disclosure_risk(
+        title=case.title or "",
+        description=case.description or "",
+    )
+
     return templates.TemplateResponse(request, "case_detail.html", {
-        
         "case": case,
         "enriched_profiles": enriched_profiles,
         "personnel": personnel,
+        "patent_risk": patent_risk,
     })
 
 

@@ -5,6 +5,44 @@
 {% block content %}
 <div style="max-width:900px; margin:0 auto;">
 
+  <!-- ═══ 特許非公開リスクバナー（経済安全保障推進法 第4章）═══ -->
+  {% if patent_risk and patent_risk.risk_level != "NONE" %}
+  {% set is_high = patent_risk.risk_level == "HIGH" %}
+  <div style="
+    margin-bottom:20px; padding:14px 18px;
+    background:{% if is_high %}#fff1f2{% else %}#fffbeb{% endif %};
+    border:1px solid {% if is_high %}#fca5a5{% else %}#fde68a{% endif %};
+    border-left:4px solid {% if is_high %}#ef4444{% else %}#f59e0b{% endif %};
+    border-radius:8px; font-size:.85rem;
+  ">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+      <span style="font-size:1.1rem;">{% if is_high %}🚨{% else %}⚠️{% endif %}</span>
+      <strong style="color:{% if is_high %}#991b1b{% else %}#92400e{% endif %}; font-size:.9rem;">
+        特許非公開リスク{% if is_high %}（高）{% else %}（中）{% endif %}：経済安全保障推進法 第4章
+      </strong>
+      <span style="margin-left:auto; font-size:.72rem; color:{% if is_high %}#b91c1c{% else %}#b45309{% endif %}; font-weight:700; background:{% if is_high %}#fee2e2{% else %}#fef3c7{% endif %}; padding:2px 8px; border-radius:99px;">
+        {% if is_high %}事前確認 必須{% else %}事前相談 推奨{% endif %}
+      </span>
+    </div>
+    <p style="margin:0 0 8px; color:{% if is_high %}#7f1d1d{% else %}#78350f{% endif %}; line-height:1.55;">
+      {{ patent_risk.recommended_action }}
+    </p>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+      {% for cat in patent_risk.matched_categories %}
+      <span style="font-size:.72rem; padding:2px 9px; border-radius:99px;
+                   background:{% if cat.risk_level == 'HIGH' %}#fee2e2{% else %}#fef3c7{% endif %};
+                   color:{% if cat.risk_level == 'HIGH' %}#991b1b{% else %}#92400e{% endif %};
+                   border:1px solid {% if cat.risk_level == 'HIGH' %}#fca5a5{% else %}#fde68a{% endif %};">
+        {{ cat.label }}（{{ cat.article }}）
+      </span>
+      {% endfor %}
+    </div>
+    <div style="margin-top:10px; font-size:.73rem; color:var(--muted);">
+      根拠: {{ patent_risk.law_reference }}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- パンくず -->
   <div style="font-size:.8rem; color:var(--muted); margin-bottom:16px;">
     <a href="/ui/cases" style="color:var(--primary); text-decoration:none;">プロジェクト一覧</a>

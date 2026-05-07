@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -302,14 +302,26 @@ def submit_formal_review(
     if tx.status == TransactionStatus.approved.value:
         return {"ok": True, "transaction_id": transaction_id, "status": tx.status, "already_approved": True}
 
+    submitted_at = datetime.utcnow()
     tx.status = TransactionStatus.approved.value
-    tx.formal_submitted_at = datetime.utcnow()
+    tx.formal_submitted_at = submitted_at
+
+    # 7年保存期限（外為法 第67条）を自動設定
+    if not tx.retention_until:
+        tx.retention_until = submitted_at + timedelta(days=365 * 7 + 2)  # うるう年考慮
+
+    # 判定書番号が未設定の場合は案件番号ベースで自動採番
+    if not tx.judgment_no and tx.case_no:
+        tx.judgment_no = f"JDG-{tx.case_no}-{submitted_at.strftime('%Y%m%d')}"
+
     db.commit()
     return {
         "ok": True,
         "transaction_id": transaction_id,
         "status": tx.status,
         "formal_submitted_at": tx.formal_submitted_at.isoformat(),
+        "judgment_no": tx.judgment_no,
+        "retention_until": tx.retention_until.strftime("%Y-%m-%d") if tx.retention_until else None,
     }
 
 

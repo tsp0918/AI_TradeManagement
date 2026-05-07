@@ -832,10 +832,50 @@ function renderScDmResult(d) {
   <div style="margin-top:12px">
     <div class="kv">
       <div><div class="k">case_no</div><div class="v mono">{{ tx.case_no or "-" }}</div></div>
-      {% if tx.title %}<div><div class="k">タイトル</div><div class="v">{{ tx.title }}</div></div>{% endif %}
+      {% if tx.title %}<div><div class="k">判定品目</div><div class="v">{{ tx.title }}</div></div>{% endif %}
       <div><div class="k">ステータス</div><div class="v">{{ tx.status or "-" }}</div></div>
       {% if tx.note %}<div><div class="k">note</div><div class="v">{{ tx.note }}</div></div>{% endif %}
     </div>
+
+    <!-- ── 輸出審査記録（CISTEC様式 / 外為法7年保存）── -->
+    {% if tx.judgment_no or tx.evaluator_name or tx.destination_country or tx.retention_until %}
+    <div style="margin-top:14px; padding:12px 14px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; font-size:.84rem;">
+      <div style="font-size:.72rem; font-weight:700; color:#0369a1; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px;">
+        📋 該非判定書情報（外為法 第67条・CISTEC様式）
+      </div>
+      <div class="kv" style="gap:6px;">
+        {% if tx.judgment_no %}
+        <div><div class="k">判定書番号</div><div class="v mono">{{ tx.judgment_no }}</div></div>
+        {% endif %}
+        {% if tx.evaluator_name %}
+        <div><div class="k">判定者</div><div class="v">{{ tx.evaluator_name }}{% if tx.evaluator_title %} / {{ tx.evaluator_title }}{% endif %}</div></div>
+        {% endif %}
+        {% if tx.destination_country %}
+        <div><div class="k">仕向国</div><div class="v mono">{{ tx.destination_country }}</div></div>
+        {% endif %}
+        {% if tx.end_user_name %}
+        <div><div class="k">最終需要者</div><div class="v">{{ tx.end_user_name }}</div></div>
+        {% endif %}
+        {% if tx.end_use_description %}
+        <div><div class="k">最終用途</div><div class="v" style="white-space:pre-wrap;">{{ tx.end_use_description[:200] }}</div></div>
+        {% endif %}
+        {% if tx.retention_until %}
+        <div>
+          <div class="k">保存期限</div>
+          <div class="v" style="color:#0369a1; font-weight:600;">
+            {{ tx.retention_until.strftime('%Y-%m-%d') }}
+            <span style="font-size:.72rem; color:#64748b; font-weight:400; margin-left:4px;">（外為法7年保存義務）</span>
+          </div>
+        </div>
+        {% else %}
+        <div>
+          <div class="k">保存期限</div>
+          <div class="v" style="color:#94a3b8; font-size:.8rem;">正式審査提出時に自動設定（提出日+7年）</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
 
     {% if items %}
     <div style="margin-top:12px">

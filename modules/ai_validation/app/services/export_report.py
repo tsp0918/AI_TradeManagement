@@ -76,18 +76,39 @@ def build_csv(
     buf.write("\ufeff")
     w = csv.writer(buf, lineterminator="\r\n")
 
-    # ── [A] 案件情報 ──
+    # ── [A] 案件情報（CISTEC様式準拠ヘッダー）──
     run_at_str = run_at.strftime("%Y-%m-%d %H:%M") if run_at else "-"
     c = two_lists.get("counts", {})
-    w.writerow(["【該非判定レポート】"])
-    w.writerow(["出力日時", datetime.now().strftime("%Y-%m-%d %H:%M")])
-    w.writerow(["案件番号", tx.case_no or "-"])
-    w.writerow(["タイトル", tx.title or "-"])
-    w.writerow(["取引先", getattr(tx, "counterparty_name", None) or "-"])
-    w.writerow(["ステータス", tx.status or "-"])
-    w.writerow(["最終AI解析", run_at_str])
+
+    judgment_no   = getattr(tx, "judgment_no", None) or "-"
+    evaluator     = getattr(tx, "evaluator_name", None) or "-"
+    eval_title    = getattr(tx, "evaluator_title", None) or "-"
+    retention     = getattr(tx, "retention_until", None)
+    retention_str = retention.strftime("%Y-%m-%d") if retention else "未確定（正式提出後7年）"
+    dest_country  = getattr(tx, "destination_country", None) or "-"
+    end_user      = getattr(tx, "end_user_name", None) or "-"
+    end_use       = getattr(tx, "end_use_description", None) or "-"
+    submitted_at  = getattr(tx, "formal_submitted_at", None)
+    submitted_str = submitted_at.strftime("%Y-%m-%d") if submitted_at else "-"
+
+    w.writerow(["【該非判定書】（外為法 第67条 / CISTEC様式準拠）"])
+    w.writerow([])
+    w.writerow(["■ 判定書番号",    judgment_no])
+    w.writerow(["■ 出力日時",      datetime.now().strftime("%Y-%m-%d %H:%M")])
+    w.writerow(["■ 案件番号",      tx.case_no or "-"])
+    w.writerow(["■ 判定品目",      tx.title or "-"])
+    w.writerow(["■ 仕向国",        dest_country])
+    w.writerow(["■ 最終需要者",    end_user])
+    w.writerow(["■ 最終用途",      end_use])
+    w.writerow(["■ 取引先",        getattr(tx, "counterparty_name", None) or "-"])
+    w.writerow(["■ 判定実施日",    submitted_str])
+    w.writerow(["■ 判定者氏名",    evaluator])
+    w.writerow(["■ 判定者役職",    eval_title])
+    w.writerow(["■ 保存期限",      retention_str, "（外為法第67条：7年保存義務）"])
+    w.writerow(["■ ステータス",    tx.status or "-"])
+    w.writerow(["■ 最終AI解析",    run_at_str])
     w.writerow([
-        "判定サマリー",
+        "■ 判定サマリー",
         f"★ 規制合致 {c.get('intersection', 0)} 件 / "
         f"直接一致 {c.get('core_only', 0)} 件 / "
         f"用途関連 {c.get('expanded_only', 0)} 件",

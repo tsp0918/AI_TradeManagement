@@ -84,6 +84,45 @@
           <div class="hint">入力すると取引詳細画面から制裁リストスクリーニングを実行できます。</div>
         </div>
 
+        <!-- ── 輸出審査記録フィールド（CISTEC様式 / 外為法7年保存）── -->
+        <div class="form-row" style="margin-top:8px;">
+          <div style="font-size:.78rem; font-weight:700; color:var(--muted,#6b7280); text-transform:uppercase; letter-spacing:.06em; padding-bottom:6px; border-bottom:1px solid #e5e7eb; margin-bottom:12px;">
+            輸出審査記録（外為法 第67条 / CISTEC様式）
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="label-sm">仕向国（ISO alpha-2 コード）</label>
+          <input class="input" type="text" name="destination_country" maxlength="2"
+                 placeholder="例: CN / US / KR" style="width:120px;">
+          <div class="hint">仕向国 ISO 2文字コード。キャッチオール判定に使用されます。</div>
+        </div>
+
+        <div class="form-row">
+          <label class="label-sm">最終需要者名</label>
+          <input class="input" type="text" name="end_user_name"
+                 placeholder="例: Shenzhen Research Institute">
+        </div>
+
+        <div class="form-row">
+          <label class="label-sm">最終用途</label>
+          <textarea class="textarea" name="end_use_description" rows="2"
+            placeholder="例: 自動車向け試験装置の部品として使用。工業用途。WMD・軍事用途への使用なし。"></textarea>
+        </div>
+
+        <div class="form-row">
+          <label class="label-sm">判定者氏名</label>
+          <input class="input" type="text" name="evaluator_name"
+                 placeholder="例: 山田 太郎">
+        </div>
+
+        <div class="form-row">
+          <label class="label-sm">判定者役職</label>
+          <input class="input" type="text" name="evaluator_title"
+                 placeholder="例: 輸出管理部 主任">
+          <div class="hint">正式審査提出時に判定書番号と7年保存期限が自動設定されます。</div>
+        </div>
+
         <div class="form-row" id="parentTxRow">
           <label class="label-sm">前段審査参照（任意）</label>
           <input type="hidden" name="parent_transaction_id" id="parentTxId"

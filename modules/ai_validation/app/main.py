@@ -144,13 +144,22 @@ async def _ensure_columns() -> None:
                 except Exception:
                     pass  # 既に存在する場合は無視
 
-        # ── transactions: 既存追加カラム ──────────────────────────────────
+        # ── transactions: 既存追加カラム + 輸出審査記録（法的要件）────────
         if insp.has_table("transactions"):
             existing_tx = {c["name"] for c in insp.get_columns("transactions")}
             for col_name, col_type in [
+                # 証跡連鎖
                 ("source_module",         "VARCHAR(32)"),
                 ("parent_transaction_id", "INTEGER"),
                 ("rnd_case_id",           "VARCHAR(64)"),
+                # 輸出審査記録の法的要件（外為法 7年保存・CISTEC様式準拠）
+                ("evaluator_name",        "VARCHAR(128)"),   # 判定者氏名
+                ("evaluator_title",       "VARCHAR(128)"),   # 判定者役職
+                ("judgment_no",           "VARCHAR(64)"),    # 判定書番号（社内管理番号）
+                ("retention_until",       "DATE"),           # 保存期限（判定日 + 7年）
+                ("destination_country",   "VARCHAR(8)"),     # 仕向国 ISO alpha-2
+                ("end_user_name",         "VARCHAR(255)"),   # 最終需要者名
+                ("end_use_description",   "TEXT"),           # 最終用途
             ]:
                 if col_name not in existing_tx:
                     conn.execute(text(f"ALTER TABLE transactions ADD COLUMN {col_name} {col_type}"))
