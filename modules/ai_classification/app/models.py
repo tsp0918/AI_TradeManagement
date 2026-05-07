@@ -89,6 +89,11 @@ class Product(Base):
     sovereignty_score = Column(Float, nullable=True)   # 0-100: 技術主権価値（手動入力）
     sovereignty_note  = Column(Text,  nullable=True)   # 主権価値の根拠メモ
 
+    # 品目管理フラグ
+    source        = Column(String(20), default="AI_TM", nullable=False)  # "AI_TM" | "ERP" | "RND"
+    item_type     = Column(String(20), nullable=True)                    # "FINISHED_GOODS" | "BOM_COMPONENT"
+    is_unconfirmed = Column(Boolean, default=False, nullable=False)      # True = ERP 受信・未確認
+
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

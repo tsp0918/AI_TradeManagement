@@ -8,13 +8,14 @@
     <div class="notification is-info is-light">
       <p>以下の形式の CSV をアップロードしてください：</p>
       <pre>
-code,name,description,hs_code,eccn,item_class,std_price
-RM-001,Ethylen Glycol,"Main solvent",2905.31,EAR99,Raw Material,500
-FG-001,Photoresist for KrF,"KrF用フォトレジスト",3707.90,3C002,Finished Goods,2000
+code,name,description,hs_code,eccn,item_class,std_price,item_type
+RM-001,Ethylen Glycol,"Main solvent",2905.31,EAR99,Raw Material,500,BOM_COMPONENT
+FG-001,Photoresist for KrF,"KrF用フォトレジスト",3707.90,3C002,Finished Goods,2000,FINISHED_GOODS
       </pre>
       <p class="mt-2">
-        ※ 列名は最低限 <strong>code,name</strong> が必須です。<br>
-        そのほかの列は存在すれば読み込まれます（空欄でも可）。
+        ※ 列名は最低限 <strong>code,name</strong> が必須です。その他の列は省略可（空欄でも可）。<br>
+        ※ <strong>登録元 (source)</strong> は常に <strong>AI_TM</strong> として登録されます。<br>
+        ※ <strong>item_type</strong>: <code>FINISHED_GOODS</code>（完成品）または <code>BOM_COMPONENT</code>（BOM構成品）。省略した場合は未設定。
       </p>
     </div>
 

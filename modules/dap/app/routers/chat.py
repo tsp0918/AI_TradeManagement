@@ -113,7 +113,7 @@ class ChatResponse(BaseModel):
 
 # ── モジュール別デフォルト choices（Claude が省略した場合のフォールバック）──────
 _DEFAULT_CHOICES: dict[str, list[dict]] = {
-    "8001": [
+    "8011": [
         {"label": "判定結果を確認",    "message": "判定結果の見方を教えてください"},
         {"label": "必要書類を確認",    "message": "この審査で必要な書類を教えてください"},
         {"label": "次のステップ",      "message": "判定後の次のステップを教えてください"},
@@ -332,7 +332,7 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
                 break
 
     # AI判定にいるがスクリーニング未実施
-    if port == "8001" and fam.get("8005", 0) == 0:
+    if port == "8011" and fam.get("8005", 0) == 0:
         alerts.append({
             "type":     "missing_step",
             "severity": "warn",
@@ -394,7 +394,7 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
         pass  # platform-core 未起動時は無視
 
     # 審査が止まっている案件の検出 (ai_validation API 経由)
-    _ai_val_url = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8001")
+    _ai_val_url = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
     try:
         import httpx as _httpx
         r = _httpx.get(f"{_ai_val_url}/api/transactions/stuck", timeout=3)
@@ -1063,7 +1063,7 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
 
         if confirmed:
             action_plan = intake_state.get("pending_action_plan", [])
-            ai_val_url = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8001")
+            ai_val_url = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
             exec_results = await _execute_action_plan(action_plan, intake_state, _PLATFORM_URL, ai_val_url)
             # 結果サマリーを生成
             ok_steps = [r for r in exec_results if r["result"] in ("ok", "manual")]
@@ -1617,7 +1617,7 @@ async def track_event(req: EventRequest) -> dict:
 # ── チャットウィジェット設定 CRUD ─────────────────────────────────────────────
 _CONFIG_PORTS: list[dict] = [
     {"port": "8000", "label": "プラットフォーム"},
-    {"port": "8001", "label": "AI 該非判定"},
+    {"port": "8011", "label": "AI 該非判定"},
     {"port": "8002", "label": "品目管理"},
     {"port": "8003", "label": "R&D リスク管理"},
     {"port": "8004", "label": "特許検索"},
@@ -1629,7 +1629,7 @@ _CONFIG_PORTS: list[dict] = [
 
 # ── モジュール別コーチングプロンプト・テンプレート ────────────────────────────
 _COACHING_TEMPLATES: dict[str, dict] = {
-    "8001": {
+    "8011": {
         "name": "AI 該非判定 — 審査フォーカス",
         "prompt_supplement": (
             "このモジュールでは AI 該非判定が主要業務です。以下を重点的にサポートしてください:\n"
@@ -1699,9 +1699,9 @@ _COACHING_TEMPLATES: dict[str, dict] = {
         "name": "プラットフォーム — 全体ナビゲーション",
         "prompt_supplement": (
             "プラットフォームのトップ画面では全体フローの案内が主目的です:\n"
-            "1. 標準ワークフロー: R&D審査(8003) → 品目管理(8002) → AI該非判定(8001) → スクリーニング(8005)\n"
+            "1. 標準ワークフロー: R&D審査(8003) → 品目管理(8002) → AI該非判定(8011) → スクリーニング(8005)\n"
             "2. 新規案件は R&D リスク管理から始めることを推奨してください\n"
-            "3. NeuroSymbolic 該非判定エージェントは AI 該非判定モジュール(8001)の取引詳細から起動できます\n"
+            "3. NeuroSymbolic 該非判定エージェントは AI 該非判定モジュール(8011)の取引詳細から起動できます\n"
             "4. 各モジュールが連携してデータを共有していることを説明してください"
         ),
     },

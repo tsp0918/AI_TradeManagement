@@ -15,11 +15,13 @@ from fastapi import (
     UploadFile,
     File,
     HTTPException,
+    Query,
 )
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 import httpx
 
@@ -33,6 +35,128 @@ from urllib.parse import quote_plus as _quote_plus
 router = APIRouter(tags=["products"])
 templates = Jinja2Templates(directory="templates")
 templates.env.filters["urlencode"] = lambda s: _quote_plus(str(s) if s is not None else "")
+
+
+# =========================
+# Lookup タブ定義
+# =========================
+
+_LOOKUP_DEFS: list[dict] = [
+    # ── Critical（赤）────────────────────────────────────────
+    {
+        "key": "fg_no_hs",
+        "label": "完成品・HS未登録",
+        "color": "danger",
+        "priority": "critical",
+        "description": "完成品でHSコードが未設定の品目",
+    },
+    {
+        "key": "fg_no_judgment",
+        "label": "完成品・該非未実施",
+        "color": "danger",
+        "priority": "critical",
+        "description": "完成品で輸出管理判定が未実施の品目",
+    },
+    # ── 要対応（橙）──────────────────────────────────────────
+    {
+        "key": "erp_unconfirmed",
+        "label": "ERP未確認",
+        "color": "warning",
+        "priority": "action",
+        "description": "ERPから受信したが担当者未確認の品目",
+    },
+    {
+        "key": "controlled",
+        "label": "規制該当・要対応",
+        "color": "warning",
+        "priority": "action",
+        "description": "該当・要注意・要確認判定の品目",
+    },
+    # ── 監視（青／グレー）────────────────────────────────────
+    {
+        "key": "no_eccn",
+        "label": "ECCN未設定",
+        "color": "info",
+        "priority": "monitor",
+        "description": "非該当確定以外でECCNが未設定の品目",
+    },
+    {
+        "key": "no_sds",
+        "label": "SDS未登録",
+        "color": "info",
+        "priority": "monitor",
+        "description": "SDSファイルが未登録の品目",
+    },
+    {
+        "key": "no_hs",
+        "label": "HS未登録（全体）",
+        "color": "light",
+        "priority": "monitor",
+        "description": "全品目でHSコードが未設定のもの",
+    },
+    {
+        "key": "ai_pending",
+        "label": "外部AI判定中",
+        "color": "light",
+        "priority": "monitor",
+        "description": "外部AI判定がキューイングまたはエラーの品目",
+    },
+]
+
+_LOOKUP_KEY_SET = {d["key"] for d in _LOOKUP_DEFS}
+
+
+def _apply_lookup(q, key: str):
+    """lookup キーに対応する SQLAlchemy フィルターを適用して返す。"""
+    if key == "fg_no_hs":
+        return q.filter(
+            Product.item_type == "FINISHED_GOODS",
+            or_(Product.hs_code.is_(None), Product.hs_code == ""),
+        )
+    if key == "fg_no_judgment":
+        return q.filter(
+            Product.item_type == "FINISHED_GOODS",
+            or_(
+                Product.export_control_status.is_(None),
+                Product.export_control_status == "not_evaluated",
+            ),
+        )
+    if key == "erp_unconfirmed":
+        return q.filter(Product.is_unconfirmed == True)  # noqa: E712
+    if key == "controlled":
+        return q.filter(
+            Product.export_control_status.in_(
+                ["controlled", "needs_attention", "to_be_checked"]
+            )
+        )
+    if key == "no_eccn":
+        return q.filter(
+            or_(Product.eccn.is_(None), Product.eccn == ""),
+            Product.export_control_status != "non_controlled",
+        )
+    if key == "no_sds":
+        return q.filter(
+            or_(Product.sds_file_path.is_(None), Product.sds_file_path == "")
+        )
+    if key == "no_hs":
+        return q.filter(
+            or_(Product.hs_code.is_(None), Product.hs_code == "")
+        )
+    if key == "ai_pending":
+        return q.filter(
+            Product.external_eval_status.in_(["queued", "pending", "error"])
+        )
+    return q
+
+
+def _get_lookup_counts(db: Session) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for d in _LOOKUP_DEFS:
+        key = d["key"]
+        q = db.query(func.count(Product.id))
+        q = _apply_lookup(q, key)
+        counts[key] = q.scalar() or 0
+    return counts
 
 
 # =========================
@@ -456,9 +580,77 @@ def recalculate_all_scores(db: Session = Depends(get_db)):
 # ─────────────────────────────────────────────────────────────────────
 
 @router.get("/products", response_class=HTMLResponse)
-def list_products(request: Request, db: Session = Depends(get_db)):
-    products = db.query(Product).order_by(Product.id.desc()).all()
-    return templates.TemplateResponse(request, "product_list.html", {"products": products})
+def list_products(
+    request: Request,
+    db: Session = Depends(get_db),
+    search: Optional[str] = Query(default=None),
+    source: Optional[str] = Query(default=None),
+    item_type: Optional[str] = Query(default=None),
+    unconfirmed_only: bool = Query(default=False),
+    lookup: Optional[str] = Query(default=None),
+):
+    lookup_counts = _get_lookup_counts(db)
+    lookup_tabs = [
+        {**d, "count": lookup_counts.get(d["key"], 0)}
+        for d in _LOOKUP_DEFS
+    ]
+
+    q = db.query(Product)
+
+    if lookup and lookup in _LOOKUP_KEY_SET:
+        # lookup モード: タブ条件のみ適用（フィルターバーは無視）
+        q = _apply_lookup(q, lookup)
+        q = q.order_by(Product.updated_at.desc())
+        products = q.all()
+        return templates.TemplateResponse(request, "product_list.html", {
+            "products": products,
+            "lookup": lookup,
+            "lookup_tabs": lookup_tabs,
+            "lookup_defs": {d["key"]: d for d in _LOOKUP_DEFS},
+            "search": "",
+            "source_filter": "",
+            "item_type_filter": "",
+            "unconfirmed_only": False,
+        })
+
+    # 通常フィルターモード
+    if search:
+        like = f"%{search}%"
+        q = q.filter(or_(
+            Product.code.ilike(like),
+            Product.name.ilike(like),
+            Product.description.ilike(like),
+        ))
+    if source:
+        q = q.filter(Product.source == source)
+    if item_type:
+        q = q.filter(Product.item_type == item_type)
+    if unconfirmed_only:
+        q = q.filter(Product.is_unconfirmed == True)  # noqa: E712
+    products = q.order_by(Product.updated_at.desc()).all()
+    return templates.TemplateResponse(request, "product_list.html", {
+        "products": products,
+        "lookup": "",
+        "lookup_tabs": lookup_tabs,
+        "lookup_defs": {d["key"]: d for d in _LOOKUP_DEFS},
+        "search": search or "",
+        "source_filter": source or "",
+        "item_type_filter": item_type or "",
+        "unconfirmed_only": unconfirmed_only,
+    })
+
+
+@router.post("/products/refresh-scores")
+def refresh_scores(
+    lookup: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """全品目の規制感度スコアを再計算して Lookup 画面に戻る。"""
+    for p in db.query(Product).all():
+        p.regulation_score = calculate_regulation_score(p, db)
+    db.commit()
+    redirect_url = f"/products?lookup={lookup}" if lookup else "/products"
+    return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @router.get("/products/new", response_class=HTMLResponse)
@@ -471,13 +663,84 @@ def create_product(
     code: str = Form(...),
     name: str = Form(...),
     description: str = Form(""),
+    item_type: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    product = Product(code=code, name=name, description=description or None)
+    product = Product(
+        code=code,
+        name=name,
+        description=description or None,
+        item_type=item_type or None,
+        source="AI_TM",
+        is_unconfirmed=False,
+    )
     db.add(product)
     db.commit()
     db.refresh(product)
     return RedirectResponse(url="/products", status_code=303)
+
+
+# ── ERP MDM 同期 ──────────────────────────────────────────────────────────────
+
+class _ErpSyncRequest(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+    hs_code: Optional[str] = None
+    eccn: Optional[str] = None
+    country_of_origin: Optional[str] = None
+    item_type: Optional[str] = None          # "FINISHED_GOODS" | "BOM_COMPONENT"
+    std_price: Optional[float] = None
+    export_control_status: Optional[str] = None
+    export_control_reason: Optional[str] = None
+
+
+@router.post("/products/erp-sync")
+def erp_sync_product(body: _ErpSyncRequest, db: Session = Depends(get_db)):
+    """ERP MDM からの品目 upsert（code をキーに登録・更新）。"""
+    product = db.query(Product).filter(Product.code == body.code).first()
+    is_new = product is None
+    if is_new:
+        product = Product(code=body.code, name=body.name, source="ERP", is_unconfirmed=True)
+        db.add(product)
+
+    product.name = body.name
+    if body.description is not None:
+        product.description = body.description
+    if body.hs_code is not None:
+        product.hs_code = body.hs_code
+    if body.eccn is not None:
+        product.eccn = body.eccn
+    if body.country_of_origin is not None:
+        coo = body.country_of_origin.strip().upper()
+        product.country_of_origin = coo[:2] if coo else None
+    if body.item_type is not None:
+        product.item_type = body.item_type
+    if body.std_price is not None:
+        product.std_price = body.std_price
+    if body.export_control_status is not None:
+        product.export_control_status = body.export_control_status
+        product.export_control_reason = body.export_control_reason
+        product.export_control_checked_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(product)
+    return {"ok": True, "id": product.id, "code": product.code, "created": is_new}
+
+
+@router.post("/products/{product_id}/confirm")
+def confirm_product(
+    product_id: int,
+    redirect_to: str = Form("/products"),
+    db: Session = Depends(get_db),
+):
+    """ERP 受信品目の確認済みフラグを立てる（is_unconfirmed → False）。"""
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    product.is_unconfirmed = False
+    db.commit()
+    return RedirectResponse(url=redirect_to, status_code=303)
 
 
 @router.get("/products/{product_id}/edit", response_class=HTMLResponse)
@@ -622,6 +885,7 @@ def update_product(
     is_shoubouho: bool = Form(False),
     is_high_pressure_gas: bool = Form(False),
     country_of_origin: str = Form(""),
+    item_type: str = Form(""),
     db: Session = Depends(get_db),
 ):
     product = db.get(Product, product_id)
@@ -643,6 +907,7 @@ def update_product(
 
     product.item_class = item_class or None
     product.std_price = std_price
+    product.item_type = item_type or None
 
     product.is_poison = is_poison
     product.is_deleterious = is_deleterious
@@ -1108,6 +1373,20 @@ def save_export_items(
 
 
 # =========================
+# 品目削除
+# =========================
+@router.post("/products/{product_id}/delete")
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    """品目を削除する（関連BOM履歴・国別プロファイルはカスケード削除）。"""
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    db.delete(product)
+    db.commit()
+    return RedirectResponse(url="/products", status_code=303)
+
+
+# =========================
 # CSV import
 # =========================
 @router.get("/products/import", response_class=HTMLResponse)
@@ -1121,10 +1400,18 @@ def import_products(file: UploadFile = File(...), db: Session = Depends(get_db))
         content = file.file.read().decode("utf-8")
         df = pd.read_csv(io.StringIO(content))
 
-        required_columns = ["code", "name", "item_class", "std_price"]
-        for col in required_columns:
+        for col in ("code", "name"):
             if col not in df.columns:
                 raise HTTPException(status_code=400, detail=f"CSVに {col} 列がありません。")
+
+        has_item_class = "item_class" in df.columns
+        has_std_price  = "std_price"  in df.columns
+        has_item_type  = "item_type"  in df.columns
+        has_hs_code    = "hs_code"    in df.columns
+        has_eccn       = "eccn"       in df.columns
+        has_description = "description" in df.columns
+
+        _valid_item_types = {"FINISHED_GOODS", "BOM_COMPONENT"}
 
         for _, row in df.iterrows():
             code = str(row["code"]).strip()
@@ -1132,20 +1419,49 @@ def import_products(file: UploadFile = File(...), db: Session = Depends(get_db))
                 continue
 
             name = str(row["name"]).strip()
-            item_class = str(row["item_class"]).strip() or None
+
+            item_class = str(row["item_class"]).strip() or None if has_item_class else None
+            description = str(row["description"]).strip() or None if has_description else None
+            hs_code = str(row["hs_code"]).strip() or None if has_hs_code else None
+            eccn = str(row["eccn"]).strip() or None if has_eccn else None
 
             try:
-                std_price = float(row["std_price"])
+                std_price = float(row["std_price"]) if has_std_price else None
             except Exception:
                 std_price = None
+
+            raw_item_type = str(row["item_type"]).strip() if has_item_type else ""
+            item_type = raw_item_type if raw_item_type in _valid_item_types else None
 
             product = db.query(Product).filter(Product.code == code).first()
             if product:
                 product.name = name
-                product.item_class = item_class
-                product.std_price = std_price
+                if item_class is not None:
+                    product.item_class = item_class
+                if std_price is not None:
+                    product.std_price = std_price
+                if description is not None:
+                    product.description = description
+                if hs_code is not None:
+                    product.hs_code = hs_code
+                if eccn is not None:
+                    product.eccn = eccn
+                if item_type is not None:
+                    product.item_type = item_type
+                # CSV更新でもsourceはそのまま維持（ERPレコードを上書きしない）
             else:
-                db.add(Product(code=code, name=name, item_class=item_class, std_price=std_price))
+                db.add(Product(
+                    code=code,
+                    name=name,
+                    item_class=item_class,
+                    std_price=std_price,
+                    description=description,
+                    hs_code=hs_code,
+                    eccn=eccn,
+                    item_type=item_type,
+                    source="AI_TM",
+                    is_unconfirmed=False,
+                ))
 
         db.commit()
     except HTTPException:

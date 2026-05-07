@@ -37,6 +37,10 @@ class Settings(BaseSettings):
         default="http://localhost:8011",
         validation_alias=AliasChoices("AI_VALIDATION_URL", "MODULE_AI_VALIDATION_URL"),
     )
+    AI_CLASSIFICATION_URL: str = Field(
+        default="http://localhost:8002",
+        validation_alias=AliasChoices("AI_CLASSIFICATION_URL", "MODULE_AI_CLASSIFICATION_URL"),
+    )
 
     # ── ERP コールバック URL / 認証 ───────────────────────────────────────────
     # AI_TM → ERP への判定結果 Webhook 送信先

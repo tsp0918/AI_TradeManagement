@@ -3,21 +3,207 @@
 {% block title %}品目一覧{% endblock %}
 
 {% block content %}
-<a class="button is-small is-info" href="/products/import">CSVインポート</a>
 
-<div class="level">
+<!-- ===== ヘッダー行 ===== -->
+<div class="level mb-2">
   <div class="level-left">
-    <h2 class="subtitle">品目一覧</h2>
+    <h2 class="subtitle mb-0">品目一覧</h2>
   </div>
-  <div class="level-right">
-    <a class="button is-primary" href="/products/new">＋ 新規品目</a>
-    <a class="button is-link" href="/products/import" style="margin-left:0.5rem;">
-      CSVインポート
-    </a>
+  <div class="level-right" style="gap:0.4rem; display:flex; flex-wrap:wrap; align-items:center;">
+    <!-- 更新ボタン -->
+    <form action="/products/refresh-scores" method="post" style="display:inline;">
+      <input type="hidden" name="lookup" value="{{ lookup }}">
+      <button class="button is-small is-light" type="submit" title="規制スコアを再計算してカウントを更新">
+        &#x21bb; 更新
+      </button>
+    </form>
+    {% if lookup %}
+    <a class="button is-small is-light" href="/products">全品目表示</a>
+    {% endif %}
+    <a class="button is-small is-primary" href="/products/new">＋ 新規品目</a>
+    <a class="button is-small is-link" href="/products/import">CSVインポート</a>
   </div>
 </div>
 
-<table class="table is-fullwidth is-striped is-hoverable">
+<!-- ===== Lookup タブ ===== -->
+<div style="overflow-x:auto; margin-bottom:0.5rem;">
+  <div style="display:flex; gap:0.25rem; min-width:max-content; padding-bottom:2px;">
+
+    <!-- 全品目タブ -->
+    <a href="/products"
+       style="
+         display:inline-flex; align-items:center; gap:4px;
+         padding:5px 12px; border-radius:6px 6px 0 0; font-size:0.8rem; font-weight:600;
+         border:1px solid #dbdbdb; border-bottom:none;
+         background:{% if not lookup %}#fff{% else %}#f5f5f5{% endif %};
+         color:{% if not lookup %}#363636{% else %}#7a7a7a{% endif %};
+         text-decoration:none; white-space:nowrap;
+       ">
+      全品目
+    </a>
+
+    <!-- Critical タブ（赤）-->
+    {% for tab in lookup_tabs if tab.priority == "critical" %}
+    <a href="/products?lookup={{ tab.key }}"
+       style="
+         display:inline-flex; align-items:center; gap:4px;
+         padding:5px 12px; border-radius:6px 6px 0 0; font-size:0.8rem; font-weight:600;
+         border:1px solid {% if lookup == tab.key %}#f14668{% else %}#f5c0cb{% endif %};
+         border-bottom:none;
+         background:{% if lookup == tab.key %}#feecf0{% else %}#fff8f9{% endif %};
+         color:{% if lookup == tab.key %}#cc0f35{% else %}#c0395a{% endif %};
+         text-decoration:none; white-space:nowrap;
+       ">
+      {{ tab.label }}
+      {% if tab.count > 0 %}
+      <span style="
+        background:#f14668; color:#fff; border-radius:99px;
+        padding:1px 7px; font-size:0.72rem; font-weight:700;
+      ">{{ tab.count }}</span>
+      {% else %}
+      <span style="
+        background:#e8e8e8; color:#999; border-radius:99px;
+        padding:1px 7px; font-size:0.72rem;
+      ">0</span>
+      {% endif %}
+    </a>
+    {% endfor %}
+
+    <!-- Action タブ（橙）-->
+    {% for tab in lookup_tabs if tab.priority == "action" %}
+    <a href="/products?lookup={{ tab.key }}"
+       style="
+         display:inline-flex; align-items:center; gap:4px;
+         padding:5px 12px; border-radius:6px 6px 0 0; font-size:0.8rem; font-weight:600;
+         border:1px solid {% if lookup == tab.key %}#ffb347{% else %}#fde5c0{% endif %};
+         border-bottom:none;
+         background:{% if lookup == tab.key %}#fffaeb{% else %}#fffdf7{% endif %};
+         color:{% if lookup == tab.key %}#946c00{% else %}#a07000{% endif %};
+         text-decoration:none; white-space:nowrap;
+       ">
+      {{ tab.label }}
+      {% if tab.count > 0 %}
+      <span style="
+        background:#ffb347; color:#fff; border-radius:99px;
+        padding:1px 7px; font-size:0.72rem; font-weight:700;
+      ">{{ tab.count }}</span>
+      {% else %}
+      <span style="
+        background:#e8e8e8; color:#999; border-radius:99px;
+        padding:1px 7px; font-size:0.72rem;
+      ">0</span>
+      {% endif %}
+    </a>
+    {% endfor %}
+
+    <!-- Monitor タブ（青・グレー）-->
+    {% for tab in lookup_tabs if tab.priority == "monitor" %}
+    <a href="/products?lookup={{ tab.key }}"
+       style="
+         display:inline-flex; align-items:center; gap:4px;
+         padding:5px 12px; border-radius:6px 6px 0 0; font-size:0.8rem; font-weight:600;
+         border:1px solid {% if lookup == tab.key %}#3273dc{% else %}#dbdbdb{% endif %};
+         border-bottom:none;
+         background:{% if lookup == tab.key %}#eff5fb{% else %}#f5f5f5{% endif %};
+         color:{% if lookup == tab.key %}#2160c4{% else %}#595959{% endif %};
+         text-decoration:none; white-space:nowrap;
+       ">
+      {{ tab.label }}
+      {% if tab.count > 0 %}
+      <span style="
+        background:{% if lookup == tab.key %}#3273dc{% else %}#aaa{% endif %}; color:#fff; border-radius:99px;
+        padding:1px 7px; font-size:0.72rem; font-weight:700;
+      ">{{ tab.count }}</span>
+      {% else %}
+      <span style="
+        background:#e8e8e8; color:#999; border-radius:99px;
+        padding:1px 7px; font-size:0.72rem;
+      ">0</span>
+      {% endif %}
+    </a>
+    {% endfor %}
+
+  </div>
+</div>
+
+<!-- タブ下のボーダーライン -->
+<div style="border-top:2px solid #dbdbdb; margin-bottom:0.75rem;"></div>
+
+<!-- ===== Lookup 説明 / フィルターバー ===== -->
+{% if lookup and lookup in lookup_defs %}
+<div class="notification is-light is-size-7 py-2 px-3 mb-3" style="border-radius:6px;">
+  <strong>Lookup:</strong> {{ lookup_defs[lookup].description }}
+  &nbsp;—&nbsp; <strong>{{ products|length }}</strong> 件該当
+</div>
+{% else %}
+<!-- フィルターバー（lookup 非選択時のみ表示）-->
+<form method="get" action="/products" class="box py-3 px-4 mb-3">
+  <div class="columns is-vcentered is-multiline">
+    <div class="column">
+      <div class="field mb-0">
+        <label class="label is-small">フリーワード検索</label>
+        <div class="control">
+          <input class="input is-small" type="text" name="search" value="{{ search }}"
+                 placeholder="品目コード・品目名・説明">
+        </div>
+      </div>
+    </div>
+    <div class="column is-narrow">
+      <div class="field mb-0">
+        <label class="label is-small">登録元</label>
+        <div class="control">
+          <div class="select is-small">
+            <select name="source">
+              <option value="">すべて</option>
+              <option value="AI_TM" {% if source_filter == "AI_TM" %}selected{% endif %}>AI_TM</option>
+              <option value="ERP"   {% if source_filter == "ERP"   %}selected{% endif %}>ERP</option>
+              <option value="RND"   {% if source_filter == "RND"   %}selected{% endif %}>R&amp;D</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="column is-narrow">
+      <div class="field mb-0">
+        <label class="label is-small">品目種別</label>
+        <div class="control">
+          <div class="select is-small">
+            <select name="item_type">
+              <option value="">すべて</option>
+              <option value="FINISHED_GOODS" {% if item_type_filter == "FINISHED_GOODS" %}selected{% endif %}>完成品</option>
+              <option value="BOM_COMPONENT"  {% if item_type_filter == "BOM_COMPONENT"  %}selected{% endif %}>BOM構成品</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="column is-narrow">
+      <div class="field mb-0">
+        <label class="label is-small">&nbsp;</label>
+        <div class="control" style="padding-top:0.375rem;">
+          <label class="checkbox is-small">
+            <input type="checkbox" name="unconfirmed_only" value="true"
+                   {% if unconfirmed_only %}checked{% endif %}>
+            未確認のみ
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="column is-narrow">
+      <div class="field mb-0">
+        <label class="label is-small">&nbsp;</label>
+        <div class="control">
+          <button class="button is-small is-info" type="submit">絞り込み</button>
+          <a class="button is-small" href="/products" style="margin-left:0.25rem;">リセット</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+{% endif %}
+
+<!-- ===== 品目テーブル ===== -->
+<table class="table is-fullwidth is-striped is-hoverable is-size-7">
   <thead>
     <tr>
       <th>ID</th>
@@ -25,34 +211,85 @@
       <th>品目名</th>
       <th>HSコード</th>
       <th>ECCN</th>
-      <th>毒物</th>
-      <th>劇物</th>
+      <th>登録元</th>
+      <th>種別</th>
+      <th>ステータス</th>
+      <th>更新日時</th>
       <th>操作</th>
     </tr>
   </thead>
   <tbody>
     {% for p in products %}
-    <tr>
-      <td>
-        <a href="/products/{{ p.id }}/edit">
-          {{ p.id }}
-        </a>
-      </td>
-      <td>{{ p.code }}</td>
+    <tr {% if p.is_unconfirmed %}style="background-color:#fffbeb;"{% endif %}>
+      <td><a href="/products/{{ p.id }}/edit">{{ p.id }}</a></td>
+      <td><code>{{ p.code }}</code></td>
       <td>{{ p.name }}</td>
-      <td>{{ p.hs_code or "" }}</td>
-      <td>{{ p.eccn or "" }}</td>
-      <td>{{ "◯" if p.is_poison else "" }}</td>
-      <td>{{ "◯" if p.is_deleterious else "" }}</td>
       <td>
+        {% if p.hs_code %}
+          {{ p.hs_code }}
+        {% else %}
+          <span class="tag is-danger is-light is-small">未登録</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if p.eccn %}
+          {{ p.eccn }}
+        {% else %}
+          <span class="tag is-light is-small" style="color:#aaa;">—</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if p.source == "ERP" %}
+          <span class="tag is-warning is-light is-small">ERP</span>
+        {% elif p.source == "RND" %}
+          <span class="tag is-info is-light is-small">R&amp;D</span>
+        {% else %}
+          <span class="tag is-success is-light is-small">AI_TM</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if p.item_type == "FINISHED_GOODS" %}
+          <span class="tag is-primary is-light is-small">完成品</span>
+        {% elif p.item_type == "BOM_COMPONENT" %}
+          <span class="tag is-light is-small">BOM品</span>
+        {% else %}
+          <span class="tag is-light is-small" style="color:#aaa;">—</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if p.is_unconfirmed %}
+          <span class="tag is-warning is-small">未確認</span>
+        {% elif p.export_control_status == "controlled" %}
+          <span class="tag is-danger is-small">規制該当</span>
+        {% elif p.export_control_status == "needs_attention" %}
+          <span class="tag is-warning is-small">要注意</span>
+        {% elif p.export_control_status == "to_be_checked" %}
+          <span class="tag is-warning is-light is-small">要確認</span>
+        {% elif p.export_control_status == "non_controlled" %}
+          <span class="tag is-success is-light is-small">非該当</span>
+        {% elif p.export_control_status == "not_evaluated" or not p.export_control_status %}
+          <span class="tag is-light is-small" style="color:#aaa;">未判定</span>
+        {% else %}
+          <span class="tag is-light is-small">{{ p.export_control_status }}</span>
+        {% endif %}
+      </td>
+      <td style="white-space:nowrap;">
+        {{ p.updated_at.strftime('%Y-%m-%d %H:%M') if p.updated_at else "" }}
+      </td>
+      <td style="white-space:nowrap;">
         <a class="button is-small is-info" href="/products/{{ p.id }}/edit">編集</a>
+        {% if p.is_unconfirmed %}
+        <form action="/products/{{ p.id }}/confirm" method="post" style="display:inline;">
+          <input type="hidden" name="redirect_to" value="{{ request.url }}">
+          <button class="button is-small is-success" type="submit" title="確認済みにマーク">確認</button>
+        </form>
+        {% endif %}
         <a class="button is-small is-warning" href="/products/{{ p.id }}/sds">SDS</a>
         <form
           action="/products/{{ p.id }}/delete"
           method="post"
           style="display:inline"
-          onsubmit="return confirm('本当に削除しますか？');"
-        >
+          onsubmit="return confirm('本当に削除しますか？');">
           <button class="button is-small is-danger" type="submit">削除</button>
         </form>
       </td>
@@ -62,6 +299,13 @@
 </table>
 
 {% if not products %}
-<p>登録されている品目はありません。</p>
+<div class="notification is-light has-text-grey" style="text-align:center;">
+  {% if lookup %}
+  このLookup条件に該当する品目はありません。
+  {% else %}
+  登録されている品目はありません。
+  {% endif %}
+</div>
 {% endif %}
+
 {% endblock %}

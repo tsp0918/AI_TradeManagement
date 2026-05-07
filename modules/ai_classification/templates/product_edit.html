@@ -68,6 +68,49 @@
               </div>
             </div>
 
+            <!-- ── 品目管理ステータス ── -->
+            <div class="field is-horizontal">
+              <div class="field-body">
+                <div class="field">
+                  <label class="label">登録元</label>
+                  <div class="control">
+                    {% if product.source == "ERP" %}
+                      <span class="tag is-warning is-medium">ERP</span>
+                    {% elif product.source == "RND" %}
+                      <span class="tag is-info is-medium">R&amp;D</span>
+                    {% else %}
+                      <span class="tag is-success is-medium">AI_TM</span>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">品目種別</label>
+                  <div class="control">
+                    <div class="select">
+                      <select name="item_type">
+                        <option value="">— 未設定 —</option>
+                        <option value="FINISHED_GOODS" {% if product.item_type == "FINISHED_GOODS" %}selected{% endif %}>完成品</option>
+                        <option value="BOM_COMPONENT"  {% if product.item_type == "BOM_COMPONENT"  %}selected{% endif %}>BOM構成品</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">確認ステータス</label>
+                  <div class="control">
+                    {% if product.is_unconfirmed %}
+                      <span class="tag is-warning">未確認 (ERP受信)</span>
+                      <button class="button is-small is-success" type="button"
+                              onclick="document.getElementById('confirm-form').submit();"
+                              style="margin-left:6px;">確認済みにする</button>
+                    {% else %}
+                      <span class="tag is-success is-light">確認済</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="field is-horizontal">
               <div class="field-body">
                 <div class="field">
@@ -1757,6 +1800,13 @@
     cpLoad();
   })();
   </script>
+
+  <!-- 確認済みフォーム（メイン編集フォームの外側に置く必要がある） -->
+  {% if product.is_unconfirmed %}
+  <form id="confirm-form" action="/products/{{ product.id }}/confirm" method="post" style="display:none;">
+    <input type="hidden" name="redirect_to" value="/products/{{ product.id }}/edit">
+  </form>
+  {% endif %}
 
 </section>
 {% endblock %}

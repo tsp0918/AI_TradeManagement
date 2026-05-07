@@ -5,6 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from ..adapters import faiss_search
 from ..adapters import platform_core as pc_adapter
+from ..adapters import ai_classification as cls_adapter
 from ..auth import verify_api_key
 from ..schemas import (
     BomJudgeRequest,
@@ -66,6 +67,18 @@ async def judge_gaihi(
         new_eccn=effective_eccn,
         rationale=verdict["rationale"],
     )
+    # ai_classification 品目DBに同期（UI に表示するため）
+    background_tasks.add_task(
+        cls_adapter.sync_to_classification,
+        material_code=body.material_code,
+        name=body.description[:200],
+        description=body.description,
+        hs_code=body.hs_code,
+        eccn=effective_eccn,
+        item_type="FINISHED_GOODS",
+        judgment=verdict["judgment"],
+        rationale=verdict["rationale"],
+    )
 
     return response
 
@@ -73,6 +86,7 @@ async def judge_gaihi(
 @router.post("/judge-bom", response_model=BomJudgeResponse)
 async def judge_bom(
     body: BomJudgeRequest,
+    background_tasks: BackgroundTasks,
     _: None = Depends(verify_api_key),
 ) -> BomJudgeResponse:
     """BOM コンポーネントリストの規制リスクを評価する。"""
@@ -130,11 +144,29 @@ async def judge_bom(
         f"Foreign origin: {foreign_pct:.1f}%."
     )
 
+    # ai_classification 品目DBに同期
+    background_tasks.add_task(
+        _sync_bom_to_classification, body, judgment, aggregate_eccn, rationale
+    )
+
     return BomJudgeResponse(
         judgment=judgment,
         aggregate_eccn=aggregate_eccn,
         risk_factors=risk_factors,
         controlled_components=controlled,
         foreign_origin_share_percent=round(foreign_pct, 1),
+        rationale=rationale,
+    )
+
+
+async def _sync_bom_to_classification(body: BomJudgeRequest, judgment: str, aggregate_eccn: str | None, rationale: str) -> None:
+    """BOM 判定結果を ai_classification に非同期同期する。"""
+    await cls_adapter.sync_to_classification(
+        material_code=body.material_code,
+        name=body.material_code,
+        hs_code=body.product_hs_code,
+        eccn=aggregate_eccn,
+        item_type="FINISHED_GOODS",
+        judgment=judgment,
         rationale=rationale,
     )

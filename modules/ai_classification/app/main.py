@@ -30,6 +30,9 @@ async def _ensure_columns() -> None:
             ("regulation_score",            "REAL"),
             ("sovereignty_score",           "REAL"),
             ("sovereignty_note",            "TEXT"),
+            ("source",                      "VARCHAR(20)"),
+            ("item_type",                   "VARCHAR(20)"),
+            ("is_unconfirmed",              "INTEGER"),  # SQLite BOOLEAN → INTEGER
         ],
     }
     with engine.connect() as conn:
