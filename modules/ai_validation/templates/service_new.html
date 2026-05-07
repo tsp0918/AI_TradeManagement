@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}新規役務案件登録 — AI該非判定{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>新規役務案件登録</h1>
+  <div class="muted" style="font-size:.82rem;">外為法 第25条 — 技術提供・ソフトウェア・クラウドサービス・みなし輸出</div>
+</div>
+
+{% if error %}
+<div class="alert alert-warn" style="margin-bottom:16px;">
+  <div class="alert-title">入力エラー</div>
+  <div class="alert-body">{{ error }}</div>
+</div>
+{% endif %}
+
+<form method="post" action="/ui/services/new">
+<div class="card" style="margin-bottom:16px;">
+  <div class="form-grid">
+
+    <!-- ── 基本情報 ── -->
+    <div class="form-row">
+      <div style="font-size:.75rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; padding-bottom:6px; border-bottom:1px solid #e5e7eb; margin-bottom:10px;">基本情報</div>
+    </div>
+
+    <div class="form-row">
+      <label class="label-sm">役務タイトル <span class="required">*</span></label>
+      <input class="input" type="text" name="title" required
+             placeholder="例: A社向け産業装置制御ソフトウェアライセンス供与">
+    </div>
+
+    <div class="form-row">
+      <label class="label-sm">役務種別 <span class="required">*</span></label>
+      <div class="select" style="width:100%;">
+        <select name="service_type" style="width:100%;">
+          {% for st in service_types %}
+          <option value="{{ st.value }}">{{ st.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label class="label-sm">技術内容・役務の詳細</label>
+      <textarea class="textarea" name="technology_description" rows="4"
+        placeholder="例: 半導体製造装置の制御ソフトウェア（ECCN 3D001）のライセンスを供与する。主な機能は…"></textarea>
+      <div class="hint">外為法 別表第1（技術欄）との照合に使用されます。具体的に記入してください。</div>
+    </div>
+
+    <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div>
+        <label class="label-sm">技術 ECCN</label>
+        <input class="input" type="text" name="eccn" placeholder="例: 3D001">
+      </div>
+      <div>
+        <label class="label-sm">外為法 規制番号（別表第1・条項）</label>
+        <input class="input" type="text" name="fefta_category" placeholder="例: 別表第1 第4項(一)">
+      </div>
+    </div>
+
+    <!-- ── みなし輸出チェック ── -->
+    <div class="form-row">
+      <label class="checkbox" style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:.9rem;">
+        <input type="checkbox" name="is_deemed_export" value="1" style="width:16px; height:16px;">
+        <span>
+          <strong>みなし輸出（外為法 第25条第1項ただし書き）</strong>
+          <span class="muted" style="font-size:.8rem; display:block;">日本国内の外国籍者（在留資格：留学・技術等）への技術提供も規制対象となる場合があります。</span>
+        </span>
+      </label>
+    </div>
+
+    <!-- ── 提供者情報 ── -->
+    <div class="form-row">
+      <div style="font-size:.75rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; padding-bottom:6px; border-bottom:1px solid #e5e7eb; margin-bottom:10px; margin-top:8px;">提供者（自社）</div>
+    </div>
+
+    <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div>
+        <label class="label-sm">氏名・担当者名</label>
+        <input class="input" type="text" name="provider_name" placeholder="例: 山田 太郎">
+      </div>
+      <div>
+        <label class="label-sm">所属部門</label>
+        <input class="input" type="text" name="provider_dept" placeholder="例: 技術輸出管理部">
+      </div>
+    </div>
+
+    <!-- ── 受領者情報 ── -->
+    <div class="form-row">
+      <div style="font-size:.75rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; padding-bottom:6px; border-bottom:1px solid #e5e7eb; margin-bottom:10px; margin-top:8px;">受領者（相手方）</div>
+    </div>
+
+    <div class="form-row">
+      <label class="label-sm">個人名 / 担当者名</label>
+      <input class="input" type="text" name="recipient_name"
+             placeholder="例: Zhang Wei（スクリーニング対象となります）">
+    </div>
+
+    <div class="form-row">
+      <label class="label-sm">所属組織・企業名</label>
+      <input class="input" type="text" name="recipient_organization"
+             placeholder="例: Shanghai Advanced Semiconductor Co., Ltd.">
+    </div>
+
+    <div class="form-row" style="display:grid; grid-template-columns:120px 120px 1fr; gap:12px;">
+      <div>
+        <label class="label-sm">仕向国（ISO）</label>
+        <input class="input" type="text" name="recipient_country" maxlength="2"
+               placeholder="CN / US">
+      </div>
+      <div>
+        <label class="label-sm">国籍（みなし輸出）</label>
+        <input class="input" type="text" name="recipient_nationality" maxlength="2"
+               placeholder="CN / IR">
+      </div>
+      <div></div>
+    </div>
+
+    <!-- ── 契約情報 ── -->
+    <div class="form-row">
+      <div style="font-size:.75rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; padding-bottom:6px; border-bottom:1px solid #e5e7eb; margin-bottom:10px; margin-top:8px;">契約情報</div>
+    </div>
+
+    <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+      <div>
+        <label class="label-sm">契約開始日</label>
+        <input class="input" type="date" name="contract_start">
+      </div>
+      <div>
+        <label class="label-sm">契約終了日</label>
+        <input class="input" type="date" name="contract_end">
+      </div>
+      <div>
+        <label class="label-sm">契約金額（円）</label>
+        <input class="input" type="number" name="contract_value_jpy" min="0" step="1"
+               placeholder="例: 5000000">
+      </div>
+    </div>
+
+    <!-- ── 判定者情報（CISTEC様式）── -->
+    <div class="form-row">
+      <div style="font-size:.75rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; padding-bottom:6px; border-bottom:1px solid #e5e7eb; margin-bottom:10px; margin-top:8px;">判定者情報（外為法 第67条・CISTEC様式）</div>
+    </div>
+
+    <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div>
+        <label class="label-sm">判定者氏名</label>
+        <input class="input" type="text" name="evaluator_name" placeholder="例: 佐藤 花子">
+      </div>
+      <div>
+        <label class="label-sm">判定者役職</label>
+        <input class="input" type="text" name="evaluator_title" placeholder="例: 輸出管理部 課長">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label class="label-sm">判定根拠メモ</label>
+      <textarea class="textarea" name="evaluator_note" rows="2"
+        placeholder="例: 技術内容を確認し、外為法別表第1 第4項(一)ロ に非該当と判定。ECCN 3D001 相当だが、EAR99 相当品目であることを確認した。"></textarea>
+    </div>
+
+  </div>
+</div>
+
+<div style="display:flex; gap:10px; align-items:center;">
+  <button class="btn btn-primary" type="submit">役務案件を登録</button>
+  <a class="btn" href="/ui/services">キャンセル</a>
+</div>
+</form>
+{% endblock %}

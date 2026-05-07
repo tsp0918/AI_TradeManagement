@@ -18,6 +18,7 @@ from app.routers.ui import router as ui_router
 from app.routers.integration_export_control import router as integration_router
 from app.routers.admin import router as admin_router
 from app.routers.api_transactions import router as api_transactions_router
+from app.routers.service_control import router as service_control_router
 from app.db.session import engine
 
 
@@ -160,9 +161,51 @@ async def _ensure_columns() -> None:
                 ("destination_country",   "VARCHAR(8)"),     # 仕向国 ISO alpha-2
                 ("end_user_name",         "VARCHAR(255)"),   # 最終需要者名
                 ("end_use_description",   "TEXT"),           # 最終用途
+                ("fdpr_judgment_json",    "TEXT"),           # FDPR 判定結果 JSON
             ]:
                 if col_name not in existing_tx:
                     conn.execute(text(f"ALTER TABLE transactions ADD COLUMN {col_name} {col_type}"))
+
+        # ── service_transactions テーブル作成（役務取引管理）────────────────────
+        if not insp.has_table("service_transactions"):
+            conn.execute(text("""
+                CREATE TABLE service_transactions (
+                    id                      INTEGER PRIMARY KEY,
+                    case_no                 VARCHAR(64) UNIQUE,
+                    title                   VARCHAR(255),
+                    service_type            VARCHAR(32),
+                    provider_name           VARCHAR(255),
+                    provider_dept           VARCHAR(255),
+                    recipient_name          VARCHAR(255),
+                    recipient_organization  VARCHAR(255),
+                    recipient_country       VARCHAR(8),
+                    recipient_nationality   VARCHAR(8),
+                    technology_description  TEXT,
+                    eccn                    VARCHAR(32),
+                    fefta_category          VARCHAR(64),
+                    contract_start          DATETIME,
+                    contract_end            DATETIME,
+                    contract_value_jpy      FLOAT,
+                    status                  VARCHAR(32) NOT NULL DEFAULT 'draft',
+                    screening_status        VARCHAR(30),
+                    screening_result_id     VARCHAR(36),
+                    license_required        INTEGER,
+                    license_no              VARCHAR(64),
+                    evaluator_note          TEXT,
+                    is_deemed_export        INTEGER NOT NULL DEFAULT 0,
+                    evaluator_name          VARCHAR(128),
+                    evaluator_title         VARCHAR(128),
+                    judgment_no             VARCHAR(64),
+                    retention_until         DATETIME,
+                    created_at              DATETIME NOT NULL DEFAULT (datetime('now')),
+                    updated_at              DATETIME NOT NULL DEFAULT (datetime('now')),
+                    submitted_at            DATETIME
+                )
+            """))
+            conn.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_service_tx_case_no "
+                "ON service_transactions(case_no)"
+            ))
 
         conn.commit()
 
@@ -222,3 +265,4 @@ app.include_router(decision_router)
 app.include_router(integration_router)
 app.include_router(admin_router)
 app.include_router(api_transactions_router)
+app.include_router(service_control_router)

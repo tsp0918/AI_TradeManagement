@@ -46,6 +46,7 @@ _MODULE_ICONS: dict[str, str] = {
     "patent_search":     "📋",
     "dap":               "🔗",
     "screening":         "🛡️",
+    "service_control":   "📜",
 }
 
 # 案件ダッシュボード（固定エントリ、最初に表示）
@@ -110,6 +111,16 @@ _KNOWN_MODULES: list[dict] = [
         "base_url":          "http://localhost:8011",
         "iframe_url":        "/proxy/ai_validation/",
         "icon":              _MODULE_ICONS["ai_validation"],
+        "health_check_path": "/health",
+        "nav_section":       "flow",
+    },
+    {
+        "key":               "service_control",
+        "name":              "役務取引管理",
+        "description":       "外為法 第25条 技術指導・ソフトウェア・クラウドサービス・みなし輸出の許可申請管理",
+        "base_url":          "http://localhost:8011",
+        "iframe_url":        "/proxy/ai_validation/ui/services",
+        "icon":              _MODULE_ICONS["service_control"],
         "health_check_path": "/health",
         "nav_section":       "flow",
     },

@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}{{ obj.title or obj.case_no }} — 役務取引管理{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+
+<!-- パンくず -->
+<div style="font-size:.8rem; color:#6b7280; margin-bottom:14px;">
+  <a href="/ui/services" style="color:#2563eb; text-decoration:none;">役務取引管理</a>
+  <span style="margin:0 6px;">›</span>
+  <span>{{ obj.case_no or ("SVC #" ~ obj.id) }}</span>
+</div>
+
+<!-- ヘッダー -->
+<div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; gap:16px;">
+  <div>
+    <h1 style="font-size:1.3rem; font-weight:700; margin-bottom:4px;">{{ obj.title or "—" }}</h1>
+    <div style="font-size:.8rem; color:#6b7280;">
+      {{ obj.case_no or "案件番号未設定" }}
+      {% if obj.is_deemed_export %} &nbsp;｜&nbsp; <span style="color:#b45309; font-weight:600;">⚠ みなし輸出</span>{% endif %}
+    </div>
+  </div>
+  <div style="display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap;">
+    {% if obj.status == "draft" %}
+    <form action="/ui/services/{{ obj.id }}/submit" method="post" style="display:inline;">
+      <button class="button is-warning" type="submit">審査提出</button>
+    </form>
+    {% endif %}
+    {% if obj.recipient_name or obj.recipient_organization %}
+    <form action="/ui/services/{{ obj.id }}/screen" method="post" style="display:inline;">
+      <button class="button is-info is-light" type="submit">🔍 再スクリーニング</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ステータスバー -->
+{% set status_colors = {
+  "draft": ("#f3f4f6","#374151","#e5e7eb"),
+  "under_review": ("#fffbeb","#92400e","#fde68a"),
+  "approved": ("#f0fdf4","#166534","#86efac"),
+  "license_required": ("#fff1f2","#991b1b","#fca5a5"),
+  "license_granted": ("#f0fdf4","#14532d","#4ade80"),
+  "rejected": ("#fef2f2","#7f1d1d","#f87171"),
+  "withdrawn": ("#f9fafb","#6b7280","#d1d5db"),
+} %}
+{% set sc = status_colors.get(obj.status, ("#f3f4f6","#374151","#e5e7eb")) %}
+<div style="background:{{ sc[0] }}; border:1px solid {{ sc[2] }}; border-left:4px solid {{ sc[2] }};
+            border-radius:8px; padding:12px 16px; margin-bottom:20px; display:flex; gap:20px; align-items:center; flex-wrap:wrap; font-size:.85rem;">
+  <div>
+    <span style="font-size:.7rem; font-weight:700; color:{{ sc[1] }}; text-transform:uppercase; letter-spacing:.05em;">ステータス</span>
+    <div style="font-weight:700; color:{{ sc[1] }}; margin-top:2px;">{{ status_label }}</div>
+  </div>
+  <div>
+    <span style="font-size:.7rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em;">役務種別</span>
+    <div style="font-weight:500; color:#1e293b; margin-top:2px;">{{ service_type_label }}</div>
+  </div>
+  <div>
+    <span style="font-size:.7rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em;">許可要否</span>
+    <div style="font-weight:600; margin-top:2px;
+      color:{% if obj.license_required == 1 %}#991b1b{% elif obj.license_required == 0 %}#166534{% else %}#94a3b8{% endif %};">
+      {{ license_required_label }}
+    </div>
+  </div>
+  <div>
+    <span style="font-size:.7rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em;">スクリーニング</span>
+    <div style="font-weight:500; margin-top:2px;
+      color:{% if obj.screening_status == 'clear' %}#166534{% elif obj.screening_status == 'hit' %}#991b1b{% else %}#94a3b8{% endif %};">
+      {% if obj.screening_status %}{{ obj.screening_status }}{% else %}未実施{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- スクリーニングヒット警告 -->
+{% if obj.screening_status == "hit" %}
+<div style="background:#fff1f2; border:1px solid #fca5a5; border-left:4px solid #ef4444;
+            border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:.84rem; color:#7f1d1d;">
+  🚨 <strong>スクリーニングヒット</strong>：受領者が制裁リスト（OFAC/BIS等）に合致しています。
+  取引を即座に停止し、輸出管理部門・法務部門に報告してください。
+</div>
+{% endif %}
+
+<!-- 詳細情報カード -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+
+  <!-- 役務内容 -->
+  <div class="card">
+    <div class="label-sm" style="margin-bottom:10px;">役務内容</div>
+    <div style="display:grid; gap:8px; font-size:.85rem;">
+      {% if obj.eccn %}<div><span class="muted small">ECCN</span>&nbsp;<code>{{ obj.eccn }}</code></div>{% endif %}
+      {% if obj.fefta_category %}<div><span class="muted small">外為法規制番号</span>&nbsp;{{ obj.fefta_category }}</div>{% endif %}
+      {% if obj.technology_description %}
+      <div style="margin-top:6px; padding:10px; background:#f8fafc; border-radius:6px; white-space:pre-wrap; font-size:.83rem; color:#374151; line-height:1.55;">{{ obj.technology_description[:500] }}{% if obj.technology_description|length > 500 %}…{% endif %}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 受領者情報 -->
+  <div class="card">
+    <div class="label-sm" style="margin-bottom:10px;">受領者情報</div>
+    <div style="display:grid; gap:6px; font-size:.85rem;">
+      {% if obj.recipient_name %}<div><span class="muted small">個人名</span>&nbsp;<strong>{{ obj.recipient_name }}</strong></div>{% endif %}
+      {% if obj.recipient_organization %}<div><span class="muted small">組織</span>&nbsp;{{ obj.recipient_organization }}</div>{% endif %}
+      {% if obj.recipient_country %}<div><span class="muted small">仕向国</span>&nbsp;<code>{{ obj.recipient_country }}</code></div>{% endif %}
+      {% if obj.recipient_nationality %}<div><span class="muted small">国籍</span>&nbsp;<code>{{ obj.recipient_nationality }}</code>{% if obj.is_deemed_export %}&nbsp;<span style="color:#b45309; font-weight:600; font-size:.75rem;">（みなし輸出）</span>{% endif %}</div>{% endif %}
+    </div>
+  </div>
+
+  <!-- 契約情報 -->
+  <div class="card">
+    <div class="label-sm" style="margin-bottom:10px;">契約情報</div>
+    <div style="display:grid; gap:6px; font-size:.85rem;">
+      {% if obj.contract_start or obj.contract_end %}
+      <div><span class="muted small">契約期間</span>&nbsp;
+        {{ obj.contract_start.strftime('%Y-%m-%d') if obj.contract_start else "—" }}
+        ～ {{ obj.contract_end.strftime('%Y-%m-%d') if obj.contract_end else "—" }}
+      </div>
+      {% endif %}
+      {% if obj.contract_value_jpy %}
+      <div><span class="muted small">契約金額</span>&nbsp;{{ "{:,.0f}".format(obj.contract_value_jpy) }} 円</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 審査記録（CISTEC様式）-->
+  <div class="card" style="background:#f0f9ff; border-color:#bae6fd;">
+    <div class="label-sm" style="margin-bottom:10px; color:#0369a1;">📋 審査記録（外為法 第67条）</div>
+    <div style="display:grid; gap:6px; font-size:.85rem;">
+      {% if obj.judgment_no %}<div><span class="muted small">判定書番号</span>&nbsp;<code>{{ obj.judgment_no }}</code></div>{% endif %}
+      {% if obj.evaluator_name %}<div><span class="muted small">判定者</span>&nbsp;{{ obj.evaluator_name }}{% if obj.evaluator_title %} / {{ obj.evaluator_title }}{% endif %}</div>{% endif %}
+      {% if obj.license_no %}<div><span class="muted small">許可番号</span>&nbsp;<code>{{ obj.license_no }}</code></div>{% endif %}
+      {% if obj.retention_until %}
+      <div><span class="muted small">保存期限</span>&nbsp;
+        <strong style="color:#0369a1;">{{ obj.retention_until.strftime('%Y-%m-%d') }}</strong>
+        <span style="font-size:.72rem; color:#64748b;">&nbsp;（7年保存義務）</span>
+      </div>
+      {% else %}
+      <div style="color:#94a3b8; font-size:.8rem;">審査提出後に自動設定（提出日+7年）</div>
+      {% endif %}
+      {% if obj.submitted_at %}<div><span class="muted small">提出日</span>&nbsp;{{ obj.submitted_at.strftime('%Y-%m-%d') }}</div>{% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- 許可判定記録フォーム -->
+{% if obj.status in ["under_review", "approved", "license_required", "license_granted"] %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="label-sm" style="margin-bottom:12px;">許可判定・ステータス更新</div>
+  <form action="/ui/services/{{ obj.id }}/license" method="post">
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+      <div>
+        <label class="label-sm">許可要否</label>
+        <div class="select" style="width:100%;">
+          <select name="license_required" style="width:100%;">
+            <option value="0" {% if obj.license_required == 0 %}selected{% endif %}>不要（自社審査で承認）</option>
+            <option value="1" {% if obj.license_required == 1 %}selected{% endif %}>必要（第25条許可申請）</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="label-sm">許可番号（取得後）</label>
+        <input class="input" type="text" name="license_no" value="{{ obj.license_no or '' }}"
+               placeholder="例: 外務第〇〇〇号">
+      </div>
+      <div>
+        <label class="label-sm">ステータス変更</label>
+        <div class="select" style="width:100%;">
+          <select name="new_status" style="width:100%;">
+            <option value="">変更しない</option>
+            <option value="approved">許可不要（承認）</option>
+            <option value="license_required">許可申請必要</option>
+            <option value="license_granted">許可取得済</option>
+            <option value="rejected">否認</option>
+            <option value="withdrawn">取り下げ</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label class="label-sm">判定根拠メモ</label>
+      <textarea class="textarea" name="evaluator_note" rows="2"
+        placeholder="判定根拠・経緯を記録してください">{{ obj.evaluator_note or '' }}</textarea>
+    </div>
+    <button class="btn btn-primary" type="submit">判定を記録</button>
+  </form>
+</div>
+{% endif %}
+
+<!-- 判定根拠メモ（表示のみ）-->
+{% if obj.evaluator_note and obj.status not in ["under_review", "approved", "license_required", "license_granted"] %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="label-sm" style="margin-bottom:8px;">判定根拠メモ</div>
+  <div style="white-space:pre-wrap; font-size:.85rem; color:#374151; line-height:1.6;">{{ obj.evaluator_note }}</div>
+</div>
+{% endif %}
+
+<!-- 操作ボタン -->
+<div style="display:flex; gap:10px; align-items:center; margin-top:8px;">
+  <a class="btn" href="/ui/services">← 一覧に戻る</a>
+</div>
+
+</div>
+{% endblock %}

@@ -1585,6 +1585,154 @@ async function destRiskFetch(val) {
 </script>
 {% endif %}
 
+<!-- ===== Section 5b: FDPR 判定（外国直接品規則）===== -->
+<div id="sec-fdpr" class="card detail-section" style="border-left:4px solid #7c3aed;">
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+    <span style="font-size:1.1rem;">🌐</span>
+    <div>
+      <div style="font-weight:700; font-size:.95rem; color:#1e293b;">FDPR 判定（Foreign Direct Product Rule）</div>
+      <div class="muted small">15 CFR §734.9 — 米国原産技術使用製品の再輸出規制チェック</div>
+    </div>
+  </div>
+
+  <!-- 既存結果表示 -->
+  <div id="fdpr-result-area">
+    <div style="color:#94a3b8; font-size:.85rem; padding:8px 0;">未判定。以下フォームで実行してください。</div>
+  </div>
+
+  <!-- 入力フォーム -->
+  <details style="margin-top:14px;">
+    <summary style="cursor:pointer; font-size:.85rem; font-weight:600; color:#4f46e5; margin-bottom:10px;">
+      FDPR 判定を実行する ▾
+    </summary>
+    <div style="margin-top:12px; display:grid; gap:10px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+        <div>
+          <label style="font-size:.78rem; color:#64748b; display:block; margin-bottom:3px;">仕向国（ISO alpha-2）</label>
+          <input id="fdpr-dest" class="input" type="text" maxlength="2"
+                 placeholder="CN / RU / US"
+                 value="{{ tx.destination_country or '' }}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:.78rem; color:#64748b; display:block; margin-bottom:3px;">品目 ECCN</label>
+          <input id="fdpr-eccn" class="input" type="text"
+                 placeholder="例: 3A090" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:.78rem; color:#64748b; display:block; margin-bottom:3px;">エンドユーザー種別</label>
+          <select id="fdpr-eutype" class="input" style="width:100%;">
+            <option value="unknown">不明</option>
+            <option value="commercial">民間企業</option>
+            <option value="government">政府機関</option>
+            <option value="military">軍・防衛</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div>
+          <label style="font-size:.78rem; color:#64748b; display:block; margin-bottom:3px;">米国原産コンテンツ比率（%）</label>
+          <input id="fdpr-uscontent" class="input" type="number" min="0" max="100" step="0.1"
+                 placeholder="例: 12.5" value="0" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:.78rem; color:#64748b; display:block; margin-bottom:3px;">使用した米国技術 ECCN（複数はカンマ区切り）</label>
+          <input id="fdpr-useccns" class="input" type="text"
+                 placeholder="例: 3E001,4E001" style="width:100%;">
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:.85rem; cursor:pointer;">
+          <input id="fdpr-manufactured" type="checkbox" style="width:14px; height:14px;">
+          米国管理技術を使用して製造
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:.85rem; cursor:pointer;">
+          <input id="fdpr-reexport" type="checkbox" style="width:14px; height:14px;">
+          再輸出（reexport）
+        </label>
+      </div>
+      <button onclick="runFdpr()" class="btn btn-primary" style="align-self:start;">FDPR 判定を実行</button>
+    </div>
+  </details>
+</div>
+
+<script>
+async function runFdpr() {
+  const txId = {{ tx.id }};
+  const dest = document.getElementById('fdpr-dest').value.trim().toUpperCase();
+  if (!dest) { alert('仕向国を入力してください。'); return; }
+
+  const usEccnsRaw = document.getElementById('fdpr-useccns').value.trim();
+  const usEccns = usEccnsRaw ? usEccnsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  const payload = {
+    destination_country: dest,
+    eccn: document.getElementById('fdpr-eccn').value.trim() || null,
+    us_content_pct: parseFloat(document.getElementById('fdpr-uscontent').value) || 0,
+    manufactured_using_us_tech: document.getElementById('fdpr-manufactured').checked,
+    us_tech_eccns: usEccns,
+    end_user_type: document.getElementById('fdpr-eutype').value,
+    is_reexport: document.getElementById('fdpr-reexport').checked,
+  };
+
+  const area = document.getElementById('fdpr-result-area');
+  area.innerHTML = '<div style="color:#94a3b8; font-size:.85rem;">判定中…</div>';
+
+  try {
+    const resp = await fetch(`/decision/${txId}/fdpr-check`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) { throw new Error(await resp.text()); }
+    const data = await resp.json();
+    renderFdpr(data.fdpr_judgment, area);
+  } catch (err) {
+    area.innerHTML = `<div style="color:#ef4444; font-size:.85rem;">エラー: ${err.message}</div>`;
+  }
+}
+
+function renderFdpr(j, area) {
+  if (!j) { area.innerHTML = '<div style="color:#94a3b8;">結果なし</div>'; return; }
+  const vmap = {
+    'us_license_required': ['#fff1f2','#991b1b','#fca5a5','🚨'],
+    'review_recommended':  ['#fffbeb','#92400e','#fde68a','⚠️'],
+    'not_applicable':      ['#f0fdf4','#166534','#86efac','✅'],
+    'indeterminate':       ['#f3f4f6','#374151','#e5e7eb','❓'],
+  };
+  const [bg, fg, border, icon] = vmap[j.verdict] || ['#f3f4f6','#374151','#e5e7eb','❓'];
+
+  let html = `
+    <div style="background:${bg}; border:1px solid ${border}; border-radius:8px; padding:12px 14px; font-size:.85rem;">
+      <div style="font-weight:700; color:${fg}; font-size:.92rem; margin-bottom:6px;">${icon} ${j.verdict_label}</div>
+      <div style="color:${fg}; margin-bottom:10px; line-height:1.55;">${j.verdict_detail}</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:.8rem; margin-bottom:8px;">
+        <div><span style="color:#64748b;">仕向国</span> <strong>${j.destination_name || j.destination_country}</strong></div>
+        <div><span style="color:#64748b;">EAR Groups</span> <code>${(j.ear_groups||[]).join(', ') || '—'}</code></div>
+        <div><span style="color:#64748b;">De Minimis 閾値</span> <strong>${j.de_minimis_threshold}%</strong></div>
+        <div><span style="color:#64748b;">De Minimis 例外</span> <strong>${j.de_minimis_applicable ? '適用' : '非適用'}</strong></div>
+      </div>`;
+
+  if (j.applicable_variants && j.applicable_variants.length > 0) {
+    html += `<div style="font-size:.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;">適用 FDPR バリアント</div>`;
+    html += `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px;">`;
+    j.applicable_variants.forEach(v => {
+      html += `<span style="background:${bg}; border:1px solid ${border}; color:${fg}; padding:2px 8px; border-radius:99px; font-size:.75rem; font-weight:600;">${v}</span>`;
+    });
+    html += `</div>`;
+  }
+
+  if (j.recommended_actions && j.recommended_actions.length > 0) {
+    html += `<div style="font-size:.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;">推奨アクション</div><ul style="margin:0; padding-left:18px; font-size:.82rem; color:#374151; line-height:1.65;">`;
+    j.recommended_actions.forEach(a => { html += `<li>${a}</li>`; });
+    html += `</ul>`;
+  }
+
+  html += `<div style="font-size:.72rem; color:#94a3b8; margin-top:8px;">判定時刻: ${new Date(j.evaluated_at).toLocaleString('ja-JP')}</div>`;
+  html += `</div>`;
+  area.innerHTML = html;
+}
+</script>
+
 <!-- ===== Section 6: 実行履歴（折りたたみ） ===== -->
 <details class="card detail-section">
   <summary class="detail-summary">

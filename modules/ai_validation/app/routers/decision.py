@@ -364,3 +364,81 @@ def get_review_checklist(
         "agent_judgment_status": tx.agent_judgment_status,
         "formal_submitted_at": tx.formal_submitted_at.isoformat() if tx.formal_submitted_at else None,
     }
+
+
+# ── FDPR 判定 ────────────────────────────────────────────────────────────────────
+
+class FDPRCheckRequest(BaseModel):
+    """POST /decision/{transaction_id}/fdpr-check リクエストボディ"""
+    destination_country: str
+    eccn: Optional[str] = None
+    us_content_pct: float = 0.0
+    manufactured_using_us_tech: bool = False
+    us_tech_eccns: List[str] = []
+    end_user_type: str = "unknown"
+    is_reexport: bool = False
+
+
+@router.post("/{transaction_id}/fdpr-check")
+def run_fdpr_check(
+    transaction_id: int,
+    body: FDPRCheckRequest,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """FDPR（Foreign Direct Product Rule）判定を実行し、結果を保存する。"""
+    tx = db.get(Transaction, transaction_id)
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    try:
+        import json as _json
+        from sqlalchemy import text
+        from platform_core.ontology.rules.fdpr_engine import FDPRContext, evaluate_fdpr
+
+        ctx = FDPRContext(
+            transaction_id=transaction_id,
+            destination_country=body.destination_country,
+            eccn=body.eccn,
+            us_content_pct=body.us_content_pct,
+            manufactured_using_us_tech=body.manufactured_using_us_tech,
+            us_tech_eccns=body.us_tech_eccns,
+            end_user_type=body.end_user_type,
+            is_reexport=body.is_reexport,
+        )
+        judgment = evaluate_fdpr(ctx)
+        jdict = judgment.to_dict()
+
+        db.execute(
+            text("UPDATE transactions SET fdpr_judgment_json = :j WHERE id = :tid"),
+            {"j": _json.dumps(jdict, ensure_ascii=False), "tid": transaction_id},
+        )
+        db.commit()
+        return {"ok": True, "transaction_id": transaction_id, "fdpr_judgment": jdict}
+
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/{transaction_id}/fdpr-result")
+def get_fdpr_result(transaction_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """最新の FDPR 判定結果を取得する。"""
+    import json as _json
+    from sqlalchemy import text
+
+    row = db.execute(
+        text("SELECT fdpr_judgment_json FROM transactions WHERE id = :tid"),
+        {"tid": transaction_id},
+    ).fetchone()
+
+    if not row or not row[0]:
+        return {"available": False, "transaction_id": transaction_id}
+
+    try:
+        jdict = _json.loads(row[0]) if isinstance(row[0], str) else row[0]
+    except Exception:
+        return {"available": False, "transaction_id": transaction_id}
+
+    return {"available": True, "transaction_id": transaction_id, "fdpr_judgment": jdict}
+
+

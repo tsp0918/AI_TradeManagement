@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}役務取引管理 — AI該非判定{% endblock %}
+
+{% block content %}
+<div class="page-head" style="display:flex; align-items:center; justify-content:space-between;">
+  <div>
+    <h1>役務取引管理</h1>
+    <div class="muted" style="font-size:.82rem; margin-top:4px;">
+      外為法 第25条 — 技術指導・ソフトウェアライセンス・クラウドサービス・みなし輸出
+    </div>
+  </div>
+  <a class="btn btn-primary" href="/ui/services/new">＋ 新規役務案件</a>
+</div>
+
+<!-- 法的根拠バナー -->
+<div style="background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid #2563eb;
+            border-radius:8px; padding:12px 16px; margin-bottom:20px; font-size:.82rem; color:#1e3a5f;">
+  <strong>外為法 第25条（役務取引）</strong>：技術の提供・ソフトウェアライセンス供与・クラウドサービス提供が
+  規制対象技術に該当する場合、外国為替及び外国貿易法に基づく許可申請が必要です。
+  外国籍者への国内での技術提供も「みなし輸出」として規制対象となります。
+  記録は外為法 第67条により<strong>7年間保存義務</strong>があります。
+</div>
+
+{% if rows %}
+<table class="table is-fullwidth is-striped is-hoverable is-size-7">
+  <thead>
+    <tr>
+      <th>ID</th><th>案件番号</th><th>タイトル</th><th>役務種別</th>
+      <th>受領者</th><th>仕向国</th><th>ステータス</th>
+      <th>スクリーニング</th><th>許可要否</th><th>登録日</th><th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    {% set tx = r.obj %}
+    <tr {% if tx.is_deemed_export %}style="background:#fff7ed;"{% endif %}>
+      <td><a href="/ui/services/{{ tx.id }}">{{ tx.id }}</a></td>
+      <td><code style="font-size:.75rem;">{{ tx.case_no or "—" }}</code></td>
+      <td>
+        <a href="/ui/services/{{ tx.id }}" style="font-weight:500;">{{ tx.title or "—" }}</a>
+        {% if tx.is_deemed_export %}<span class="tag is-warning is-light is-small ml-1">みなし輸出</span>{% endif %}
+      </td>
+      <td><span class="tag is-info is-light is-small">{{ r.service_type_label }}</span></td>
+      <td>{{ tx.recipient_name or tx.recipient_organization or "—" }}</td>
+      <td>
+        {% if tx.recipient_country %}
+          <span class="tag is-light is-small">{{ tx.recipient_country }}</span>
+        {% else %}—{% endif %}
+      </td>
+      <td>
+        {% if tx.status == "draft" %}<span class="tag is-light is-small">起案中</span>
+        {% elif tx.status == "under_review" %}<span class="tag is-warning is-small">審査中</span>
+        {% elif tx.status == "approved" %}<span class="tag is-success is-light is-small">許可不要</span>
+        {% elif tx.status == "license_required" %}<span class="tag is-danger is-small">許可申請必要</span>
+        {% elif tx.status == "license_granted" %}<span class="tag is-success is-small">許可取得済</span>
+        {% elif tx.status == "rejected" %}<span class="tag is-danger is-light is-small">否認</span>
+        {% else %}<span class="tag is-light is-small">{{ tx.status }}</span>{% endif %}
+      </td>
+      <td>
+        {% if tx.screening_status == "clear" %}<span class="tag is-success is-light is-small">クリア</span>
+        {% elif tx.screening_status == "hit" %}<span class="tag is-danger is-small">ヒット</span>
+        {% elif tx.screening_status %}<span class="tag is-light is-small">{{ tx.screening_status }}</span>
+        {% else %}<span style="color:#aaa; font-size:.75rem;">未実施</span>{% endif %}
+      </td>
+      <td>
+        {% if tx.license_required == 1 %}<span class="tag is-danger is-light is-small">必要</span>
+        {% elif tx.license_required == 0 %}<span class="tag is-success is-light is-small">不要</span>
+        {% else %}<span style="color:#aaa; font-size:.75rem;">未判定</span>{% endif %}
+      </td>
+      <td style="white-space:nowrap;">{{ tx.created_at.strftime('%Y-%m-%d') if tx.created_at else "—" }}</td>
+      <td>
+        <a class="button is-small is-info" href="/ui/services/{{ tx.id }}">詳細</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="notification is-light has-text-grey" style="text-align:center; padding:40px;">
+  登録された役務案件はありません。<a href="/ui/services/new">新規登録</a>してください。
+</div>
+{% endif %}
+{% endblock %}
