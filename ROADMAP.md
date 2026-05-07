@@ -1,7 +1,8 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-07 更新（Priority B 完了: 輸出許可証拡張・サプライヤーポータルUL・EPA/FTA特恵税率DB）
+# 2026-05-07 更新（R&Dモジュール UI/スコアリング刷新（4層）完了）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
+> 2026-05-07（4回目）追加: R&Dリスク管理モジュール UI/スコアリング刷新。Layer 1: ポート修正・推奨対応日本語化 / Layer 2: Explainability 構造化カード / Layer 3: 5ステップ進捗バー / Layer 4: スコアリングエンジン15+ルール・regulatory_risk独立化・全理由日本語化。
 > 2026-05-07（3回目）追加: Priority B — 輸出許可証 申請番号自動採番・価値消費管理・期限アラートスケジューラー / サプライヤーポータル ファイルアップロード・ダウンロードAPI・証明管理UI / EPA/FTA 特恵税率 DB（日本締結10協定・8代表HS・Alembic e5f6g7h8i9j0）。
 > 2026-05-07（2回目）追加: Priority A — US EAR規制理由エンジン（11種）・EU Dual-Use チェッカー（GEA EU001-EU008）・オープンクローズ戦略マトリクス（4象限）・ICP自己診断（CISTEC 8要素32問）。
 > 2026-05-07（1回目）追加: ①経済安保法特許非公開リスクチェック・②CISTEC様式準拠輸出審査記録7年保存・③役務取引管理（外為法第25条）・④FDPR判定エンジン（4バリアント/De Minimis閾値）。
@@ -699,6 +700,7 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | サプライヤーポータル ファイルアップロード | enctype="multipart/form-data" + uploads/supplier/{id}/ 保存 + ダウンロード API |
 | ✅ | 輸出許可申請拡張 | EL-{TYPE}-{YEAR}-{SEQ:04d} 自動採番・POST /use-value 価値控除・期限アラートスケジューラー |
 | ✅ | D2-4 EPA/FTA 特恵税率 DB | 日本締結10協定・代表HS 8コード税率・/ui/fta-check・ポータルナビ追加 |
+| ✅ | R&D モジュール UI/スコア刷新 | 4層改修: 進捗バー・Explainability カード・15+ルール・regulatory_risk独立・全根拠日本語化 |
 | ★★★☆☆ | サプライヤーポータル メール送信 | メール自動送信（招待URL通知）— SMTP設定後に実装可能 |
 | ★★★☆☆ | FTA 税率データ拡充 | 現在は代表HSコードのみ。実務向けに品目単位の全量収録 |
 | ★★★☆☆ | Layer D データ収集実行 | API Key 取得後に collect_academic_papers.py を全 ECCN で実行 |
@@ -706,5 +708,5 @@ lsof | grep ".db$" | grep -v ".venv"
 
 ---
 
-*更新: 2026-05-07（Priority B 完了: 輸出許可証拡張・サプライヤーポータルUL・EPA/FTA特恵税率DB）*
+*更新: 2026-05-07（R&Dモジュール UI/スコアリング刷新 4層完了）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
