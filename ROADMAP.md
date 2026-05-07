@@ -1,7 +1,8 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-04-29 更新（Layer A インデックス品質改善・5項/8項追加・ECCN embed_text 修正）
+# 2026-05-07 更新（安全保障貿易管理強化 優先度S実装 / 役務取引管理 / FDPR判定エンジン）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
+> 2026-05-07 追加: ①経済安保法特許非公開リスクチェック・②CISTEC様式準拠輸出審査記録7年保存・③役務取引管理（外為法第25条）・④FDPR判定エンジン（4バリアント/De Minimis閾値）。
 > 2026-04-29 追加: Layer A 再ビルド（2,922→2,999vec）。ECCN embed_text バグ修正（full body埋め込み）・外為法5項(化学/生物兵器製造装置)/8項(コンピュータ)12件ずつ追加・USML/EU/Wassenaar収録。
 > 2026-04-28 追加: D2-3 Wassenaar Arrangement ML 22カテゴリ・グローバル規制UIレジームチェック・Screening→与信管理自動連携・Fterm検索統合完了。
 > 2026-04-26 追加: 品目バージョン管理 + 仕様変更コンプライアンス影響検知 実装完了。
@@ -426,6 +427,42 @@ UI（platform-core/platform_core/templates/counterparty.html）:
   - 照合ボタン（ワンクリックでscreening API呼出）
 
 Alembic migration: c1e2f3a4b5d6_add_counterparty_credit.py
+```
+
+### ✅ 安全保障貿易管理強化（2026-05-07）
+
+```
+① 経済安全保障推進法 第4章 特許非公開リスクチェック（rnd_assessment）
+  ファイル: modules/rnd_assessment/app/services/patent_disclosure_check.py
+  - 10指定技術カテゴリ（武器・航空・宇宙・原子力・サイバー・先端材料・半導体・量子・AI自律・生物）
+  - R&D案件タイトル+説明でキーワードマッチ → HIGH/MEDIUM/NONE 判定
+  - case_detail.html に赤/黄アラートバナーを追加（特許出願前確認 → 経済産業省への事前相談）
+  - 法令参照: 経済安全保障推進法 第4章 第65条（2024年5月施行・違反=2年以下の懲役）
+
+② CISTEC様式準拠 輸出審査記録（外為法第67条 7年保存）
+  - transactions モデルに 8カラム追加（evaluator_name/evaluator_title/judgment_no/retention_until/
+    destination_country/end_user_name/end_use_description/fdpr_judgment_json）
+  - 「審査提出」時に判定書番号（JDG-{case_no}-{date}）・保存期限（提出日+7年2日）を自動設定
+  - 輸出報告書 CSV を CISTEC様式16行ヘッダーに拡張（判定書番号・仕向国・最終需要者・7年保存義務）
+  - transaction_new.html / transaction_detail.html に CISTEC様式フィールドを追加
+
+③ 役務取引管理（外為法 第25条 技術役務規制）
+  ファイル: modules/ai_validation/app/routers/service_control.py（新規7エンドポイント）
+         modules/ai_validation/app/db/models/service_transaction.py（28カラム）
+         modules/ai_validation/templates/services.html / service_new.html / service_detail.html
+  - 役務種別: technology_guidance / software_license / cloud_service / consulting / education / research / other
+  - みなし輸出フラグ（外為法 第25条第1項ただし書き）
+  - 提出時に自動スクリーニング連携（screening:8005）・保存期限（+7年）・判定書番号自動採番
+  - ステータス管理: draft → under_review → approved/license_required/license_granted/rejected/withdrawn
+  - ポータルナビに「📜 役務取引管理」追加（/proxy/ai_validation/ui/services）
+
+④ FDPR判定エンジン（15 CFR §734.9）
+  ファイル: platform-core/platform_core/ontology/rules/fdpr_engine.py
+  - 4バリアント: Russia/Belarus（0%）・China MEU（0%）・Advanced Computing・General（25%）
+  - De Minimis 閾値: E:1=0%・D:1∩D:5=0%・D:1=10%・default=25%
+  - 既存 catchall_concern_countries.json を @lru_cache で再利用
+  - transaction_detail.html に Section 5b として FDPR判定フォーム+結果表示カードを追加
+  - 結果を fdpr_judgment_json カラムに保存・再表示対応
 ```
 
 ### ✅ 技術インテリジェンス（Ph.A〜D）: 完了済み（2026-03-27）
