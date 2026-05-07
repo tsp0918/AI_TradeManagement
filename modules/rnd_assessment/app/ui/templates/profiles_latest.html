@@ -40,6 +40,41 @@
   </div>
 </div>
 
+<!-- ワークフロー進捗バー -->
+{% set step2_done = assessment is not none %}
+{% set step3_done = profile.ai_validation_transaction_id is not none %}
+{% set step4_done = ip_review is not none and ip_review.status != 'draft' %}
+{% set step5_done = profile.promoted_product_id is not none %}
+<div class="card" style="padding:16px 20px; margin-bottom:20px;">
+  <div style="font-size:.72rem; font-weight:700; color:var(--muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:.5px;">
+    ワークフロー進捗
+  </div>
+  <div style="position:relative; display:flex; align-items:flex-start;">
+    <div style="position:absolute; top:19px; left:calc(10% + 18px); right:calc(10% + 18px); height:2px; background:var(--border); z-index:0;"></div>
+    {% for step_num, step_label, step_done in [
+      ("1", "プロファイル入力", true),
+      ("2", "内部リスク評価", step2_done),
+      ("3", "AI該非判定", step3_done),
+      ("4", "知財審査", step4_done),
+      ("5", "品目登録", step5_done),
+    ] %}
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; position:relative; z-index:1;">
+      <div style="width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+                  font-size:.82rem; font-weight:800;
+                  {% if step_done %}background:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(232,131,58,.35);
+                  {% else %}background:var(--surface); color:var(--muted); border:2px solid var(--border);{% endif %}">
+        {% if step_done %}✓{% else %}{{ step_num }}{% endif %}
+      </div>
+      <span style="font-size:.66rem; font-weight:{% if step_done %}700{% else %}500{% endif %};
+                   color:{% if step_done %}var(--primary-dk){% else %}var(--muted){% endif %};
+                   text-align:center; line-height:1.3; width:68px;">
+        {{ step_label }}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
 <!-- バージョン基本情報 -->
 <div class="card">
   <div class="card-title">📄 バージョン情報</div>
@@ -107,7 +142,7 @@
       </div>
 
       <div class="mt-3" style="font-size:.83rem; color: var(--muted);">
-        推奨対応：<strong style="color: var(--text);">{{ scored_now.recommendation }}</strong>
+        推奨対応：<strong style="color: var(--text);">{{ scored_now.recommendation_ja or scored_now.recommendation }}</strong>
       </div>
       <p class="txt-muted mt-2" style="font-size:.72rem;">
         ※ 最新プロファイルをその場で再スコアした値です。「評価を実行」するとスナップショットが DB に保存されます。
@@ -145,18 +180,85 @@
   {% set dis_result = assessment.input_snapshot.disclosure_result if assessment and assessment.input_snapshot else scored_now.disclosure_result %}
   {% set sec_result = assessment.input_snapshot.security_result   if assessment and assessment.input_snapshot else scored_now.security_result %}
   <div class="g2" style="gap:16px;">
-    <div>
-      <p style="font-size:.78rem; font-weight:700; color:var(--dis-acc); margin-bottom:8px;">
-        📋 開示戦略スコア
-      </p>
-      <pre>{{ dis_result | tojson(indent=2) }}</pre>
+
+    <!-- 開示戦略カード -->
+    <div style="background:var(--dis-bg); border:1.5px solid var(--dis-bd); border-radius:var(--r); padding:16px 18px;">
+      <p style="font-size:.78rem; font-weight:700; color:var(--dis-acc); margin-bottom:10px;">📋 開示戦略</p>
+      {% if dis_result %}
+        {% set ds = dis_result.get("disclosure_strategy", "DEFER") %}
+        {% set ds_label = dis_result.get("label_ja") or ds %}
+        {% set ds_conf = dis_result.get("confidence", "low") %}
+        {% set ds_reasons = dis_result.get("reasons_ja") or dis_result.get("reasons") or [] %}
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+          <span style="padding:4px 14px; border-radius:999px; font-size:.82rem; font-weight:800;
+            {% if ds == 'TRADE_SECRET' %}background:#fee2e2; color:#991b1b;
+            {% elif ds == 'PATENT' %}background:#dbeafe; color:#1e40af;
+            {% elif ds == 'HYBRID' %}background:#fffbeb; color:#92400e;
+            {% else %}background:#f1f0f8; color:#6b7280;{% endif %}">
+            {% if ds == 'TRADE_SECRET' %}🔒 {{ ds_label }}
+            {% elif ds == 'PATENT' %}📑 {{ ds_label }}
+            {% elif ds == 'HYBRID' %}⚖️ {{ ds_label }}
+            {% else %}⏸ {{ ds_label }}{% endif %}
+          </span>
+          <span style="font-size:.71rem; color:var(--muted); padding:2px 8px; background:rgba(0,0,0,.04); border-radius:999px;">
+            確信度:{% if ds_conf == 'high' %}高{% elif ds_conf == 'medium' %}中{% else %}低{% endif %}
+          </span>
+        </div>
+        {% if ds_reasons %}
+        <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:5px;">
+          {% for r in ds_reasons %}
+          <li style="display:flex; align-items:flex-start; gap:6px; font-size:.78rem; color:var(--text);">
+            <span style="color:var(--dis-acc); margin-top:1px; flex-shrink:0;">▸</span>
+            <span>{{ r }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p style="font-size:.78rem; color:var(--muted);">根拠情報がありません</p>
+        {% endif %}
+      {% else %}
+        <p style="font-size:.78rem; color:var(--muted);">データなし</p>
+      {% endif %}
     </div>
-    <div>
-      <p style="font-size:.78rem; font-weight:700; color:var(--use-acc); margin-bottom:8px;">
-        🛡 セキュリティポスチャ
-      </p>
-      <pre>{{ sec_result | tojson(indent=2) }}</pre>
+
+    <!-- セキュリティポスチャカード -->
+    <div style="background:var(--use-bg); border:1.5px solid var(--use-bd); border-radius:var(--r); padding:16px 18px;">
+      <p style="font-size:.78rem; font-weight:700; color:var(--use-acc); margin-bottom:10px;">🛡 セキュリティポスチャ</p>
+      {% if sec_result %}
+        {% set sp = sec_result.get("security_posture", "LOW") %}
+        {% set sp_label = sec_result.get("label_ja") or sp %}
+        {% set sp_reasons = sec_result.get("reasons_ja") or sec_result.get("reasons") or [] %}
+        <div style="margin-bottom:10px;">
+          <span style="display:inline-block; padding:5px 16px; border-radius:999px; font-size:.84rem; font-weight:800;
+            {% if sp == 'RESTRICTED' %}background:#dc2626; color:#fff;
+            {% elif sp == 'ESCALATE' %}background:#7c3aed; color:#fff;
+            {% elif sp == 'HIGH' %}background:#d97706; color:#fff;
+            {% elif sp == 'CONTROLLED' %}background:#2563eb; color:#fff;
+            {% else %}background:#059669; color:#fff;{% endif %}">
+            {% if sp == 'RESTRICTED' %}🚨 {{ sp_label }}
+            {% elif sp == 'ESCALATE' %}⚡ {{ sp_label }}
+            {% elif sp == 'HIGH' %}⚠ {{ sp_label }}
+            {% elif sp == 'CONTROLLED' %}🔵 {{ sp_label }}
+            {% else %}✓ {{ sp_label }}{% endif %}
+          </span>
+        </div>
+        {% if sp_reasons %}
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+          {% for r in sp_reasons %}
+          <span style="padding:3px 10px; border-radius:999px; font-size:.73rem; font-weight:600;
+                       background:rgba(37,99,235,.07); color:var(--use-acc); border:1px solid var(--use-bd);">
+            {{ r }}
+          </span>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="font-size:.78rem; color:var(--muted); margin-top:8px;">リスク因子なし — 現時点では問題なし</p>
+        {% endif %}
+      {% else %}
+        <p style="font-size:.78rem; color:var(--muted);">データなし</p>
+      {% endif %}
     </div>
+
   </div>
 </div>
 
@@ -462,7 +564,7 @@
       {# ai_validation 未起動 or データ取得失敗 — キャッシュ済みリスクのみ表示 #}
       <div style="padding:8px 12px; font-size:.82rem; color:var(--muted); background:var(--bg);
                   border-radius:8px; margin-bottom:12px;">
-        ※ 詳細データを取得できませんでした。ai_validation モジュール（ポート 8001）が起動しているか確認してください。
+        ※ 詳細データを取得できませんでした。ai_validation モジュール（ポート 8011）が起動しているか確認してください。
       </div>
     {% endif %}
 
@@ -485,7 +587,7 @@
       <p style="font-weight:600; color:var(--text-h); margin-bottom:4px;">AI該非判定が未実行です</p>
       <p style="font-size:.82rem; color:var(--muted); margin-bottom:16px;">
         このバージョンの用途情報を AI該非判定モジュールに送って規制リスクを照合します。<br>
-        <span style="font-size:.76rem;">※ ai_validation モジュール（ポート 8001）が起動している必要があります</span>
+        <span style="font-size:.76rem;">※ ai_validation モジュール（ポート 8011）が起動している必要があります</span>
       </p>
       <form method="post"
             action="/ui/cases/{{ case.case_id }}/profiles/{{ profile.profile_id }}/run-ai-validation">
