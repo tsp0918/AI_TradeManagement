@@ -19,30 +19,12 @@
 
   <!-- ─── Sidebar ─────────────────────────────────────────────── -->
   <nav>
-    {% set ns = namespace(section="", first=true) %}
-    {% for m in modules %}
-    {% set sec = m.nav_section if m.nav_section is defined else "process" %}
-    {% if sec != ns.section %}
-      {% if not ns.first %}
-        {% if sec == "process" %}
-        <span class="nav-section-label">輸出管理フロー</span>
-        {% else %}
-        <div class="nav-divider"></div>
-        {% endif %}
-      {% endif %}
-      {% set ns.first = false %}
-      {% set ns.section = sec %}
-    {% endif %}
-    <div
-      class="module-card{% if loop.first %} active{% endif %}"
-      id="card-{{ m.key }}"
-    >
-      <button
-        class="module-main-btn"
-        data-key="{{ m.key }}"
-        data-iframe-url="{{ m.iframe_url }}"
-        title="{{ m.description }}"
-      >
+
+    <!-- ① 業務フロー：R&D起案 → 品目登録 → 該非判定 → 審査 -->
+    <span class="nav-section-label">業務フロー</span>
+    {% for m in modules if m.nav_section == "flow" %}
+    <div class="module-card{% if loop.first %} active{% endif %}" id="card-{{ m.key }}">
+      <button class="module-main-btn" data-key="{{ m.key }}" data-iframe-url="{{ m.iframe_url }}" title="{{ m.description }}">
         <span class="module-icon">{{ m.icon }}</span>
         <span class="module-label">{{ m.name }}</span>
         <span class="status-dot" id="dot-{{ m.key }}" title="確認中…"></span>
@@ -50,6 +32,56 @@
       <div class="module-starting" id="starting-{{ m.key }}">起動中…</div>
     </div>
     {% endfor %}
+
+    <!-- ② 受注後・ERP連携業務：出荷管理・調達・バージョン管理 -->
+    <div class="nav-divider"></div>
+    <span class="nav-section-label">受注後・ERP連携</span>
+    {% for m in modules if m.nav_section == "operations" %}
+    <div class="module-card" id="card-{{ m.key }}">
+      <button class="module-main-btn" data-key="{{ m.key }}" data-iframe-url="{{ m.iframe_url }}" title="{{ m.description }}">
+        <span class="module-icon">{{ m.icon }}</span>
+        <span class="module-label">{{ m.name }}</span>
+        <span class="status-dot" id="dot-{{ m.key }}" title="確認中…"></span>
+      </button>
+      <div class="module-starting" id="starting-{{ m.key }}">起動中…</div>
+    </div>
+    {% endfor %}
+
+    <!-- ③ 専門ツール（折りたたみ） -->
+    <div class="nav-divider"></div>
+    <button class="nav-group-toggle" id="specialized-toggle" onclick="toggleSpecialized()"
+            title="AI特許検索・HSコード判定・規制レジーム照合・与信管理">
+      <span class="nav-group-icon">🔧</span>
+      <span class="nav-group-label">専門ツール</span>
+      <span class="nav-group-arrow" id="specialized-arrow">▸</span>
+    </button>
+    <div id="specialized-group" style="display:none;">
+      {% for m in modules if m.nav_section == "specialized" %}
+      <div class="module-card" id="card-{{ m.key }}">
+        <button class="module-main-btn" data-key="{{ m.key }}" data-iframe-url="{{ m.iframe_url }}" title="{{ m.description }}">
+          <span class="module-icon">{{ m.icon }}</span>
+          <span class="module-label">{{ m.name }}</span>
+          <span class="status-dot" id="dot-{{ m.key }}" title="確認中…"></span>
+        </button>
+        <div class="module-starting" id="starting-{{ m.key }}">起動中…</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- ④ 管理者・システム -->
+    <div class="nav-divider"></div>
+    <span class="nav-section-label">管理・システム</span>
+    {% for m in modules if m.nav_section == "admin" %}
+    <div class="module-card" id="card-{{ m.key }}">
+      <button class="module-main-btn" data-key="{{ m.key }}" data-iframe-url="{{ m.iframe_url }}" title="{{ m.description }}">
+        <span class="module-icon">{{ m.icon }}</span>
+        <span class="module-label">{{ m.name }}</span>
+        <span class="status-dot" id="dot-{{ m.key }}" title="確認中…"></span>
+      </button>
+      <div class="module-starting" id="starting-{{ m.key }}">起動中…</div>
+    </div>
+    {% endfor %}
+
   </nav>
 
   <!-- ─── Main content ─────────────────────────────────────────── -->
@@ -66,9 +98,11 @@
     </div>
 
     {% if modules %}
+    {% set ns = namespace(first_url="") %}
+    {% for m in modules %}{% if m.nav_section == "flow" and not ns.first_url %}{% set ns.first_url = m.iframe_url %}{% endif %}{% endfor %}
     <iframe
       id="module-frame"
-      src="{{ modules[0].iframe_url }}"
+      src="{{ ns.first_url or modules[0].iframe_url }}"
       allowfullscreen
     ></iframe>
     {% else %}
@@ -111,5 +145,18 @@
 
   <script src="/static/platform.js"></script>
   <script src="/proxy/dap/static/chat-widget.js" defer></script>
+  <script>
+    function toggleSpecialized() {
+      const group = document.getElementById('specialized-group');
+      const arrow = document.getElementById('specialized-arrow');
+      if (group.style.display === 'none') {
+        group.style.display = 'block';
+        arrow.textContent = '▾';
+      } else {
+        group.style.display = 'none';
+        arrow.textContent = '▸';
+      }
+    }
+  </script>
 </body>
 </html>
