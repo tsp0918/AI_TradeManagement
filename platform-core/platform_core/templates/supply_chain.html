@@ -803,6 +803,7 @@ function renderAttestations(items) {
       </div>
       ${a.ai_suggested_eccn ? `<div style="font-size:.8rem;">AI提示ECCN: <strong>${esc(a.ai_suggested_eccn)}</strong>${conf} — <span class="${vClass}">${vLabel}</span></div>` : ''}
       ${a.review_comment ? `<div style="font-size:.78rem;color:#555;margin-top:2px;">審査コメント: ${esc(a.review_comment)}</div>` : ''}
+      ${renderSupportingDocs(a.supporting_docs, a.id)}
       <div class="attest-actions">
         <button class="btn btn-sm btn-validate" onclick="runAiValidate('${a.id}')">🤖 AI検証</button>
         ${a.status!=='accepted'?`<button class="btn btn-sm btn-accept" onclick="reviewAttest('${a.id}','accept')">✅ 承認</button>`:''}
@@ -816,6 +817,18 @@ function renderAttestations(items) {
 
 function statusLabel(s) {
   return { pending:'未審査', ai_reviewed:'AI検証済', accepted:'承認済', rejected:'却下', expired:'期限切' }[s] || s;
+}
+
+function renderSupportingDocs(docs, attestId) {
+  if (!docs || !docs.length) return '';
+  const links = docs.map(d => {
+    const sizeKb = d.size ? Math.ceil(d.size / 1024) : '?';
+    return `<a href="/api/supplier-attestations/${attestId}/documents/${encodeURIComponent(d.filename)}"
+        target="_blank" style="display:inline-flex;align-items:center;gap:3px;font-size:.75rem;
+        color:#1565c0;text-decoration:none;background:#e3f2fd;padding:2px 7px;border-radius:3px;
+        margin:2px 2px 0 0;">📎 ${esc(d.original||d.filename)} <span style="color:#888">(${sizeKb}KB)</span></a>`;
+  }).join('');
+  return `<div style="margin-top:4px;">${links}</div>`;
 }
 
 function openAttestModal() {

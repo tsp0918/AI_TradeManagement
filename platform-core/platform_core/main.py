@@ -43,6 +43,7 @@ from platform_core.routers.export_license import router as export_license_router
 from platform_core.routers.item_version import router as item_version_router
 from platform_core.routers.compliance_lookup import router as compliance_lookup_router
 from platform_core.routers.transaction_review import router as transaction_review_router
+from platform_core.routers.fta import router as fta_router
 
 logger = logging.getLogger(__name__)
 _STATIC_DIR = pathlib.Path(__file__).parent / "static"
@@ -67,15 +68,68 @@ async def _regulatory_scheduler() -> None:
         await asyncio.sleep(_REG_CHECK_INTERVAL)
 
 
+async def _license_alert_scheduler() -> None:
+    """バックグラウンド: 24時間ごとに期限切れ近い輸出許可証をチェックしアラートを生成する。"""
+    from datetime import timezone as tz
+    from platform_core.db.session import AsyncSessionLocal
+    from platform_core.models.export_license import ExportLicenseApplication
+    from platform_core.models.regulatory_change import RegulatoryChange
+    from sqlalchemy import select
+
+    await asyncio.sleep(90)  # 規制スケジューラーより少し後に起動
+    while True:
+        try:
+            async with AsyncSessionLocal() as session:
+                now = __import__("datetime").datetime.now(tz=tz.utc)
+                result = await session.execute(
+                    select(ExportLicenseApplication).where(
+                        ExportLicenseApplication.status == "approved",
+                        ExportLicenseApplication.expires_at.isnot(None),
+                        ExportLicenseApplication.alert_sent == False,
+                    )
+                )
+                apps = result.scalars().all()
+                alerted = 0
+                for a in apps:
+                    exp = a.expires_at if a.expires_at.tzinfo else a.expires_at.replace(tzinfo=tz.utc)
+                    days = (exp - now).days
+                    if days <= 90:
+                        severity = "danger" if days <= 30 else "warn"
+                        label = a.application_number or str(a.id)[:8]
+                        title = f"輸出許可証 期限アラート: {label}"
+                        detail = (
+                            f"許可証 {label}（{a.license_type} / {a.destination_country or '仕向地未設定'}）の"
+                            f"有効期限まで残り {days} 日です（{exp.strftime('%Y-%m-%d')}）。"
+                            f" 更新申請または出荷完了の確認を行ってください。"
+                        )
+                        session.add(RegulatoryChange(
+                            source="license_alert",
+                            title=title,
+                            detail=detail,
+                            severity=severity,
+                        ))
+                        a.alert_sent = True
+                        alerted += 1
+                await session.commit()
+                if alerted:
+                    logger.info("LicenseAlert: %d alerts generated", alerted)
+        except Exception as exc:
+            logger.warning("LicenseAlert scheduler failed: %s", exc)
+        await asyncio.sleep(_REG_CHECK_INTERVAL)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 全モジュールを並行起動 (fire-and-forget)
     start_all_modules()
     # 規制動向スケジューラー起動
     _sched_task = asyncio.create_task(_regulatory_scheduler())
+    # 輸出許可証期限アラートスケジューラー起動
+    _alert_task = asyncio.create_task(_license_alert_scheduler())
     yield
     # 終了時: スケジューラー・モジュールサブプロセスを停止
     _sched_task.cancel()
+    _alert_task.cancel()
     stop_all_modules()
 
 
@@ -118,6 +172,7 @@ def create_app() -> FastAPI:
     app.include_router(item_version_router)
     app.include_router(compliance_lookup_router)
     app.include_router(transaction_review_router)
+    app.include_router(fta_router)
 
     @app.get("/", include_in_schema=False)
     async def root():

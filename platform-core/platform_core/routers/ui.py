@@ -185,6 +185,16 @@ _KNOWN_MODULES: list[dict] = [
         "health_check_path": "",
         "nav_section":       "operations",
     },
+    {
+        "key":               "fta_check",
+        "name":              "EPA/FTA 特恵税率",
+        "description":       "日本が締結するEPA/FTA協定別の特恵関税率をHSコード×仕向地国で照会する",
+        "base_url":          "",
+        "iframe_url":        "/ui/fta-check",
+        "icon":              "🌐",
+        "health_check_path": "",
+        "nav_section":       "operations",
+    },
     # ── 専門ツール（折りたたみ表示）─────────────────────────────────────────
     {
         "key":               "patent_search",

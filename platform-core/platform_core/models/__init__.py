@@ -19,6 +19,7 @@ from platform_core.models.supplier_portal_token import SupplierPortalToken  # no
 from platform_core.models.export_license import ExportLicenseApplication  # noqa: F401
 from platform_core.models.item_version import ItemVersion, ComplianceChangeEvent  # noqa: F401
 from platform_core.models.transaction_review import TransactionReview  # noqa: F401
+from platform_core.models.fta import FtaAgreement, FtaRate  # noqa: F401
 
 __all__ = [
     "Tenant",
@@ -44,4 +45,6 @@ __all__ = [
     "ItemVersion",
     "ComplianceChangeEvent",
     "TransactionReview",
+    "FtaAgreement",
+    "FtaRate",
 ]

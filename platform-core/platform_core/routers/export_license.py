@@ -396,6 +396,19 @@ async def submit_license(app_id: str, db: AsyncSession = Depends(get_db)):
     a = await _get_or_404(app_id, db)
     a.status = "submitted"
     a.submitted_at = datetime.now(tz=timezone.utc)
+
+    # 申請番号自動採番: EL-{type}-{YYYY}-{seq:04d}
+    if not a.application_number:
+        year = datetime.now().year
+        prefix = a.license_type.upper()  # EAR or FEFTA
+        count_result = await db.execute(
+            select(func.count()).select_from(ExportLicenseApplication).where(
+                ExportLicenseApplication.license_type == a.license_type
+            )
+        )
+        seq = (count_result.scalar() or 0) + 1
+        a.application_number = f"EL-{prefix}-{year}-{seq:04d}"
+
     await db.commit()
     await db.refresh(a)
     return _serialize(a)
@@ -424,6 +437,49 @@ async def deny_license(app_id: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(a)
     return _serialize(a)
+
+
+class UseValueBody(BaseModel):
+    shipment_value_usd: float
+    description: str | None = None
+
+
+@router.post("/api/export-licenses/{app_id}/use-value")
+async def use_license_value(
+    app_id: str,
+    body: UseValueBody,
+    db: AsyncSession = Depends(get_db),
+):
+    """許可残存枠から出荷額を消費する。"""
+    a = await _get_or_404(app_id, db)
+    if a.status != "approved":
+        raise HTTPException(status_code=400, detail="承認済み許可証にのみ適用できます")
+    if a.license_value_remaining_usd is None:
+        raise HTTPException(status_code=400, detail="残存枠が未設定です。まず許可証承認時に枠を設定してください")
+    if body.shipment_value_usd <= 0:
+        raise HTTPException(status_code=400, detail="出荷額は正の値を指定してください")
+    if body.shipment_value_usd > a.license_value_remaining_usd:
+        raise HTTPException(
+            status_code=400,
+            detail=f"残存枠不足: 残 USD {a.license_value_remaining_usd:,.0f} に対し USD {body.shipment_value_usd:,.0f} を申請"
+        )
+
+    a.license_value_remaining_usd -= body.shipment_value_usd
+    used_note = (
+        f"[{datetime.now(tz=timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC] "
+        f"出荷消費: USD {body.shipment_value_usd:,.0f}"
+        + (f" — {body.description}" if body.description else "")
+    )
+    a.notes = (a.notes or "") + "\n" + used_note
+
+    await db.commit()
+    await db.refresh(a)
+    return {
+        "ok": True,
+        "license_value_remaining_usd": a.license_value_remaining_usd,
+        "used_usd": body.shipment_value_usd,
+        "application_number": a.application_number,
+    }
 
 
 # ── 取引からドラフト生成 ──────────────────────────────────────────

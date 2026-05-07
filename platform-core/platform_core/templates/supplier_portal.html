@@ -157,7 +157,7 @@
   {% endif %}
 
   <!-- 申告フォーム -->
-  <form class="form-card" method="post" action="/supplier-portal/{{ token }}/submit">
+  <form class="form-card" method="post" action="/supplier-portal/{{ token }}/submit" enctype="multipart/form-data">
     <h3>原産地・該非判定 申告フォーム</h3>
 
     <div class="form-section">
@@ -216,6 +216,15 @@
       <div class="field">
         <label>特記事項・補足説明</label>
         <textarea name="notes" placeholder="原産性の根拠、特記事項があればご記入ください"></textarea>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h4>証明書類アップロード（任意）</h4>
+      <div class="field">
+        <label>証明書・COO・仕様書 等</label>
+        <input type="file" name="documents" multiple accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png,.zip" style="padding:6px 0;" />
+        <div class="hint">対応形式: PDF / Excel / 画像 / ZIP　複数ファイル選択可（各 20MB 以下推奨）</div>
       </div>
     </div>
 

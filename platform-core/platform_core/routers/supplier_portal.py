@@ -28,7 +28,14 @@ from platform_core.models.supplier_portal_token import SupplierPortalToken
 from platform_core.models.supply_chain import SupplyChainNode
 
 import pathlib
+import shutil
+from fastapi import UploadFile, File
+from fastapi.responses import FileResponse
+
 _TEMPLATES_DIR = pathlib.Path(__file__).parent.parent / "templates"
+_UPLOADS_DIR   = pathlib.Path(__file__).parent.parent.parent / "uploads" / "supplier"
+_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 router = APIRouter(tags=["supplier_portal"])
@@ -257,6 +264,30 @@ async def portal_submit(request: Request, token_str: str, db: AsyncSession = Dep
         status="pending",
     )
     db.add(attest)
+    await db.flush()  # ID 確定
+
+    # ファイルアップロード処理
+    supporting_docs = []
+    upload_fields = form.getlist("documents")
+    if upload_fields:
+        attest_dir = _UPLOADS_DIR / str(attest.id)
+        attest_dir.mkdir(parents=True, exist_ok=True)
+        now_str = datetime.now(tz=timezone.utc).strftime("%Y%m%d%H%M%S")
+        for uploaded in upload_fields:
+            if not hasattr(uploaded, "filename") or not uploaded.filename:
+                continue
+            safe_name = f"{now_str}_{uploaded.filename.replace('/', '_').replace('..', '_')}"
+            dest = attest_dir / safe_name
+            content = await uploaded.read()
+            dest.write_bytes(content)
+            supporting_docs.append({
+                "filename":    safe_name,
+                "original":    uploaded.filename,
+                "size":        len(content),
+                "uploaded_at": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
+            })
+        if supporting_docs:
+            attest.supporting_docs = supporting_docs
 
     # トークン使用回数を増やす
     t.use_count += 1
@@ -275,6 +306,20 @@ async def portal_submit(request: Request, token_str: str, db: AsyncSession = Dep
             "attestation_id": str(attest.id),
         },
     )
+
+
+@router.get("/api/supplier-attestations/{attest_id}/documents/{filename}")
+async def download_document(attest_id: str, filename: str):
+    """アップロード済み証明書をダウンロードする。"""
+    path = _UPLOADS_DIR / attest_id / filename
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="ファイルが見つかりません")
+    # Path traversal 防止: 解決済みパスが _UPLOADS_DIR 配下であることを確認
+    try:
+        path.resolve().relative_to(_UPLOADS_DIR.resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="不正なパスです")
+    return FileResponse(str(path), filename=filename)
 
 
 def _parse_date(s: str | None):
