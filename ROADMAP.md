@@ -1,8 +1,9 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-07 更新（安全保障貿易管理強化 優先度S実装 / 役務取引管理 / FDPR判定エンジン）
+# 2026-05-07 更新（Priority A 完了: US EAR規制理由・EU Dual-Use・オープンクローズ戦略・ICP自己診断）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
-> 2026-05-07 追加: ①経済安保法特許非公開リスクチェック・②CISTEC様式準拠輸出審査記録7年保存・③役務取引管理（外為法第25条）・④FDPR判定エンジン（4バリアント/De Minimis閾値）。
+> 2026-05-07（2回目）追加: Priority A — US EAR規制理由エンジン（11種）・EU Dual-Use チェッカー（GEA EU001-EU008）・オープンクローズ戦略マトリクス（4象限）・ICP自己診断（CISTEC 8要素32問）。
+> 2026-05-07（1回目）追加: ①経済安保法特許非公開リスクチェック・②CISTEC様式準拠輸出審査記録7年保存・③役務取引管理（外為法第25条）・④FDPR判定エンジン（4バリアント/De Minimis閾値）。
 > 2026-04-29 追加: Layer A 再ビルド（2,922→2,999vec）。ECCN embed_text バグ修正（full body埋め込み）・外為法5項(化学/生物兵器製造装置)/8項(コンピュータ)12件ずつ追加・USML/EU/Wassenaar収録。
 > 2026-04-28 追加: D2-3 Wassenaar Arrangement ML 22カテゴリ・グローバル規制UIレジームチェック・Screening→与信管理自動連携・Fterm検索統合完了。
 > 2026-04-26 追加: 品目バージョン管理 + 仕様変更コンプライアンス影響検知 実装完了。
@@ -427,6 +428,43 @@ UI（platform-core/platform_core/templates/counterparty.html）:
   - 照合ボタン（ワンクリックでscreening API呼出）
 
 Alembic migration: c1e2f3a4b5d6_add_counterparty_credit.py
+```
+
+### ✅ Priority A — グローバルコンプライアンス強化（2026-05-07）
+
+```
+① US EAR 規制理由・ライセンス例外エンジン（platform-core/ontology/rules/ear_reason_engine.py）
+  - Reason for Control: NS1/NS2/AT1/AT2/NP1/NP2/MT/CB1/CB2/CB3/EI/RS1/RS2/CC/SS/SL/FC 全11種
+  - License Exception: NLR/LVS/GBS/CIV/TSR/APP/ENC/GOV/RPL/STA 全10種
+  - Country Group: A（ホワイト国）/ B / D:1 / E:1 で判定分岐
+  - API: POST /decision/{id}/ear-check → verdict: NLR/EXCEPTION/LICENSE_REQUIRED/PROHIBITED
+  - UI: transaction_detail Section 5c（teal ボーダー・AJAX）
+
+② EU Dual-Use チェッカー（platform-core/ontology/rules/eu_dual_use_checker.py）
+  - Regulation 2021/821 Annex I カテゴリ 0〜9（ECCN先頭数字から推定）
+  - GEA: EU001（主要同盟国）/ EU007（グループ内移転）/ EU008（暗号）等
+  - EU制裁国（RU/BY/KP/IR/SY）→ PROHIBITED
+  - Annex IV 品目 → 域内移転でも個別許可
+  - API: POST /decision/{id}/eu-dual-use-check
+  - UI: transaction_detail Section 5d（blue ボーダー・AJAX）
+
+③ オープンクローズ戦略マトリクス（rnd_assessment）
+  ファイル: modules/rnd_assessment/app/services/open_close_matrix.py
+  - 判定結果: MANDATORY_CLOSE / CLOSE / CONDITIONAL / OPEN の4象限
+  - 入力: ECCN（感度 HIGH/MEDIUM/LOW）× 特許非公開リスク × 競合状況 × 技術成熟度
+  - MANDATORY_CLOSE: 経済安保法 HIGH リスク → 事前確認必須・出願不可
+  - 出願・権利化の具体的指針（国内/PCT/クレーム設計）を生成
+  - UI: /ui/open-close（フォーム+結果）
+  - ポータル: 専門ツールセクション「🔓 オープンクローズ戦略」
+
+④ ICP 自己診断（ai_validation）
+  ファイル: modules/ai_validation/app/routers/icp_diagnosis.py
+  - CISTEC 8要素 × 32問: はい(2)/一部(1)/いいえ(0) → 64点満点
+  - レベル4（≥85%）/3（≥65%）/2（≥40%）/1（<40%）の4段階評価
+  - 要素別スコアバー + 優先改善事項（スコア最下位3要素）
+  - 印刷/PDF保存対応・全32問を5分程度で完了可能
+  - UI: /ui/icp（フォーム）→ /ui/icp (POST) → 結果
+  - ポータル: 専門ツールセクション「📊 ICP 自己診断」
 ```
 
 ### ✅ 安全保障貿易管理強化（2026-05-07）
