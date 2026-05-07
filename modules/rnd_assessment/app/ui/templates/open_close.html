@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}オープンクローズ戦略マトリクス — R&D リスク評価{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1 style="font-size:1.25rem;">オープンクローズ戦略マトリクス</h1>
+  <div class="muted" style="font-size:.82rem;">知財戦略（特許出願 vs. 営業秘密）の判定支援 — 経済安保法 / 外為法 / 不正競争防止法</div>
+</div>
+
+{% if not result %}
+<!-- ─── 入力フォーム ─── -->
+<div style="background:#faf5ff; border:1px solid #e9d5ff; border-left:4px solid #7c3aed; border-radius:8px; padding:14px 18px; margin-bottom:20px; font-size:.84rem; color:#4c1d95; line-height:1.65;">
+  <strong>💡 本ツールについて</strong><br>
+  技術の ECCN 感度・特許非公開リスク・競合状況・技術成熟度から
+  <strong>特許出願（オープン）/ 営業秘密（クローズ）/ 条件付き出願（コンディショナル）/ 法的非公開</strong> の
+  4象限戦略を判定します。経済安全保障推進法 第4章（2024年5月施行）に対応しています。
+</div>
+
+<form method="post" action="/ui/open-close">
+<div class="card" style="margin-bottom:16px;">
+  <div style="font-size:.75rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px;">技術情報</div>
+  <div style="display:grid; gap:12px;">
+    <div>
+      <label class="label-sm">技術タイトル <span style="color:#ef4444;">*</span></label>
+      <input class="input" type="text" name="title" required placeholder="例: 次世代 GaN パワーデバイス製造プロセス">
+    </div>
+    <div>
+      <label class="label-sm">技術概要・特許出願候補のクレームサマリー <span style="color:#ef4444;">*</span></label>
+      <textarea class="textarea" name="description" rows="4" required
+        placeholder="例: SiC基板上へのエピタキシャル成長条件最適化技術。従来比 30% 低オン抵抗を実現する新規ドーピング手法…"></textarea>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div>
+        <label class="label-sm">品目 ECCN（判明している場合）</label>
+        <input class="input" type="text" name="eccn" placeholder="例: 3C001, 9E003">
+        <div style="font-size:.75rem; color:#64748b; margin-top:3px;">EARカテゴリが規制感度の判定に使用されます</div>
+      </div>
+      <div>
+        <label class="label-sm">主な輸出先市場（ISO alpha-2）</label>
+        <input class="input" type="text" name="export_destination" placeholder="例: US, CN, DE" maxlength="2">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+  <div style="font-size:.75rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px;">戦略判定パラメータ</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+    <div>
+      <label class="label-sm">特許非公開リスク（経済安保法チェック結果）</label>
+      <div class="select" style="width:100%;">
+        <select name="patent_risk_level" style="width:100%;">
+          <option value="NONE">NONE — 該当なし（経済安保法 非指定技術）</option>
+          <option value="MEDIUM">MEDIUM — 事前相談を推奨（関連技術の可能性あり）</option>
+          <option value="HIGH">HIGH — 事前確認が必要（経済安保法 指定技術候補）</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label class="label-sm">技術成熟度</label>
+      <div class="select" style="width:100%;">
+        <select name="tech_maturity" style="width:100%;">
+          <option value="early">Early Stage — 基礎研究・実験室レベル</option>
+          <option value="middle" selected>Middle Stage — プロトタイプ・実証試験中</option>
+          <option value="mature">Mature — 量産化・製品化段階</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label class="label-sm">競合他社との技術的ポジション</label>
+      <div class="select" style="width:100%;">
+        <select name="competitive_position" style="width:100%;">
+          <option value="ahead">Ahead — 競合より1〜3年先行</option>
+          <option value="parity" selected>Parity — 概ね同水準</option>
+          <option value="behind">Behind — 競合が先行している</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label class="label-sm">営業秘密としての価値</label>
+      <div class="select" style="width:100%;">
+        <select name="has_trade_secret_value" style="width:100%;">
+          <option value="true" selected>あり — 独自ノウハウ・製造条件等</option>
+          <option value="false">なし — 出願で公開しても競争力は維持できる</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="display:flex; gap:12px; margin-bottom:32px;">
+  <button class="btn btn-primary" type="submit" style="padding:10px 28px; font-size:.95rem;">戦略を判定する</button>
+  <a class="btn" href="/ui/cases">← R&D 案件一覧に戻る</a>
+</div>
+</form>
+
+{% else %}
+<!-- ─── 結果表示 ─── -->
+<div style="background:{{ result.strategy_color }}; color:#fff; border-radius:12px; padding:22px 26px; margin-bottom:20px;">
+  <div style="font-size:.75rem; font-weight:700; opacity:.8; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px;">戦略判定結果</div>
+  <div style="font-size:1.3rem; font-weight:800; margin-bottom:4px;">{{ result.strategy_label }}</div>
+  <div style="font-size:.82rem; opacity:.85; margin-top:4px;">ECCN感度: {{ result.eccn_sensitivity }} | 特許非公開リスク: {{ result.patent_risk_level }}</div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+  <div class="card">
+    <div style="font-size:.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px;">判定根拠</div>
+    <ul style="margin:0; padding-left:18px; font-size:.85rem; color:#374151; line-height:1.7;">
+      {% for r in result.rationale %}<li>{{ r }}</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div style="font-size:.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px;">推奨アクション</div>
+    <ul style="margin:0; padding-left:18px; font-size:.85rem; color:#374151; line-height:1.7;">
+      {% for a in result.recommended_actions %}<li>{{ a }}</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px; background:#f0fdf4; border-color:#86efac;">
+  <div style="font-size:.75rem; font-weight:700; color:#166534; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px;">📋 出願・権利化の具体的指針</div>
+  <ul style="margin:0; padding-left:18px; font-size:.85rem; color:#14532d; line-height:1.7;">
+    {% for g in result.ip_filing_guidance %}<li>{{ g }}</li>{% endfor %}
+  </ul>
+</div>
+
+<div class="card" style="margin-bottom:20px; background:#eff6ff; border-color:#bfdbfe;">
+  <div style="font-size:.75rem; font-weight:700; color:#1e3a8a; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;">⚖️ 根拠法令</div>
+  <div style="display:flex; flex-wrap:wrap; gap:6px;">
+    {% for law in result.law_references %}
+    <span style="background:#dbeafe; color:#1e40af; border-radius:999px; padding:3px 10px; font-size:.78rem; font-weight:600;">{{ law }}</span>
+    {% endfor %}
+  </div>
+</div>
+
+<div style="display:flex; gap:10px;">
+  <a class="btn" href="/ui/open-close">← 別の技術を診断する</a>
+  <a class="btn" href="/ui/cases">R&D 案件一覧へ</a>
+</div>
+{% endif %}
+
+{% endblock %}

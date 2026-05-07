@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}ICP 診断結果 — 社内コンプライアンスプログラム評価{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+
+<!-- パンくず -->
+<div style="font-size:.8rem; color:#6b7280; margin-bottom:14px;">
+  <a href="/ui/icp" style="color:#2563eb; text-decoration:none;">ICP 自己診断</a>
+  <span style="margin:0 6px;">›</span>
+  <span>診断結果{% if company_name %} — {{ company_name }}{% endif %}</span>
+</div>
+
+<!-- 総合スコアカード -->
+<div style="background:{{ result.level_color }}; color:#fff; border-radius:12px; padding:24px 28px; margin-bottom:20px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+    <div>
+      <div style="font-size:.8rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; opacity:.8; margin-bottom:6px;">ICP 診断結果</div>
+      <div style="font-size:1.4rem; font-weight:800; margin-bottom:4px;">{{ result.level_label }}</div>
+      <div style="font-size:.88rem; opacity:.9; line-height:1.55; max-width:480px;">{{ result.level_desc }}</div>
+    </div>
+    <div style="text-align:center; flex-shrink:0;">
+      <div style="font-size:3rem; font-weight:900; line-height:1;">{{ result.total_pct }}<span style="font-size:1.2rem;">%</span></div>
+      <div style="font-size:.8rem; opacity:.8; margin-top:2px;">{{ result.total_score }} / {{ result.total_max }} 点</div>
+      <div style="font-size:.72rem; opacity:.7; margin-top:4px;">{{ result.evaluated_at }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- 進捗バー -->
+<div class="card" style="margin-bottom:16px; padding:18px 20px;">
+  <div style="font-size:.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px;">要素別スコア</div>
+  {% for es in result.element_scores %}
+  <div style="margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:.83rem;">
+      <span style="font-weight:600; color:#1e293b;">{{ es.title }}</span>
+      <span style="font-weight:700; color:{% if es.pct >= 80 %}#166534{% elif es.pct >= 50 %}#92400e{% else %}#991b1b{% endif %};">{{ es.pct }}%</span>
+    </div>
+    <div style="background:#f1f5f9; border-radius:999px; height:8px; overflow:hidden;">
+      <div style="background:{% if es.pct >= 80 %}#4ade80{% elif es.pct >= 50 %}#fbbf24{% else %}#f87171{% endif %};
+                  height:100%; width:{{ es.pct }}%; border-radius:999px; transition:width .4s;"></div>
+    </div>
+    {% if es.gaps %}
+    <div style="margin-top:5px; font-size:.77rem; color:#64748b;">
+      未対応: {% for g in es.gaps[:2] %}<span style="background:#fef2f2; color:#991b1b; border-radius:4px; padding:1px 6px; margin-right:4px;">{{ g[:30] }}…</span>{% endfor %}
+      {% if es.gaps|length > 2 %}<span style="color:#94a3b8;">他 {{ es.gaps|length - 2 }} 件</span>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- 優先改善事項 -->
+{% if result.priority_improvements %}
+<div class="card" style="margin-bottom:16px; background:#fff7ed; border-color:#fed7aa;">
+  <div style="font-size:.75rem; font-weight:700; color:#92400e; text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px;">⚠️ 優先改善事項（スコア上位 {{ result.priority_improvements|length }} 要素）</div>
+  {% for pi in result.priority_improvements %}
+  <div style="margin-bottom:14px; padding:10px 14px; background:#fff; border-radius:8px; border:1px solid #fed7aa;">
+    <div style="font-weight:700; font-size:.87rem; color:#7c2d12; margin-bottom:6px;">{{ pi.element }} （{{ pi.pct }}%）</div>
+    {% if pi.gaps %}
+    <ul style="margin:0; padding-left:18px; font-size:.82rem; color:#374151; line-height:1.65;">
+      {% for g in pi.gaps %}<li>{{ g }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- レベル別アドバイス -->
+<div class="card" style="margin-bottom:20px; background:#f0fdf4; border-color:#86efac;">
+  <div style="font-size:.75rem; font-weight:700; color:#166534; text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px;">📋 改善に向けた推奨アクション</div>
+  <div style="font-size:.85rem; color:#14532d; line-height:1.7;">
+    {% if result.level == 1 %}
+    <ul style="margin:0; padding-left:18px;">
+      <li>経営者向け輸出管理説明会を即時実施し、トップコミットメントを確立してください。</li>
+      <li>輸出管理担当者を任命し、CISTEC 基礎研修への参加を手配してください。</li>
+      <li>外為法・EAR の適用可否チェックリストを作成し、全輸出に先立つ審査を義務化してください。</li>
+      <li>経済産業省 安全保障貿易管理課への相談窓口を把握してください。</li>
+    </ul>
+    {% elif result.level == 2 %}
+    <ul style="margin:0; padding-left:18px;">
+      <li>スコアが低い要素（上記「優先改善事項」）を起点に、6ヶ月以内の改善計画を策定してください。</li>
+      <li>内部監査を年1回以上実施し、改善状況をモニタリングしてください。</li>
+      <li>記録保存体制（電子管理システム）の整備を優先してください（外為法 7年保存義務）。</li>
+    </ul>
+    {% elif result.level == 3 %}
+    <ul style="margin:0; padding-left:18px;">
+      <li>残存ギャップ項目を特定し、年次 ICP 改善計画に組み込んでください。</li>
+      <li>CISTEC 会員審査・経済産業省 ICP 認定制度の取得を検討してください。</li>
+      <li>海外子会社・グループ企業への ICP 水平展開を検討してください。</li>
+    </ul>
+    {% else %}
+    <ul style="margin:0; padding-left:18px;">
+      <li>現在の高水準の管理体制を維持・改善するため、年次内部監査を継続してください。</li>
+      <li>業界横断的な Best Practice 共有（CISTEC セミナー登壇等）を検討してください。</li>
+      <li>FDPR・経済安保法等の新規規制動向をウォッチし、先行対応してください。</li>
+    </ul>
+    {% endif %}
+  </div>
+</div>
+
+<!-- 操作 -->
+<div style="display:flex; gap:10px; align-items:center;">
+  <a class="btn" href="/ui/icp">← 診断をやり直す</a>
+  <button onclick="window.print()" class="btn">🖨️ 印刷・PDF保存</button>
+</div>
+
+</div>
+{% endblock %}

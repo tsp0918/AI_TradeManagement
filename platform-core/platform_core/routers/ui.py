@@ -226,6 +226,26 @@ _KNOWN_MODULES: list[dict] = [
         "health_check_path": "",
         "nav_section":       "specialized",
     },
+    {
+        "key":               "open_close_strategy",
+        "name":              "オープンクローズ戦略",
+        "description":       "特許出願 vs. 営業秘密の知財戦略を ECCN 感度・経済安保法リスクから判定",
+        "base_url":          "http://localhost:8003",
+        "iframe_url":        "/proxy/rnd_assessment/ui/open-close",
+        "icon":              "🔓",
+        "health_check_path": "/health",
+        "nav_section":       "specialized",
+    },
+    {
+        "key":               "icp_diagnosis",
+        "name":              "ICP 自己診断",
+        "description":       "CISTEC 8要素チェックリストによる社内コンプライアンスプログラム成熟度評価",
+        "base_url":          "http://localhost:8011",
+        "iframe_url":        "/proxy/ai_validation/ui/icp",
+        "icon":              "📊",
+        "health_check_path": "/health",
+        "nav_section":       "specialized",
+    },
     # ── 管理者・システム ─────────────────────────────────────────────────────
     {
         "key":               "dap",

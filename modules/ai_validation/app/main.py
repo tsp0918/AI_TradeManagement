@@ -19,6 +19,7 @@ from app.routers.integration_export_control import router as integration_router
 from app.routers.admin import router as admin_router
 from app.routers.api_transactions import router as api_transactions_router
 from app.routers.service_control import router as service_control_router
+from app.routers.icp_diagnosis import router as icp_diagnosis_router
 from app.db.session import engine
 
 
@@ -266,3 +267,4 @@ app.include_router(integration_router)
 app.include_router(admin_router)
 app.include_router(api_transactions_router)
 app.include_router(service_control_router)
+app.include_router(icp_diagnosis_router)

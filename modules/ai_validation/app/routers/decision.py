@@ -442,3 +442,61 @@ def get_fdpr_result(transaction_id: int, db: Session = Depends(get_db)) -> Dict[
     return {"available": True, "transaction_id": transaction_id, "fdpr_judgment": jdict}
 
 
+# ── EAR 規制理由・ライセンス例外判定 ─────────────────────────────────────────
+
+class EARCheckRequest(BaseModel):
+    destination_country: str
+    eccn: Optional[str] = None
+    end_user_type: str = "unknown"
+    is_reexport: bool = False
+
+
+@router.post("/{transaction_id}/ear-check")
+def run_ear_check(
+    transaction_id: int,
+    body: EARCheckRequest,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """EAR Reason for Control + License Exception 判定を実行する。"""
+    import sys, pathlib
+    sys.path.insert(0, str(pathlib.Path(__file__).parents[5] / "platform-core"))
+    from platform_core.ontology.rules.ear_reason_engine import EARContext, evaluate_ear
+
+    ctx = EARContext(
+        transaction_id=transaction_id,
+        destination_country=body.destination_country,
+        eccn=body.eccn,
+        end_user_type=body.end_user_type,
+        is_reexport=body.is_reexport,
+    )
+    judgment = evaluate_ear(ctx)
+    return {"ok": True, "transaction_id": transaction_id, "ear_judgment": judgment.to_dict()}
+
+
+# ── EU Dual-Use チェック ───────────────────────────────────────────────────
+
+class EUDualUseCheckRequest(BaseModel):
+    destination_country: str
+    eccn: Optional[str] = None
+    end_user_type: str = "unknown"
+    is_intra_eu_transfer: bool = False
+
+
+@router.post("/{transaction_id}/eu-dual-use-check")
+def run_eu_dual_use_check(
+    transaction_id: int,
+    body: EUDualUseCheckRequest,
+) -> Dict[str, Any]:
+    """EU Dual-Use Regulation 2021/821 判定を実行する。"""
+    import sys, pathlib
+    sys.path.insert(0, str(pathlib.Path(__file__).parents[5] / "platform-core"))
+    from platform_core.ontology.rules.eu_dual_use_checker import EUDualUseContext, evaluate_eu_dual_use
+
+    ctx = EUDualUseContext(
+        destination_country=body.destination_country,
+        eccn=body.eccn,
+        end_user_type=body.end_user_type,
+        is_intra_eu_transfer=body.is_intra_eu_transfer,
+    )
+    judgment = evaluate_eu_dual_use(ctx)
+    return {"ok": True, "transaction_id": transaction_id, "eu_judgment": judgment.to_dict()}

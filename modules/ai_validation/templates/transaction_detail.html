@@ -1733,6 +1733,198 @@ function renderFdpr(j, area) {
 }
 </script>
 
+<!-- ===== Section 5c: US EAR 規制理由・ライセンス例外 ===== -->
+<div class="card detail-section" style="border-left:4px solid #0d9488;">
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+    <span style="font-size:1.1rem;">🇺🇸</span>
+    <div>
+      <div style="font-weight:700; font-size:.95rem; color:#1e293b;">EAR 規制理由・ライセンス例外（US EAR）</div>
+      <div class="muted small">15 CFR Part 742/740 — Reason for Control / License Exception チェック</div>
+    </div>
+  </div>
+  <div id="ear-result-area">
+    <div style="color:#94a3b8; font-size:.85rem;">未判定。以下フォームで実行してください。</div>
+  </div>
+  <details style="margin-top:14px;">
+    <summary style="cursor:pointer; font-size:.85rem; font-weight:600; color:#0d9488; margin-bottom:10px;">EAR 判定を実行する ▾</summary>
+    <div style="margin-top:12px; display:grid; gap:10px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+        <div>
+          <label style="font-size:.78rem; color:#64748b; display:block; margin-bottom:3px;">仕向国（ISO alpha-2）</label>
+          <input id="ear-dest" class="input" type="text" maxlength="2" placeholder="CN / RU / US"
+                 value="{{ tx.destination_country or '' }}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:.78rem; color:#64748b; display:block; margin-bottom:3px;">品目 ECCN</label>
+          <input id="ear-eccn" class="input" type="text" placeholder="例: 3A001" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:.78rem; color:#64748b; display:block; margin-bottom:3px;">エンドユーザー種別</label>
+          <select id="ear-eutype" class="input" style="width:100%;">
+            <option value="unknown">不明</option>
+            <option value="commercial">民間企業</option>
+            <option value="government">政府機関</option>
+            <option value="military">軍・防衛</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="runEar()" class="btn btn-primary" style="align-self:start;">EAR 判定を実行</button>
+    </div>
+  </details>
+</div>
+
+<script>
+async function runEar() {
+  const txId = {{ tx.id }};
+  const dest = document.getElementById('ear-dest').value.trim().toUpperCase();
+  if (!dest) { alert('仕向国を入力してください。'); return; }
+  const payload = {
+    destination_country: dest,
+    eccn: document.getElementById('ear-eccn').value.trim() || null,
+    end_user_type: document.getElementById('ear-eutype').value,
+  };
+  const area = document.getElementById('ear-result-area');
+  area.innerHTML = '<div style="color:#64748b; font-size:.85rem;">判定中…</div>';
+  try {
+    const r = await fetch(`/decision/${txId}/ear-check`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'エラー');
+    renderEar(d.ear_judgment, area);
+  } catch(e) { area.innerHTML = `<div style="color:#991b1b; font-size:.85rem;">エラー: ${e.message}</div>`; }
+}
+function renderEar(j, area) {
+  const vc = { NLR:'#166534', EXCEPTION:'#1d4ed8', LICENSE_REQUIRED:'#991b1b', PROHIBITED:'#7f1d1d' };
+  const vb = { NLR:'#dcfce7', EXCEPTION:'#dbeafe', LICENSE_REQUIRED:'#fee2e2', PROHIBITED:'#fef2f2' };
+  const color = vc[j.verdict] || '#374151';
+  const bg = vb[j.verdict] || '#f3f4f6';
+  let html = `<div style="background:${bg}; border:1px solid ${color}40; border-left:4px solid ${color}; border-radius:8px; padding:14px 16px;">`;
+  html += `<div style="font-weight:700; color:${color}; font-size:.9rem; margin-bottom:8px;">${j.verdict_label}</div>`;
+  html += `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">`;
+  html += `<span style="font-size:.75rem; background:#f3f4f6; padding:2px 8px; border-radius:4px;"><strong>Country Group:</strong> ${j.country_group}</span>`;
+  if (j.eccn) html += `<span style="font-size:.75rem; background:#f3f4f6; padding:2px 8px; border-radius:4px;"><strong>ECCN:</strong> ${j.eccn}</span>`;
+  html += `</div>`;
+  if (j.reasons_for_control && j.reasons_for_control.length > 0) {
+    html += `<div style="font-size:.75rem; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;">規制理由</div>`;
+    html += `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">`;
+    j.reasons_for_control.forEach(r => {
+      html += `<span style="background:#ede9fe; color:#5b21b6; border-radius:999px; padding:2px 10px; font-size:.75rem; font-weight:700;">${r}</span>`;
+    });
+    html += `</div>`;
+  }
+  if (j.applicable_exceptions && j.applicable_exceptions.length > 0) {
+    html += `<div style="font-size:.75rem; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;">ライセンス例外</div>`;
+    html += `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">`;
+    j.applicable_exceptions.forEach(e => {
+      html += `<span style="background:#dcfce7; color:#166534; border-radius:999px; padding:2px 10px; font-size:.75rem; font-weight:700;">${e}</span>`;
+    });
+    html += `</div>`;
+  }
+  if (j.rationale && j.rationale.length > 0) {
+    html += `<ul style="margin:6px 0; padding-left:18px; font-size:.82rem; color:#374151; line-height:1.65;">`;
+    j.rationale.forEach(r => { html += `<li>${r}</li>`; });
+    html += `</ul>`;
+  }
+  html += `</div>`;
+  area.innerHTML = html;
+}
+</script>
+
+<!-- ===== Section 5d: EU Dual-Use 判定 ===== -->
+<div class="card detail-section" style="border-left:4px solid #2563eb;">
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+    <span style="font-size:1.1rem;">🇪🇺</span>
+    <div>
+      <div style="font-weight:700; font-size:.95rem; color:#1e293b;">EU Dual-Use 判定</div>
+      <div class="muted small">EU Regulation 2021/821 — Annex I / General Export Authorisation (GEA) チェック</div>
+    </div>
+  </div>
+  <div id="eu-result-area">
+    <div style="color:#94a3b8; font-size:.85rem;">未判定。以下フォームで実行してください。</div>
+  </div>
+  <details style="margin-top:14px;">
+    <summary style="cursor:pointer; font-size:.85rem; font-weight:600; color:#2563eb; margin-bottom:10px;">EU Dual-Use 判定を実行する ▾</summary>
+    <div style="margin-top:12px; display:grid; gap:10px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+        <div>
+          <label style="font-size:.78rem; color:#64748b; display:block; margin-bottom:3px;">仕向国（ISO alpha-2）</label>
+          <input id="eu-dest" class="input" type="text" maxlength="2" placeholder="CN / RU / US"
+                 value="{{ tx.destination_country or '' }}" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:.78rem; color:#64748b; display:block; margin-bottom:3px;">品目 ECCN</label>
+          <input id="eu-eccn" class="input" type="text" placeholder="例: 3A001" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:.78rem; color:#64748b; display:block; margin-bottom:3px;">エンドユーザー種別</label>
+          <select id="eu-eutype" class="input" style="width:100%;">
+            <option value="unknown">不明</option>
+            <option value="commercial">民間企業</option>
+            <option value="government">政府機関</option>
+            <option value="military">軍・防衛</option>
+          </select>
+        </div>
+      </div>
+      <label style="display:flex; align-items:center; gap:6px; font-size:.85rem; cursor:pointer;">
+        <input id="eu-intraeu" type="checkbox" style="width:14px; height:14px;">
+        EU 域内移転（Intra-EU Transfer）
+      </label>
+      <button onclick="runEuDualUse()" class="btn btn-primary" style="align-self:start;">EU Dual-Use 判定を実行</button>
+    </div>
+  </details>
+</div>
+
+<script>
+async function runEuDualUse() {
+  const txId = {{ tx.id }};
+  const dest = document.getElementById('eu-dest').value.trim().toUpperCase();
+  if (!dest) { alert('仕向国を入力してください。'); return; }
+  const payload = {
+    destination_country: dest,
+    eccn: document.getElementById('eu-eccn').value.trim() || null,
+    end_user_type: document.getElementById('eu-eutype').value,
+    is_intra_eu_transfer: document.getElementById('eu-intraeu').checked,
+  };
+  const area = document.getElementById('eu-result-area');
+  area.innerHTML = '<div style="color:#64748b; font-size:.85rem;">判定中…</div>';
+  try {
+    const r = await fetch(`/decision/${txId}/eu-dual-use-check`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'エラー');
+    renderEuDualUse(d.eu_judgment, area);
+  } catch(e) { area.innerHTML = `<div style="color:#991b1b; font-size:.85rem;">エラー: ${e.message}</div>`; }
+}
+function renderEuDualUse(j, area) {
+  const vc = { NOT_CONTROLLED:'#166534', GEA:'#1d4ed8', INDIVIDUAL_LICENSE:'#991b1b', PROHIBITED:'#7f1d1d' };
+  const vb = { NOT_CONTROLLED:'#dcfce7', GEA:'#dbeafe', INDIVIDUAL_LICENSE:'#fee2e2', PROHIBITED:'#fef2f2' };
+  const color = vc[j.verdict] || '#374151';
+  const bg = vb[j.verdict] || '#f3f4f6';
+  let html = `<div style="background:${bg}; border:1px solid ${color}40; border-left:4px solid ${color}; border-radius:8px; padding:14px 16px;">`;
+  html += `<div style="font-weight:700; color:${color}; font-size:.9rem; margin-bottom:8px;">${j.verdict_label}</div>`;
+  if (j.eu_category_label) {
+    html += `<div style="font-size:.8rem; background:#eff6ff; color:#1e40af; border-radius:4px; padding:3px 8px; display:inline-block; margin-bottom:8px;">${j.eu_category_label}</div>`;
+  }
+  if (j.applicable_gea && j.applicable_gea.length > 0) {
+    html += `<div style="font-size:.75rem; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;">適用 GEA</div>`;
+    html += `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">`;
+    j.applicable_gea.forEach(g => {
+      html += `<span style="background:#dbeafe; color:#1e40af; border-radius:999px; padding:2px 10px; font-size:.75rem; font-weight:700;">${g}</span>`;
+    });
+    html += `</div>`;
+  }
+  if (j.rationale && j.rationale.length > 0) {
+    html += `<ul style="margin:6px 0; padding-left:18px; font-size:.82rem; color:#374151; line-height:1.65;">`;
+    j.rationale.forEach(r => { html += `<li>${r}</li>`; });
+    html += `</ul>`;
+  }
+  html += `</div>`;
+  area.innerHTML = html;
+}
+</script>
+
 <!-- ===== Section 6: 実行履歴（折りたたみ） ===== -->
 <details class="card detail-section">
   <summary class="detail-summary">

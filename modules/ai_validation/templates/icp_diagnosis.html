@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}ICP 自己診断 — 社内コンプライアンスプログラム評価{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+
+<div class="page-head">
+  <h1>社内 ICP 自己診断</h1>
+  <div class="muted" style="font-size:.82rem;">CISTEC 8要素チェックリスト — 内部コンプライアンスプログラム（Internal Compliance Program）成熟度評価</div>
+</div>
+
+<div style="background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid #2563eb; border-radius:8px; padding:14px 18px; margin-bottom:20px; font-size:.84rem; color:#1e3a5f; line-height:1.65;">
+  <strong>📋 本診断ツールについて</strong><br>
+  CISTEC「安全保障貿易に係る機微技術管理ガイダンス」および経済産業省「輸出管理内部規程（ICP）ガイドライン」に基づく
+  自己評価チェックリストです。各質問に対して <strong>はい（2点）/ 一部（1点）/ いいえ（0点）</strong> で回答してください。
+  結果はレベル1〜4で評価され、優先改善事項が提示されます。（{{ total_questions }}問・全{{ total_questions * 2 }}点満点）
+</div>
+
+<form method="post" action="/ui/icp">
+<div class="card" style="margin-bottom:16px; padding:16px 20px;">
+  <label class="label-sm">企業名（任意）</label>
+  <input class="input" type="text" name="company_name" placeholder="例: 株式会社〇〇" style="max-width:360px;">
+</div>
+
+{% for elem in elements %}
+<div class="card" style="margin-bottom:16px;">
+  <div style="font-size:.95rem; font-weight:700; color:#1e293b; margin-bottom:4px;">{{ elem.title }}</div>
+  <div style="font-size:.82rem; color:#64748b; margin-bottom:14px; line-height:1.5;">{{ elem.desc }}</div>
+
+  {% for q in elem.questions %}
+  <div style="display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-top:1px solid #f1f5f9; font-size:.86rem;">
+    <div style="flex:1; color:#374151; line-height:1.55;">{{ q.text }}</div>
+    <div style="display:flex; gap:6px; flex-shrink:0; align-items:center;">
+      <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:.82rem; color:#166534; font-weight:600;">
+        <input type="radio" name="{{ q.id }}" value="yes" required> はい
+      </label>
+      <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:.82rem; color:#92400e; font-weight:600;">
+        <input type="radio" name="{{ q.id }}" value="partial"> 一部
+      </label>
+      <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:.82rem; color:#991b1b; font-weight:600;">
+        <input type="radio" name="{{ q.id }}" value="no"> いいえ
+      </label>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+
+<div style="display:flex; gap:12px; align-items:center; margin-top:8px; margin-bottom:32px;">
+  <button class="btn btn-primary" type="submit" style="padding:10px 28px; font-size:.95rem;">診断を実行する</button>
+  <span class="muted" style="font-size:.82rem;">全 {{ total_questions }} 問に回答してください</span>
+</div>
+</form>
+
+</div>
+{% endblock %}

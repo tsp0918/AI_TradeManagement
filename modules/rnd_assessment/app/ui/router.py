@@ -946,3 +946,31 @@ def personnel_delete(personnel_id: str, db: Session = Depends(get_db)):
 @router.get("/academic-intel")
 def academic_intel(request: Request):
     return templates.TemplateResponse(request, "academic_intel.html", {})
+
+
+# ── オープンクローズ戦略マトリクス ──────────────────────────────────────────
+@router.get("/open-close")
+def open_close_form(request: Request):
+    return templates.TemplateResponse(request, "open_close.html", {"result": None})
+
+
+@router.post("/open-close")
+async def open_close_evaluate(request: Request):
+    from app.services.open_close_matrix import OpenCloseInput, evaluate_open_close
+    form = await request.form()
+    inp = OpenCloseInput(
+        title=form.get("title", ""),
+        description=form.get("description", ""),
+        eccn=form.get("eccn") or None,
+        patent_risk_level=form.get("patent_risk_level", "NONE"),
+        tech_maturity=form.get("tech_maturity", "middle"),
+        competitive_position=form.get("competitive_position", "parity"),
+        has_trade_secret_value=form.get("has_trade_secret_value", "true") == "true",
+        export_destination=form.get("export_destination") or None,
+    )
+    result = evaluate_open_close(inp)
+    return templates.TemplateResponse(request, "open_close.html", {
+        "result": result,
+        "title": inp.title,
+        "description": inp.description,
+    })
