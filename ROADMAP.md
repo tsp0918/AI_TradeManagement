@@ -710,7 +710,7 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | DAP-B ワークフローモード | chat-widget.js に UC 選択・進捗バー・navigate_to 自動実行・highlight スポットライト |
 | ✅ | Phase 3 グローバル品目マスター | ProductCountryProfile に local_eccn/license_required 追加。品目一覧 国数バッジ・モーダルフォーム |
 | ✅ | Phase 4 トランザクション多テナント化 | Transaction/ExportLicense に org_id 追加（Alembic）。ダッシュボード 自拠点/全拠点トグル |
-| ★★★☆☆ | Phase 5 グローバル規制・FTA 拡張 | FtaAgreement: origin_country 追加。RegulatoryChange: 拠点別アラート |
+| ✅ | Phase 5 グローバル規制・FTA 拡張 | FtaAgreement: origin_country 追加。RegulatoryChange: relevant_org_ids・拠点別フィルタリング |
 | ★★★☆☆ | サプライヤーポータル メール送信 | メール自動送信（招待URL通知）— SMTP設定後に実装可能 |
 | ★★★☆☆ | FTA 税率データ拡充 | 現在は代表HSコードのみ。実務向けに品目単位の全量収録 |
 | ★★★☆☆ | Layer D データ収集実行 | API Key 取得後に collect_academic_papers.py を全 ECCN で実行 |
@@ -718,5 +718,5 @@ lsof | grep ".db$" | grep -v ".venv"
 
 ---
 
-*更新: 2026-05-08（Phase 2〜4 完了: R&Dアクセス制御・DAP-B・品目マスター・トランザクション多テナント化）*
+*更新: 2026-05-08（Phase 2〜5 完了: R&Dアクセス制御・DAP-B・品目マスター・多テナント化・FTA原産国・拠点別規制アラート）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
