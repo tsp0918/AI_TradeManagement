@@ -35,6 +35,11 @@ class RDCases(Base):
     status = Column(String, nullable=False, default="draft", index=True)
     created_by_user_id = Column(String, nullable=True)
 
+    # アクセス制御: public / controlled / restricted / secret
+    tech_sensitivity = Column(String(20), nullable=False, default="public")
+    # 許可された org_id リスト（JSON）。空 = テナント内全員が参照可
+    access_org_ids = Column(JSON, nullable=True)
+
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -178,3 +183,19 @@ class RDIPReviewEvidence(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     ip_review = relationship("RDIPReviews", back_populates="evidences")
+
+
+class RndAccessLog(Base):
+    """R&Dアクセス監査ログ。みなし輸出自動検知に使用。"""
+    __tablename__ = "rnd_access_logs"
+
+    log_id = Column(String, primary_key=True, default=_uuid)
+    case_id = Column(String, ForeignKey("rd_cases.case_id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String, nullable=True, index=True)
+    org_id = Column(String, nullable=True, index=True)
+    action = Column(String(40), nullable=False, default="view")  # view / edit / download
+    # アクセス時の sensitivity レベル
+    sensitivity_at_access = Column(String(20), nullable=True)
+    # みなし輸出フラグ: True = 自動アラート生成済み
+    deemed_export_flagged = Column(String(5), nullable=False, default="false")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)

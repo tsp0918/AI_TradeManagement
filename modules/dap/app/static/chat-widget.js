@@ -1,4 +1,4 @@
-// cache-bust: 1774585200
+// cache-bust: 1746691200
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -519,6 +519,49 @@
     }
     .dap-guidance-ack-btn:hover:not(:disabled) { transform: scale(1.04); }
     .dap-guidance-ack-btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── ワークフローモード ── */
+    #dap-workflow-bar {
+      display: none; flex-direction: column; gap: 6px;
+      padding: 10px 14px; border-bottom: 1px solid rgba(0,212,255,0.08);
+      background: rgba(0,212,255,0.04); flex-shrink: 0;
+    }
+    #dap-workflow-bar.is-visible { display: flex; }
+    .dap-wf-top { display: flex; align-items: center; gap: 8px; }
+    .dap-wf-label { font-size: 10px; font-weight: 700; color: rgba(0,212,255,0.75); letter-spacing: 0.06em; text-transform: uppercase; flex-shrink: 0; }
+    .dap-wf-title { font-size: 11px; color: #C8D4EC; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dap-wf-step-info { font-size: 10px; color: #5A6478; flex-shrink: 0; }
+    .dap-wf-progress { height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+    .dap-wf-progress-fill { height: 100%; background: linear-gradient(90deg, #00D4FF, #0099CC); border-radius: 2px; transition: width 0.4s ease; }
+    .dap-wf-actions { display: flex; gap: 6px; margin-top: 2px; }
+    .dap-wf-btn {
+      padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: background 0.15s; white-space: nowrap;
+    }
+    .dap-wf-btn-next { background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.4); color: rgba(0,212,255,0.9); }
+    .dap-wf-btn-next:hover { background: rgba(0,212,255,0.28); }
+    .dap-wf-btn-stop { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #5A6478; }
+    .dap-wf-btn-stop:hover { background: rgba(255,255,255,0.05); color: #8892A4; }
+
+    /* ── UC 選択パネル ── */
+    #dap-uc-panel {
+      position: absolute; bottom: 100%; right: 0; left: 0; margin: 0 0 6px 0;
+      background: #111827; border: 1px solid rgba(0,212,255,0.2);
+      border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+      overflow: hidden; z-index: 1000001;
+      display: none; flex-direction: column;
+      max-height: 340px; overflow-y: auto;
+    }
+    #dap-uc-panel.is-visible { display: flex; }
+    .dap-uc-header { padding: 10px 14px; font-size: 11px; font-weight: 700; color: rgba(0,212,255,0.8); border-bottom: 1px solid rgba(0,212,255,0.1); flex-shrink: 0; }
+    .dap-uc-item {
+      padding: 10px 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.12s;
+    }
+    .dap-uc-item:hover { background: rgba(0,212,255,0.06); }
+    .dap-uc-item-title { font-size: 12px; font-weight: 600; color: #D0D8EC; }
+    .dap-uc-item-persona { font-size: 10px; color: #5A6478; margin-top: 2px; }
+    .dap-uc-item-steps { font-size: 10px; color: rgba(0,212,255,0.5); margin-top: 2px; }
   `;
   document.head.appendChild(style);
 
@@ -584,6 +627,18 @@
         <div class="dap-intake-turn" id="dap-intake-turn">─/8</div>
       </div>
     </div>
+    <div id="dap-workflow-bar">
+      <div class="dap-wf-top">
+        <span class="dap-wf-label">業務フロー</span>
+        <span class="dap-wf-title" id="dap-wf-title">—</span>
+        <span class="dap-wf-step-info" id="dap-wf-step-info">0/0</span>
+      </div>
+      <div class="dap-wf-progress"><div class="dap-wf-progress-fill" id="dap-wf-progress-fill" style="width:0%"></div></div>
+      <div class="dap-wf-actions">
+        <button class="dap-wf-btn dap-wf-btn-next" id="dap-wf-next-btn">次のステップへ ▶</button>
+        <button class="dap-wf-btn dap-wf-btn-stop" id="dap-wf-stop-btn">中断</button>
+      </div>
+    </div>
     <div class="dap-chat-msgs" id="dap-chat-msgs">
       <div class="dap-welcome">
         <strong>先輩担当者が伴走します</strong>
@@ -591,7 +646,14 @@
         状況を教えてもらえれば一緒に進めます。
       </div>
     </div>
+    <div style="position:relative;">
+      <div id="dap-uc-panel">
+        <div class="dap-uc-header">📋 業務フローを選択してください</div>
+        <div id="dap-uc-list"></div>
+      </div>
+    </div>
     <div class="dap-chat-input-wrap">
+      <button id="dap-wf-start-btn" title="業務フロー開始" style="width:36px;height:36px;border-radius:9px;flex-shrink:0;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:background 0.15s;" onclick="toggleUcPanel()">📋</button>
       <textarea id="dap-chat-textarea" rows="1" placeholder="質問・相談をどうぞ… (Shift+Enter で送信)"></textarea>
       <button id="dap-chat-send" disabled>
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
@@ -634,6 +696,121 @@
   const alertDismiss = alertBanner.querySelector('#dap-alert-dismiss');
   const chatBtnBadge = btn.querySelector('#dap-chat-btn-badge');
   let currentAlertGuideId = null;
+
+  // ── ワークフローモード ────────────────────────────────────────────
+  var _wfState = null;  // { uc_id, uc_title, current_step, total_steps, guidance }
+  var _ucList = null;   // キャッシュ
+
+  var wfBar      = panel.querySelector('#dap-workflow-bar');
+  var wfTitle    = panel.querySelector('#dap-wf-title');
+  var wfStepInfo = panel.querySelector('#dap-wf-step-info');
+  var wfFill     = panel.querySelector('#dap-wf-progress-fill');
+  var wfNextBtn  = panel.querySelector('#dap-wf-next-btn');
+  var wfStopBtn  = panel.querySelector('#dap-wf-stop-btn');
+  var ucPanel    = panel.querySelector('#dap-uc-panel');
+  var ucListEl   = panel.querySelector('#dap-uc-list');
+
+  function _updateWfBar() {
+    if (!_wfState) { wfBar.classList.remove('is-visible'); return; }
+    wfBar.classList.add('is-visible');
+    wfTitle.textContent = _wfState.uc_title;
+    wfStepInfo.textContent = _wfState.current_step + '/' + _wfState.total_steps;
+    var pct = _wfState.total_steps > 0 ? (_wfState.current_step - 1) / _wfState.total_steps * 100 : 0;
+    wfFill.style.width = pct + '%';
+  }
+
+  async function _startWorkflow(ucId) {
+    ucPanel.classList.remove('is-visible');
+    const data = await apiPost('/api/workflow/start', { session_id: SESSION_ID, uc_id: ucId });
+    _wfState = {
+      uc_id: ucId,
+      uc_title: data.uc_title,
+      current_step: data.current_step,
+      total_steps: data.total_steps,
+      guidance: data.next_guidance,
+    };
+    _updateWfBar();
+    appendMsg('bot', '📋 ' + data.message);
+    // navigate_to があれば自動移動
+    if (data.next_guidance && data.next_guidance.navigate_to) {
+      setTimeout(function () {
+        appendGuidanceMsg('👉 ' + data.next_guidance.title + ': ' + data.next_guidance.detail);
+        if (data.next_guidance.highlight) {
+          setTimeout(function () { highlightElementWithTooltip(data.next_guidance.highlight, data.next_guidance.detail, 8000); }, 600);
+        }
+      }, 400);
+    }
+  }
+
+  async function _advanceWorkflow() {
+    if (!_wfState) return;
+    const data = await apiPost('/api/workflow/complete_step', {
+      session_id: SESSION_ID,
+      step_num: _wfState.current_step,
+    });
+    if (data.status === 'completed') {
+      appendMsg('bot', data.message);
+      _wfState = null;
+      _updateWfBar();
+      return;
+    }
+    _wfState.current_step = data.current_step;
+    _wfState.guidance = data.next_guidance;
+    _updateWfBar();
+    appendMsg('bot', '✅ ステップ完了。次: ' + (data.message || ''));
+    if (data.next_guidance) {
+      const g = data.next_guidance;
+      setTimeout(function () {
+        appendGuidanceMsg('👉 Step ' + g.step_num + ': ' + g.title + ' — ' + g.detail);
+        if (g.navigate_to) {
+          setTimeout(function () { waitForUserAck('画面を開く →', 20000).then(function () { _portalNavigate(g.navigate_to); }); }, 400);
+        } else if (g.highlight) {
+          setTimeout(function () { highlightElementWithTooltip(g.highlight, g.detail, 8000); }, 600);
+        }
+      }, 300);
+    }
+  }
+
+  async function _stopWorkflow() {
+    if (!_wfState) return;
+    await fetch(DAP_BASE + '/api/workflow/abandon?session_id=' + encodeURIComponent(SESSION_ID), { method: 'POST' }).catch(function () {});
+    _wfState = null;
+    _updateWfBar();
+    appendMsg('bot', '業務フローを中断しました。');
+  }
+
+  async function _loadUcList() {
+    if (_ucList) return _ucList;
+    const resp = await fetch(DAP_BASE + '/api/workflow/uc-list');
+    _ucList = resp.ok ? await resp.json() : [];
+    return _ucList;
+  }
+
+  function toggleUcPanel() {
+    if (ucPanel.classList.contains('is-visible')) {
+      ucPanel.classList.remove('is-visible');
+      return;
+    }
+    _loadUcList().then(function (list) {
+      ucListEl.innerHTML = '';
+      list.forEach(function (uc) {
+        const item = document.createElement('div');
+        item.className = 'dap-uc-item';
+        item.innerHTML = '<div class="dap-uc-item-title">' + uc.uc_id + ': ' + uc.title + '</div>'
+          + '<div class="dap-uc-item-persona">' + uc.persona + '</div>'
+          + '<div class="dap-uc-item-steps">' + uc.total_steps + ' ステップ</div>';
+        item.addEventListener('click', function () { _startWorkflow(uc.uc_id); });
+        ucListEl.appendChild(item);
+      });
+      ucPanel.classList.add('is-visible');
+    }).catch(function () {
+      appendMsg('bot', 'UC 一覧の取得に失敗しました。DAP が起動しているか確認してください。');
+    });
+  }
+  window.toggleUcPanel = toggleUcPanel;
+
+  wfNextBtn.addEventListener('click', _advanceWorkflow);
+  wfStopBtn.addEventListener('click', _stopWorkflow);
 
   // ── アラートバナー ────────────────────────────────────────────────
   function showAlertBanner(alert, choices) {

@@ -250,5 +250,87 @@
     {% endif %}
   </div>
 
+  <!-- ── アクセス制御・みなし輸出ログ ── -->
+  <div style="margin-top:28px;">
+    <h3 style="font-size:1rem; font-weight:700; color:var(--text-h); margin-bottom:14px;">🔒 アクセス制御 / みなし輸出ログ</h3>
+
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px 20px; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <label style="font-size:.84rem; font-weight:600; color:var(--text-h);">機密区分:</label>
+        <select id="sens-select" style="padding:6px 10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text-h); font-size:.84rem;">
+          <option value="public"     {% if (case.tech_sensitivity or 'public') == 'public'     %}selected{% endif %}>公開 (Public)</option>
+          <option value="controlled" {% if (case.tech_sensitivity or 'public') == 'controlled' %}selected{% endif %}>管理 (Controlled)</option>
+          <option value="restricted" {% if (case.tech_sensitivity or 'public') == 'restricted' %}selected{% endif %}>制限 (Restricted)</option>
+          <option value="secret"     {% if (case.tech_sensitivity or 'public') == 'secret'     %}selected{% endif %}>秘密 (Secret)</option>
+        </select>
+        <button onclick="saveSensitivity()" style="padding:6px 14px; background:var(--primary); color:#fff; border:none; border-radius:6px; font-size:.84rem; font-weight:600; cursor:pointer;">保存</button>
+        <span id="sens-msg" style="font-size:.8rem; color:#166534; display:none;">✓ 保存しました</span>
+      </div>
+      <p style="font-size:.78rem; color:var(--muted); margin-top:8px;">
+        controlled 以上の区分で <strong>別拠点ユーザーがアクセスするとみなし輸出ログに記録</strong>されます。
+      </p>
+    </div>
+
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden;">
+      <div style="padding:10px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px;">
+        <span style="font-size:.78rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px;">アクセスログ（最新50件）</span>
+        <span id="deemed-badge" style="display:none; font-size:.68rem; padding:1px 8px; border-radius:10px; background:#fef2f2; color:#991b1b; border:1px solid #fca5a5; font-weight:700;">⚠ みなし輸出検知あり</span>
+      </div>
+      <div id="access-log-body" style="padding:12px 16px; font-size:.82rem; color:var(--muted);">読み込み中…</div>
+    </div>
+  </div>
+
 </div>
+
+<script>
+(function() {
+  var caseId = '{{ case.case_id }}';
+  function saveSensitivity() {
+    var v = document.getElementById('sens-select').value;
+    fetch('/api/v1/cases/' + caseId + '/sensitivity', {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({tech_sensitivity: v})
+    }).then(function() {
+      var msg = document.getElementById('sens-msg');
+      msg.style.display = 'inline';
+      setTimeout(function() { msg.style.display = 'none'; }, 2500);
+    });
+  }
+  window.saveSensitivity = saveSensitivity;
+
+  fetch('/api/v1/cases/' + caseId + '/access-logs')
+    .then(function(r) { return r.json(); })
+    .then(function(logs) {
+      var body = document.getElementById('access-log-body');
+      var badge = document.getElementById('deemed-badge');
+      if (!logs.length) { body.textContent = 'アクセスログなし'; return; }
+      if (logs.some(function(l) { return l.deemed_export_flagged === 'true'; })) badge.style.display = 'inline';
+      var rows = logs.map(function(l) {
+        var flag = l.deemed_export_flagged === 'true'
+          ? '<span style="color:#991b1b;font-weight:700;">⚠ みなし輸出</span>'
+          : '<span style="color:#166534;">—</span>';
+        return '<tr style="border-top:1px solid var(--border);">'
+          + '<td style="padding:6px 8px;">' + (l.created_at||'').slice(0,16).replace('T',' ') + '</td>'
+          + '<td style="padding:6px 8px;">' + (l.user_id||'—') + '</td>'
+          + '<td style="padding:6px 8px;">' + (l.org_id||'—') + '</td>'
+          + '<td style="padding:6px 8px;">' + (l.action||'') + '</td>'
+          + '<td style="padding:6px 8px;">' + (l.sensitivity_at_access||'—') + '</td>'
+          + '<td style="padding:6px 8px;">' + flag + '</td>'
+          + '</tr>';
+      }).join('');
+      body.innerHTML = '<table style="width:100%;border-collapse:collapse;">'
+        + '<thead><tr style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">'
+        + '<th style="padding:6px 8px;text-align:left;">日時</th>'
+        + '<th style="padding:6px 8px;text-align:left;">ユーザー</th>'
+        + '<th style="padding:6px 8px;text-align:left;">拠点</th>'
+        + '<th style="padding:6px 8px;text-align:left;">操作</th>'
+        + '<th style="padding:6px 8px;text-align:left;">区分</th>'
+        + '<th style="padding:6px 8px;text-align:left;">みなし輸出</th>'
+        + '</tr></thead><tbody>' + rows + '</tbody></table>';
+    })
+    .catch(function() { document.getElementById('access-log-body').textContent = 'ログ取得に失敗しました'; });
+})();
+</script>
+
 {% endblock %}

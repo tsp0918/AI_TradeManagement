@@ -42,7 +42,17 @@
             onmouseover="this.style.background='var(--bg)'"
             onmouseout="this.style.background=''">
           <td style="padding:14px 16px; border-bottom:1px solid var(--border);">
-            <div style="font-weight:600; color:var(--text-h);">{{ case.title }}</div>
+            <div style="display:flex; align-items:center; gap:7px;">
+              <span style="font-weight:600; color:var(--text-h);">{{ case.title }}</span>
+              {% set sens = case.tech_sensitivity or 'public' %}
+              {% if sens == 'secret' %}
+                <span style="font-size:.65rem; padding:1px 6px; border-radius:8px; background:#fef2f2; color:#991b1b; border:1px solid #fca5a5; font-weight:700; white-space:nowrap;">🔒 秘密</span>
+              {% elif sens == 'restricted' %}
+                <span style="font-size:.65rem; padding:1px 6px; border-radius:8px; background:#fff7ed; color:#c2410c; border:1px solid #fdba74; font-weight:700; white-space:nowrap;">🔐 制限</span>
+              {% elif sens == 'controlled' %}
+                <span style="font-size:.65rem; padding:1px 6px; border-radius:8px; background:#fffbeb; color:#92400e; border:1px solid #fde68a; font-weight:700; white-space:nowrap;">⚠ 管理</span>
+              {% endif %}
+            </div>
             <div style="display:flex; align-items:center; gap:6px; margin-top:3px;">
               {% if case.tenant_id != "tenant-demo" %}
               <span style="font-size:.7rem; padding:1px 6px; border-radius:10px; background:#f3e8ff; color:#6b21a8; border:1px solid #d8b4fe; white-space:nowrap;">{{ case.tenant_id }}</span>

@@ -20,6 +20,10 @@ async def _init_db() -> None:
     Base.metadata.create_all(bind=engine)
 
     needed: dict[str, list[tuple[str, str]]] = {
+        "rd_cases": [
+            ("tech_sensitivity", "VARCHAR(20) NOT NULL DEFAULT 'public'"),
+            ("access_org_ids",   "JSON"),
+        ],
         "rd_case_profiles": [
             ("promoted_product_id", "INTEGER"),
             ("promoted_at",         "DATETIME"),

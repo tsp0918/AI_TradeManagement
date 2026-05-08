@@ -5,5 +5,6 @@ from app.models.rd_case import (  # noqa: F401
     RDAssessments,
     RDIPReviews,
     RDIPReviewEvidence,
+    RndAccessLog,
 )
 from app.models.personnel import Personnel  # noqa: F401
