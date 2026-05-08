@@ -459,21 +459,21 @@
     {% endfor %}
 
     {% if tx.has_ai_run %}
-    <a href="{{ 'http://localhost:8001/ui/transactions/' ~ tx.id ~ '/export/csv' }}"
+    <a href="{{ 'http://localhost:8011/ui/transactions/' ~ tx.id ~ '/export/csv' }}"
        class="action-btn p-info" target="_blank">↓ CSV</a>
-    <a href="{{ 'http://localhost:8001/ui/transactions/' ~ tx.id ~ '/export/pdf' }}"
+    <a href="{{ 'http://localhost:8011/ui/transactions/' ~ tx.id ~ '/export/pdf' }}"
        class="action-btn p-info" target="_blank">↓ PDF</a>
     {% endif %}
 
     <button class="open-btn"
-            onclick="openInPortal('http://localhost:8001/ui/transactions/{{ tx.id }}')">
+            onclick="openInPortal('http://localhost:8011/ui/transactions/{{ tx.id }}')">
       詳細を開く →
     </button>
   </div>
   {% else %}
   <div class="action-row">
     <button class="open-btn"
-            onclick="openInPortal('http://localhost:8001/ui/transactions/{{ tx.id }}')">
+            onclick="openInPortal('http://localhost:8011/ui/transactions/{{ tx.id }}')">
       詳細を開く →
     </button>
   </div>

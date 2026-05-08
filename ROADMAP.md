@@ -18,7 +18,7 @@
 | モジュール | ポート | DB | WAL | 安定性 | 備考 |
 |-----------|--------|-----|-----|--------|------|
 | platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 4レイヤー（A/B/C/D）・知識グラフ・規制スケジューラー |
-| ai_validation | 8001 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent |
+| ai_validation | 8011 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent |
 | ai_classification | 8002 | SQLite | ✅ | ✅ | HS Classifier Webhook連携・ECCN付加・品目管理 |
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
 | patent_search | 8004 | SQLite | ✅ | ✅ | BigQuery連携・J-PlatPatフォールバック |
@@ -581,7 +581,7 @@ cd /Users/takehirosato/Desktop/AI_TradeManagement && ./start.sh
 
 # ヘルスチェック（全モジュール）
 curl -s http://localhost:8000/health  # platform-core
-curl -s http://localhost:8001/health  # ai_validation
+curl -s http://localhost:8011/health  # ai_validation
 curl -s http://localhost:8002/health  # ai_classification
 curl -s http://localhost:8003/health  # rnd_assessment
 curl -s http://localhost:8004/health  # patent_search
@@ -590,7 +590,7 @@ curl -s http://localhost:8006/health  # hs_classifier
 curl -s http://localhost:8010/health  # dap
 
 # FAISS インデックス状態確認
-curl -s http://localhost:8001/admin/faiss/status  # Layer A/B/C
+curl -s http://localhost:8011/admin/faiss/status  # Layer A/B/C
 curl -s http://localhost:8006/index/status         # Layer C（hs_classifier）
 
 # HS AI判定テスト
