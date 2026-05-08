@@ -1,7 +1,8 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-08 更新（グローバル多拠点管理 Phase 2〜4 完了）
+# 2026-05-08 更新（Phase 6 プラットフォーム設計最適化 着手）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
+> 2026-05-08（3回目）追加: Phase 6 設計レビュー — platform-core から業務ドメイン機能を分離。counterparty→screening / item_version+supply_chain+supplier→ai_classification 統合（Phase 6A 高優先）、export_license / fta_origin 新モジュール抽出（Phase 6B 中優先）、trade_gate 新モジュール抽出（Phase 6C 低優先）。branch: refactor/module-separation。
 > 2026-05-08（2回目）追加: Phase 2 R&Dアクセス制御（tech_sensitivity/みなし輸出自動検知）・DAP-B ワークフローモード（chat-widget.js UCセレクタ・進捗バー・自動ナビ）・Phase 3 グローバル品目マスター（local_eccn/license_required・国数バッジ）・Phase 4 トランザクション多テナント化（org_id/ダッシュボード拠点フィルタートグル）。
 > 2026-05-08（1回目）追加: Phase 1 多拠点基盤（plat_tenant拡張・拠点スイッチャー・X-Organization-Idインターセプト）・DAP-A ワークフロー伴走（DapWorkflowSession・6 UC定義）・DAP-C 知識ベース更新（UC別ナビゲーションガイド）。
 > 2026-05-07（4回目）追加: R&Dリスク管理モジュール UI/スコアリング刷新。Layer 1: ポート修正・推奨対応日本語化 / Layer 2: Explainability 構造化カード / Layer 3: 5ステップ進捗バー / Layer 4: スコアリングエンジン15+ルール・regulatory_risk独立化・全理由日本語化。
@@ -571,7 +572,7 @@ Ph.D — patent_search 双方向リンク
 
 | 問題 | 影響 | 優先度 |
 |------|------|--------|
-| （技術的負債なし） | — | — |
+| platform-core に業務ドメインルーターが混在（9本・7,161行） | モジュール追加・置換時に platform-core への波及リスクが増大 | Phase 6 で解消予定 |
 
 ---
 
@@ -611,9 +612,10 @@ lsof | grep ".db$" | grep -v ".venv"
 | ブランチ | 状態 | 用途 |
 |---------|------|------|
 | main | 安定 | リリースブランチ |
-| branch_neurosymbolic | 作業中 | NeuroSymbolic基盤・全機能実装（本ブランチ） |
+| branch_neurosymbolic | マージ済み | NeuroSymbolic基盤・全機能実装 |
+| refactor/module-separation | **作業中** | Phase 6: platform-core からの業務ドメイン分離 |
 
-**次のアクション**: `branch_neurosymbolic` → main へのマージ検討
+**現在の作業ブランチ**: `refactor/module-separation`
 
 ---
 
@@ -718,5 +720,54 @@ lsof | grep ".db$" | grep -v ".venv"
 
 ---
 
-*更新: 2026-05-08（Phase 2〜5 完了: R&Dアクセス制御・DAP-B・品目マスター・多テナント化・FTA原産国・拠点別規制アラート）*
+## 14. Phase 6: プラットフォーム設計最適化（branch: refactor/module-separation）
+
+### 設計原則
+
+```
+platform-core の責務 = インフラ・接着剤
+  ✓ 認証/SSO・組織/テナント管理
+  ✓ モジュール登録・リバースプロキシ
+  ✓ FAISS 共有サービス・監査ログ
+  ✓ 規制インテリジェンス（横断的）
+  ✓ コンプライアンス集約ダッシュボード
+  ✗ 業務ドメインロジック（→ 各モジュールへ）
+```
+
+### Phase 6A — 高優先度（業務機能を既存モジュールへ統合）
+
+| # | 移動元（platform-core） | 移動先 | DB移行 | 状態 |
+|---|----------------------|--------|--------|------|
+| 6A-1 | `routers/counterparty.py` (453行) | `screening` モジュール (8005) | PostgreSQL → PostgreSQL (共有) | ⬜ 着手中 |
+| 6A-2 | `routers/supply_chain.py` (493行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ⬜ 未着手 |
+| 6A-3 | `routers/supplier_attestation.py` (371行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ⬜ 未着手 |
+| 6A-4 | `routers/supplier_portal.py` (335行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ⬜ 未着手 |
+| 6A-5 | `routers/item_version.py` (714行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ⬜ 未着手 |
+
+**合計削減行数**: 約 2,366 行 / platform-core から除去
+
+### Phase 6B — 中優先度（新独立モジュールとして抽出）
+
+| # | 抽出元（platform-core） | 新モジュール | ポート | 状態 |
+|---|----------------------|------------|--------|------|
+| 6B-1 | `routers/export_license.py` (762行) | `export_license` | 8012 | ⬜ 未着手 |
+| 6B-2 | `routers/fta.py` (397行) | `fta_origin` | 8014 | ⬜ 未着手 |
+
+### Phase 6C — 低優先度（ERP連携成熟後に抽出）
+
+| # | 抽出元（platform-core） | 新モジュール | ポート | 状態 |
+|---|----------------------|------------|--------|------|
+| 6C-1 | `routers/transaction_review.py` (560行) | `trade_gate` | 8013 | ⬜ ERP連携が安定後 |
+
+### 完了後の platform-core 残存ルーター（インフラのみ）
+
+```
+proxy.py / internal.py / modules.py / users.py / tenants.py
+organizations.py / projects.py / regulatory.py / metrics.py
+compliance_lookup.py / faiss_search.py / ui.py / auth/
+```
+
+---
+
+*更新: 2026-05-08（Phase 2〜5 完了 + Phase 6 設計レビュー・アーキテクチャ最適化計画策定）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
