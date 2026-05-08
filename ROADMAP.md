@@ -1,7 +1,9 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-07 更新（R&Dモジュール UI/スコアリング刷新（4層）完了）
+# 2026-05-08 更新（グローバル多拠点管理 Phase 2〜4 完了）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
+> 2026-05-08（2回目）追加: Phase 2 R&Dアクセス制御（tech_sensitivity/みなし輸出自動検知）・DAP-B ワークフローモード（chat-widget.js UCセレクタ・進捗バー・自動ナビ）・Phase 3 グローバル品目マスター（local_eccn/license_required・国数バッジ）・Phase 4 トランザクション多テナント化（org_id/ダッシュボード拠点フィルタートグル）。
+> 2026-05-08（1回目）追加: Phase 1 多拠点基盤（plat_tenant拡張・拠点スイッチャー・X-Organization-Idインターセプト）・DAP-A ワークフロー伴走（DapWorkflowSession・6 UC定義）・DAP-C 知識ベース更新（UC別ナビゲーションガイド）。
 > 2026-05-07（4回目）追加: R&Dリスク管理モジュール UI/スコアリング刷新。Layer 1: ポート修正・推奨対応日本語化 / Layer 2: Explainability 構造化カード / Layer 3: 5ステップ進捗バー / Layer 4: スコアリングエンジン15+ルール・regulatory_risk独立化・全理由日本語化。
 > 2026-05-07（3回目）追加: Priority B — 輸出許可証 申請番号自動採番・価値消費管理・期限アラートスケジューラー / サプライヤーポータル ファイルアップロード・ダウンロードAPI・証明管理UI / EPA/FTA 特恵税率 DB（日本締結10協定・8代表HS・Alembic e5f6g7h8i9j0）。
 > 2026-05-07（2回目）追加: Priority A — US EAR規制理由エンジン（11種）・EU Dual-Use チェッカー（GEA EU001-EU008）・オープンクローズ戦略マトリクス（4象限）・ICP自己診断（CISTEC 8要素32問）。
@@ -706,8 +708,8 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | DAP-C 知識ベース更新 | system_prompt に UC別画面遷移ガイド・FAQ 7件追加 |
 | ✅ | Phase 2 R&Dアクセス制御 | tech_sensitivity / RndAccessLog / みなし輸出フラグ自動記録・case_detail 機密設定 UI |
 | ✅ | DAP-B ワークフローモード | chat-widget.js に UC 選択・進捗バー・navigate_to 自動実行・highlight スポットライト |
-| ★★★★☆ | Phase 3 グローバル品目マスター | ItemCountryProfile: item_id × country_code で HS/ECCN/規制を管理。品目詳細国別タブ |
-| ★★★☆☆ | Phase 4 トランザクション多テナント化 | transaction/supply_chain/export_license に org_id 追加。全拠点/拠点別ビュー切替 |
+| ✅ | Phase 3 グローバル品目マスター | ProductCountryProfile に local_eccn/license_required 追加。品目一覧 国数バッジ・モーダルフォーム |
+| ✅ | Phase 4 トランザクション多テナント化 | Transaction/ExportLicense に org_id 追加（Alembic）。ダッシュボード 自拠点/全拠点トグル |
 | ★★★☆☆ | Phase 5 グローバル規制・FTA 拡張 | FtaAgreement: origin_country 追加。RegulatoryChange: 拠点別アラート |
 | ★★★☆☆ | サプライヤーポータル メール送信 | メール自動送信（招待URL通知）— SMTP設定後に実装可能 |
 | ★★★☆☆ | FTA 税率データ拡充 | 現在は代表HSコードのみ。実務向けに品目単位の全量収録 |
@@ -716,5 +718,5 @@ lsof | grep ".db$" | grep -v ".venv"
 
 ---
 
-*更新: 2026-05-08（Phase 2 R&Dアクセス制御・DAP-B ワークフローモード完了）*
+*更新: 2026-05-08（Phase 2〜4 完了: R&Dアクセス制御・DAP-B・品目マスター・トランザクション多テナント化）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
