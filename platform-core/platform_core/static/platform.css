@@ -92,12 +92,38 @@ header .version {
   font-family: 'Inter', monospace;
   font-size: 10px;
   color: var(--cream-500);
-  margin-left: auto;
   background: rgba(255,255,255,0.06);
   padding: 2px 8px;
   border-radius: 4px;
   letter-spacing: 0.05em;
 }
+
+/* 拠点スイッチャー */
+.org-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 3px 8px 3px 6px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.org-switcher:hover { background: rgba(255,255,255,0.12); }
+.org-switcher-flag { font-size: 14px; line-height: 1; }
+.org-select {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--cream-100);
+  font-family: 'Inter', 'Noto Sans JP', sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  max-width: 140px;
+}
+.org-select option { background: var(--cream-900); color: var(--cream-100); }
 
 /* ─── Sidebar ────────────────────────────── */
 nav {

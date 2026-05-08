@@ -881,6 +881,103 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 - start_agent を含む場合、reply はエージェント起動の説明（「NeuroSymbolicエージェントを起動します。対話形式で外為法・EAR該非判定を行います」など）にする
 - エージェントが起動すると、以降の返答は直接エージェントから来る（Claude を通さない）
 
+【ユースケース別ナビゲーションガイド — 業務完結まで伴走する】
+
+ユーザーが「〇〇したい」「〇〇のやり方を教えて」と言ったとき、以下の対応するUCとステップを案内する。
+navigate_to と highlight を組み合わせ、次にすべき操作を1ステップずつ誘導すること。
+
+UC1: 新規品目の輸出審査（品目登録 → HS判定 → 制裁照合 → AI該非判定）
+  Step1: 「業務フロー → 品目管理 → 新規登録」で品目名・型番・仕様を入力
+    navigate_to: http://localhost:8000/proxy/ai_classification/products
+  Step2: 品目詳細の「HSコード判定」ボタンで AI が上位5候補を提示 → 選択して「反映」
+    highlight: HSコード判定
+  Step3: 「業務フロー → 取引先スクリーニング → 一括照合」で取引先名を制裁照合
+    navigate_to: http://localhost:8000/proxy/screening/ui/batch
+  Step4: 「業務フロー → AI該非判定 → 新規審査」で取引を作成し判定実行
+    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions/new
+
+UC2: R&D起案→品目登録（プロジェクト起案 → AIリスク評価 → 知財審査 → 品目登録）
+  Step1: 「業務フロー → R&Dリスク評価 → 新規プロジェクト」でプロジェクト作成
+    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/cases/new
+  Step2: 3テンプレート（使用用途・需要者・開示）を入力してスコアリング確認
+    highlight: プロファイル入力
+  Step3: Explainabilityで開示戦略・セキュリティポスチャを確認（80点以上は即エスカレーション）
+  Step4: 知財審査フォームに審査結果・エビデンスをアップロード
+    highlight: 知財審査
+  Step5: 「品目管理への登録」ボタンで品目管理に連携
+    highlight: 品目管理への登録
+
+UC3: サプライヤー申告管理（申告作成 → URL発行 → 書類確認 → BOM De Minimis）
+  Step1: 「受注後ERP → 調達・BOM管理 → サプライヤー申告」で申告を作成
+    navigate_to: http://localhost:8000/ui/supply-chain
+  Step2: ポータルURLをコピーしてサプライヤーへ送付
+    highlight: ポータルURL
+  Step3: 書類提出後に「提出書類」タブでダウンロード確認
+  Step4: BOMツリーでDe Minimis比率（25%超で警告）を確認
+
+UC4: 取引先デューデリジェンス（制裁照合 → 与信スコア → 進捗記録）
+  Step1: 「業務フロー → 取引先スクリーニング → 一括照合」で7ソース照合
+    navigate_to: http://localhost:8000/proxy/screening/ui/batch
+  Step2: 「専門ツール → 与信管理」で財務・統合スコアを確認
+    navigate_to: http://localhost:8000/ui/counterparty
+  Step3: 「受注後ERP → コンプライアンス進捗」に結果を記録
+    navigate_to: http://localhost:8000/ui/compliance-lookup
+
+UC5: みなし輸出審査（人物スクリーニング → 申請 → 経済安保チェック → 台帳記録）
+  Step1: 「R&Dリスク評価 → 人物管理」で外国籍研究者を登録・スクリーニング
+    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/personnel
+  Step2: 「業務フロー → 役務取引管理 → みなし輸出申請」で申請を作成
+    navigate_to: http://localhost:8000/proxy/ai_validation/ui/services
+  Step3: 「専門ツール → 経済安保法チェック」でICP自己診断8要素を確認
+    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/icp-diagnosis
+
+UC6: 輸出許可申請（REQUIRES_PERMIT取引 → ドラフト生成 → 価値消費管理）
+  Step1: AI該非判定で REQUIRES_PERMIT と判定された取引詳細の「輸出許可申請ドラフト生成」ボタン
+    highlight: 輸出許可申請ドラフト生成
+  Step2: 「受注後ERP → 輸出許可申請」で申請を管理（申請番号自動採番）
+    navigate_to: http://localhost:8000/ui/export-license
+  Step3: 出荷のたびに「価値控除」フォームで残存許可額を更新
+    highlight: 価値控除
+
+UC9: 技術インテリジェンス調査（特許検索 → 制裁照合 → 学術論文 → R&Dリンク）
+  Step1: 「専門ツール → 特許検索」でキーワード・CPC分類で検索
+    navigate_to: http://localhost:8000/proxy/patent_search/
+  Step2: 検索結果の発明者・出願人に「制裁照合」ボタンで照合
+    highlight: 制裁照合
+  Step3: 「R&Dリスク評価 → 技術インテリジェンス」で学術論文類似度を確認
+    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/academic-intel
+
+【よくある質問と回答（DAP即答ガイド）】
+
+Q: CLEAR/REVIEW/REQUIRES_PERMITの意味は？
+A: CLEAR=規制リストに明確な一致なし（最終判断は担当者が行う）。REVIEW=部分一致または要注意フラグあり（追加確認が必要）。REQUIRES_PERMIT=輸出許可申請が必要（UC6の手順で申請書を作成してください）
+
+Q: スクリーニング結果がMATCHした場合は？
+A: 取引を即時停止し、法務・コンプライアンス担当者にエスカレーションしてください。一致エンティティの詳細（ソース・エイリアス）を証跡として保存してください。自己判断で取引を進めてはいけません。
+
+Q: EAR99の品目は審査不要？
+A: 不要ではありません。制裁対象国・制裁対象者への輸出は禁止されています。キャッチオール規制により大量破壊兵器への転用が疑われる場合は EAR99 でも許可が必要です。必ず制裁スクリーニングとRed Flagチェックを実施してください。
+
+Q: みなし輸出とは？
+A: 外国籍の研究者・技術者が社内で規制技術にアクセスすることが「輸出」とみなされる制度（外為法2022年改正）。社内の研究室内であっても対象になります。事前審査が必要です。
+
+Q: ECCN番号の調べ方は？
+A: まず品目管理のHSコード判定でHSコードを特定し、HS→ECCNマッピングから候補を取得してください。それでも不明な場合は米国メーカーへのCCATS申請または経済産業省への相談が必要です。
+
+Q: De Minimis 25%超えはどうすれば？
+A: 一般的な規制対象国向けは25%超でEARが外国製品にも適用されます（FDPルール）。AI該非判定で再審査し、REQUIRES_PERMITなら輸出許可申請（UC6）が必要です。テロ支援国（KP/IR/SY等）は10%が閾値です。
+
+Q: 審査記録の保存期間は？
+A: 外為法では7年間（施行令）、米国EARでは5年間（15 CFR §762）の記録保持が必要です。本プラットフォームの審査結果はすべてデータベースに保存されています。
+
+【NeuroSymbolic 該非判定エージェント（重要機能）】
+- ユーザーが「該非判定エージェント」「NeuroSymbolicエージェント」「対話形式の判定」「AI質問形式で判定」などと言った場合は、
+  actions に {{"type": "start_agent", "target": "", "initial_query": "<品目の説明>", "transaction_id": <番号またはnull>}} を含める
+- initial_query には品目名・仕様・用途などユーザーが述べた情報をそのまま渡す
+- transaction_id はコンテキストから判断できる場合のみ数値で設定（不明な場合は省略）
+- start_agent を含む場合、reply はエージェント起動の説明（「NeuroSymbolicエージェントを起動します。対話形式で外為法・EAR該非判定を行います」など）にする
+- エージェントが起動すると、以降の返答は直接エージェントから来る（Claude を通さない）
+
 【ルール】
 - reply: マークダウン禁止（**や# など使わない）。100字以内の口語体日本語。
 - actions: 「画面上のボタン・リンク」リストの要素が該当する場合は必ず含める。target は完全一致。

@@ -12,6 +12,15 @@
   <header>
     <span class="logo">AI <em>Trade</em> Management</span>
     <span class="version">v{{ version }}</span>
+
+    <!-- 拠点スイッチャー -->
+    <div class="org-switcher" id="org-switcher" title="拠点を切り替える">
+      <span class="org-switcher-flag" id="org-flag">🌐</span>
+      <select id="org-select" class="org-select" onchange="switchOrganization(this.value)">
+        <option value="">拠点を読み込み中…</option>
+      </select>
+    </div>
+
     <button id="panel-toggle-btn" class="panel-toggle-btn" title="チートシート / AIコーチ (Ctrl+/)">
       <span class="panel-toggle-icon">?</span>
     </button>
@@ -157,6 +166,71 @@
         arrow.textContent = '▸';
       }
     }
+
+    // ── 拠点スイッチャー ────────────────────────────────────────────
+    const ORG_KEY = 'x_org_id';
+
+    async function loadOrganizations() {
+      try {
+        const res = await fetch('/api/organizations', {
+          headers: _orgHeaders()
+        });
+        if (!res.ok) return;
+        const orgs = await res.json();
+        const sel = document.getElementById('org-select');
+        const current = localStorage.getItem(ORG_KEY) || '';
+        sel.innerHTML = '';
+        orgs.forEach(org => {
+          const opt = document.createElement('option');
+          opt.value = org.id;
+          opt.textContent = (org.flag_emoji ? org.flag_emoji + ' ' : '') + org.name;
+          opt.selected = (org.id === current);
+          sel.appendChild(opt);
+        });
+        // 選択中の拠点フラグを更新
+        const selected = orgs.find(o => o.id === current) || orgs[0];
+        if (selected) {
+          document.getElementById('org-flag').textContent = selected.flag_emoji || '🌐';
+          if (!current) localStorage.setItem(ORG_KEY, selected.id);
+        }
+      } catch(e) {
+        console.warn('拠点一覧の取得に失敗:', e);
+      }
+    }
+
+    function switchOrganization(orgId) {
+      if (!orgId) return;
+      localStorage.setItem(ORG_KEY, orgId);
+      // フラグ絵文字を更新
+      const sel = document.getElementById('org-select');
+      const opt = sel.options[sel.selectedIndex];
+      const flag = opt.textContent.match(/^(\p{Emoji_Presentation})/u)?.[1] || '🌐';
+      document.getElementById('org-flag').textContent = flag;
+      // iframe をリロードして新しい org_id で再表示
+      const frame = document.getElementById('module-frame');
+      if (frame && frame.src) frame.src = frame.src;
+    }
+
+    // 全 fetch に X-Organization-Id を自動付与するヘルパー
+    function _orgHeaders(extra) {
+      const orgId = localStorage.getItem(ORG_KEY);
+      return orgId ? { 'X-Organization-Id': orgId, ...extra } : { ...extra };
+    }
+
+    // platform.js の fetch をインターセプトして org ヘッダーを自動挿入
+    (function() {
+      const _orig = window.fetch;
+      window.fetch = function(input, init = {}) {
+        const orgId = localStorage.getItem(ORG_KEY);
+        if (orgId) {
+          init.headers = { 'X-Organization-Id': orgId, ...(init.headers || {}) };
+        }
+        return _orig(input, init);
+      };
+    })();
+
+    // ページ読み込み時に拠点一覧を取得
+    document.addEventListener('DOMContentLoaded', loadOrganizations);
   </script>
 </body>
 </html>

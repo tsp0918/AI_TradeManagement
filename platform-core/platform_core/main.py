@@ -44,6 +44,7 @@ from platform_core.routers.item_version import router as item_version_router
 from platform_core.routers.compliance_lookup import router as compliance_lookup_router
 from platform_core.routers.transaction_review import router as transaction_review_router
 from platform_core.routers.fta import router as fta_router
+from platform_core.routers.organizations import router as organizations_router
 
 logger = logging.getLogger(__name__)
 _STATIC_DIR = pathlib.Path(__file__).parent / "static"
@@ -173,6 +174,7 @@ def create_app() -> FastAPI:
     app.include_router(compliance_lookup_router)
     app.include_router(transaction_review_router)
     app.include_router(fta_router)
+    app.include_router(organizations_router)
 
     @app.get("/", include_in_schema=False)
     async def root():

@@ -140,3 +140,33 @@ class DapChatConfig(Base):
     enabled: Mapped[int] = mapped_column(Integer, default=1)   # 1=有効 0=無効
     prompt_supplement: Mapped[str] = mapped_column(String(2000), default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class DapWorkflowSession(Base):
+    """DAP ワークフロー伴走セッション。
+
+    ユーザーが UC（ユースケース）を開始するとセッションが作成され、
+    ステップ完了ごとに current_step が進む。
+    context には UC 進行中に収集した情報（item_id, eccn, dest_country 等）を保存する。
+    """
+    __tablename__ = "dap_workflow_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # チャットセッション ID（dap_chat_session と紐づけ）
+    session_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    # UC識別子: "UC1"〜"UC10"
+    uc_id: Mapped[str] = mapped_column(String(8), nullable=False)
+    # uc の表示名（例: "新規品目の輸出審査"）
+    uc_title: Mapped[str] = mapped_column(String(100), default="")
+    # 現在のステップ番号（1始まり）
+    current_step: Mapped[int] = mapped_column(Integer, default=1)
+    # 総ステップ数
+    total_steps: Mapped[int] = mapped_column(Integer, default=5)
+    # 完了済みステップ番号リスト（JSON array: [1, 2, 3]）
+    completed_steps: Mapped[list] = mapped_column(JSON, default=list)
+    # UC 進行中に収集した業務情報（item_id, eccn, dest_country 等）
+    context: Mapped[dict] = mapped_column(JSON, default=dict)
+    # ステータス: "active" / "completed" / "abandoned"
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_active_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
