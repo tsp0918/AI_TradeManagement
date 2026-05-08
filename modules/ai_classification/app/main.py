@@ -21,6 +21,10 @@ async def _ensure_columns() -> None:
     from sqlalchemy import inspect as sa_inspect, text
 
     needed: dict[str, list[tuple[str, str]]] = {
+        "product_country_profiles": [
+            ("local_eccn",       "VARCHAR(32)"),
+            ("license_required", "VARCHAR(20)"),
+        ],
         "products": [
             ("source_rnd_case_id",          "VARCHAR(64)"),
             ("source_rnd_transaction_id",   "INTEGER"),

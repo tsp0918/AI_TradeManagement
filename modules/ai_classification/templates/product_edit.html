@@ -1252,6 +1252,38 @@
         </div>
 
         <div class="field is-horizontal" style="margin-bottom:14px;">
+          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">ローカル ECCN</label></div>
+          <div class="field-body">
+            <div class="field">
+              <div class="control">
+                <input class="input is-small" type="text" id="cp-local-eccn"
+                       placeholder="例: 3E001, EAR99, 該当なし" style="font-family:monospace;">
+              </div>
+              <p class="help">仕向国における輸出管理分類（米国以外の場合は現地規制コードを入力）</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="field is-horizontal" style="margin-bottom:14px;">
+          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">輸出許可要否</label></div>
+          <div class="field-body">
+            <div class="field">
+              <div class="control">
+                <div class="select is-small is-fullwidth">
+                  <select id="cp-license-required">
+                    <option value="">未設定</option>
+                    <option value="nLR">NLR（許可不要）</option>
+                    <option value="no_license">許可不要</option>
+                    <option value="license_required">許可証必要</option>
+                    <option value="prohibited">禁輸</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field is-horizontal" style="margin-bottom:14px;">
           <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">関税率</label></div>
           <div class="field-body">
             <div class="field" style="max-width:120px; margin-right:8px;">
@@ -1449,6 +1481,24 @@
               + _esc(p.local_hs_code) + '</code>'
               + (p.local_hs_description ? '<span style="font-size:.78rem;color:#555;margin-left:6px;">' + _esc(p.local_hs_description) + '</span>' : '')
             : '<span style="font-size:.78rem;color:#aaa;">ローカルHS: 未登録</span>';
+          // ECCN バッジ
+          var eccnBadge = '';
+          if (p.local_eccn) {
+            var eb = p.local_eccn === 'EAR99' ? {bg:'#f5f5f5',cl:'#555'} : {bg:'#fef3c7',cl:'#92400e'};
+            eccnBadge = '<span style="font-size:.72rem;font-weight:700;font-family:monospace;background:'
+              + eb.bg + ';color:' + eb.cl + ';border-radius:4px;padding:1px 7px;margin-left:8px;">'
+              + _esc(p.local_eccn) + '</span>';
+          }
+          // 許可要否バッジ
+          var licBadge = '';
+          if (p.license_required) {
+            var licColor = p.license_required === 'license_required' ? '#dc2626'
+              : p.license_required === 'prohibited' ? '#7c3aed'
+              : '#16a34a';
+            licBadge = '<span style="font-size:.72rem;font-weight:700;background:' + licColor + '1a;color:' + licColor
+              + ';border:1px solid ' + licColor + '55;border-radius:999px;padding:1px 9px;margin-left:6px;">'
+              + _esc(p.license_required_label || p.license_required) + '</span>';
+          }
           // 貿易統計
           var ts = p.trade_stats || {};
           var tsHtml = '';
@@ -1495,8 +1545,11 @@
             +     '<span style="background:' + rs.bg + ';color:' + rs.text + ';border:1px solid ' + rs.border + ';'
             +       'border-radius:999px;padding:1px 9px;font-size:.72rem;font-weight:700;">' + rs.label + '</span>'
             +   '</div>'
-            +   '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">'
+            +   '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">'
             +     hs + tariff
+            +   '</div>'
+            +   '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">'
+            +     eccnBadge + licBadge
             +   '</div>'
             +   tsHtml
             +   reHtml
@@ -1546,10 +1599,12 @@
         document.getElementById('cp-country-code').value = p.country_code || 'JP';
         document.getElementById('cp-role').value         = p.role || 'destination';
         document.getElementById('cp-local-hs').value     = p.local_hs_code || '';
-        document.getElementById('cp-local-hs-desc').value= p.local_hs_description || '';
-        document.getElementById('cp-tariff-rate').value  = p.tariff_rate != null ? (p.tariff_rate * 100).toFixed(1) : '';
-        document.getElementById('cp-tariff-type').value  = p.tariff_type || '';
-        document.getElementById('cp-notes').value        = p.notes || '';
+        document.getElementById('cp-local-hs-desc').value  = p.local_hs_description || '';
+        document.getElementById('cp-local-eccn').value     = p.local_eccn || '';
+        document.getElementById('cp-license-required').value = p.license_required || '';
+        document.getElementById('cp-tariff-rate').value    = p.tariff_rate != null ? (p.tariff_rate * 100).toFixed(1) : '';
+        document.getElementById('cp-tariff-type').value    = p.tariff_type || '';
+        document.getElementById('cp-notes').value          = p.notes || '';
       } catch(e) {}
       cpOnCountryChange();  // ボタン表示を国に合わせる
       _cpShow();
@@ -1566,6 +1621,7 @@
 
     function _cpReset() {
       ['cp-country-code','cp-role','cp-local-hs','cp-local-hs-desc',
+       'cp-local-eccn','cp-license-required',
        'cp-tariff-rate','cp-tariff-type','cp-notes'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.value = id === 'cp-country-code' ? 'JP' : id === 'cp-role' ? 'destination' : '';
@@ -1581,6 +1637,8 @@
         role:                document.getElementById('cp-role').value,
         local_hs_code:       document.getElementById('cp-local-hs').value.trim() || null,
         local_hs_description:document.getElementById('cp-local-hs-desc').value.trim() || null,
+        local_eccn:          document.getElementById('cp-local-eccn').value.trim() || null,
+        license_required:    document.getElementById('cp-license-required').value || null,
         tariff_rate:         rateVal !== '' ? parseFloat(rateVal) / 100 : null,
         tariff_type:         document.getElementById('cp-tariff-type').value || null,
         notes:               document.getElementById('cp-notes').value.trim() || null,

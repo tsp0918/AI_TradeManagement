@@ -119,6 +119,10 @@ class ProductCountryProfile(Base):
     local_hs_code        = Column(String(12), nullable=True)   # 9〜10桁
     local_hs_description = Column(Text,       nullable=True)
 
+    # 輸出規制（国別 ECCN / 許可要否）
+    local_eccn           = Column(String(32), nullable=True)   # 仕向国における ECCN 相当分類
+    license_required     = Column(String(20), nullable=True)   # no_license / nLR / license_required / prohibited
+
     # 関税情報（Ph.3 で自動取得）
     tariff_rate  = Column(Float,       nullable=True)         # 例: 0.05 = 5%
     tariff_type  = Column(String(16),  nullable=True)         # MFN / FTA / GSP / 301 ...

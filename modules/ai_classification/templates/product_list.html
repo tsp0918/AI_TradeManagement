@@ -211,6 +211,7 @@
       <th>品目名</th>
       <th>HSコード</th>
       <th>ECCN</th>
+      <th>国別</th>
       <th>登録元</th>
       <th>種別</th>
       <th>ステータス</th>
@@ -236,6 +237,17 @@
           {{ p.eccn }}
         {% else %}
           <span class="tag is-light is-small" style="color:#aaa;">—</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if p.country_profile_count is defined and p.country_profile_count > 0 %}
+          <a href="/products/{{ p.id }}/edit#country-profiles-section"
+             style="font-size:.75rem; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;
+                    border-radius:99px; padding:1px 8px; text-decoration:none; white-space:nowrap;">
+            🌏 {{ p.country_profile_count }}カ国
+          </a>
+        {% else %}
+          <span style="font-size:.75rem; color:#bbb;">—</span>
         {% endif %}
       </td>
       <td>

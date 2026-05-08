@@ -39,11 +39,21 @@ ROLES = {
 
 # ── Pydantic スキーマ ──────────────────────────────────────────────────────────
 
+_LICENSE_LABELS: dict[str, str] = {
+    "no_license":       "許可不要",
+    "nLR":              "NLR (No License Required)",
+    "license_required": "許可証必要",
+    "prohibited":       "禁輸",
+}
+
+
 class CountryProfileIn(BaseModel):
     country_code:        str          = Field(..., description="JP / US / CN / EU / KR")
     role:                str          = Field(..., description="origin / destination / both")
     local_hs_code:       Optional[str]   = None
     local_hs_description:Optional[str]  = None
+    local_eccn:          Optional[str]   = None
+    license_required:    Optional[str]   = None   # no_license / nLR / license_required / prohibited
     tariff_rate:         Optional[float] = Field(None, ge=0.0, le=5.0,
                                                   description="小数（例: 0.05 = 5%）")
     tariff_type:         Optional[str]  = None   # MFN / FTA / GSP / 301 / ...
@@ -63,6 +73,9 @@ class CountryProfileOut(BaseModel):
     role_label:          str
     local_hs_code:       Optional[str]
     local_hs_description:Optional[str]
+    local_eccn:          Optional[str]
+    license_required:    Optional[str]
+    license_required_label: Optional[str]
     tariff_rate:         Optional[float]
     tariff_rate_pct:     Optional[str]   # "5.0%" 表示用
     tariff_type:         Optional[str]
@@ -95,6 +108,7 @@ def _to_out(p: ProductCountryProfile) -> CountryProfileOut:
     if p.tariff_rate is not None:
         rate_pct = f"{p.tariff_rate * 100:.1f}%"
 
+    lr = getattr(p, "license_required", None)
     return CountryProfileOut(
         id=p.id,
         product_id=p.product_id,
@@ -104,6 +118,9 @@ def _to_out(p: ProductCountryProfile) -> CountryProfileOut:
         role_label=ROLES.get(p.role, p.role),
         local_hs_code=p.local_hs_code,
         local_hs_description=p.local_hs_description,
+        local_eccn=getattr(p, "local_eccn", None),
+        license_required=lr,
+        license_required_label=_LICENSE_LABELS.get(lr) if lr else None,
         tariff_rate=p.tariff_rate,
         tariff_rate_pct=rate_pct,
         tariff_type=p.tariff_type,
@@ -183,6 +200,8 @@ def create_profile(product_id: int, body: CountryProfileIn, db: Session = Depend
         role=body.role,
         local_hs_code=body.local_hs_code,
         local_hs_description=body.local_hs_description,
+        local_eccn=body.local_eccn,
+        license_required=body.license_required,
         tariff_rate=body.tariff_rate,
         tariff_type=body.tariff_type,
         tariff_notes=body.tariff_notes,
@@ -217,6 +236,8 @@ def update_profile(
     prof.role                = body.role
     prof.local_hs_code       = body.local_hs_code
     prof.local_hs_description= body.local_hs_description
+    prof.local_eccn          = body.local_eccn
+    prof.license_required    = body.license_required
     prof.tariff_rate         = body.tariff_rate
     prof.tariff_type         = body.tariff_type
     prof.tariff_notes        = body.tariff_notes

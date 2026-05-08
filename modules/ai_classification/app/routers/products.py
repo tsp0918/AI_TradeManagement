@@ -26,7 +26,7 @@ from sqlalchemy import func, or_
 import httpx
 
 from ..database import get_db
-from ..models import Product, BomHistory
+from ..models import Product, BomHistory, ProductCountryProfile
 from ..settings import settings
 from ..services.external_app_client import ExternalAppClient
 
@@ -579,6 +579,25 @@ def recalculate_all_scores(db: Session = Depends(get_db)):
 
 # ─────────────────────────────────────────────────────────────────────
 
+def _attach_cp_counts(products: list, db: Session) -> None:
+    """品目リストに country_profile_count 属性を付与する（N+1 回避）。"""
+    if not products:
+        return
+    ids = [p.id for p in products]
+    rows = (
+        db.query(
+            ProductCountryProfile.product_id,
+            func.count(ProductCountryProfile.id).label("cnt"),
+        )
+        .filter(ProductCountryProfile.product_id.in_(ids))
+        .group_by(ProductCountryProfile.product_id)
+        .all()
+    )
+    count_map = {r.product_id: r.cnt for r in rows}
+    for p in products:
+        p.country_profile_count = count_map.get(p.id, 0)
+
+
 @router.get("/products", response_class=HTMLResponse)
 def list_products(
     request: Request,
@@ -602,6 +621,7 @@ def list_products(
         q = _apply_lookup(q, lookup)
         q = q.order_by(Product.updated_at.desc())
         products = q.all()
+        _attach_cp_counts(products, db)
         return templates.TemplateResponse(request, "product_list.html", {
             "products": products,
             "lookup": lookup,
@@ -628,6 +648,7 @@ def list_products(
     if unconfirmed_only:
         q = q.filter(Product.is_unconfirmed == True)  # noqa: E712
     products = q.order_by(Product.updated_at.desc()).all()
+    _attach_cp_counts(products, db)
     return templates.TemplateResponse(request, "product_list.html", {
         "products": products,
         "lookup": "",
