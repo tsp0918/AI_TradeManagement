@@ -422,9 +422,22 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
     transactions: list[dict] = []
     error: str | None = None
 
+    all_orgs = request.query_params.get("all_orgs", "false").lower() in ("1", "true")
+    x_org_id = request.headers.get("X-Organization-Id") or request.query_params.get("org_id")
+
     try:
+        params = {"limit": 5}
+        if all_orgs:
+            params["all_orgs"] = "true"
+        headers = {}
+        if x_org_id:
+            headers["X-Organization-Id"] = x_org_id
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{ai_validation_url}/api/transactions/recent?limit=5")
+            resp = await client.get(
+                f"{ai_validation_url}/api/transactions/recent",
+                params=params,
+                headers=headers,
+            )
         if resp.status_code == 200:
             transactions = resp.json().get("transactions", [])
         else:
@@ -479,7 +492,8 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
     return templates.TemplateResponse(
         request, "dashboard.html",
         {"transactions": transactions, "error": error,
-         "agent_stats": agent_stats, "reg_alerts": reg_alerts},
+         "agent_stats": agent_stats, "reg_alerts": reg_alerts,
+         "all_orgs": all_orgs, "x_org_id": x_org_id},
     )
 
 

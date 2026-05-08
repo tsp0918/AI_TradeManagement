@@ -21,11 +21,12 @@
     /* ── ページヘッダー ── */
     .page-header {
       display: flex;
-      align-items: baseline;
-      gap: 12px;
+      align-items: center;
+      gap: 10px;
       margin-bottom: 20px;
       padding-bottom: 12px;
       border-bottom: 1.5px solid #EDE6DC;
+      flex-wrap: wrap;
     }
     .page-title {
       font-size: 15px;
@@ -48,6 +49,55 @@
       transition: background .12s;
     }
     .refresh-btn:hover { background: #F7F3EE; }
+
+    /* ── 拠点フィルタートグル ── */
+    .org-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 10px;
+    }
+    .org-toggle-label {
+      font-size: 10.5px;
+      color: #9C8A78;
+    }
+    .org-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 14px;
+      font-size: 10.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid;
+      transition: background .12s, color .12s;
+      text-decoration: none;
+    }
+    .org-toggle-btn.active {
+      background: #2C1E12;
+      border-color: #2C1E12;
+      color: #fff;
+    }
+    .org-toggle-btn.inactive {
+      background: transparent;
+      border-color: #DDD3C5;
+      color: #9C8A78;
+    }
+    .org-toggle-btn.inactive:hover { background: #F7F3EE; }
+    .org-chip {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: #EFF6FF;
+      border: 1px solid #BFDBFE;
+      color: #1D4ED8;
+      font-weight: 600;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     /* ── エラーバナー ── */
     .error-banner {
@@ -284,6 +334,21 @@
 <div class="page-header">
   <span class="page-title">📊 案件ダッシュボード</span>
   <span class="page-sub">審査進行中 — 最新 {{ transactions|length }} 件 ／ NeuroSymbolic HanteiAgent 統合</span>
+
+  <!-- 拠点フィルタートグル -->
+  <div class="org-toggle">
+    {% if x_org_id and not all_orgs %}
+    <span class="org-chip" title="{{ x_org_id }}">🏢 自拠点</span>
+    {% endif %}
+    {% if all_orgs %}
+    <a href="?all_orgs=false" class="org-toggle-btn inactive">自拠点のみ</a>
+    <span class="org-toggle-btn active">🌐 全拠点</span>
+    {% else %}
+    <span class="org-toggle-btn active">🏢 自拠点のみ</span>
+    <a href="?all_orgs=true" class="org-toggle-btn inactive">全拠点表示</a>
+    {% endif %}
+  </div>
+
   <button class="refresh-btn" onclick="location.reload()">↻ 更新</button>
 </div>
 
@@ -483,6 +548,19 @@
 {% endfor %}
 
 <script>
+// ── 拠点フィルタートグルリンクに org_id を付与 ──
+(function() {
+  const orgId = (() => {
+    try { return localStorage.getItem('x_org_id'); } catch(e) { return null; }
+  })();
+  if (!orgId) return;
+  document.querySelectorAll('a.org-toggle-btn').forEach(function(a) {
+    const u = new URL(a.href, location.href);
+    u.searchParams.set('org_id', orgId);
+    a.href = u.toString();
+  });
+})();
+
 // ── 親フレームの iframe src を切り替えて対象モジュールを開く ──
 function openInPortal(url) {
   try {

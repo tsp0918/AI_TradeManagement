@@ -51,6 +51,9 @@ class Transaction(Base, TimestampMixin):
 
     created_by_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
+    # 多拠点管理: 担当拠点 org_id（platform-core plat_tenant UUID）
+    org_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
+
     # スクリーニング連携
     counterparty_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     screening_result_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)

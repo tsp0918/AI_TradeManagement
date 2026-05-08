@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -104,7 +104,9 @@ def _pending_actions(
 @router.get("/recent")
 def get_recent_transactions(
     limit: int = Query(default=5, ge=1, le=20, description="取得件数（最大20）"),
+    all_orgs: bool = Query(default=False, description="True = 全拠点表示"),
     db: Session = Depends(get_db),
+    x_org_id: Optional[str] = Header(None, alias="X-Organization-Id"),
 ) -> Dict[str, Any]:
     """
     直近 N 件の取引とステータスサマリーを返す。
@@ -114,12 +116,12 @@ def get_recent_transactions(
       - AI 判定状況 (has_ai_run, last_run_at, counts)
       - 未完了アクション (pending_actions)
     """
-    txs = (
-        db.query(Transaction)
-        .order_by(desc(Transaction.id))
-        .limit(limit)
-        .all()
-    )
+    q = db.query(Transaction)
+    if x_org_id and not all_orgs:
+        q = q.filter(
+            (Transaction.org_id == x_org_id) | (Transaction.org_id == None)  # noqa: E711
+        )
+    txs = q.order_by(desc(Transaction.id)).limit(limit).all()
 
     results: List[Dict[str, Any]] = []
 
@@ -198,6 +200,7 @@ def _make_case_no_api() -> str:
 def create_transaction_api(
     body: TransactionCreateRequest,
     db: Session = Depends(get_db),
+    x_org_id: Optional[str] = Header(None, alias="X-Organization-Id"),
 ) -> Dict[str, Any]:
     """
     DAP ヒアリング完了後に案件を JSON API 経由で新規作成する。
@@ -210,6 +213,7 @@ def create_transaction_api(
         status="draft",
         counterparty_name=body.counterparty_name.strip() if body.counterparty_name else None,
         source_module=body.source_module or "dap",
+        org_id=x_org_id,
     )
     # destination_country は extra_info 等に保存（モデルにフィールドがない場合は title に付与）
     if body.destination_country and not hasattr(Transaction, "destination_country"):

@@ -62,6 +62,9 @@ class ExportLicenseApplication(PlatformBase):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # 多拠点管理: 担当拠点 org_id（plat_tenant UUID）
+    org_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+
     # 管理
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
