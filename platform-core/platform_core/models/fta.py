@@ -27,6 +27,7 @@ class FtaAgreement(PlatformBase):
     name_ja: Mapped[str] = mapped_column(String(200), nullable=False)
     name_en: Mapped[str] = mapped_column(String(200), nullable=False)
     partner_countries: Mapped[str] = mapped_column(Text, nullable=False)  # カンマ区切り ISO2
+    origin_country: Mapped[str] = mapped_column(String(4), nullable=False, default="JP", index=True)
     effective_date: Mapped[str | None] = mapped_column(String(20), nullable=True)  # YYYY-MM-DD
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     # "active" | "provisional" | "suspended"

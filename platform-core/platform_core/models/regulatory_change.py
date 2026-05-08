@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 
 from platform_core.db.base import PlatformBase
 
@@ -46,6 +47,10 @@ class RegulatoryChange(PlatformBase):
 
     # 重複検出用ハッシュ（同一変更を二重登録しない）
     content_hash = Column(String(64), unique=True, nullable=False, index=True)
+
+    # 拠点別フィルタリング（null/[] = 全拠点共通アラート）
+    relevant_org_ids = Column(JSONB, nullable=True, default=None)
+    # 例: ["uuid1", "uuid2"] → 該当拠点のみに表示
 
     # 既読フラグ（管理者が確認済みかどうか）
     is_dismissed = Column(Boolean, default=False, nullable=False)

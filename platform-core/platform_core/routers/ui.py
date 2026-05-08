@@ -466,15 +466,25 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
         pass  # テーブル未作成でも画面は返す
 
     # ── 規制動向: 未読アラート (warn/danger) 最大5件 ──
+    from sqlalchemy import or_, text as _text
+
     reg_alerts: list = []
     try:
-        reg_rows = await db.execute(
+        reg_q = (
             select(RegulatoryChange)
             .where(RegulatoryChange.is_dismissed == False)  # noqa: E712
             .where(RegulatoryChange.severity.in_(["warn", "danger"]))
             .order_by(RegulatoryChange.detected_at.desc())
             .limit(5)
         )
+        if x_org_id:
+            reg_q = reg_q.where(
+                or_(
+                    RegulatoryChange.relevant_org_ids.is_(None),
+                    _text("relevant_org_ids @> jsonb_build_array(:oid)").bindparams(oid=x_org_id),
+                )
+            )
+        reg_rows = await db.execute(reg_q)
         reg_alerts = [
             {
                 "id":          rc.id,

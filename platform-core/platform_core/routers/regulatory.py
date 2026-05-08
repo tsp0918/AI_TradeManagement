@@ -27,9 +27,9 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from platform_core.db.session import get_db
@@ -83,28 +83,49 @@ def _sha256(text: str) -> str:
 # ── エンドポイント ─────────────────────────────────────────────────────────────
 
 @router.get("/changes")
-async def list_changes(limit: int = 20, db: AsyncSession = Depends(get_db)):
-    """未読（未dismiss）の規制変更一覧を返す。"""
-    rows = await db.execute(
+async def list_changes(
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+    x_org_id: str | None = Header(None, alias="X-Organization-Id"),
+):
+    """未読（未dismiss）の規制変更一覧を返す。
+
+    X-Organization-Id ヘッダーがある場合:
+      - relevant_org_ids が NULL/空（全拠点共通）のアラート
+      - relevant_org_ids に当該 org_id が含まれるアラート
+    ヘッダーなし: 全件返却。
+    """
+    q = (
         select(RegulatoryChange)
         .where(RegulatoryChange.is_dismissed == False)  # noqa: E712
         .order_by(RegulatoryChange.detected_at.desc())
         .limit(limit)
     )
+
+    if x_org_id:
+        q = q.where(
+            or_(
+                RegulatoryChange.relevant_org_ids.is_(None),
+                text("relevant_org_ids @> jsonb_build_array(:oid)").bindparams(oid=x_org_id),
+            )
+        )
+
+    rows = await db.execute(q)
     changes = rows.scalars().all()
     return {
         "count": len(changes),
         "changes": [
             {
-                "id":             c.id,
-                "source":         c.source,
-                "change_type":    c.change_type,
-                "title":          c.title,
-                "severity":       c.severity,
-                "item_ref":       c.item_ref,
-                "effective_date": c.effective_date,
-                "source_url":     c.source_url,
-                "detected_at":    c.detected_at.isoformat() if c.detected_at else None,
+                "id":               c.id,
+                "source":           c.source,
+                "change_type":      c.change_type,
+                "title":            c.title,
+                "severity":         c.severity,
+                "item_ref":         c.item_ref,
+                "effective_date":   c.effective_date,
+                "source_url":       c.source_url,
+                "relevant_org_ids": c.relevant_org_ids,
+                "detected_at":      c.detected_at.isoformat() if c.detected_at else None,
             }
             for c in changes
         ],
@@ -363,6 +384,25 @@ async def regime_check(body: RegimeCheckRequest):
         "total_flags":       len(flags),
         "risk_level":        risk_level,
     }
+
+
+class _OrgIdsBody(BaseModel):
+    relevant_org_ids: list[str]
+
+
+@router.patch("/changes/{change_id}/org-filter")
+async def set_change_org_filter(
+    change_id: int,
+    body: _OrgIdsBody,
+    db: AsyncSession = Depends(get_db),
+):
+    """規制変更アラートの対象拠点を設定する。空リストを渡すと全拠点共通に戻す。"""
+    row = await db.get(RegulatoryChange, change_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="change not found")
+    row.relevant_org_ids = body.relevant_org_ids if body.relevant_org_ids else None
+    await db.flush()
+    return {"ok": True, "id": change_id, "relevant_org_ids": row.relevant_org_ids}
 
 
 @router.post("/changes/{change_id}/dismiss")

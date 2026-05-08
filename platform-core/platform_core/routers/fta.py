@@ -35,6 +35,7 @@ _AGREEMENTS_SEED = [
         "name_ja": "日EU経済連携協定",
         "name_en": "Japan-EU Economic Partnership Agreement",
         "partner_countries": "AT,BE,BG,HR,CY,CZ,DK,EE,FI,FR,DE,GR,HU,IE,IT,LV,LT,LU,MT,NL,PL,PT,RO,SK,SI,ES,SE",
+        "origin_country": "JP",
         "effective_date": "2019-02-01",
         "status": "active",
         "notes": "2019年2月発効。2033年までに関税の97%を撤廃。",
@@ -44,6 +45,7 @@ _AGREEMENTS_SEED = [
         "name_ja": "地域的な包括的経済連携協定（RCEP）",
         "name_en": "Regional Comprehensive Economic Partnership",
         "partner_countries": "AU,BN,KH,CN,ID,LA,MY,MM,NZ,PH,SG,KR,TH,VN",
+        "origin_country": "JP",
         "effective_date": "2022-01-01",
         "status": "active",
         "notes": "2022年1月発効。ASEAN10カ国＋日中韓豪NZ。",
@@ -53,6 +55,7 @@ _AGREEMENTS_SEED = [
         "name_ja": "環太平洋パートナーシップに関する包括的及び先進的な協定（CPTPP）",
         "name_en": "Comprehensive and Progressive Agreement for Trans-Pacific Partnership",
         "partner_countries": "AU,BN,CA,CL,MX,NZ,PE,SG,VN,MY,GB",
+        "origin_country": "JP",
         "effective_date": "2018-12-30",
         "status": "active",
         "notes": "2018年12月発効（日本）。英国は2024年12月加入。",
@@ -62,6 +65,7 @@ _AGREEMENTS_SEED = [
         "name_ja": "日英包括的経済連携協定",
         "name_en": "Japan-UK Comprehensive Economic Partnership Agreement",
         "partner_countries": "GB",
+        "origin_country": "JP",
         "effective_date": "2021-01-01",
         "status": "active",
         "notes": "Brexit後、JAEPA相当水準を維持。2021年1月発効。",
@@ -71,6 +75,7 @@ _AGREEMENTS_SEED = [
         "name_ja": "日米貿易協定",
         "name_en": "Japan-US Trade Agreement",
         "partner_countries": "US",
+        "origin_country": "JP",
         "effective_date": "2020-01-01",
         "status": "active",
         "notes": "2020年1月発効。農産品・工業品の関税削減。包括的FTAは未締結。",
@@ -80,6 +85,7 @@ _AGREEMENTS_SEED = [
         "name_ja": "日シンガポール新時代経済連携協定",
         "name_en": "Japan-Singapore Economic Partnership Agreement",
         "partner_countries": "SG",
+        "origin_country": "JP",
         "effective_date": "2002-11-30",
         "status": "active",
         "notes": "日本初のEPA（2002年発効）。",
@@ -89,6 +95,7 @@ _AGREEMENTS_SEED = [
         "name_ja": "日マレーシア経済連携協定",
         "name_en": "Japan-Malaysia Economic Partnership Agreement",
         "partner_countries": "MY",
+        "origin_country": "JP",
         "effective_date": "2006-07-13",
         "status": "active",
         "notes": "2006年7月発効。",
@@ -98,6 +105,7 @@ _AGREEMENTS_SEED = [
         "name_ja": "日タイ経済連携協定",
         "name_en": "Japan-Thailand Economic Partnership Agreement",
         "partner_countries": "TH",
+        "origin_country": "JP",
         "effective_date": "2007-11-01",
         "status": "active",
         "notes": "2007年11月発効。",
@@ -107,6 +115,7 @@ _AGREEMENTS_SEED = [
         "name_ja": "日ベトナム経済連携協定",
         "name_en": "Japan-Vietnam Economic Partnership Agreement",
         "partner_countries": "VN",
+        "origin_country": "JP",
         "effective_date": "2009-10-01",
         "status": "active",
         "notes": "2009年10月発効。",
@@ -116,6 +125,7 @@ _AGREEMENTS_SEED = [
         "name_ja": "日インド包括的経済連携協定",
         "name_en": "Japan-India Comprehensive Economic Partnership Agreement",
         "partner_countries": "IN",
+        "origin_country": "JP",
         "effective_date": "2011-08-01",
         "status": "active",
         "notes": "2011年8月発効。",
@@ -209,8 +219,14 @@ _COUNTRY_TO_AGREEMENTS: dict[str, list[str]] = {
 # ── API ────────────────────────────────────────────────────────────
 
 @router.get("/api/fta/agreements")
-async def list_agreements(db: AsyncSession = Depends(get_db)):
-    r = await db.execute(select(FtaAgreement).order_by(FtaAgreement.code))
+async def list_agreements(
+    origin_country: str | None = Query(None, description="原産国フィルター（ISO 2文字、未指定で全件）"),
+    db: AsyncSession = Depends(get_db),
+):
+    q = select(FtaAgreement).order_by(FtaAgreement.code)
+    if origin_country:
+        q = q.where(FtaAgreement.origin_country == origin_country.upper())
+    r = await db.execute(q)
     return [
         {
             "id": str(a.id),
@@ -218,6 +234,7 @@ async def list_agreements(db: AsyncSession = Depends(get_db)):
             "name_ja": a.name_ja,
             "name_en": a.name_en,
             "partner_countries": a.partner_countries.split(","),
+            "origin_country": a.origin_country,
             "effective_date": a.effective_date,
             "status": a.status,
             "notes": a.notes,
@@ -246,23 +263,39 @@ async def list_rates(
 async def fta_check(
     hs_code: str = Query(..., description="HS コード（例: 8542.31）"),
     destination_country: str = Query(..., description="仕向地国コード（ISO 2文字）"),
+    origin_country: str = Query("JP", description="原産国コード（ISO 2文字、デフォルト JP）"),
     year: int = Query(2024),
     db: AsyncSession = Depends(get_db),
 ):
-    """HS コード × 仕向地国 → 適用可能な特恵税率を一覧返却。"""
+    """HS コード × 仕向地国 × 原産国 → 適用可能な特恵税率を一覧返却。"""
     country = destination_country.upper().strip()
+    origin = origin_country.upper().strip()
     hs = hs_code.strip()
 
-    applicable_agreements = _COUNTRY_TO_AGREEMENTS.get(country, [])
+    # 原産国 JP の場合は in-memory マップを使用、それ以外は DB から協定を検索
+    if origin == "JP":
+        applicable_agreements = _COUNTRY_TO_AGREEMENTS.get(country, [])
+    else:
+        r = await db.execute(
+            select(FtaAgreement.code, FtaAgreement.partner_countries).where(
+                FtaAgreement.origin_country == origin,
+                FtaAgreement.status == "active",
+            )
+        )
+        applicable_agreements = [
+            code for code, partners in r.all()
+            if country in (partners or "").split(",")
+        ]
 
     if not applicable_agreements:
         return {
             "hs_code": hs,
             "destination_country": country,
+            "origin_country": origin,
             "year": year,
             "applicable_agreements": [],
             "rates": [],
-            "summary": f"{country} との EPA/FTA は未締結（または未登録）です。MFN 税率が適用されます。",
+            "summary": f"{origin}→{country} の EPA/FTA は未締結（または未登録）です。MFN 税率が適用されます。",
         }
 
     # 登録済み税率を検索
@@ -299,6 +332,7 @@ async def fta_check(
     return {
         "hs_code": hs,
         "destination_country": country,
+        "origin_country": origin,
         "year": year,
         "applicable_agreements": applicable_agreements,
         "rates": rate_list,
