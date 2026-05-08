@@ -701,6 +701,14 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | 輸出許可申請拡張 | EL-{TYPE}-{YEAR}-{SEQ:04d} 自動採番・POST /use-value 価値控除・期限アラートスケジューラー |
 | ✅ | D2-4 EPA/FTA 特恵税率 DB | 日本締結10協定・代表HS 8コード税率・/ui/fta-check・ポータルナビ追加 |
 | ✅ | R&D モジュール UI/スコア刷新 | 4層改修: 進捗バー・Explainability カード・15+ルール・regulatory_risk独立・全根拠日本語化 |
+| ✅ | グローバル多拠点 Phase 1 | plat_tenant 拡張・組織 CRUD /tree・拠点スイッチャー・X-Organization-Id 自動付与 |
+| ✅ | DAP-A ワークフロー伴走 | DapWorkflowSession + /api/workflow/ 6エンドポイント（UC1/2/4/5/6/9） |
+| ✅ | DAP-C 知識ベース更新 | system_prompt に UC別画面遷移ガイド・FAQ 7件追加 |
+| ✅ | Phase 2 R&Dアクセス制御 | tech_sensitivity / RndAccessLog / みなし輸出フラグ自動記録・case_detail 機密設定 UI |
+| ✅ | DAP-B ワークフローモード | chat-widget.js に UC 選択・進捗バー・navigate_to 自動実行・highlight スポットライト |
+| ★★★★☆ | Phase 3 グローバル品目マスター | ItemCountryProfile: item_id × country_code で HS/ECCN/規制を管理。品目詳細国別タブ |
+| ★★★☆☆ | Phase 4 トランザクション多テナント化 | transaction/supply_chain/export_license に org_id 追加。全拠点/拠点別ビュー切替 |
+| ★★★☆☆ | Phase 5 グローバル規制・FTA 拡張 | FtaAgreement: origin_country 追加。RegulatoryChange: 拠点別アラート |
 | ★★★☆☆ | サプライヤーポータル メール送信 | メール自動送信（招待URL通知）— SMTP設定後に実装可能 |
 | ★★★☆☆ | FTA 税率データ拡充 | 現在は代表HSコードのみ。実務向けに品目単位の全量収録 |
 | ★★★☆☆ | Layer D データ収集実行 | API Key 取得後に collect_academic_papers.py を全 ECCN で実行 |
@@ -708,5 +716,5 @@ lsof | grep ".db$" | grep -v ".venv"
 
 ---
 
-*更新: 2026-05-07（R&Dモジュール UI/スコアリング刷新 4層完了）*
+*更新: 2026-05-08（Phase 2 R&Dアクセス制御・DAP-B ワークフローモード完了）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
