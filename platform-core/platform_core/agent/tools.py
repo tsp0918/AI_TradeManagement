@@ -22,7 +22,7 @@ import httpx
 from platform_core.agent.base_agent import AgentTool, BaseContext
 
 
-_AI_VALIDATION_URL = os.getenv("MODULE_AI_VALIDATION_URL", "http://localhost:8001")
+_AI_VALIDATION_URL = os.getenv("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
 _SCREENING_URL     = os.getenv("MODULE_SCREENING_URL",     "http://localhost:8005")
 _INTERNAL_KEY      = os.getenv("INTERNAL_SERVICE_KEY",     "dev-internal-key")
 _INTERNAL_HEADER   = {"X-Internal-Service-Key": _INTERNAL_KEY}

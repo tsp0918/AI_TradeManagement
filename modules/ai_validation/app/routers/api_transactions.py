@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api/transactions", tags=["api-transactions"])
 
 import os as _os
 # ai_validation 自身のベース URL（ダッシュボードのアクション URL 生成用）
-_BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8001")
+_BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
 _SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
 
 

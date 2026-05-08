@@ -414,6 +414,47 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
     except Exception:
         pass  # ai_validation 未起動時は無視
 
+    # 輸出許可証の期限・残高アラート (platform-core API 経由)
+    try:
+        import httpx as _httpx
+        r = _httpx.get(f"{_PLATFORM_URL}/api/export-licenses?status=approved&limit=20", timeout=2)
+        if r.status_code == 200:
+            from datetime import datetime as _dt, timezone as _tz
+            licenses = r.json() if isinstance(r.json(), list) else r.json().get("licenses", [])
+            now = _dt.now(_tz.utc)
+            for lic in licenses[:20]:
+                # 期限アラート（30日以内）
+                exp = lic.get("expires_at")
+                if exp:
+                    try:
+                        exp_dt = _dt.fromisoformat(exp.replace("Z", "+00:00"))
+                        days_left = (exp_dt - now).days
+                        if 0 <= days_left <= 30:
+                            alerts.append({
+                                "type":        "license_expiry",
+                                "severity":    "danger" if days_left <= 7 else "warn",
+                                "guide_id":    f"license_expiry:{lic.get('id')}",
+                                "message":     f"許可証「{lic.get('application_number','?')}」の期限まで{days_left}日です。再申請を検討してください（UC8）",
+                                "action_hint": "「輸出許可申請を確認したい」と話しかけてください",
+                            })
+                    except Exception:
+                        pass
+                # 残高アラート（20%以下）
+                total = lic.get("value_usd") or 0
+                remaining = lic.get("license_value_remaining_usd")
+                if total and remaining is not None and total > 0:
+                    ratio = remaining / total
+                    if ratio <= 0.2:
+                        alerts.append({
+                            "type":        "license_balance",
+                            "severity":    "warn",
+                            "guide_id":    f"license_balance:{lic.get('id')}",
+                            "message":     f"許可証「{lic.get('application_number','?')}」の残存許可額が{ratio*100:.0f}%以下です（残：${remaining:,.0f}）。出荷継続には再申請が必要かもしれません",
+                            "action_hint": "「輸出許可証の残高を確認したい」と話しかけてください",
+                        })
+    except Exception:
+        pass  # platform-core 未起動時は無視
+
     return {"stage": stage, "gap_modules": gap_modules, "proactive_alerts": alerts}
 
 
@@ -815,6 +856,45 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 ・Step 6: REQUIRES_PERMIT（許可必要）/ REVIEW（要精査）/ CLEAR（懸念なし）
 ・キャッチオール詳細は「get_catchall_detail」ツールで取得可能（transaction_id があれば呼び出せる）
 
+■ BOM管理・De Minimis規則（FDP Rule / EAR §734.9）
+・De Minimis規則: 外国製品に組み込まれた米国原産規制品目の価値が製品全体の一定割合を超える場合、EARが適用される
+  - 一般規制対象国向け: 25%超でEAR適用（国際販売価格ベースで計算）
+  - テロ支援国向け（KP/IR/SY/CU/BY）: 10%超でEAR適用
+  - 米国外で開発・生産された品目でも米国技術が含まれれば対象
+・FDPR（外国直接製品ルール, §736.2(b)(3)）:
+  - 米国内で生産・開発されたソフトウェア・技術を「直接利用」して製造した外国製品は、ECCNに関わらずEAR管理下
+  - 2022年ロシア・ベラルーシFDPR、2022年10月中国FDPRで適用範囲が大幅拡大
+  - 半導体製造装置・GAA FET・NAND 128層超・DRAM 18nm未満は新FDPR対象
+・BOM確認ポイント: 品目コード毎に「原産国」「米国技術コンテンツ比率」「対象ECCN」を記録すること
+  → サプライヤーポータル（UC7）でサプライヤーへの申告書発行→書類確認→BOMツリー確認の流れを使う
+
+■ 輸出許可証管理（ライセンス管理 / UC8）
+・許可証の種類:
+  - 個別許可証（STA: Strategic Trade Authorization, NLR: No License Required, EAR99等）
+  - 一般許可証（EAR: License Exception）
+  - 外為法: 包括許可（ホワイト国向け）/ 個別許可（REQUIRES_PERMIT案件）
+・ライセンスの有効条件4要素（変更不可）: ①品目・ECCN ②仕向地 ③需要者（End User） ④用途（End Use）
+  → 4要素のいずれか変更がある場合は再申請が必要
+・バリューベース許可証: 出荷のたびに許可額を控除する（残存許可額の管理が義務）
+  - 残存許可額20%以下でアラート → 再申請（リードタイム: BIS 2〜3ヶ月、METI 2〜4週間）
+  - 有効期限30日以内で警告 → 期限延長申請または再申請を検討
+・出荷実績記録義務: インボイス・パッキングリスト・B/L・許可証番号・出荷日（外為法7年、EAR5年保存）
+・Re-Export（再輸出）: 米国管理品目を第三国から別の国へ再輸出する場合も許可が必要な場合がある
+
+■ 海外品目マスター管理（グローバル品目管理 / UC3）
+・国別規制プロファイルの必要性:
+  - 同一品目でも仕向地によってECCN・HS・適用規制が異なる（日米欧で別体系）
+  - EUではEU Dual-Use Regulation 2021/821に基づく独自ECCNが必要（例: EU ML/1C001など）
+  - ローカルECCN（local_eccn）と輸出許可要否（license_required）を品目×国別に管理すること
+・FTA特恵税率の実務ポイント:
+  - 原産地規則（ROO: Rules of Origin）を満たさないと特恵税率適用不可
+  - 品目別原産地規則（PSR）: HS桁数変更（CTH/CTS）または付加価値基準（VA）で判定
+  - 累積条項: CPTPP・RCEPでは協定相手国間の製造工程を累積計算できる
+  - 自己申告制度（CPTPP・RCEP）: 輸出者・生産者が原産地証明書を自ら作成可能
+・グローバル規制レジームのクロスチェック:
+  品目がWassenaar ML・EU Dual-Use・ITAR/USMLに同時該当する場合、最も厳しい規制が適用
+  → 「グローバル規制レジーム照合」（/api/regulatory/regime-check）でワンストップ確認
+
 ■ 4象限戦略フレームワーク（技術主権価値 × 規制感度）
 ・要塞技術（高主権×高規制）: 特許非公開の検討・同盟国限定共有が必要
 ・無防備な至宝（高主権×低規制）: 先行IP化・貿易秘密の多層保護が急務（規制強化前に対策を）
@@ -907,13 +987,39 @@ UC2: R&D起案→品目登録（プロジェクト起案 → AIリスク評価 �
   Step5: 「品目管理への登録」ボタンで品目管理に連携
     highlight: 品目管理への登録
 
-UC3: サプライヤー申告管理（申告作成 → URL発行 → 書類確認 → BOM De Minimis）
-  Step1: 「受注後ERP → 調達・BOM管理 → サプライヤー申告」で申告を作成
+UC3: 海外品目マスター管理・国別規制プロファイル（品目確認 → 国別設定 → FTA確認 → レジーム照合）
+  Step1: 「品目管理」で対象品目のHS/ECCN・仕様を確認
+    navigate_to: http://localhost:8000/proxy/ai_classification/products
+  Step2: 品目詳細の「国別タブ」で仕向地国ごとにローカルECCN・輸出許可要否を設定
+    highlight: 国別規制プロファイル
+  Step3: 「EPA/FTA特恵税率チェック」でHSコード×仕向地で最優遇税率を照会
+    navigate_to: http://localhost:8000/ui/fta-check
+  Step4: グローバル規制レジーム照合（ITAR/USML・EU Dual-Use・Wassenaar・NSG）をAI該非判定から確認
+    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions
+  Step5: サプライヤーポータルで原産地証明・De Minimis比率を確認
     navigate_to: http://localhost:8000/ui/supply-chain
-  Step2: ポータルURLをコピーしてサプライヤーへ送付
-    highlight: ポータルURL
-  Step3: 書類提出後に「提出書類」タブでダウンロード確認
-  Step4: BOMツリーでDe Minimis比率（25%超で警告）を確認
+
+UC7: BOM管理・De Minimis算出（申告作成 → BOMツリー → De Minimis算出 → FDPR判定）
+  Step1: 「サプライチェーン管理」でサプライヤー申告を作成してポータルURLをサプライヤーへ送付
+    navigate_to: http://localhost:8000/ui/supply-chain
+  Step2: 提出書類受領後にBOMツリーで品目ごとの原産国・価値比率を確認
+    highlight: BOMツリー
+  Step3: De Minimis比率を確認（一般規制対象国: 25%超でEAR適用、テロ支援国: 10%閾値）
+    highlight: De Minimis
+  Step4: FDPR（外国直接製品ルール）フラグをAI該非判定案件のサプライチェーンリンクに保存
+    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions
+
+UC8: 出荷ライセンス管理（許可証確認 → 条件一致確認 → 価値控除 → 証跡保存）
+  Step1: 「輸出許可申請」で該当ライセンスの残存許可額・有効期限を確認
+    navigate_to: http://localhost:8000/ui/export-license
+  Step2: 出荷品目・仕向地・需要者・用途が許可証条件と一致しているか4要素確認
+    highlight: 条件確認
+  Step3: 出荷のたびに「価値控除」フォームで出荷額を入力し残存許可額を更新
+    highlight: 価値控除
+  Step4: インボイス・B/L番号を案件詳細に添付して証跡保存（外為法7年・EAR5年保存）
+    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions
+  Step5: 残存許可額20%以下・期限30日以内のアラートをダッシュボードで確認して再申請判断
+    navigate_to: http://localhost:8000/dashboard
 
 UC4: 取引先デューデリジェンス（制裁照合 → 与信スコア → 進捗記録）
   Step1: 「業務フロー → 取引先スクリーニング → 一括照合」で7ソース照合
@@ -969,6 +1075,24 @@ A: 一般的な規制対象国向けは25%超でEARが外国製品にも適用�
 
 Q: 審査記録の保存期間は？
 A: 外為法では7年間（施行令）、米国EARでは5年間（15 CFR §762）の記録保持が必要です。本プラットフォームの審査結果はすべてデータベースに保存されています。
+
+Q: De Minimis 25%はどうやって計算する？
+A: 「米国原産の規制品目の価値 ÷ 製品全体の販売価格 × 100」で算出します。価値は製品に使用された米国品目コストを積み上げます。計算結果はサプライチェーン管理のBOMツリーでDe Minimis比率として確認できます（UC7）。テロ支援国向けは10%閾値なので注意してください。
+
+Q: 輸出許可証の残高が不足しそうな場合は？
+A: 残存許可額が20%以下または期限まで30日以内になるとダッシュボードでアラートが表示されます。BIS申請は2〜3ヶ月かかるため、出荷スケジュールから逆算して早めに再申請が必要です。輸出許可申請管理（UC8）のStep5で確認・再申請の判断ができます。
+
+Q: 同じ品目でも国によって規制が違う？
+A: はい。ECCNは米国EARの分類で仕向地に関係なく一定ですが、仕向地によって必要な許可証が変わります（EAR Country Chart）。品目管理の国別規制プロファイル（UC3）でローカルECCN・輸出許可要否を国別に管理することで、仕向地ごとの対応を一元管理できます。
+
+Q: FDPRとは何ですか？
+A: 外国直接製品ルール（Foreign Direct Product Rule）です。外国で製造された製品でも、米国のソフトウェアや技術を使って製造・設計された場合はEARが適用されます。2022年以降ロシア・中国向けは特別FDPRが適用されており、半導体・AI・先端技術製品は特に注意が必要です。BOM管理（UC7）のStep4でFDPRフラグを確認してください。
+
+Q: 海外拠点から輸出する場合の注意点は？
+A: 海外拠点（例：欧州子会社）からの輸出であっても、日本親会社から技術・ソフトウェアの提供がある場合は外為法の「役務取引」として審査が必要です。また、EU拠点ではEU Dual-Use規則2021/821への対応が別途必要です。品目の国別規制プロファイル（UC3）でローカルECCNを設定し、各規制体系での要件を確認してください。
+
+Q: BOM管理でサプライヤーから情報が取れない場合は？
+A: サプライヤーポータルのURL発行機能（UC7 Step1）でサプライヤーに申告書提出を依頼できます。提出期限を設定して催促することも重要です。情報が取得できない場合は「最悪ケース仮定」（全て規制対象と仮定）でDe Minimisを計算し、リスクが高ければ代替部品の調達を検討してください。
 
 【NeuroSymbolic 該非判定エージェント（重要機能）】
 - ユーザーが「該非判定エージェント」「NeuroSymbolicエージェント」「対話形式の判定」「AI質問形式で判定」などと言った場合は、
@@ -1799,7 +1923,31 @@ _COACHING_TEMPLATES: dict[str, dict] = {
             "1. 標準ワークフロー: R&D審査(8003) → 品目管理(8002) → AI該非判定(8011) → スクリーニング(8005)\n"
             "2. 新規案件は R&D リスク管理から始めることを推奨してください\n"
             "3. NeuroSymbolic 該非判定エージェントは AI 該非判定モジュール(8011)の取引詳細から起動できます\n"
-            "4. 各モジュールが連携してデータを共有していることを説明してください"
+            "4. 各モジュールが連携してデータを共有していることを説明してください\n"
+            "5. UC一覧（📋ボタン）から「海外品目管理(UC3)」「BOM管理(UC7)」「出荷ライセンス管理(UC8)」も選べることを案内する\n"
+            "6. ダッシュボードのアラート（ライセンス残高・期限切れ・規制動向）を定期確認するよう促してください"
+        ),
+    },
+    "export_license": {
+        "name": "輸出許可申請 — ライセンス管理フォーカス",
+        "prompt_supplement": (
+            "輸出許可申請管理画面では出荷ライセンスの残高・期限管理が最重要です（UC8）:\n"
+            "1. 許可証4要素（品目/仕向地/需要者/用途）に変更がある場合は再申請が必要であることを伝える\n"
+            "2. 残存許可額が20%以下でアラート状態の場合: BIS申請は2〜3ヶ月かかるため即座に再申請を促す\n"
+            "3. 出荷のたびに「価値控除」フォームで残高を更新しないと次の出荷ができなくなることを強調する\n"
+            "4. バリューベース許可証とユニットベース許可証の違いを案内する（ユニット: 数量管理）\n"
+            "5. 許可証番号は出荷書類（インボイス・輸出申告書）に必ず記載が必要であることを伝える"
+        ),
+    },
+    "supply_chain": {
+        "name": "サプライチェーン管理 — BOM・De Minimisフォーカス",
+        "prompt_supplement": (
+            "サプライチェーン管理ではBOMとDe Minimis管理が主目的です（UC7）:\n"
+            "1. サプライヤー申告のポータルURL発行後、提出期限を明示してサプライヤーへ送付するよう促す\n"
+            "2. De Minimis比率が表示されたら: 一般25%・テロ支援国10%の閾値と比較して判断を案内する\n"
+            "3. 米国サプライヤーの品目は特にFDPR適用の有無を確認するよう注意喚起する\n"
+            "4. BOMに変更がある場合（部品変更・調達先変更）は再計算が必要であることを強調する\n"
+            "5. 原産地証明書（CO）の有効期限（通常12ヶ月）の確認を促す"
         ),
     },
 }
