@@ -12,6 +12,16 @@
   POST /api/watchlist           ウォッチリストエントリ追加
   POST /api/watchlist/import    バルクインポート
   DELETE /api/watchlist/{id}    エントリ無効化
+
+  [与信管理 - Phase 6A-1 統合]
+  GET  /api/counterparties/stats       リスクダッシュボード集計
+  GET  /api/counterparties             取引先一覧
+  POST /api/counterparties             取引先登録（自動スクリーニング付き）
+  GET  /api/counterparties/{id}        取引先詳細
+  PUT  /api/counterparties/{id}        取引先更新
+  DELETE /api/counterparties/{id}      取引先削除
+  POST /api/counterparties/{id}/screen スクリーニング実行
+  GET  /api/counterparties/{id}/history 与信スコア変更履歴
 """
 
 import asyncio
@@ -35,6 +45,7 @@ _STATIC_DIR = Path(__file__).parent / "static"
 
 from app.db.session import AsyncSessionLocal
 from app.models.screening import Watchlist
+from app.routers.counterparty import router as counterparty_router
 from app.routers.screening import router as screening_router
 from app.routers.ui import router as ui_router
 from app.services import faiss_service
@@ -89,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(ui_router)
     app.include_router(screening_router)
+    app.include_router(counterparty_router)
 
     @app.get("/", include_in_schema=False)
     async def root():

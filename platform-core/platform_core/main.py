@@ -35,7 +35,7 @@ from platform_core.agent.router import router as agent_router
 from platform_core.routers.metrics import router as metrics_router
 from platform_core.routers.faiss_search import router as faiss_search_router
 from platform_core.routers.regulatory import router as regulatory_router
-from platform_core.routers.counterparty import router as counterparty_router
+from platform_core.routers.counterparty import router as counterparty_router  # proxy → screening
 from platform_core.routers.supply_chain import router as supply_chain_router
 from platform_core.routers.supplier_attestation import router as supplier_attestation_router
 from platform_core.routers.supplier_portal import router as supplier_portal_router
