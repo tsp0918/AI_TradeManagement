@@ -205,7 +205,7 @@ async def _ensure_company(db: AsyncSession, name: str, country: str, address: st
 
 @router.get("/api/transaction-reviews/stats")
 async def get_stats(db: AsyncSession = Depends(get_pg_db)) -> dict:
-    total = (await db.execute(func.count(TransactionReview.id))).scalar() or 0
+    total = (await db.execute(select(func.count(TransactionReview.id)))).scalar() or 0
     approved = (await db.execute(
         select(func.count()).where(TransactionReview.approved == True)  # noqa: E712
     )).scalar() or 0
