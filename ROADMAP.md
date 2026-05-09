@@ -1,5 +1,5 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-09 更新（Phase 6A 完了 — platform-core から業務ドメイン機能の分離完了）
+# 2026-05-09 更新（Phase 6A〜6C 完了 — 業務ドメインルーター全3フェーズの分離完了）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
 > 2026-05-08（3回目）追加: Phase 6 設計レビュー — platform-core から業務ドメイン機能を分離。counterparty→screening / item_version+supply_chain+supplier→ai_classification 統合（Phase 6A 高優先）、export_license / fta_origin 新モジュール抽出（Phase 6B 中優先）、trade_gate 新モジュール抽出（Phase 6C 低優先）。branch: refactor/module-separation。
@@ -20,14 +20,17 @@
 
 | モジュール | ポート | DB | WAL | 安定性 | 備考 |
 |-----------|--------|-----|-----|--------|------|
-| platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 4レイヤー（A/B/C/D）・知識グラフ・規制スケジューラー |
+| platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 4レイヤー（A/B/C/D）・知識グラフ・規制スケジューラー（業務ロジック分離済） |
 | ai_validation | 8011 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent |
-| ai_classification | 8002 | SQLite | ✅ | ✅ | HS Classifier Webhook連携・ECCN付加・品目管理 |
+| ai_classification | 8002 | SQLite+PG | ✅ | ✅ | HS Classifier Webhook連携・ECCN付加・品目管理・サプライチェーン・サプライヤー |
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
 | patent_search | 8004 | SQLite | ✅ | ✅ | BigQuery連携・J-PlatPatフォールバック |
-| screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS） |
+| screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS）・与信管理 |
 | hs_classifier | 8006 | — | — | ✅ | Layer C FAISS（5,476vec）・同期/非同期両対応 |
 | dap | 8010 | SQLite | ✅ | ✅ | 先輩担当者モード・ペルソナ追跡・ガイドバナー・全モジュール埋込済 |
+| export_license | 8012 | PostgreSQL | — | ✅ | EAR BIS-748P / 外為法様式第1 ドラフト生成・申請ライフサイクル（Phase 6B-1） |
+| trade_gate | 8013 | PostgreSQL | — | ✅ | ERP 取引伝票受付・AI 該非・スクリーニング連携・出荷 GO/NOGO（Phase 6C-1） |
+| fta_origin | 8014 | PostgreSQL | — | ✅ | EPA/FTA 特恵税率照会・原産性ルール管理（Phase 6B-2） |
 
 **WAL対応状況**: DAP・patent_search とも WAL適用済み確認済。
 
@@ -572,7 +575,8 @@ Ph.D — patent_search 双方向リンク
 
 | 問題 | 影響 | 優先度 |
 |------|------|--------|
-| platform-core に業務ドメインルーターが混在（9本・7,161行） | モジュール追加・置換時に platform-core への波及リスクが増大 | Phase 6 で解消予定 |
+| platform-core 業務ドメインルーター — Phase 6A〜6C で全7本をプロキシスタブ化済み ✅ | — | 解消済み |
+| 各モジュールの pg_session.py が個別実装 | 接続パラメータ変更時に全モジュール修正が必要 | 低（env var 統一で対応済み） |
 
 ---
 
@@ -591,6 +595,9 @@ curl -s http://localhost:8004/health  # patent_search
 curl -s http://localhost:8005/health  # screening
 curl -s http://localhost:8006/health  # hs_classifier
 curl -s http://localhost:8010/health  # dap
+curl -s http://localhost:8012/health  # export_license
+curl -s http://localhost:8013/health  # trade_gate
+curl -s http://localhost:8014/health  # fta_origin
 
 # FAISS インデックス状態確認
 curl -s http://localhost:8011/admin/faiss/status  # Layer A/B/C
