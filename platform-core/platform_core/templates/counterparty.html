@@ -118,6 +118,8 @@
       <option value="true">制裁該当</option>
       <option value="false">問題なし</option>
     </select>
+    <button class="btn" onclick="openErpBatchScreenModal()"
+      style="background:#5c35a0;color:#fff;">📥 ERP 一括スクリーニング</button>
     <button class="btn btn-primary" onclick="openCreateModal()">＋ 新規登録</button>
   </div>
 
@@ -298,6 +300,8 @@ function renderTable(items) {
       <td class="action-btns">
         <button class="btn btn-sm btn-edit" onclick="openDetail('${c.id}')">詳細</button>
         <button class="btn btn-sm btn-screen" onclick="runScreen('${c.id}', '${esc(c.name)}')">照合</button>
+        <button class="btn btn-sm" onclick="openErpSingleScreenModal('${esc(c.name)}')"
+          style="background:#5c35a0;color:#fff;">ERP照合</button>
         <button class="btn btn-sm btn-del" onclick="deleteItem('${c.id}', '${esc(c.name)}')">削除</button>
       </td>
     </tr>`;
@@ -483,9 +487,181 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
 
+// ── ERP プル型スクリーニング ─────────────────────────────────────────────────
+
+function openErpSingleScreenModal(prefillName) {
+  document.getElementById('erpScreenPartyCode').value = prefillName || '';
+  document.getElementById('erpScreenSingleResult').innerHTML = '';
+  document.getElementById('erpBatchScreenResult').innerHTML = '';
+  document.getElementById('erpScreenOverlay').classList.add('open');
+  switchScreenTab('single');
+}
+
+function openErpBatchScreenModal() {
+  document.getElementById('erpScreenSingleResult').innerHTML = '';
+  document.getElementById('erpBatchScreenResult').innerHTML = '';
+  document.getElementById('erpScreenOverlay').classList.add('open');
+  switchScreenTab('batch');
+}
+
+function switchScreenTab(tab) {
+  document.getElementById('erpScreenTabSingle').style.display = tab === 'single' ? '' : 'none';
+  document.getElementById('erpScreenTabBatch').style.display  = tab === 'batch'  ? '' : 'none';
+  document.querySelectorAll('.screen-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+}
+
+function screenResultBadge(result, isMatch) {
+  if (result === 'HIT') return '<span style="background:#c62828;color:#fff;padding:3px 10px;border-radius:12px;font-weight:700;">⚠ HIT</span>';
+  if (result === 'CLEAR') return '<span style="background:#2e7d32;color:#fff;padding:3px 10px;border-radius:12px;font-weight:700;">✓ CLEAR</span>';
+  return '<span style="background:#616161;color:#fff;padding:3px 10px;border-radius:12px;">不明</span>';
+}
+
+async function doPullSingleScreen() {
+  const code = document.getElementById('erpScreenPartyCode').value.trim();
+  if (!code) { alert('ERP 取引先コードを入力してください'); return; }
+  const btn = document.getElementById('btnScreenSingle');
+  const out = document.getElementById('erpScreenSingleResult');
+  btn.disabled = true; btn.textContent = '照合中…';
+  out.innerHTML = '<p style="color:#aaa">ERP から取得中…</p>';
+  try {
+    const r = await fetch('/api/erp/pull/counterparty-screen', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ erp_party_code: code, reason: 'manual_screening' }),
+    });
+    const d = await r.json();
+    const erpNote = d.erp_reachable ? '' : '<p style="color:#e65100;margin-bottom:8px;font-size:.85rem;">⚠ ERP に接続できませんでした</p>';
+    out.innerHTML = `${erpNote}
+      <div style="background:#f5f5f5;border-radius:8px;padding:14px;margin-top:12px;">
+        <div style="display:flex;gap:14px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+          <span style="font-weight:600;">${esc(code)}</span>
+          ${screenResultBadge(d.screen_result, d.is_match)}
+          ${d.confidence ? `<span style="color:#666;font-size:.85rem;">確信度: ${(d.confidence*100).toFixed(0)}%</span>` : ''}
+          ${d.list_name ? `<span style="background:#f3e5f5;color:#6a1b9a;padding:2px 8px;border-radius:4px;font-size:.82rem;">${esc(d.list_name)}</span>` : ''}
+        </div>
+        ${d.rationale ? `<p style="color:#555;font-size:.85rem;">${esc(d.rationale)}</p>` : ''}
+        ${d.counterparty_data ? `<details style="margin-top:10px;"><summary style="cursor:pointer;color:#888;font-size:.82rem;">ERP 取得データ</summary><pre style="font-size:.78rem;color:#666;margin-top:6px;white-space:pre-wrap;">${esc(JSON.stringify(d.counterparty_data, null, 2))}</pre></details>` : ''}
+      </div>`;
+    loadList(); loadStats();
+  } catch(e) {
+    out.innerHTML = `<p style="color:#c62828">エラー: ${e.message}</p>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'スクリーニング実行';
+  }
+}
+
+async function doBatchScreen() {
+  const limitEl = document.getElementById('erpBatchScreenLimit');
+  const limit = parseInt(limitEl.value) || 200;
+  const btn = document.getElementById('btnBatchScreen');
+  const out = document.getElementById('erpBatchScreenResult');
+  btn.disabled = true; btn.textContent = '照合中…';
+  out.innerHTML = '<p style="color:#aaa">ERP から取引先リストを取得中…</p>';
+  try {
+    const r = await fetch('/api/erp/pull/counterparties-batch-screen', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ limit, reason: 'batch_periodic_screening' }),
+    });
+    const d = await r.json();
+    const erpNote = d.erp_reachable ? '' : '<p style="color:#e65100;margin-bottom:8px;font-size:.85rem;">⚠ ERP に接続できませんでした（件数は 0 です）</p>';
+    out.innerHTML = `${erpNote}
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin:12px 0;">
+        <div style="background:#f5f5f5;border-radius:8px;padding:12px 20px;text-align:center;">
+          <div style="font-size:1.5rem;font-weight:700;">${d.screened}</div><div style="color:#888;font-size:.82rem;">照合件数</div>
+        </div>
+        <div style="background:#ffebee;border-radius:8px;padding:12px 20px;text-align:center;">
+          <div style="font-size:1.5rem;font-weight:700;color:#c62828;">${d.hits}</div><div style="color:#888;font-size:.82rem;">HIT（制裁該当）</div>
+        </div>
+        <div style="background:#e8f5e9;border-radius:8px;padding:12px 20px;text-align:center;">
+          <div style="font-size:1.5rem;font-weight:700;color:#2e7d32;">${d.clear}</div><div style="color:#888;font-size:.82rem;">CLEAR（問題なし）</div>
+        </div>
+        <div style="background:#fafafa;border-radius:8px;padding:12px 20px;text-align:center;">
+          <div style="font-size:1.5rem;font-weight:700;color:#616161;">${d.unknown}</div><div style="color:#888;font-size:.82rem;">不明</div>
+        </div>
+      </div>
+      ${d.screened > 0 && d.hits > 0 ? `
+      <p style="color:#c62828;font-weight:600;margin-bottom:8px;">⚠ 制裁リスト該当 ${d.hits} 件を検出しました。直ちに取引停止を確認してください。</p>
+      <div style="max-height:200px;overflow-y:auto;border:1px solid #ddd;border-radius:6px;">
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+          <thead style="background:#f5f5f5;"><tr>
+            <th style="padding:6px 10px;text-align:left;">取引先コード</th>
+            <th style="padding:6px 10px;text-align:left;">結果</th>
+            <th style="padding:6px 10px;text-align:left;">該当リスト</th>
+            <th style="padding:6px 10px;text-align:right;">確信度</th>
+          </tr></thead>
+          <tbody>
+          ${d.results.filter(x => x.is_match).map(x => `<tr style="background:#fff8f8;">
+            <td style="padding:5px 10px;font-family:monospace;">${esc(x.erp_party_code)}</td>
+            <td style="padding:5px 10px;">${screenResultBadge(x.screen_result, x.is_match)}</td>
+            <td style="padding:5px 10px;color:#c62828;">${esc(x.list_name||'—')}</td>
+            <td style="padding:5px 10px;text-align:right;">${x.confidence ? (x.confidence*100).toFixed(0)+'%' : '—'}</td>
+          </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : d.screened > 0 ? '<p style="color:#2e7d32;font-weight:600;">✓ 制裁リスト該当なし</p>' : ''}`;
+    loadList(); loadStats();
+  } catch(e) {
+    out.innerHTML = `<p style="color:#c62828">エラー: ${e.message}</p>`;
+  } finally {
+    btn.disabled = false; btn.textContent = '一括スクリーニング実行';
+  }
+}
+
 // init
 loadStats();
 loadList();
 </script>
+
+<!-- ── ERP プル型スクリーニング モーダル ── -->
+<div class="modal-overlay" id="erpScreenOverlay">
+  <div class="modal" style="width:680px;">
+    <h2>📥 ERP 取引先スクリーニング</h2>
+    <p style="color:#666;font-size:.87rem;margin-bottom:14px;">
+      ERP の最新取引先マスターを取得し、制裁リスト・禁輸国リストと照合します。
+    </p>
+    <!-- タブ -->
+    <div style="display:flex;gap:0;border-bottom:1px solid #ddd;margin-bottom:16px;">
+      <button class="screen-tab-btn btn btn-primary active" data-tab="single"
+        onclick="switchScreenTab('single')"
+        style="border-radius:6px 6px 0 0;margin-bottom:-1px;font-size:.85rem;">単件照合</button>
+      <button class="screen-tab-btn btn btn-cancel" data-tab="batch"
+        onclick="switchScreenTab('batch')"
+        style="border-radius:6px 6px 0 0;margin-bottom:-1px;font-size:.85rem;margin-left:4px;">一括照合</button>
+    </div>
+    <!-- 単件 -->
+    <div id="erpScreenTabSingle">
+      <p style="color:#666;font-size:.85rem;margin-bottom:8px;">
+        ERP の取引先コードまたは企業名を入力してください。ERP が応答しない場合でも、<br>入力値をそのまま制裁リストと照合します。
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="erpScreenPartyCode" type="text" placeholder="ERP 取引先コード（例: VENDOR-001）"
+          style="flex:1;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:.9rem;"
+          onkeydown="if(event.key==='Enter') doPullSingleScreen()">
+        <button class="btn btn-screen" id="btnScreenSingle" onclick="doPullSingleScreen()">スクリーニング実行</button>
+      </div>
+      <div id="erpScreenSingleResult"></div>
+    </div>
+    <!-- 一括 -->
+    <div id="erpScreenTabBatch" style="display:none;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <label style="color:#666;font-size:.88rem;">取得上限:</label>
+        <select id="erpBatchScreenLimit"
+          style="padding:6px 10px;border:1px solid #ccc;border-radius:6px;">
+          <option value="100">100件</option>
+          <option value="200" selected>200件</option>
+          <option value="500">500件</option>
+        </select>
+        <button class="btn btn-screen" id="btnBatchScreen" onclick="doBatchScreen()" style="margin-left:auto;">一括スクリーニング実行</button>
+      </div>
+      <p style="color:#888;font-size:.82rem;margin-bottom:8px;">
+        ERP の <code>GET /api/vendors</code> から取引先を一括取得して全件照合します。<br>
+        HIT 検出時はリスト上位に表示されます。
+      </p>
+      <div id="erpBatchScreenResult"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('erpScreenOverlay')">閉じる</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
