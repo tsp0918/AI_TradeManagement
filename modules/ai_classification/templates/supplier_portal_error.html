@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>エラー — AI Trade Management</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f4f8;
+      color: #1a202c;
+      min-height: 100vh;
+    }
+    header {
+      background: #1a56db;
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .logo { font-size: 1.1rem; font-weight: 700; }
+    .container {
+      max-width: 500px;
+      margin: 60px auto;
+      padding: 0 16px;
+      text-align: center;
+    }
+    .icon { font-size: 3rem; margin-bottom: 16px; }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 32px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      border-top: 4px solid #ef4444;
+    }
+    .card h1 { font-size: 1.25rem; color: #ef4444; margin-bottom: 12px; }
+    .card p { font-size: .95rem; color: #4b5563; line-height: 1.6; }
+    .footer { font-size: .78rem; color: #9ca3af; margin-top: 24px; }
+  </style>
+</head>
+<body>
+<header>
+  <span class="logo">AI Trade Management</span>
+</header>
+<div class="container">
+  <div class="icon">&#x26A0;&#xFE0F;</div>
+  <div class="card">
+    <h1>アクセスできません</h1>
+    <p>{{ message }}</p>
+  </div>
+  <div class="footer">
+    このリンクに心当たりがない場合は、発行元の担当者にお問い合わせください。
+  </div>
+</div>
+</body>
+</html>

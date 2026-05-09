@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>品目バージョン管理 — AI Trade Management</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d2e; --surface2: #252840;
+    --border: #2e3250; --text: #e2e8f0; --muted: #718096;
+    --blue: #4f8ef7; --green: #48bb78; --yellow: #ecc94b;
+    --red: #f56565; --orange: #ed8936; --purple: #9f7aea;
+    --cyan: #38b2ac;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── layout ── */
+  .layout { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 260px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+  .topbar h1 { font-size: 1rem; font-weight: 600; }
+  .content { flex: 1; overflow-y: auto; padding: 20px; }
+
+  /* ── sidebar ── */
+  .sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); font-size: .85rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .nav-item { padding: 10px 16px; cursor: pointer; border-radius: 6px; margin: 2px 8px; font-size: .9rem; transition: background .15s; display: flex; align-items: center; gap: 8px; }
+  .nav-item:hover { background: var(--surface2); }
+  .nav-item.active { background: var(--blue)22; color: var(--blue); }
+
+  /* ── stats cards ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+  .stat-label { font-size: .78rem; color: var(--muted); margin-bottom: 6px; }
+  .stat-value { font-size: 1.8rem; font-weight: 700; }
+  .stat-card.high { border-color: var(--red)66; }
+  .stat-card.warn { border-color: var(--yellow)66; }
+  .stat-card.ok   { border-color: var(--green)66; }
+
+  /* ── tabs ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab-btn { padding: 8px 18px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: .9rem; border-bottom: 2px solid transparent; transition: all .15s; }
+  .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+  /* ── table ── */
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  th { text-align: left; padding: 8px 12px; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border)66; vertical-align: top; }
+  tr:hover td { background: var(--surface2)88; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+
+  /* ── badges ── */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: .75rem; font-weight: 600; }
+  .badge-HIGH    { background: #f5656522; color: var(--red); }
+  .badge-MEDIUM  { background: #ed893622; color: var(--orange); }
+  .badge-LOW     { background: #ecc94b22; color: var(--yellow); }
+  .badge-NONE    { background: #48bb7822; color: var(--green); }
+  .badge-open    { background: #f5656522; color: var(--red); }
+  .badge-in_review { background: #4f8ef722; color: var(--blue); }
+  .badge-resolved  { background: #48bb7822; color: var(--green); }
+  .badge-dismissed { background: #71809622; color: var(--muted); }
+  .badge-eccn_change    { background: #f5656522; color: var(--red); }
+  .badge-coo_change     { background: #ed893622; color: var(--orange); }
+  .badge-supplier_change { background: #9f7aea22; color: var(--purple); }
+  .badge-process_change  { background: #38b2ac22; color: var(--cyan); }
+  .badge-composition_change { background: #f5656522; color: var(--red); }
+  .badge-other   { background: #71809622; color: var(--muted); }
+
+  /* ── buttons ── */
+  .btn { padding: 7px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: .85rem; font-weight: 500; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-success { background: var(--green); color: #fff; }
+  .btn-warn    { background: var(--yellow); color: #000; }
+  .btn-danger  { background: var(--red); color: #fff; }
+  .btn-ghost   { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+  /* ── filter bar ── */
+  .filter-bar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filter-bar input, .filter-bar select { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 7px 12px; color: var(--text); font-size: .88rem; }
+
+  /* ── modals ── */
+  .overlay { display: none; position: fixed; inset: 0; background: #000a; z-index: 1000; justify-content: center; align-items: center; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; width: 680px; max-width: 95vw; max-height: 85vh; overflow-y: auto; padding: 24px; }
+  .modal h3 { margin-bottom: 18px; font-size: 1.05rem; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
+
+  /* ── form ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: .8rem; color: var(--muted); }
+  input, select, textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text); font-size: .88rem; width: 100%; }
+  textarea { resize: vertical; min-height: 70px; }
+
+  /* ── event detail ── */
+  .action-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .action-item { background: var(--surface2); border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: .88rem; }
+  .action-priority-urgent { color: var(--red); font-weight: 700; }
+  .action-priority-high   { color: var(--orange); font-weight: 600; }
+  .action-priority-medium { color: var(--yellow); }
+  .action-priority-low    { color: var(--muted); }
+
+  .version-timeline { display: flex; flex-direction: column; gap: 0; }
+  .version-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 8px; position: relative; }
+  .version-card.is-current { border-color: var(--blue)88; }
+  .current-badge { position: absolute; top: 10px; right: 12px; background: var(--blue); color: #fff; font-size: .7rem; padding: 2px 8px; border-radius: 4px; }
+
+  .diff-box { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; font-family: monospace; font-size: .82rem; margin-top: 8px; }
+  .diff-from { color: var(--red); }
+  .diff-to   { color: var(--green); }
+
+  /* ── link-style action ── */
+  .link-btn { background: none; border: none; color: var(--blue); cursor: pointer; font-size: .85rem; text-decoration: underline; padding: 0; }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .section-header h2 { font-size: 1rem; font-weight: 600; }
+
+  .empty-state { text-align: center; padding: 40px; color: var(--muted); }
+
+  /* ── detail panels ── */
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: .88rem; }
+  .detail-item label { color: var(--muted); font-size: .78rem; display: block; margin-bottom: 2px; }
+  .detail-item span  { word-break: break-all; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div class="sidebar-header">🔄 品目バージョン管理</div>
+    <div class="nav-item active" onclick="showTab('events')">⚠️ 影響イベント</div>
+    <div class="nav-item" onclick="showTab('items')">📦 品目一覧</div>
+    <div class="nav-item" onclick="openErpSyncModal()" style="color:var(--blue);">🔗 ERP へ品目同期</div>
+    <div class="nav-item" style="margin-top:auto; color:var(--muted); font-size:.8rem; cursor:default;">
+      Webhook: POST /api/item-versions/webhook
+    </div>
+  </div>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <div class="topbar">
+      <span>🔄</span>
+      <h1>品目バージョン管理 — 仕様変更コンプライアンス影響検知</h1>
+    </div>
+
+    <div class="content">
+
+      <!-- Stats -->
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card high"><div class="stat-label">要対応 (HIGH)</div><div class="stat-value" id="sHighEvents">—</div></div>
+        <div class="stat-card warn"><div class="stat-label">レビュー中</div><div class="stat-value" id="sInReview">—</div></div>
+        <div class="stat-card"><div class="stat-label">オープン合計</div><div class="stat-value" id="sOpenEvents">—</div></div>
+        <div class="stat-card ok"><div class="stat-label">解決済み</div><div class="stat-value" id="sResolved">—</div></div>
+        <div class="stat-card"><div class="stat-label">バージョン登録品目数</div><div class="stat-value" id="sItemsWithVer">—</div></div>
+        <div class="stat-card"><div class="stat-label">総バージョン数</div><div class="stat-value" id="sTotalVer">—</div></div>
+      </div>
+
+      <!-- Tab: Events -->
+      <div id="tabEvents">
+        <div class="section-header">
+          <h2>コンプライアンス影響イベント</h2>
+        </div>
+        <div class="filter-bar">
+          <select id="evFilterStatus" onchange="loadEvents()">
+            <option value="">全ステータス</option>
+            <option value="open">open</option>
+            <option value="in_review">in_review</option>
+            <option value="resolved">resolved</option>
+            <option value="dismissed">dismissed</option>
+          </select>
+          <select id="evFilterImpact" onchange="loadEvents()">
+            <option value="">全影響度</option>
+            <option value="HIGH">HIGH</option>
+            <option value="MEDIUM">MEDIUM</option>
+            <option value="LOW">LOW</option>
+            <option value="NONE">NONE</option>
+          </select>
+          <select id="evFilterCategory" onchange="loadEvents()">
+            <option value="">全変更種別</option>
+            <option value="eccn_change">ECCN変更</option>
+            <option value="coo_change">原産国変更</option>
+            <option value="supplier_change">サプライヤー変更</option>
+            <option value="process_change">工程変更</option>
+            <option value="composition_change">組成変更</option>
+            <option value="other">その他</option>
+          </select>
+          <button class="btn btn-ghost" onclick="loadEvents()">🔄 更新</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>影響度</th><th>変更種別</th><th>品目</th><th>バージョン</th>
+              <th>ステータス</th><th>作成日時</th><th>操作</th>
+            </tr></thead>
+            <tbody id="eventsBody"><tr><td colspan="7" class="empty-state">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab: Items -->
+      <div id="tabItems" style="display:none;">
+        <div class="section-header">
+          <h2>品目一覧</h2>
+        </div>
+        <div class="filter-bar">
+          <input type="text" id="itemSearch" placeholder="品目名で検索..." oninput="loadItems()" style="width:240px;">
+          <button class="btn btn-ghost" onclick="loadItems()">🔄 更新</button>
+          <button class="btn btn-primary" onclick="openErpSyncModal()" style="margin-left:auto;">🔗 ERP へ品目同期</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>品目コード</th><th>品目名</th><th>現行ECCN</th><th>現行バージョン</th>
+              <th>オープン影響</th><th>操作</th>
+            </tr></thead>
+            <tbody id="itemsBody"><tr><td colspan="6" class="empty-state">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ── Event Detail Modal ── -->
+<div class="overlay" id="eventDetailOverlay">
+  <div class="modal" style="width:720px;">
+    <h3>⚠️ コンプライアンス影響イベント詳細</h3>
+    <div id="eventDetailBody"></div>
+    <div class="modal-footer" style="flex-wrap:wrap; gap:8px;">
+      <button class="btn btn-ghost"   onclick="closeModal('eventDetailOverlay')">閉じる</button>
+      <button class="btn btn-primary" id="btnInReview"  onclick="setInReview()">レビュー中へ</button>
+      <button class="btn btn-success" id="btnResolve"   onclick="openResolveModal('resolved')">解決済み</button>
+      <button class="btn btn-ghost"   id="btnDismiss"   onclick="openResolveModal('dismissed')">却下</button>
+      <div style="flex:1;"></div>
+      <button class="btn" id="btnRequestValidation"
+        style="background:#7c3aed; color:#fff;"
+        onclick="requestValidation()">🔐 AI再判定</button>
+      <button class="btn" id="btnCreateLicense"
+        style="background:#0f766e; color:#fff; display:none;"
+        onclick="createLicenseFromEvent()">📋 輸出許可申請を作成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Validation Result Toast ── -->
+<div id="validationToast" style="
+  display:none; position:fixed; bottom:24px; right:24px; z-index:2000;
+  background:#1a1d27; border:1px solid #6366f1; border-radius:10px;
+  padding:16px 20px; min-width:320px; box-shadow:0 8px 32px #0008;">
+  <div style="font-weight:700; margin-bottom:8px;">🔐 AI判定トランザクション作成済み</div>
+  <div id="validationToastBody" style="font-size:.88rem; color:#94a3b8;"></div>
+  <div style="margin-top:12px; display:flex; gap:8px;">
+    <a id="validationToastLink" href="#" target="_blank"
+      style="background:#6366f1; color:#fff; padding:6px 14px; border-radius:6px; font-size:.85rem; text-decoration:none;">
+      判定画面へ →
+    </a>
+    <button onclick="document.getElementById('validationToast').style.display='none'"
+      style="background:none; border:1px solid #2e3150; color:#94a3b8; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:.85rem;">
+      閉じる
+    </button>
+  </div>
+</div>
+
+<!-- ── Resolve/Dismiss Modal ── -->
+<div class="overlay" id="resolveOverlay">
+  <div class="modal" style="width:480px;">
+    <h3 id="resolveTitle">解決メモ</h3>
+    <div class="form-group">
+      <label>メモ（任意）</label>
+      <textarea id="resolveNotes" rows="4" placeholder="対応内容・根拠・確認事項など"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('resolveOverlay')">キャンセル</button>
+      <button class="btn btn-success" onclick="submitResolve()">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Item Detail Modal ── -->
+<div class="overlay" id="itemDetailOverlay">
+  <div class="modal" style="width:720px;">
+    <h3 id="itemDetailTitle">品目詳細</h3>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchItemTab('versions')">バージョン履歴</button>
+      <button class="tab-btn" onclick="switchItemTab('events')">コンプライアンスイベント</button>
+      <button class="tab-btn" onclick="switchItemTab('newver')">＋ 新バージョン登録</button>
+    </div>
+    <div id="itemTabVersions"></div>
+    <div id="itemTabEvents" style="display:none;"></div>
+    <div id="itemTabNewver" style="display:none;">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>バージョンラベル</label>
+          <input type="text" id="nvLabel" placeholder="Rev.B, ロットA-2026Q2 など">
+        </div>
+        <div class="form-group">
+          <label>変更カテゴリ</label>
+          <select id="nvCategory">
+            <option value="">選択...</option>
+            <option value="eccn_change">ECCN変更</option>
+            <option value="coo_change">原産国変更</option>
+            <option value="supplier_change">サプライヤー変更</option>
+            <option value="process_change">製造工程変更</option>
+            <option value="composition_change">化学組成変更</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ECCN</label>
+          <input type="text" id="nvEccn" placeholder="3A001, EAR99 など">
+        </div>
+        <div class="form-group">
+          <label>HSコード</label>
+          <input type="text" id="nvHs" placeholder="8542.31">
+        </div>
+        <div class="form-group">
+          <label>原産国 (ISO-2)</label>
+          <input type="text" id="nvCoo" placeholder="JP, US, CN...">
+        </div>
+        <div class="form-group">
+          <label>製造元</label>
+          <input type="text" id="nvMfg" placeholder="メーカー名">
+        </div>
+        <div class="form-group">
+          <label>米国コンテンツ率 (%)</label>
+          <input type="number" id="nvUsPct" min="0" max="100" step="0.1" placeholder="0.0">
+        </div>
+        <div class="form-group">
+          <label>変更元システム</label>
+          <select id="nvSource">
+            <option value="manual">manual（手動）</option>
+            <option value="webhook_plm">webhook_plm</option>
+            <option value="webhook_sds">webhook_sds</option>
+            <option value="webhook_erp">webhook_erp</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>変更理由</label>
+          <textarea id="nvReason" placeholder="仕様変更の理由・変更申請番号など"></textarea>
+        </div>
+        <div class="form-group full">
+          <label>製造工程メモ</label>
+          <textarea id="nvProcess" placeholder="変更後の製造工程概要"></textarea>
+        </div>
+        <div class="form-group full">
+          <label>化学組成メモ（SDS/GHS連携）</label>
+          <textarea id="nvComposition" placeholder="変更後の化学組成・成分情報"></textarea>
+        </div>
+      </div>
+      <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn btn-ghost" onclick="closeModal('itemDetailOverlay')">キャンセル</button>
+        <button class="btn btn-primary" onclick="submitNewVersion()">バージョン登録 → 影響アセスメント</button>
+      </div>
+    </div>
+    <div class="modal-footer" id="itemDetailFooter">
+      <button class="btn btn-ghost" onclick="closeModal('itemDetailOverlay')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── state ─────────────────────────────────────────────────────────────
+let _currentEventId = null;
+let _resolveAction  = null;  // "resolved" | "dismissed"
+let _currentItemId  = null;
+let _currentItemData = null;
+
+// ── tabs ──────────────────────────────────────────────────────────────
+function showTab(tab) {
+  document.getElementById('tabEvents').style.display = tab === 'events' ? '' : 'none';
+  document.getElementById('tabItems').style.display  = tab === 'items'  ? '' : 'none';
+  document.querySelectorAll('.nav-item').forEach((el, i) => {
+    el.classList.toggle('active', (i === 0 && tab === 'events') || (i === 1 && tab === 'items'));
+  });
+  if (tab === 'events') loadEvents();
+  if (tab === 'items')  loadItems();
+}
+
+function switchItemTab(tab) {
+  document.getElementById('itemTabVersions').style.display = tab === 'versions' ? '' : 'none';
+  document.getElementById('itemTabEvents').style.display   = tab === 'events'   ? '' : 'none';
+  document.getElementById('itemTabNewver').style.display   = tab === 'newver'   ? '' : 'none';
+  document.getElementById('itemDetailFooter').style.display = tab === 'newver' ? 'none' : '';
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['versions','events','newver'][i] === tab);
+  });
+}
+
+// ── stats ─────────────────────────────────────────────────────────────
+async function loadStats() {
+  const res = await fetch('/api/item-versions/stats');
+  if (!res.ok) return;
+  const d = await res.json();
+  document.getElementById('sHighEvents').textContent  = d.high_impact_events;
+  document.getElementById('sInReview').textContent    = d.in_review_events;
+  document.getElementById('sOpenEvents').textContent  = d.open_events;
+  document.getElementById('sResolved').textContent    = d.resolved_events;
+  document.getElementById('sItemsWithVer').textContent = d.items_with_versions;
+  document.getElementById('sTotalVer').textContent    = d.total_versions;
+}
+
+// ── impact level badge ─────────────────────────────────────────────────
+const CATEGORY_LABELS = {
+  eccn_change: 'ECCN変更', coo_change: '原産国変更',
+  supplier_change: 'サプライヤー変更', process_change: '工程変更',
+  composition_change: '組成変更', other: 'その他',
+};
+function categoryBadge(c) {
+  return `<span class="badge badge-${c}">${CATEGORY_LABELS[c] || c}</span>`;
+}
+function impactBadge(level) {
+  return `<span class="badge badge-${level}">${level}</span>`;
+}
+function statusBadge(s) {
+  const labels = { open:'オープン', in_review:'レビュー中', resolved:'解決済み', dismissed:'却下' };
+  return `<span class="badge badge-${s}">${labels[s] || s}</span>`;
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return iso.replace('T', ' ').slice(0, 16);
+}
+
+// ── events ────────────────────────────────────────────────────────────
+async function loadEvents() {
+  const status   = document.getElementById('evFilterStatus').value;
+  const impact   = document.getElementById('evFilterImpact').value;
+  const category = document.getElementById('evFilterCategory').value;
+  let url = '/api/item-versions/events?limit=100';
+  if (status)   url += `&status=${encodeURIComponent(status)}`;
+  if (impact)   url += `&impact_level=${encodeURIComponent(impact)}`;
+  if (category) url += `&change_category=${encodeURIComponent(category)}`;
+
+  const res = await fetch(url);
+  const events = await res.json();
+  const tbody = document.getElementById('eventsBody');
+
+  if (!events.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">イベントなし</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = events.map(e => `
+    <tr>
+      <td>${impactBadge(e.impact_level)}</td>
+      <td>${categoryBadge(e.change_category)}</td>
+      <td><span style="font-size:.8rem; color:var(--muted);">${e.item_id.slice(0,8)}…</span></td>
+      <td style="font-size:.8rem;">→ v<strong>${e.to_version_id.slice(0,8)}…</strong></td>
+      <td>${statusBadge(e.status)}</td>
+      <td style="font-size:.8rem; color:var(--muted);">${fmtDate(e.created_at)}</td>
+      <td><button class="link-btn" onclick="openEventDetail('${e.id}')">詳細</button></td>
+    </tr>`).join('');
+}
+
+async function openEventDetail(eventId) {
+  _currentEventId = eventId;
+  const res = await fetch(`/api/item-versions/events/${eventId}`);
+  const e = await res.json();
+
+  const actions = (e.action_required || []).map(a => `
+    <div class="action-item">
+      <span class="action-priority-${a.priority}">● ${a.priority.toUpperCase()}</span>
+      <span>${a.label}</span>
+    </div>`).join('');
+
+  const details = e.impact_details || {};
+  const diffHtml = details.field
+    ? `<div class="diff-box">
+         <div class="diff-from">- ${details.field}: ${JSON.stringify(details.from)}</div>
+         <div class="diff-to">+ ${details.field}: ${JSON.stringify(details.to)}</div>
+       </div>`
+    : `<pre style="font-size:.8rem; color:var(--muted);">${JSON.stringify(details, null, 2)}</pre>`;
+
+  document.getElementById('eventDetailBody').innerHTML = `
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+      ${impactBadge(e.impact_level)} ${categoryBadge(e.change_category)} ${statusBadge(e.status)}
+    </div>
+    <div class="detail-grid" style="margin-bottom:14px;">
+      <div class="detail-item"><label>品目ID</label><span>${e.item_id}</span></div>
+      <div class="detail-item"><label>作成日時</label><span>${fmtDate(e.created_at)}</span></div>
+      <div class="detail-item"><label>旧バージョン</label><span>${e.from_version_id || '（初回）'}</span></div>
+      <div class="detail-item"><label>新バージョン</label><span>${e.to_version_id}</span></div>
+      ${e.resolved_at ? `<div class="detail-item"><label>解決日時</label><span>${fmtDate(e.resolved_at)}</span></div>` : ''}
+      ${e.resolution_notes ? `<div class="detail-item full"><label>解決メモ</label><span>${e.resolution_notes}</span></div>` : ''}
+    </div>
+    <h4 style="font-size:.88rem; color:var(--muted); margin-bottom:6px;">変更差分</h4>
+    ${diffHtml}
+    <h4 style="font-size:.88rem; color:var(--muted); margin:12px 0 6px;">必要なアクション</h4>
+    <div class="action-list">${actions || '<span style="color:var(--muted); font-size:.85rem;">なし</span>'}</div>
+  `;
+
+  const isOpen = ['open', 'in_review'].includes(e.status);
+  document.getElementById('btnInReview').style.display  = e.status === 'open' ? '' : 'none';
+  document.getElementById('btnResolve').style.display   = isOpen ? '' : 'none';
+  document.getElementById('btnDismiss').style.display   = isOpen ? '' : 'none';
+
+  // AI再判定ボタン: open/in_review かつ re_validate アクションがある場合に表示
+  const needsValidation = isOpen && (e.action_required || []).some(a => a.type === 're_validate');
+  document.getElementById('btnRequestValidation').style.display = needsValidation ? '' : 'none';
+  // 輸出許可申請ボタン: ECCN変更 HIGH イベントで open の場合に表示
+  const needsLicense = isOpen && e.impact_level === 'HIGH' &&
+    ['eccn_change', 'composition_change'].includes(e.change_category);
+  document.getElementById('btnCreateLicense').style.display = needsLicense ? '' : 'none';
+
+  document.getElementById('eventDetailOverlay').classList.add('open');
+}
+
+async function setInReview() {
+  if (!_currentEventId) return;
+  await fetch(`/api/item-versions/events/${_currentEventId}/in-review`, { method: 'POST' });
+  closeModal('eventDetailOverlay');
+  loadEvents(); loadStats();
+}
+
+function openResolveModal(action) {
+  _resolveAction = action;
+  document.getElementById('resolveTitle').textContent = action === 'resolved' ? '解決 — メモ入力' : '却下 — メモ入力';
+  document.getElementById('resolveNotes').value = '';
+  document.getElementById('resolveOverlay').classList.add('open');
+}
+
+async function submitResolve() {
+  if (!_currentEventId || !_resolveAction) return;
+  const notes = document.getElementById('resolveNotes').value;
+  await fetch(`/api/item-versions/events/${_currentEventId}/${_resolveAction}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resolution_notes: notes }),
+  });
+  closeModal('resolveOverlay');
+  closeModal('eventDetailOverlay');
+  loadEvents(); loadStats();
+}
+
+// ── Integration A: AI再判定 ────────────────────────────────────────────
+async function requestValidation() {
+  if (!_currentEventId) return;
+  const btn = document.getElementById('btnRequestValidation');
+  btn.disabled = true;
+  btn.textContent = '処理中…';
+  try {
+    const r = await fetch(`/api/item-versions/events/${_currentEventId}/request-validation`, { method: 'POST' });
+    const data = await r.json();
+    if (!r.ok) { alert('エラー: ' + (data.detail || JSON.stringify(data))); return; }
+    const toast = document.getElementById('validationToast');
+    document.getElementById('validationToastBody').textContent =
+      `案件番号: ${data.case_no}  /  TX ID: ${data.tx_id}`;
+    document.getElementById('validationToastLink').href = data.redirect_url;
+    toast.style.display = 'block';
+    closeModal('eventDetailOverlay');
+    loadEvents(); loadStats();
+  } catch(e) {
+    alert('ai_validation への接続に失敗しました: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔐 AI再判定';
+  }
+}
+
+// ── Integration B: 輸出許可申請を作成（イベントの ECCN 情報から） ──────────
+let _lastValidationTxId = null;
+
+async function createLicenseFromEvent() {
+  if (!_currentEventId) return;
+  // 先に AI再判定を実施済みなら tx_id を利用、なければ空ドラフトで開く
+  const licenseType = prompt('許可申請種別を選択: EAR または FEFTA', 'EAR');
+  if (!licenseType) return;
+  const body = {
+    transaction_id: _lastValidationTxId || 0,
+    license_type: licenseType.toUpperCase() === 'FEFTA' ? 'FEFTA' : 'EAR',
+  };
+  // tx_id がなければ空ドラフト作成（draft-from-transaction は tx_id=0 でも動く）
+  const r = await fetch('/api/export-licenses/draft-from-transaction', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) { alert('輸出許可申請の作成に失敗しました'); return; }
+  const lic = await r.json();
+  closeModal('eventDetailOverlay');
+  // 輸出許可申請画面に遷移（親フレームへの通知）
+  if (window.parent && window.parent !== window) {
+    window.parent.location.href = '/ui/export-license';
+  } else {
+    window.location.href = '/ui/export-license';
+  }
+}
+
+// ── items ─────────────────────────────────────────────────────────────
+async function loadItems() {
+  const q = document.getElementById('itemSearch').value;
+  let url = '/api/item-versions/items?limit=100';
+  if (q) url += `&q=${encodeURIComponent(q)}`;
+  const res = await fetch(url);
+  const items = await res.json();
+  const tbody = document.getElementById('itemsBody');
+
+  if (!items.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">品目なし（plat_item にデータが必要です）</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = items.map(item => {
+    const cv = item.current_version;
+    const verLabel = cv ? `v${cv.version_number}${cv.version_label ? ' ' + cv.version_label : ''}` : '未登録';
+    const openBadge = item.open_events > 0
+      ? `<span class="badge badge-open">${item.open_events}件</span>`
+      : `<span class="badge badge-NONE">なし</span>`;
+    return `<tr>
+      <td style="font-size:.8rem; color:var(--muted);">${item.item_code || '—'}</td>
+      <td>${item.name}</td>
+      <td>${item.eccn || (cv?.eccn || '—')}</td>
+      <td style="font-size:.85rem;">${verLabel}</td>
+      <td>${openBadge}</td>
+      <td>
+        <button class="link-btn" onclick="openItemDetail('${item.id}')">詳細/変更登録</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function openItemDetail(itemId) {
+  _currentItemId = itemId;
+  const res = await fetch(`/api/item-versions/items/${itemId}`);
+  _currentItemData = await res.json();
+  const d = _currentItemData;
+
+  document.getElementById('itemDetailTitle').textContent = `📦 ${d.item.name}`;
+
+  // バージョン履歴
+  const versionsHtml = d.versions.length ? d.versions.map(v => `
+    <div class="version-card ${v.is_current ? 'is-current' : ''}">
+      ${v.is_current ? '<span class="current-badge">現行</span>' : ''}
+      <div style="font-weight:600; margin-bottom:8px;">v${v.version_number}${v.version_label ? ' — ' + v.version_label : ''}</div>
+      <div class="detail-grid">
+        <div class="detail-item"><label>ECCN</label><span>${v.eccn || '—'}</span></div>
+        <div class="detail-item"><label>HSコード</label><span>${v.hs_code || '—'}</span></div>
+        <div class="detail-item"><label>原産国</label><span>${v.country_of_origin || '—'}</span></div>
+        <div class="detail-item"><label>製造元</label><span>${v.manufacturer || '—'}</span></div>
+        <div class="detail-item"><label>米国コンテンツ</label><span>${v.us_content_pct != null ? v.us_content_pct + '%' : '—'}</span></div>
+        <div class="detail-item"><label>変更元</label><span>${v.source_system || 'manual'}</span></div>
+      </div>
+      ${v.change_reason ? `<div style="margin-top:8px; font-size:.82rem; color:var(--muted);">理由: ${v.change_reason}</div>` : ''}
+      <div style="margin-top:6px; font-size:.78rem; color:var(--muted);">${fmtDate(v.created_at)}</div>
+    </div>`).join('')
+    : '<div class="empty-state">バージョン未登録</div>';
+
+  document.getElementById('itemTabVersions').innerHTML = `<div class="version-timeline">${versionsHtml}</div>`;
+
+  // イベント一覧
+  const evHtml = d.events.length ? `<div class="table-wrap"><table>
+    <thead><tr><th>影響度</th><th>変更種別</th><th>ステータス</th><th>作成日時</th><th></th></tr></thead>
+    <tbody>${d.events.map(e => `<tr>
+      <td>${impactBadge(e.impact_level)}</td>
+      <td>${categoryBadge(e.change_category)}</td>
+      <td>${statusBadge(e.status)}</td>
+      <td style="font-size:.8rem; color:var(--muted);">${fmtDate(e.created_at)}</td>
+      <td><button class="link-btn" onclick="closeModal('itemDetailOverlay'); setTimeout(()=>openEventDetail('${e.id}'),100);">詳細</button></td>
+    </tr>`).join('')}</tbody>
+  </table></div>` : '<div class="empty-state">イベントなし</div>';
+
+  document.getElementById('itemTabEvents').innerHTML = evHtml;
+
+  switchItemTab('versions');
+  document.getElementById('itemDetailOverlay').classList.add('open');
+}
+
+async function submitNewVersion() {
+  if (!_currentItemId) return;
+  const body = {
+    version_label: document.getElementById('nvLabel').value || null,
+    change_category: document.getElementById('nvCategory').value || null,
+    eccn: document.getElementById('nvEccn').value || null,
+    hs_code: document.getElementById('nvHs').value || null,
+    country_of_origin: document.getElementById('nvCoo').value || null,
+    manufacturer: document.getElementById('nvMfg').value || null,
+    us_content_pct: document.getElementById('nvUsPct').value ? parseFloat(document.getElementById('nvUsPct').value) : null,
+    source_system: document.getElementById('nvSource').value || 'manual',
+    change_reason: document.getElementById('nvReason').value || null,
+    manufacturing_process: document.getElementById('nvProcess').value || null,
+    chemical_composition: document.getElementById('nvComposition').value || null,
+  };
+  const res = await fetch(`/api/item-versions/items/${_currentItemId}/versions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) { alert('登録エラー: ' + await res.text()); return; }
+  const result = await res.json();
+  const eventCount = result.events_generated.length;
+  const highCount  = result.events_generated.filter(e => e.impact_level === 'HIGH').length;
+  closeModal('itemDetailOverlay');
+  loadItems(); loadEvents(); loadStats();
+  alert(`✅ v${result.version.version_number} 登録完了\n影響イベント: ${eventCount}件（HIGH: ${highCount}件）`);
+}
+
+// ── modal helpers ─────────────────────────────────────────────────────
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ── ERP 品目同期 ────────────────────────────────────────────────────────
+async function openErpSyncModal() {
+  document.getElementById('erpSyncBody').innerHTML = '<p style="color:var(--muted)">プレビュー取得中…</p>';
+  document.getElementById('erpSyncOverlay').classList.add('open');
+  try {
+    const r = await fetch('/api/item-versions/sync-preview');
+    const d = await r.json();
+    let html = `<p>ECCN 設定済み品目: <strong>${d.items_with_eccn}</strong> 件 / 全 ${d.total_items} 件</p>`;
+    html += `<div class="table-wrap" style="max-height:240px;overflow-y:auto;margin-top:12px;">
+      <table><thead><tr><th>品目コード</th><th>品目名</th><th>ECCN</th><th>ステータス</th></tr></thead><tbody>`;
+    for (const i of d.preview) {
+      html += `<tr><td>${i.item_code||'—'}</td><td>${escHtml(i.name)}</td>
+        <td>${i.eccn||'—'}</td><td>${i.export_control_status||'—'}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (d.items_with_eccn > d.preview.length) {
+      html += `<p style="color:var(--muted);margin-top:8px;font-size:.85rem;">※ 先頭 ${d.preview.length} 件を表示。同期実行時は全件が対象です。</p>`;
+    }
+    document.getElementById('erpSyncBody').innerHTML = html;
+    document.getElementById('btnDoSync').disabled = d.items_with_eccn === 0;
+  } catch(e) {
+    document.getElementById('erpSyncBody').innerHTML = `<p style="color:var(--red)">プレビュー取得に失敗しました: ${e}</p>`;
+  }
+}
+
+async function doErpSync() {
+  const btn = document.getElementById('btnDoSync');
+  btn.disabled = true; btn.textContent = '同期中…';
+  try {
+    const r = await fetch('/api/item-versions/sync-to-erp', { method: 'POST' });
+    const d = await r.json();
+    document.getElementById('erpSyncBody').innerHTML =
+      `<p style="color:var(--green)">✓ ${d.message}</p>`;
+    btn.textContent = '同期完了';
+  } catch(e) {
+    document.getElementById('erpSyncBody').innerHTML =
+      `<p style="color:var(--red)">同期に失敗しました: ${e}</p>`;
+    btn.disabled = false; btn.textContent = '同期する';
+  }
+}
+
+// ── init ──────────────────────────────────────────────────────────────
+loadStats();
+loadEvents();
+</script>
+
+<!-- ── ERP 品目同期モーダル ── -->
+<div class="overlay" id="erpSyncOverlay">
+  <div class="modal" style="width:680px;">
+    <h3>🔗 ERP へ品目マスタを同期</h3>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:12px;">
+      ECCN が設定された品目を ERP に一括プッシュします。<br>
+      ERP 側で AI_TM_REVIEW_STATUS / AI_TM_ITEM_ID が更新されます。
+    </p>
+    <div id="erpSyncBody"><p style="color:var(--muted)">読み込み中…</p></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('erpSyncOverlay')">キャンセル</button>
+      <button class="btn btn-primary" id="btnDoSync" onclick="doErpSync()">ERP へ同期する</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
