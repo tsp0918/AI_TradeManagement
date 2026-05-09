@@ -15,6 +15,7 @@ ERP 取引伝票・出荷伝票と AI 該非判定を紐づけ、出荷 GO サ�
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -34,8 +35,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["transaction_review"])
 
-_SCREENING_URL   = "http://localhost:8005"
-_ERP_ADAPTER_URL = "http://localhost:5001"
+_SCREENING_URL   = os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
+_ERP_ADAPTER_URL = os.environ.get("ERP_ADAPTER_URL", "http://localhost:5001")
 _REVIEW_VALID_DAYS = 365
 
 

@@ -27,6 +27,9 @@ _MODULE_PORTS: dict[str, int] = {
     "screening":        8005,
     "hs_classifier":    8006,
     "dap":              8010,
+    "export_license":   8012,
+    "trade_gate":       8013,
+    "fta_origin":       8014,
 }
 
 # DAP chat-widget の localhost 参照を書き換えるための対応表
