@@ -203,7 +203,7 @@ info "ERP Integration Adapter をポート 5001 で起動します…"
 ok "ERP Integration Adapter 起動済み (PID $!)"
 
 # ── 各機能モジュール (8002–8006) をバックグラウンドで起動 ──────────────
-for _MOD_ENTRY in "ai_classification:8002" "rnd_assessment:8003" "patent_search:8004" "screening:8005" "hs_classifier:8006" "export_license:8012"; do
+for _MOD_ENTRY in "ai_classification:8002" "rnd_assessment:8003" "patent_search:8004" "screening:8005" "hs_classifier:8006" "export_license:8012" "fta_origin:8014"; do
   _MOD_KEY="${_MOD_ENTRY%%:*}"
   _MOD_PORT="${_MOD_ENTRY##*:}"
   _MOD_DIR="$SCRIPT_DIR/modules/$_MOD_KEY"
