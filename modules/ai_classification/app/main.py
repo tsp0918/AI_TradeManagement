@@ -67,15 +67,6 @@ async def _ensure_columns() -> None:
                 Base.metadata.tables["product_country_profiles"]
             ])
 
-    # Phase 6A-2 新テーブル一括作成
-    from .models import (  # noqa: F401 — ensure models are registered
-        AiClsItem, AiClsItemVersion, AiClsComplianceChangeEvent,
-        AiClsSupplyChainNode, AiClsSupplyChainEdge,
-        AiClsSupplierAttestation, AiClsSupplierPortalToken,
-    )
-    from .database import Base
-    Base.metadata.create_all(engine)
-
 
 MODULE = ModuleInfo(
     key="ai_classification",

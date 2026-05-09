@@ -1,33 +1,34 @@
-"""サプライヤーポータル — ai_classification 統合版（SQLite/sync）。
+"""サプライヤーポータル — ai_classification 統合版。
 
-Phase 6A-2: platform-core/routers/supplier_portal.py から移管。
-データは aicls_supplier_portal_token / aicls_supplier_attestation テーブルに格納。
+Phase 6A-2: platform-core から移管。データは plat_supplier_portal_token テーブル（共有 PostgreSQL）。
 """
 
-import json
+import pathlib
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import get_db
-from ..models import AiClsSupplierAttestation, AiClsSupplierPortalToken, AiClsSupplyChainNode
+from ..pg_session import get_pg_db
+from platform_core.models.supplier_attestation import SupplierAttestation
+from platform_core.models.supplier_portal_token import SupplierPortalToken
+from platform_core.models.supply_chain import SupplyChainNode
 
-templates = Jinja2Templates(directory="templates")
-
-_UPLOADS_DIR = Path(__file__).parent.parent.parent / "uploads" / "supplier"
+_TEMPLATES_DIR = pathlib.Path(__file__).parent.parent.parent / "templates"
+_UPLOADS_DIR = pathlib.Path(__file__).parent.parent.parent / "uploads" / "supplier"
 _UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
-_BASE_URL = "https://app.tsp-aitrademanagement.com"
+templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 router = APIRouter(tags=["supplier_portal"])
+
+_BASE_URL = "https://app.tsp-aitrademanagement.com"
 
 
 # ── スキーマ ──────────────────────────────────────────────────────
@@ -41,16 +42,16 @@ class TokenCreate(BaseModel):
     expires_days: int = 30
 
 
-def _serialize_token(t: AiClsSupplierPortalToken) -> dict:
+def _serialize_token(t: SupplierPortalToken) -> dict:
     now = datetime.now(tz=timezone.utc)
-    expires = t.expires_at if t.expires_at.tzinfo else t.expires_at.replace(tzinfo=timezone.utc)
-    expired = expires < now
+    expired = t.expires_at.replace(tzinfo=timezone.utc) < now if t.expires_at.tzinfo is None \
+        else t.expires_at < now
     exhausted = t.max_uses > 0 and t.use_count >= t.max_uses
     return {
-        "id": t.id,
+        "id": str(t.id),
         "token": t.token,
         "portal_url": f"{_BASE_URL}/supplier-portal/{t.token}",
-        "node_id": t.node_id,
+        "node_id": str(t.node_id),
         "node_name": t.node_name,
         "supplier_name": t.supplier_name,
         "supplier_email": t.supplier_email,
@@ -64,10 +65,11 @@ def _serialize_token(t: AiClsSupplierPortalToken) -> dict:
     }
 
 
-def _resolve_token(token_str: str, db: Session) -> AiClsSupplierPortalToken:
-    t = db.execute(
-        select(AiClsSupplierPortalToken).where(AiClsSupplierPortalToken.token == token_str)
-    ).scalar_one_or_none()
+async def _resolve_token(token_str: str, db: AsyncSession) -> SupplierPortalToken:
+    r = await db.execute(
+        select(SupplierPortalToken).where(SupplierPortalToken.token == token_str)
+    )
+    t = r.scalar_one_or_none()
     if t is None:
         raise HTTPException(status_code=404, detail="招待 URL が見つかりません")
     if not t.is_active:
@@ -84,18 +86,19 @@ def _resolve_token(token_str: str, db: Session) -> AiClsSupplierPortalToken:
 # ── 管理 API ─────────────────────────────────────────────────────
 
 @router.get("/api/supplier-portal/tokens")
-def list_tokens(
+async def list_tokens(
     node_id: str | None = Query(None),
     active_only: bool = Query(False),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_pg_db),
 ):
-    tokens = db.execute(
-        select(AiClsSupplierPortalToken).order_by(AiClsSupplierPortalToken.created_at.desc())
-    ).scalars().all()
+    result = await db.execute(
+        select(SupplierPortalToken).order_by(SupplierPortalToken.created_at.desc())
+    )
+    tokens = result.scalars().all()
     now = datetime.now(tz=timezone.utc)
     filtered = []
     for t in tokens:
-        if node_id and t.node_id != node_id:
+        if node_id and str(t.node_id) != node_id:
             continue
         if active_only:
             expires = t.expires_at if t.expires_at.tzinfo else t.expires_at.replace(tzinfo=timezone.utc)
@@ -106,17 +109,16 @@ def list_tokens(
 
 
 @router.post("/api/supplier-portal/tokens", status_code=201)
-def create_token(body: TokenCreate, db: Session = Depends(get_db)):
-    node = db.execute(
-        select(AiClsSupplyChainNode).where(AiClsSupplyChainNode.id == body.node_id)
-    ).scalar_one_or_none()
+async def create_token(body: TokenCreate, db: AsyncSession = Depends(get_pg_db)):
+    node_id = uuid.UUID(body.node_id)
+    rn = await db.execute(select(SupplyChainNode).where(SupplyChainNode.id == node_id))
+    node = rn.scalar_one_or_none()
     if node is None:
         raise HTTPException(status_code=404, detail="SupplyChainNode not found")
 
-    t = AiClsSupplierPortalToken(
-        id=str(uuid.uuid4()),
+    t = SupplierPortalToken(
         token=secrets.token_urlsafe(32),
-        node_id=body.node_id,
+        node_id=node_id,
         node_name=node.name,
         supplier_name=body.supplier_name,
         supplier_email=body.supplier_email,
@@ -125,48 +127,49 @@ def create_token(body: TokenCreate, db: Session = Depends(get_db)):
         expires_at=datetime.now(tz=timezone.utc) + timedelta(days=body.expires_days),
     )
     db.add(t)
-    db.commit()
-    db.refresh(t)
+    await db.commit()
+    await db.refresh(t)
     return _serialize_token(t)
 
 
 @router.get("/api/supplier-portal/tokens/{token_id}")
-def get_token(token_id: str, db: Session = Depends(get_db)):
-    t = db.execute(
-        select(AiClsSupplierPortalToken).where(AiClsSupplierPortalToken.id == token_id)
-    ).scalar_one_or_none()
+async def get_token(token_id: str, db: AsyncSession = Depends(get_pg_db)):
+    r = await db.execute(
+        select(SupplierPortalToken).where(SupplierPortalToken.id == uuid.UUID(token_id))
+    )
+    t = r.scalar_one_or_none()
     if t is None:
         raise HTTPException(status_code=404, detail="Not found")
     return _serialize_token(t)
 
 
 @router.post("/api/supplier-portal/tokens/{token_id}/revoke")
-def revoke_token(token_id: str, db: Session = Depends(get_db)):
-    t = db.execute(
-        select(AiClsSupplierPortalToken).where(AiClsSupplierPortalToken.id == token_id)
-    ).scalar_one_or_none()
+async def revoke_token(token_id: str, db: AsyncSession = Depends(get_pg_db)):
+    r = await db.execute(
+        select(SupplierPortalToken).where(SupplierPortalToken.id == uuid.UUID(token_id))
+    )
+    t = r.scalar_one_or_none()
     if t is None:
         raise HTTPException(status_code=404, detail="Not found")
     t.is_active = False
-    db.commit()
+    await db.commit()
     return {"ok": True, "token_id": token_id}
 
 
 # ── 公開ポータル（サプライヤー用） ───────────────────────────────
 
 @router.get("/supplier-portal/{token_str}", response_class=HTMLResponse, include_in_schema=False)
-def portal_form(request: Request, token_str: str, db: Session = Depends(get_db)):
+async def portal_form(request: Request, token_str: str, db: AsyncSession = Depends(get_pg_db)):
     try:
-        t = _resolve_token(token_str, db)
+        t = await _resolve_token(token_str, db)
     except HTTPException as e:
         return templates.TemplateResponse(
             request, "supplier_portal_error.html",
             {"message": e.detail},
             status_code=e.status_code,
         )
-    node = db.execute(
-        select(AiClsSupplyChainNode).where(AiClsSupplyChainNode.id == t.node_id)
-    ).scalar_one_or_none()
+    rn = await db.execute(select(SupplyChainNode).where(SupplyChainNode.id == t.node_id))
+    node = rn.scalar_one_or_none()
     node_info = {
         "name": node.name if node else t.node_name,
         "part_number": node.part_number if node else "",
@@ -179,7 +182,7 @@ def portal_form(request: Request, token_str: str, db: Session = Depends(get_db))
         request, "supplier_portal.html",
         {
             "token": token_str,
-            "token_id": t.id,
+            "token_id": str(t.id),
             "supplier_name": t.supplier_name,
             "supplier_email": t.supplier_email or "",
             "note_for_supplier": t.note_for_supplier or "",
@@ -192,10 +195,9 @@ def portal_form(request: Request, token_str: str, db: Session = Depends(get_db))
 
 
 @router.post("/supplier-portal/{token_str}/submit", response_class=HTMLResponse, include_in_schema=False)
-async def portal_submit(request: Request, token_str: str, db: Session = Depends(get_db)):
-    """ファイルアップロードのため async。"""
+async def portal_submit(request: Request, token_str: str, db: AsyncSession = Depends(get_pg_db)):
     try:
-        t = _resolve_token(token_str, db)
+        t = await _resolve_token(token_str, db)
     except HTTPException as e:
         return templates.TemplateResponse(
             request, "supplier_portal_error.html",
@@ -216,9 +218,16 @@ async def portal_submit(request: Request, token_str: str, db: Session = Depends(
         except ValueError:
             return None
 
-    attest_id = str(uuid.uuid4())
-    attest = AiClsSupplierAttestation(
-        id=attest_id,
+    from datetime import date
+    def _parse_date(s: str | None) -> date | None:
+        if not s:
+            return None
+        try:
+            return date.fromisoformat(s)
+        except ValueError:
+            return None
+
+    attest = SupplierAttestation(
         node_id=t.node_id,
         supplier_name=t.supplier_name,
         supplier_contact=_fv("supplier_contact") or t.supplier_email,
@@ -227,19 +236,19 @@ async def portal_submit(request: Request, token_str: str, db: Session = Depends(
         claimed_us_content_pct=_ff("claimed_us_content_pct"),
         is_us_origin_claimed=form.get("is_us_origin_claimed") == "on",
         certificate_reference=_fv("certificate_reference"),
-        attestation_date=_fv("attestation_date"),
-        expiry_date=_fv("expiry_date"),
+        attestation_date=_parse_date(_fv("attestation_date")),
+        expiry_date=_parse_date(_fv("expiry_date")),
         notes=_fv("notes"),
         status="pending",
     )
     db.add(attest)
-    db.flush()
+    await db.flush()
 
     _MAX_FILE_BYTES = 20 * 1024 * 1024
     supporting_docs = []
     upload_fields = form.getlist("documents")
     if upload_fields:
-        attest_dir = _UPLOADS_DIR / attest_id
+        attest_dir = _UPLOADS_DIR / str(attest.id)
         attest_dir.mkdir(parents=True, exist_ok=True)
         now_str = datetime.now(tz=timezone.utc).strftime("%Y%m%d%H%M%S")
         for uploaded in upload_fields:
@@ -258,12 +267,12 @@ async def portal_submit(request: Request, token_str: str, db: Session = Depends(
                 "uploaded_at": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
             })
         if supporting_docs:
-            attest.supporting_docs = json.dumps(supporting_docs)
+            attest.supporting_docs = supporting_docs
 
     t.use_count += 1
     if t.max_uses > 0 and t.use_count >= t.max_uses:
         t.is_active = False
-    db.commit()
+    await db.commit()
 
     return templates.TemplateResponse(
         request, "supplier_portal_confirm.html",
@@ -272,13 +281,13 @@ async def portal_submit(request: Request, token_str: str, db: Session = Depends(
             "node_name": t.node_name,
             "claimed_eccn": attest.claimed_eccn or "—",
             "claimed_country": attest.claimed_country_of_origin or "—",
-            "attestation_id": attest_id,
+            "attestation_id": str(attest.id),
         },
     )
 
 
 @router.get("/api/supplier-attestations/{attest_id}/documents/{filename}")
-def download_document(attest_id: str, filename: str):
+async def download_document(attest_id: str, filename: str):
     path = _UPLOADS_DIR / attest_id / filename
     if not path.exists() or not path.is_file():
         raise HTTPException(status_code=404, detail="ファイルが見つかりません")

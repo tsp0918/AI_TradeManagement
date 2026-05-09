@@ -1,10 +1,9 @@
-"""品目バージョン管理 + 仕様変更コンプライアンス影響検知 — ai_classification 統合版（SQLite/sync）。
+"""品目バージョン管理 + 仕様変更コンプライアンス影響検知 — ai_classification 統合版。
 
-Phase 6A-2: platform-core/routers/item_version.py から移管。
-データは aicls_item / aicls_item_version / aicls_compliance_change_event テーブルに格納。
+Phase 6A-2: platform-core から移管。データは plat_item_version / plat_compliance_change_event
+テーブル（共有 PostgreSQL）。
 """
 
-import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -13,10 +12,11 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import get_db
-from ..models import AiClsComplianceChangeEvent, AiClsItem, AiClsItemVersion
+from ..pg_session import get_pg_db
+from platform_core.models.item import Item
+from platform_core.models.item_version import ComplianceChangeEvent, ItemVersion
 
 router = APIRouter(prefix="/api/item-versions", tags=["item_version"])
 
@@ -60,18 +60,7 @@ _CHANGE_ACTIONS: dict[str, list[dict]] = {
 }
 
 
-def _j(val: Any) -> Any:
-    """Text フィールドを Python オブジェクトにデシリアライズする。"""
-    if val is None or not isinstance(val, str):
-        return val
-    try:
-        return json.loads(val)
-    except (ValueError, TypeError):
-        return val
-
-
-def _assess_diff(prev: AiClsItemVersion | None, curr: AiClsItemVersion) -> list[dict]:
-    """旧バージョンとの差分から影響イベントリストを生成する。"""
+def _assess_diff(prev: ItemVersion | None, curr: ItemVersion) -> list[dict]:
     events: list[dict] = []
 
     if prev is None:
@@ -144,12 +133,9 @@ def _assess_diff(prev: AiClsItemVersion | None, curr: AiClsItemVersion) -> list[
             "action_required": _CHANGE_ACTIONS["composition_change"],
         })
 
-    # supplier_ids は JSON Text — デシリアライズして比較
-    old_supplier = _j(prev.supplier_ids) if prev else None
-    new_supplier = _j(curr.supplier_ids)
-    if old_supplier != new_supplier:
-        old_ids = set(old_supplier or [])
-        new_ids = set(new_supplier or [])
+    if d := _diff("supplier_ids"):
+        old_ids = set(d[0] or [])
+        new_ids = set(d[1] or [])
         added = list(new_ids - old_ids)
         removed = list(old_ids - new_ids)
         if added or removed:
@@ -182,10 +168,10 @@ def _assess_diff(prev: AiClsItemVersion | None, curr: AiClsItemVersion) -> list[
 
 # ── シリアライズ ──────────────────────────────────────────────────────────────
 
-def _ser_version(v: AiClsItemVersion) -> dict:
+def _ser_version(v: ItemVersion) -> dict:
     return {
-        "id": v.id,
-        "item_id": v.item_id,
+        "id": str(v.id),
+        "item_id": str(v.item_id),
         "version_number": v.version_number,
         "version_label": v.version_label,
         "eccn": v.eccn,
@@ -193,34 +179,34 @@ def _ser_version(v: AiClsItemVersion) -> dict:
         "country_of_origin": v.country_of_origin,
         "manufacturer": v.manufacturer,
         "us_content_pct": v.us_content_pct,
-        "supplier_ids": _j(v.supplier_ids),
+        "supplier_ids": v.supplier_ids,
         "manufacturing_process": v.manufacturing_process,
         "chemical_composition": v.chemical_composition,
-        "spec_snapshot": _j(v.spec_snapshot),
+        "spec_snapshot": v.spec_snapshot,
         "change_category": v.change_category,
         "change_reason": v.change_reason,
         "source_system": v.source_system,
         "source_ref": v.source_ref,
         "is_current": v.is_current,
-        "created_by_user_id": v.created_by_user_id,
+        "created_by_user_id": str(v.created_by_user_id) if v.created_by_user_id else None,
         "created_at": v.created_at.isoformat() if v.created_at else None,
     }
 
 
-def _ser_event(e: AiClsComplianceChangeEvent) -> dict:
+def _ser_event(e: ComplianceChangeEvent) -> dict:
     return {
-        "id": e.id,
-        "item_id": e.item_id,
-        "from_version_id": e.from_version_id,
-        "to_version_id": e.to_version_id,
+        "id": str(e.id),
+        "item_id": str(e.item_id),
+        "from_version_id": str(e.from_version_id) if e.from_version_id else None,
+        "to_version_id": str(e.to_version_id),
         "change_category": e.change_category,
         "impact_level": e.impact_level,
-        "impact_details": _j(e.impact_details),
-        "action_required": _j(e.action_required),
+        "impact_details": e.impact_details,
+        "action_required": e.action_required,
         "status": e.status,
         "assessed_at": e.assessed_at.isoformat() if e.assessed_at else None,
         "resolved_at": e.resolved_at.isoformat() if e.resolved_at else None,
-        "resolved_by_user_id": e.resolved_by_user_id,
+        "resolved_by_user_id": str(e.resolved_by_user_id) if e.resolved_by_user_id else None,
         "resolution_notes": e.resolution_notes,
         "created_at": e.created_at.isoformat() if e.created_at else None,
     }
@@ -278,23 +264,23 @@ class ResolveBody(BaseModel):
 
 # ── 内部ユーティリティ ─────────────────────────────────────────────────────
 
-def _create_version_and_events(
-    db: Session,
-    item_id: str,
+async def _create_version_and_events(
+    db: AsyncSession,
+    item_id: uuid.UUID,
     data: VersionCreate | WebhookPayload,
-) -> tuple[AiClsItemVersion, list[AiClsComplianceChangeEvent]]:
-    """バージョンレコードを作成し、影響イベントを自動生成して返す。"""
-    prev = db.execute(
-        select(AiClsItemVersion)
-        .where(AiClsItemVersion.item_id == item_id, AiClsItemVersion.is_current == True)  # noqa: E712
-        .order_by(AiClsItemVersion.version_number.desc())
+) -> tuple[ItemVersion, list[ComplianceChangeEvent]]:
+    prev_result = await db.execute(
+        select(ItemVersion)
+        .where(ItemVersion.item_id == item_id, ItemVersion.is_current == True)  # noqa: E712
+        .order_by(ItemVersion.version_number.desc())
         .limit(1)
-    ).scalar_one_or_none()
+    )
+    prev = prev_result.scalar_one_or_none()
 
     if prev is not None:
-        db.execute(
-            update(AiClsItemVersion)
-            .where(AiClsItemVersion.item_id == item_id, AiClsItemVersion.is_current == True)  # noqa: E712
+        await db.execute(
+            update(ItemVersion)
+            .where(ItemVersion.item_id == item_id, ItemVersion.is_current == True)  # noqa: E712
             .values(is_current=False)
         )
         next_ver_num = prev.version_number + 1
@@ -303,8 +289,8 @@ def _create_version_and_events(
 
     supplier_ids_val = data.supplier_ids if isinstance(data.supplier_ids, list) else None
 
-    new_ver = AiClsItemVersion(
-        id=str(uuid.uuid4()),
+    new_ver = ItemVersion(
+        id=uuid.uuid4(),
         item_id=item_id,
         version_number=next_ver_num,
         version_label=data.version_label,
@@ -313,10 +299,10 @@ def _create_version_and_events(
         country_of_origin=data.country_of_origin,
         manufacturer=data.manufacturer,
         us_content_pct=data.us_content_pct,
-        supplier_ids=json.dumps(supplier_ids_val) if supplier_ids_val is not None else None,
+        supplier_ids=supplier_ids_val,
         manufacturing_process=data.manufacturing_process,
         chemical_composition=data.chemical_composition,
-        spec_snapshot=json.dumps(data.spec_snapshot) if data.spec_snapshot else None,
+        spec_snapshot=data.spec_snapshot,
         change_category=data.change_category,
         change_reason=data.change_reason,
         source_system=data.source_system or "manual",
@@ -324,32 +310,32 @@ def _create_version_and_events(
         is_current=True,
     )
     db.add(new_ver)
-    db.flush()
+    await db.flush()
 
     diff_events = _assess_diff(prev, new_ver)
     now = datetime.now(timezone.utc)
-    created_events: list[AiClsComplianceChangeEvent] = []
+    created_events: list[ComplianceChangeEvent] = []
 
     for ev_data in diff_events:
-        ev = AiClsComplianceChangeEvent(
-            id=str(uuid.uuid4()),
+        ev = ComplianceChangeEvent(
+            id=uuid.uuid4(),
             item_id=item_id,
             from_version_id=prev.id if prev else None,
             to_version_id=new_ver.id,
             change_category=ev_data["change_category"],
             impact_level=ev_data["impact_level"],
-            impact_details=json.dumps(ev_data["impact_details"]),
-            action_required=json.dumps(ev_data["action_required"]),
+            impact_details=ev_data["impact_details"],
+            action_required=ev_data["action_required"],
             status="open" if ev_data["impact_level"] != "NONE" else "resolved",
             assessed_at=now,
         )
         db.add(ev)
         created_events.append(ev)
 
-    db.commit()
-    db.refresh(new_ver)
+    await db.commit()
+    await db.refresh(new_ver)
     for ev in created_events:
-        db.refresh(ev)
+        await db.refresh(ev)
 
     return new_ver, created_events
 
@@ -357,72 +343,71 @@ def _create_version_and_events(
 # ── エンドポイント ────────────────────────────────────────────────────────────
 
 @router.get("/stats")
-def get_stats(db: Session = Depends(get_db)):
-    total_items_with_versions = db.execute(
-        select(func.count(func.distinct(AiClsItemVersion.item_id)))
-    ).scalar() or 0
-    total_versions = db.execute(select(func.count(AiClsItemVersion.id))).scalar() or 0
-    open_events = db.execute(
-        select(func.count(AiClsComplianceChangeEvent.id)).where(
-            AiClsComplianceChangeEvent.status == "open"
+async def get_stats(db: AsyncSession = Depends(get_pg_db)):
+    total_items_with_versions = await db.scalar(
+        select(func.count(func.distinct(ItemVersion.item_id)))
+    )
+    total_versions = await db.scalar(select(func.count(ItemVersion.id)))
+    open_events = await db.scalar(
+        select(func.count(ComplianceChangeEvent.id)).where(
+            ComplianceChangeEvent.status == "open"
         )
-    ).scalar() or 0
-    high_events = db.execute(
-        select(func.count(AiClsComplianceChangeEvent.id)).where(
-            AiClsComplianceChangeEvent.impact_level == "HIGH",
-            AiClsComplianceChangeEvent.status.in_(["open", "in_review"]),
+    )
+    high_events = await db.scalar(
+        select(func.count(ComplianceChangeEvent.id)).where(
+            ComplianceChangeEvent.impact_level == "HIGH",
+            ComplianceChangeEvent.status.in_(["open", "in_review"]),
         )
-    ).scalar() or 0
-    in_review_events = db.execute(
-        select(func.count(AiClsComplianceChangeEvent.id)).where(
-            AiClsComplianceChangeEvent.status == "in_review"
+    )
+    in_review_events = await db.scalar(
+        select(func.count(ComplianceChangeEvent.id)).where(
+            ComplianceChangeEvent.status == "in_review"
         )
-    ).scalar() or 0
-    resolved_events = db.execute(
-        select(func.count(AiClsComplianceChangeEvent.id)).where(
-            AiClsComplianceChangeEvent.status.in_(["resolved", "dismissed"])
+    )
+    resolved_events = await db.scalar(
+        select(func.count(ComplianceChangeEvent.id)).where(
+            ComplianceChangeEvent.status.in_(["resolved", "dismissed"])
         )
-    ).scalar() or 0
+    )
     return {
-        "items_with_versions": total_items_with_versions,
-        "total_versions": total_versions,
-        "open_events": open_events,
-        "high_impact_events": high_events,
-        "in_review_events": in_review_events,
-        "resolved_events": resolved_events,
+        "items_with_versions": total_items_with_versions or 0,
+        "total_versions": total_versions or 0,
+        "open_events": open_events or 0,
+        "high_impact_events": high_events or 0,
+        "in_review_events": in_review_events or 0,
+        "resolved_events": resolved_events or 0,
     }
 
 
 @router.get("/items")
-def list_items(
+async def list_items(
     q: str | None = Query(None),
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_pg_db),
 ):
-    stmt = select(AiClsItem)
+    stmt = select(Item)
     if q:
-        stmt = stmt.where(AiClsItem.name.ilike(f"%{q}%"))
-    stmt = stmt.order_by(AiClsItem.created_at.desc()).limit(limit).offset(offset)
-    rows = db.execute(stmt).scalars().all()
+        stmt = stmt.where(Item.name.ilike(f"%{q}%"))
+    stmt = stmt.order_by(Item.created_at.desc()).limit(limit).offset(offset)
+    rows = (await db.execute(stmt)).scalars().all()
 
     result = []
     for item in rows:
-        current_ver = db.execute(
-            select(AiClsItemVersion)
-            .where(AiClsItemVersion.item_id == item.id, AiClsItemVersion.is_current == True)  # noqa: E712
+        ver_row = await db.execute(
+            select(ItemVersion)
+            .where(ItemVersion.item_id == item.id, ItemVersion.is_current == True)  # noqa: E712
             .limit(1)
-        ).scalar_one_or_none()
-
-        open_ev_cnt = db.execute(
-            select(func.count(AiClsComplianceChangeEvent.id)).where(
-                AiClsComplianceChangeEvent.item_id == item.id,
-                AiClsComplianceChangeEvent.status.in_(["open", "in_review"]),
+        )
+        current_ver = ver_row.scalar_one_or_none()
+        open_ev_cnt = await db.scalar(
+            select(func.count(ComplianceChangeEvent.id)).where(
+                ComplianceChangeEvent.item_id == item.id,
+                ComplianceChangeEvent.status.in_(["open", "in_review"]),
             )
-        ).scalar() or 0
-
+        )
         result.append({
-            "id": item.id,
+            "id": str(item.id),
             "item_code": item.item_code,
             "name": item.name,
             "description": item.description,
@@ -430,18 +415,18 @@ def list_items(
             "hs_code": item.hs_code,
             "export_control_status": item.export_control_status,
             "current_version": _ser_version(current_ver) if current_ver else None,
-            "open_events": open_ev_cnt,
+            "open_events": open_ev_cnt or 0,
         })
     return result
 
 
 @router.post("/items", status_code=201)
-def upsert_item(body: ItemUpsert, db: Session = Depends(get_db)):
-    existing: AiClsItem | None = None
+async def upsert_item(body: ItemUpsert, db: AsyncSession = Depends(get_pg_db)):
+    existing: Item | None = None
     if body.item_code:
-        existing = db.execute(
-            select(AiClsItem).where(AiClsItem.item_code == body.item_code)
-        ).scalar_one_or_none()
+        existing = (await db.execute(
+            select(Item).where(Item.item_code == body.item_code)
+        )).scalar_one_or_none()
 
     if existing:
         existing.name = body.name
@@ -453,12 +438,11 @@ def upsert_item(body: ItemUpsert, db: Session = Depends(get_db)):
             existing.hs_code = body.hs_code
         if body.export_control_status is not None:
             existing.export_control_status = body.export_control_status
-        db.commit()
-        db.refresh(existing)
-        return {"id": existing.id, "item_code": existing.item_code, "created": False}
+        await db.commit()
+        await db.refresh(existing)
+        return {"id": str(existing.id), "item_code": existing.item_code, "created": False}
 
-    item = AiClsItem(
-        id=str(uuid.uuid4()),
+    item = Item(
         item_code=body.item_code,
         name=body.name,
         description=body.description,
@@ -467,32 +451,32 @@ def upsert_item(body: ItemUpsert, db: Session = Depends(get_db)):
         export_control_status=body.export_control_status or "pending",
     )
     db.add(item)
-    db.commit()
-    db.refresh(item)
-    return {"id": item.id, "item_code": item.item_code, "created": True}
+    await db.commit()
+    await db.refresh(item)
+    return {"id": str(item.id), "item_code": item.item_code, "created": True}
 
 
 @router.get("/items/{item_id}")
-def get_item_detail(item_id: str, db: Session = Depends(get_db)):
-    item = db.get(AiClsItem, item_id)
+async def get_item_detail(item_id: uuid.UUID, db: AsyncSession = Depends(get_pg_db)):
+    item = await db.get(Item, item_id)
     if not item:
         raise HTTPException(404, "品目が見つかりません")
 
-    versions = db.execute(
-        select(AiClsItemVersion)
-        .where(AiClsItemVersion.item_id == item_id)
-        .order_by(AiClsItemVersion.version_number.desc())
-    ).scalars().all()
+    versions = (await db.execute(
+        select(ItemVersion)
+        .where(ItemVersion.item_id == item_id)
+        .order_by(ItemVersion.version_number.desc())
+    )).scalars().all()
 
-    events = db.execute(
-        select(AiClsComplianceChangeEvent)
-        .where(AiClsComplianceChangeEvent.item_id == item_id)
-        .order_by(AiClsComplianceChangeEvent.created_at.desc())
-    ).scalars().all()
+    events = (await db.execute(
+        select(ComplianceChangeEvent)
+        .where(ComplianceChangeEvent.item_id == item_id)
+        .order_by(ComplianceChangeEvent.created_at.desc())
+    )).scalars().all()
 
     return {
         "item": {
-            "id": item.id,
+            "id": str(item.id),
             "item_code": item.item_code,
             "name": item.name,
             "description": item.description,
@@ -507,84 +491,88 @@ def get_item_detail(item_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/items/{item_id}/versions", status_code=201)
-def create_version(item_id: str, body: VersionCreate, db: Session = Depends(get_db)):
-    if not db.get(AiClsItem, item_id):
+async def create_version(
+    item_id: uuid.UUID, body: VersionCreate, db: AsyncSession = Depends(get_pg_db)
+):
+    item = await db.get(Item, item_id)
+    if not item:
         raise HTTPException(404, "品目が見つかりません")
-    new_ver, events = _create_version_and_events(db, item_id, body)
-    return {
-        "version": _ser_version(new_ver),
-        "events_generated": [_ser_event(e) for e in events],
-    }
+    new_ver, events = await _create_version_and_events(db, item_id, body)
+    return {"version": _ser_version(new_ver), "events_generated": [_ser_event(e) for e in events]}
 
 
 @router.get("/versions/{version_id}")
-def get_version(version_id: str, db: Session = Depends(get_db)):
-    v = db.get(AiClsItemVersion, version_id)
+async def get_version(version_id: uuid.UUID, db: AsyncSession = Depends(get_pg_db)):
+    v = await db.get(ItemVersion, version_id)
     if not v:
         raise HTTPException(404, "バージョンが見つかりません")
     return _ser_version(v)
 
 
 @router.post("/webhook", status_code=201)
-def receive_webhook(payload: WebhookPayload, db: Session = Depends(get_db)):
-    item = db.get(AiClsItem, payload.item_id)
+async def receive_webhook(payload: WebhookPayload, db: AsyncSession = Depends(get_pg_db)):
+    try:
+        item_id = uuid.UUID(payload.item_id)
+    except ValueError:
+        raise HTTPException(400, "item_id が無効な UUID 形式です")
+    item = await db.get(Item, item_id)
     if not item:
         raise HTTPException(404, f"品目 {payload.item_id} が見つかりません")
-    new_ver, events = _create_version_and_events(db, payload.item_id, payload)
+    new_ver, events = await _create_version_and_events(db, item_id, payload)
     return {
         "received": True,
-        "item_id": payload.item_id,
+        "item_id": str(item_id),
         "version": _ser_version(new_ver),
         "events_generated": [_ser_event(e) for e in events],
     }
 
 
 @router.get("/events")
-def list_events(
+async def list_events(
     status: str | None = Query(None),
     impact_level: str | None = Query(None),
     change_category: str | None = Query(None),
     item_id: str | None = Query(None),
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_pg_db),
 ):
-    stmt = select(AiClsComplianceChangeEvent)
+    stmt = select(ComplianceChangeEvent)
     if status:
-        stmt = stmt.where(AiClsComplianceChangeEvent.status == status)
+        stmt = stmt.where(ComplianceChangeEvent.status == status)
     if impact_level:
-        stmt = stmt.where(AiClsComplianceChangeEvent.impact_level == impact_level)
+        stmt = stmt.where(ComplianceChangeEvent.impact_level == impact_level)
     if change_category:
-        stmt = stmt.where(AiClsComplianceChangeEvent.change_category == change_category)
+        stmt = stmt.where(ComplianceChangeEvent.change_category == change_category)
     if item_id:
-        stmt = stmt.where(AiClsComplianceChangeEvent.item_id == item_id)
-    stmt = stmt.order_by(AiClsComplianceChangeEvent.created_at.desc()).limit(limit).offset(offset)
-    rows = db.execute(stmt).scalars().all()
+        try:
+            stmt = stmt.where(ComplianceChangeEvent.item_id == uuid.UUID(item_id))
+        except ValueError:
+            pass
+    stmt = stmt.order_by(ComplianceChangeEvent.created_at.desc()).limit(limit).offset(offset)
+    rows = (await db.execute(stmt)).scalars().all()
     return [_ser_event(e) for e in rows]
 
 
 @router.get("/events/{event_id}")
-def get_event(event_id: str, db: Session = Depends(get_db)):
-    e = db.get(AiClsComplianceChangeEvent, event_id)
+async def get_event(event_id: uuid.UUID, db: AsyncSession = Depends(get_pg_db)):
+    e = await db.get(ComplianceChangeEvent, event_id)
     if not e:
         raise HTTPException(404, "イベントが見つかりません")
     return _ser_event(e)
 
 
 @router.post("/events/{event_id}/request-validation", status_code=201)
-def request_validation(event_id: str, db: Session = Depends(get_db)):
-    """コンプライアンス変化イベントから ai_validation に AI該非判定トランザクションを新規作成する。"""
-    event = db.get(AiClsComplianceChangeEvent, event_id)
+async def request_validation(event_id: uuid.UUID, db: AsyncSession = Depends(get_pg_db)):
+    event = await db.get(ComplianceChangeEvent, event_id)
     if not event:
         raise HTTPException(404, "イベントが見つかりません")
-
-    item = db.get(AiClsItem, event.item_id)
+    item = await db.get(Item, event.item_id)
     if not item:
         raise HTTPException(404, "品目が見つかりません")
-
-    version = db.get(AiClsItemVersion, event.to_version_id) if event.to_version_id else None
+    version = await db.get(ItemVersion, event.to_version_id) if event.to_version_id else None
     eccn_note = f"（ECCN: {version.eccn}）" if version and version.eccn else ""
-    details = _j(event.impact_details) or {}
+    details = event.impact_details or {}
     if details.get("from") is not None:
         change_text = f"{details.get('field', '')} 変更: {details.get('from')} → {details.get('to')}"
     else:
@@ -598,10 +586,9 @@ def request_validation(event_id: str, db: Session = Depends(get_db)):
         ],
         "source_module": "item_version",
     }
-
     try:
-        with httpx.Client(timeout=5.0) as client:
-            r = client.post(f"{_VALIDATION_BASE}/api/transactions", json=payload)
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.post(f"{_VALIDATION_BASE}/api/transactions", json=payload)
         if r.status_code == 201:
             data = r.json()
             return {
@@ -617,8 +604,8 @@ def request_validation(event_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/events/{event_id}/resolve")
-def resolve_event(event_id: str, body: ResolveBody, db: Session = Depends(get_db)):
-    e = db.get(AiClsComplianceChangeEvent, event_id)
+async def resolve_event(event_id: uuid.UUID, body: ResolveBody, db: AsyncSession = Depends(get_pg_db)):
+    e = await db.get(ComplianceChangeEvent, event_id)
     if not e:
         raise HTTPException(404, "イベントが見つかりません")
     if e.status in ("resolved", "dismissed"):
@@ -626,25 +613,25 @@ def resolve_event(event_id: str, body: ResolveBody, db: Session = Depends(get_db
     e.status = "resolved"
     e.resolved_at = datetime.now(timezone.utc)
     e.resolution_notes = body.resolution_notes
-    db.commit()
-    db.refresh(e)
+    await db.commit()
+    await db.refresh(e)
     return _ser_event(e)
 
 
 @router.post("/events/{event_id}/in-review")
-def set_in_review(event_id: str, db: Session = Depends(get_db)):
-    e = db.get(AiClsComplianceChangeEvent, event_id)
+async def set_in_review(event_id: uuid.UUID, db: AsyncSession = Depends(get_pg_db)):
+    e = await db.get(ComplianceChangeEvent, event_id)
     if not e:
         raise HTTPException(404, "イベントが見つかりません")
     e.status = "in_review"
-    db.commit()
-    db.refresh(e)
+    await db.commit()
+    await db.refresh(e)
     return _ser_event(e)
 
 
 @router.post("/events/{event_id}/dismiss")
-def dismiss_event(event_id: str, body: ResolveBody, db: Session = Depends(get_db)):
-    e = db.get(AiClsComplianceChangeEvent, event_id)
+async def dismiss_event(event_id: uuid.UUID, body: ResolveBody, db: AsyncSession = Depends(get_pg_db)):
+    e = await db.get(ComplianceChangeEvent, event_id)
     if not e:
         raise HTTPException(404, "イベントが見つかりません")
     if e.status in ("resolved", "dismissed"):
@@ -652,6 +639,6 @@ def dismiss_event(event_id: str, body: ResolveBody, db: Session = Depends(get_db
     e.status = "dismissed"
     e.resolved_at = datetime.now(timezone.utc)
     e.resolution_notes = body.resolution_notes
-    db.commit()
-    db.refresh(e)
+    await db.commit()
+    await db.refresh(e)
     return _ser_event(e)

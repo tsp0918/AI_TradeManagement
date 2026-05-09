@@ -1,21 +1,21 @@
-"""サプライヤー原産性証明 API — ai_classification 統合版（SQLite/sync）。
+"""サプライヤー原産性証明 API — ai_classification 統合版。
 
-Phase 6A-2: platform-core/routers/supplier_attestation.py から移管。
-データは aicls_supplier_attestation テーブルに格納。
+Phase 6A-2: platform-core から移管。データは plat_supplier_attestation テーブル（共有 PostgreSQL）。
 """
 
-import json
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import get_db
-from ..models import AiClsSupplierAttestation, AiClsSupplyChainNode
+from ..pg_session import get_pg_db
+from platform_core.models.supplier_attestation import SupplierAttestation
+from platform_core.models.supply_chain import SupplyChainNode
 
 router = APIRouter(tags=["supplier_attestation"])
 
@@ -42,10 +42,10 @@ def _verdict(claimed: str | None, suggested: str | None, confidence: float) -> s
     return "warning"
 
 
-def _serialize(a: AiClsSupplierAttestation) -> dict:
+def _serialize(a: SupplierAttestation) -> dict:
     return {
-        "id": a.id,
-        "node_id": a.node_id,
+        "id": str(a.id),
+        "node_id": str(a.node_id),
         "supplier_name": a.supplier_name,
         "supplier_contact": a.supplier_contact,
         "claimed_eccn": a.claimed_eccn,
@@ -53,17 +53,17 @@ def _serialize(a: AiClsSupplierAttestation) -> dict:
         "claimed_us_content_pct": a.claimed_us_content_pct,
         "is_us_origin_claimed": a.is_us_origin_claimed,
         "certificate_reference": a.certificate_reference,
-        "attestation_date": a.attestation_date,
-        "expiry_date": a.expiry_date,
-        "supporting_docs": json.loads(a.supporting_docs) if a.supporting_docs else None,
+        "attestation_date": a.attestation_date.isoformat() if a.attestation_date else None,
+        "expiry_date": a.expiry_date.isoformat() if a.expiry_date else None,
+        "supporting_docs": a.supporting_docs,
         "notes": a.notes,
         "status": a.status,
         "ai_suggested_eccn": a.ai_suggested_eccn,
         "ai_confidence": a.ai_confidence,
         "ai_verdict": a.ai_verdict,
-        "ai_review_detail": json.loads(a.ai_review_detail) if a.ai_review_detail else None,
+        "ai_review_detail": a.ai_review_detail,
         "ai_reviewed_at": a.ai_reviewed_at.isoformat() if a.ai_reviewed_at else None,
-        "reviewed_by_user_id": a.reviewed_by_user_id,
+        "reviewed_by_user_id": str(a.reviewed_by_user_id) if a.reviewed_by_user_id else None,
         "reviewed_at": a.reviewed_at.isoformat() if a.reviewed_at else None,
         "review_comment": a.review_comment,
         "created_at": a.created_at.isoformat(),
@@ -104,35 +104,43 @@ class ReviewBody(BaseModel):
     review_comment: str | None = None
 
 
+def _parse_date(s: str | None) -> date | None:
+    if not s:
+        return None
+    try:
+        return date.fromisoformat(s)
+    except ValueError:
+        return None
+
+
 # ── ノード別一覧 ───────────────────────────────────────────────────
 
 @router.get("/api/supply-chain/nodes/{node_id}/attestations")
-def list_node_attestations(node_id: str, db: Session = Depends(get_db)):
-    result = db.execute(
-        select(AiClsSupplierAttestation)
-        .where(AiClsSupplierAttestation.node_id == node_id)
-        .order_by(AiClsSupplierAttestation.created_at.desc())
-    ).scalars().all()
-    return [_serialize(a) for a in result]
+async def list_node_attestations(node_id: str, db: AsyncSession = Depends(get_pg_db)):
+    result = await db.execute(
+        select(SupplierAttestation)
+        .where(SupplierAttestation.node_id == uuid.UUID(node_id))
+        .order_by(SupplierAttestation.created_at.desc())
+    )
+    return [_serialize(a) for a in result.scalars().all()]
 
 
 # ── 一覧 ─────────────────────────────────────────────────────────
 
 @router.get("/api/supplier-attestations")
-def list_attestations(
+async def list_attestations(
     node_id: str | None = Query(None),
     status: str | None = Query(None),
     ai_verdict: str | None = Query(None),
     limit: int = Query(50, le=200),
     offset: int = Query(0),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_pg_db),
 ):
-    items = db.execute(
-        select(AiClsSupplierAttestation).order_by(AiClsSupplierAttestation.created_at.desc())
-    ).scalars().all()
+    stmt = select(SupplierAttestation).order_by(SupplierAttestation.created_at.desc())
+    items = (await db.execute(stmt)).scalars().all()
     filtered = [
         a for a in items
-        if (not node_id or a.node_id == node_id)
+        if (not node_id or str(a.node_id) == node_id)
         and (not status or a.status == status)
         and (not ai_verdict or a.ai_verdict == ai_verdict)
     ]
@@ -142,15 +150,14 @@ def list_attestations(
 # ── 登録 ─────────────────────────────────────────────────────────
 
 @router.post("/api/supplier-attestations", status_code=201)
-def create_attestation(body: AttestationCreate, db: Session = Depends(get_db)):
-    if db.execute(
-        select(AiClsSupplyChainNode).where(AiClsSupplyChainNode.id == body.node_id)
-    ).scalar_one_or_none() is None:
+async def create_attestation(body: AttestationCreate, db: AsyncSession = Depends(get_pg_db)):
+    node_id = uuid.UUID(body.node_id)
+    r = await db.execute(select(SupplyChainNode).where(SupplyChainNode.id == node_id))
+    if r.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="SupplyChainNode not found")
 
-    attest = AiClsSupplierAttestation(
-        id=str(uuid.uuid4()),
-        node_id=body.node_id,
+    attest = SupplierAttestation(
+        node_id=node_id,
         supplier_name=body.supplier_name,
         supplier_contact=body.supplier_contact,
         claimed_eccn=body.claimed_eccn,
@@ -158,24 +165,25 @@ def create_attestation(body: AttestationCreate, db: Session = Depends(get_db)):
         claimed_us_content_pct=body.claimed_us_content_pct,
         is_us_origin_claimed=body.is_us_origin_claimed,
         certificate_reference=body.certificate_reference,
-        attestation_date=body.attestation_date,
-        expiry_date=body.expiry_date,
+        attestation_date=_parse_date(body.attestation_date),
+        expiry_date=_parse_date(body.expiry_date),
         notes=body.notes,
         status="pending",
     )
     db.add(attest)
-    db.commit()
-    db.refresh(attest)
+    await db.commit()
+    await db.refresh(attest)
     return _serialize(attest)
 
 
 # ── 詳細 ─────────────────────────────────────────────────────────
 
 @router.get("/api/supplier-attestations/{attest_id}")
-def get_attestation(attest_id: str, db: Session = Depends(get_db)):
-    a = db.execute(
-        select(AiClsSupplierAttestation).where(AiClsSupplierAttestation.id == attest_id)
-    ).scalar_one_or_none()
+async def get_attestation(attest_id: str, db: AsyncSession = Depends(get_pg_db)):
+    r = await db.execute(
+        select(SupplierAttestation).where(SupplierAttestation.id == uuid.UUID(attest_id))
+    )
+    a = r.scalar_one_or_none()
     if a is None:
         raise HTTPException(status_code=404, detail="Not found")
     return _serialize(a)
@@ -184,50 +192,57 @@ def get_attestation(attest_id: str, db: Session = Depends(get_db)):
 # ── 更新 ─────────────────────────────────────────────────────────
 
 @router.put("/api/supplier-attestations/{attest_id}")
-def update_attestation(attest_id: str, body: AttestationUpdate, db: Session = Depends(get_db)):
-    a = db.execute(
-        select(AiClsSupplierAttestation).where(AiClsSupplierAttestation.id == attest_id)
-    ).scalar_one_or_none()
+async def update_attestation(
+    attest_id: str, body: AttestationUpdate, db: AsyncSession = Depends(get_pg_db)
+):
+    r = await db.execute(
+        select(SupplierAttestation).where(SupplierAttestation.id == uuid.UUID(attest_id))
+    )
+    a = r.scalar_one_or_none()
     if a is None:
         raise HTTPException(status_code=404, detail="Not found")
     for f in ("supplier_name", "supplier_contact", "claimed_eccn", "claimed_country_of_origin",
-              "claimed_us_content_pct", "is_us_origin_claimed", "certificate_reference",
-              "attestation_date", "expiry_date", "notes"):
+              "claimed_us_content_pct", "is_us_origin_claimed", "certificate_reference", "notes"):
         val = getattr(body, f)
         if val is not None:
             setattr(a, f, val)
-    db.commit()
-    db.refresh(a)
+    if body.attestation_date is not None:
+        a.attestation_date = _parse_date(body.attestation_date)
+    if body.expiry_date is not None:
+        a.expiry_date = _parse_date(body.expiry_date)
+    await db.commit()
+    await db.refresh(a)
     return _serialize(a)
 
 
 # ── 削除 ─────────────────────────────────────────────────────────
 
 @router.delete("/api/supplier-attestations/{attest_id}", status_code=204)
-def delete_attestation(attest_id: str, db: Session = Depends(get_db)):
-    a = db.execute(
-        select(AiClsSupplierAttestation).where(AiClsSupplierAttestation.id == attest_id)
-    ).scalar_one_or_none()
+async def delete_attestation(attest_id: str, db: AsyncSession = Depends(get_pg_db)):
+    r = await db.execute(
+        select(SupplierAttestation).where(SupplierAttestation.id == uuid.UUID(attest_id))
+    )
+    a = r.scalar_one_or_none()
     if a is None:
         raise HTTPException(status_code=404, detail="Not found")
-    db.delete(a)
-    db.commit()
+    await db.delete(a)
+    await db.commit()
 
 
 # ── AI 検証 ──────────────────────────────────────────────────────
 
 @router.post("/api/supplier-attestations/{attest_id}/ai-validate")
-def ai_validate(attest_id: str, db: Session = Depends(get_db)):
+async def ai_validate(attest_id: str, db: AsyncSession = Depends(get_pg_db)):
     """FAISS Layer A で申告 ECCN を AI 検証する。"""
-    a = db.execute(
-        select(AiClsSupplierAttestation).where(AiClsSupplierAttestation.id == attest_id)
-    ).scalar_one_or_none()
+    r = await db.execute(
+        select(SupplierAttestation).where(SupplierAttestation.id == uuid.UUID(attest_id))
+    )
+    a = r.scalar_one_or_none()
     if a is None:
         raise HTTPException(status_code=404, detail="Not found")
 
-    node = db.execute(
-        select(AiClsSupplyChainNode).where(AiClsSupplyChainNode.id == a.node_id)
-    ).scalar_one_or_none()
+    rn = await db.execute(select(SupplyChainNode).where(SupplyChainNode.id == a.node_id))
+    node = rn.scalar_one_or_none()
     if node is None:
         raise HTTPException(status_code=404, detail="SupplyChainNode not found")
 
@@ -275,41 +290,43 @@ def ai_validate(attest_id: str, db: Session = Depends(get_db)):
     a.ai_suggested_eccn = suggested_eccn
     a.ai_confidence = round(confidence, 4)
     a.ai_verdict = verdict
-    a.ai_review_detail = json.dumps(ai_review_detail)
+    a.ai_review_detail = ai_review_detail
     a.ai_reviewed_at = datetime.now(tz=timezone.utc)
     a.status = "ai_reviewed"
-    db.commit()
-    db.refresh(a)
+    await db.commit()
+    await db.refresh(a)
     return _serialize(a)
 
 
 # ── 承認 / 却下 ───────────────────────────────────────────────────
 
 @router.post("/api/supplier-attestations/{attest_id}/accept")
-def accept_attestation(attest_id: str, body: ReviewBody, db: Session = Depends(get_db)):
-    a = db.execute(
-        select(AiClsSupplierAttestation).where(AiClsSupplierAttestation.id == attest_id)
-    ).scalar_one_or_none()
+async def accept_attestation(attest_id: str, body: ReviewBody, db: AsyncSession = Depends(get_pg_db)):
+    r = await db.execute(
+        select(SupplierAttestation).where(SupplierAttestation.id == uuid.UUID(attest_id))
+    )
+    a = r.scalar_one_or_none()
     if a is None:
         raise HTTPException(status_code=404, detail="Not found")
     a.status = "accepted"
     a.reviewed_at = datetime.now(tz=timezone.utc)
     a.review_comment = body.review_comment
-    db.commit()
-    db.refresh(a)
+    await db.commit()
+    await db.refresh(a)
     return _serialize(a)
 
 
 @router.post("/api/supplier-attestations/{attest_id}/reject")
-def reject_attestation(attest_id: str, body: ReviewBody, db: Session = Depends(get_db)):
-    a = db.execute(
-        select(AiClsSupplierAttestation).where(AiClsSupplierAttestation.id == attest_id)
-    ).scalar_one_or_none()
+async def reject_attestation(attest_id: str, body: ReviewBody, db: AsyncSession = Depends(get_pg_db)):
+    r = await db.execute(
+        select(SupplierAttestation).where(SupplierAttestation.id == uuid.UUID(attest_id))
+    )
+    a = r.scalar_one_or_none()
     if a is None:
         raise HTTPException(status_code=404, detail="Not found")
     a.status = "rejected"
     a.reviewed_at = datetime.now(tz=timezone.utc)
     a.review_comment = body.review_comment
-    db.commit()
-    db.refresh(a)
+    await db.commit()
+    await db.refresh(a)
     return _serialize(a)
