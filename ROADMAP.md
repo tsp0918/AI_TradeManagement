@@ -1,5 +1,5 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-08 更新（Phase 6 プラットフォーム設計最適化 着手）
+# 2026-05-09 更新（Phase 6A 完了 — platform-core から業務ドメイン機能の分離完了）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
 > 2026-05-08（3回目）追加: Phase 6 設計レビュー — platform-core から業務ドメイン機能を分離。counterparty→screening / item_version+supply_chain+supplier→ai_classification 統合（Phase 6A 高優先）、export_license / fta_origin 新モジュール抽出（Phase 6B 中優先）、trade_gate 新モジュール抽出（Phase 6C 低優先）。branch: refactor/module-separation。
@@ -738,11 +738,11 @@ platform-core の責務 = インフラ・接着剤
 
 | # | 移動元（platform-core） | 移動先 | DB移行 | 状態 |
 |---|----------------------|--------|--------|------|
-| 6A-1 | `routers/counterparty.py` (453行) | `screening` モジュール (8005) | PostgreSQL → PostgreSQL (共有) | ⬜ 着手中 |
-| 6A-2 | `routers/supply_chain.py` (493行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ⬜ 未着手 |
-| 6A-3 | `routers/supplier_attestation.py` (371行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ⬜ 未着手 |
-| 6A-4 | `routers/supplier_portal.py` (335行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ⬜ 未着手 |
-| 6A-5 | `routers/item_version.py` (714行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ⬜ 未着手 |
+| 6A-1 | `routers/counterparty.py` (453行) | `screening` モジュール (8005) | PostgreSQL → PostgreSQL (共有) | ✅ 完了 |
+| 6A-2 | `routers/supply_chain.py` (493行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ✅ 完了 |
+| 6A-3 | `routers/supplier_attestation.py` (371行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ✅ 完了 |
+| 6A-4 | `routers/supplier_portal.py` (335行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ✅ 完了 |
+| 6A-5 | `routers/item_version.py` (714行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ✅ 完了 |
 
 **合計削減行数**: 約 2,366 行 / platform-core から除去
 
