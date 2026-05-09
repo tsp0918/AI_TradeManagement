@@ -37,7 +37,7 @@ if [[ "${1:-}" == "--stop" ]]; then
     warn "PID ファイルが見つかりません。手動で確認してください。"
   fi
   # モジュールポートを強制解放
-  for PORT in 5001 8011 8002 8003 8004 8005 8006 8010 11434; do
+  for PORT in 5001 8011 8002 8003 8004 8005 8006 8010 8012 8013 8014 11434; do
     PID_PORT=$(lsof -ti tcp:"$PORT" 2>/dev/null || true)
     if [[ -n "$PID_PORT" ]]; then
       kill "$PID_PORT" 2>/dev/null && info "ポート $PORT (PID $PID_PORT) を解放しました"
@@ -203,7 +203,7 @@ info "ERP Integration Adapter をポート 5001 で起動します…"
 ok "ERP Integration Adapter 起動済み (PID $!)"
 
 # ── 各機能モジュール (8002–8006) をバックグラウンドで起動 ──────────────
-for _MOD_ENTRY in "ai_classification:8002" "rnd_assessment:8003" "patent_search:8004" "screening:8005" "hs_classifier:8006"; do
+for _MOD_ENTRY in "ai_classification:8002" "rnd_assessment:8003" "patent_search:8004" "screening:8005" "hs_classifier:8006" "export_license:8012"; do
   _MOD_KEY="${_MOD_ENTRY%%:*}"
   _MOD_PORT="${_MOD_ENTRY##*:}"
   _MOD_DIR="$SCRIPT_DIR/modules/$_MOD_KEY"
