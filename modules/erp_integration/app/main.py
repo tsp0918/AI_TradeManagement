@@ -2,12 +2,21 @@
 erp_integration — ERP ↔ AI_TradeManagement アダプター
 port: 5001  (ERP の AI_TM_BASE_URL=http://localhost:5001 に合わせる)
 
-ERP が期待するエンドポイント:
+ERP → AI_TM (プッシュ型) エンドポイント:
   POST /hs/classify
   POST /gaihi/judge
   POST /gaihi/judge-bom
   POST /screening/denied-party
   POST /export/precheck
+  POST /transaction/review
+  POST /shipment/rescreen
+  POST /internal/push-judgment
+
+AI_TM → ERP (プル型) エンドポイント:
+  POST /pull/item-review
+  POST /pull/items-batch-review
+  POST /pull/counterparty-screen
+  POST /pull/counterparties-batch-screen
 """
 from __future__ import annotations
 
@@ -16,7 +25,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .routers import export, gaihi, hs, screening, transaction, webhook
+from .routers import export, gaihi, hs, screening, transaction, webhook, pull_review
 
 app = FastAPI(
     title="ERP Integration Adapter",
@@ -37,6 +46,7 @@ app.include_router(screening.router)
 app.include_router(export.router)
 app.include_router(transaction.router)
 app.include_router(webhook.router)
+app.include_router(pull_review.router)
 
 
 @app.get("/health")
