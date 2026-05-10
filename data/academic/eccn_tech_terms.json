@@ -1,7 +1,7 @@
 {
   "_comment": "ECCN別技術用語辞書 — Semantic Scholar / Lens.org クエリ展開用",
-  "_version": "1.0",
-  "_updated": "2026-03-27",
+  "_version": "1.1",
+  "_updated": "2026-05-09",
 
   "3A001": {
     "label": "電子部品（半導体・マイクロ波）",
@@ -26,12 +26,15 @@
   "3A002": {
     "label": "電子試験・測定機器",
     "keywords": [
-      "high speed oscilloscope",
-      "signal generator microwave",
+      "high speed oscilloscope digital",
+      "microwave signal generator",
       "spectrum analyzer millimeter wave",
-      "vector network analyzer",
-      "arbitrary waveform generator",
-      "pulse generator nanosecond"
+      "vector network analyzer VNA",
+      "arbitrary waveform generator AWG",
+      "pulse generator nanosecond",
+      "RF measurement instrument",
+      "time domain reflectometry",
+      "electromagnetic compatibility testing"
     ],
     "ipc_codes": ["G01R 13/00", "G01R 23/00", "H03B 1/00"]
   },
@@ -53,13 +56,15 @@
   "5A001": {
     "label": "電気通信機器",
     "keywords": [
-      "software defined radio cognitive",
+      "software defined radio",
+      "cognitive radio dynamic spectrum",
       "phased array antenna beamforming",
-      "millimeter wave communication 5G",
-      "terahertz communication",
-      "spread spectrum low probability intercept",
-      "anti-jam communication waveform",
-      "electronic warfare receiver"
+      "millimeter wave 5G communication",
+      "terahertz THz communication",
+      "spread spectrum anti-jam",
+      "electronic warfare jamming",
+      "satellite communication secure",
+      "MIMO antenna system"
     ],
     "ipc_codes": ["H04B 1/00", "H01Q 3/26", "H04K 3/00"]
   },
@@ -83,12 +88,14 @@
   "6A001": {
     "label": "音響センサー（ソナー）",
     "keywords": [
-      "underwater acoustic array",
-      "sonar signal processing",
-      "hydrophone array beamforming",
+      "underwater acoustic sonar",
+      "sonar array signal processing",
+      "hydrophone array",
       "acoustic vector sensor",
       "passive sonar detection",
-      "acoustic emission sensor"
+      "ultrasonic transducer array",
+      "underwater sound propagation",
+      "acoustic emission monitoring"
     ],
     "ipc_codes": ["G01S 15/00", "H04R 1/44", "G01H 3/00"]
   },
@@ -112,13 +119,14 @@
   "7A001": {
     "label": "航法・慣性装置",
     "keywords": [
-      "inertial navigation system MEMS",
+      "inertial navigation system",
       "ring laser gyroscope",
-      "fiber optic gyroscope",
-      "accelerometer MEMS navigation",
-      "GPS anti-spoofing",
-      "inertial measurement unit high accuracy",
-      "atom interferometry inertial sensor"
+      "fiber optic gyroscope FOG",
+      "MEMS gyroscope inertial",
+      "GPS anti-spoofing secure",
+      "inertial measurement unit IMU",
+      "atom interferometry gravimeter",
+      "navigation grade sensor"
     ],
     "ipc_codes": ["G01C 19/56", "G01C 21/16", "G01P 15/08"]
   },
@@ -126,10 +134,11 @@
   "7A002": {
     "label": "航法加速度計",
     "keywords": [
-      "quartz accelerometer navigation grade",
-      "pendulous integrating gyroscopic accelerometer",
-      "PIGA accelerometer",
-      "MEMS accelerometer inertial grade"
+      "quartz accelerometer high precision",
+      "MEMS accelerometer navigation grade",
+      "pendulous accelerometer",
+      "seismic accelerometer geophysical",
+      "vibration isolation precision"
     ],
     "ipc_codes": ["G01P 15/09", "G01C 19/02"]
   },
@@ -137,13 +146,13 @@
   "9A001": {
     "label": "航空エンジン",
     "keywords": [
-      "turbofan engine thrust-to-weight ratio",
-      "high bypass ratio turbofan",
-      "turbine blade cooling",
-      "single crystal turbine blade",
-      "turbofan compressor aerodynamics",
-      "jet engine afterburner",
-      "hypersonic propulsion scramjet"
+      "gas turbine engine performance",
+      "turbofan engine design",
+      "turbine blade cooling film",
+      "single crystal superalloy blade",
+      "compressor aerodynamics jet",
+      "scramjet hypersonic propulsion",
+      "jet engine thermal efficiency"
     ],
     "ipc_codes": ["F02K 3/00", "F02C 3/00", "F02C 7/12"]
   },
@@ -271,14 +280,84 @@
   "9A610": {
     "label": "軍用航空機システム",
     "keywords": [
-      "radar cross section reduction stealth",
-      "electronic countermeasure aircraft",
-      "infrared signature suppression",
-      "fly-by-wire flight control system",
-      "unmanned aerial vehicle autonomous",
-      "UAV swarm coordination",
-      "directed energy weapon aircraft"
+      "radar cross section stealth aircraft",
+      "electronic countermeasure ECM",
+      "infrared signature reduction",
+      "fly-by-wire flight control",
+      "unmanned aerial vehicle UAV",
+      "drone swarm autonomous",
+      "directed energy weapon laser"
     ],
     "ipc_codes": ["B64C 39/02", "H01Q 17/00", "G05D 1/10"]
+  },
+
+  "3B001": {
+    "label": "半導体製造装置",
+    "keywords": [
+      "EUV lithography extreme ultraviolet",
+      "semiconductor etching plasma",
+      "CVD chemical vapor deposition thin film",
+      "atomic layer deposition ALD",
+      "ion implantation semiconductor",
+      "CMP chemical mechanical planarization",
+      "electron beam lithography",
+      "photolithography immersion",
+      "semiconductor wafer inspection"
+    ],
+    "ipc_codes": ["H01L 21/027", "H01L 21/302", "C23C 16/00", "B81C 1/00"]
+  },
+
+  "3C001": {
+    "label": "半導体材料（基板・ウェーハ）",
+    "keywords": [
+      "silicon carbide SiC substrate",
+      "gallium nitride GaN epitaxial",
+      "silicon wafer crystal growth",
+      "compound semiconductor substrate",
+      "diamond semiconductor substrate",
+      "gallium oxide Ga2O3 semiconductor",
+      "indium phosphide InP wafer"
+    ],
+    "ipc_codes": ["C30B 29/36", "H01L 21/20", "C30B 23/00"]
+  },
+
+  "5E001": {
+    "label": "電気通信技術（ソフトウェア）",
+    "keywords": [
+      "software defined networking SDN",
+      "network function virtualization NFV",
+      "5G network slicing",
+      "low latency communication protocol",
+      "secure communication protocol design",
+      "frequency hopping spread spectrum"
+    ],
+    "ipc_codes": ["H04L 12/00", "H04W 28/00", "H04B 7/00"]
+  },
+
+  "5E002": {
+    "label": "情報セキュリティ技術",
+    "keywords": [
+      "cryptographic algorithm implementation",
+      "zero knowledge proof cryptography",
+      "fully homomorphic encryption FHE",
+      "secure boot trusted platform",
+      "side channel analysis power",
+      "cryptographic hardware accelerator",
+      "post-quantum algorithm CRYSTALS"
+    ],
+    "ipc_codes": ["G06F 21/00", "H04L 9/30", "G09C 1/00"]
+  },
+
+  "9E001": {
+    "label": "航空宇宙技術",
+    "keywords": [
+      "aerospace structural material fatigue",
+      "reentry vehicle heat shield ablative",
+      "hypersonic vehicle aerodynamics",
+      "aircraft composite structure",
+      "aero engine turbine material",
+      "space launch vehicle propulsion"
+    ],
+    "ipc_codes": ["B64C 1/00", "B64G 1/00", "F02K 9/00"]
   }
 }

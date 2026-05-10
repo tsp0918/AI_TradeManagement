@@ -1,7 +1,7 @@
 """
 faiss_search.py — FAISS 検索 HTTP エンドポイント
 
-DAP や他モジュールが Layer A / C の検索を HTTP 経由で実行するための内部 API。
+DAP や他モジュールが Layer A / B / C / D の検索を HTTP 経由で実行するための内部 API。
 """
 from __future__ import annotations
 
@@ -35,6 +35,45 @@ class LayerASearchResponse(BaseModel):
     query: str
     top_k: int
     hits: list[LayerAResult]
+    error: str | None = None
+
+
+class LayerBResult(BaseModel):
+    score: float
+    faiss_id: int
+    publication_number: str
+    country_code: str
+    ipc_codes: str
+    title: str
+    abstract: str
+    fefta_items: list[str]
+    has_fefta_mapping: bool
+
+
+class LayerBSearchResponse(BaseModel):
+    query: str
+    top_k: int
+    hits: list[LayerBResult]
+    error: str | None = None
+
+
+class LayerDResult(BaseModel):
+    score: float
+    faiss_id: int
+    paper_id: str
+    title: str
+    abstract_snippet: str
+    year: int | None = None
+    citation_count: int
+    source: str
+    eccn_tags: list[str]
+    keywords_matched: str
+
+
+class LayerDSearchResponse(BaseModel):
+    query: str
+    top_k: int
+    hits: list[LayerDResult]
     error: str | None = None
 
 
@@ -87,3 +126,87 @@ def search_layer_a_endpoint(
         ))
 
     return LayerASearchResponse(query=q, top_k=top_k, hits=results)
+
+
+@router.get("/search/layer-b", response_model=LayerBSearchResponse)
+def search_layer_b_endpoint(
+    q: str = Query(..., description="検索クエリ"),
+    top_k: int = Query(5, ge=1, le=20),
+) -> LayerBSearchResponse:
+    """FAISS Layer B（US 特許チャンク）を検索する。"""
+    try:
+        from platform_core.services.faiss_e5_service import search_layer_b, is_ready, preload
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"FAISS service import error: {e}")
+
+    if not is_ready():
+        try:
+            preload(layers=frozenset({"b"}))
+        except Exception:
+            pass
+
+    try:
+        hits = search_layer_b(q, top_k=top_k)
+    except Exception as e:
+        logger.warning("Layer B search failed: %s", e)
+        return LayerBSearchResponse(query=q, top_k=top_k, hits=[], error=str(e))
+
+    results = []
+    for h in hits:
+        r = h.__dict__ if hasattr(h, "__dict__") else {}
+        results.append(LayerBResult(
+            score=float(r.get("score", 0.0)),
+            faiss_id=int(r.get("faiss_id", 0)),
+            publication_number=str(r.get("publication_number", "")),
+            country_code=str(r.get("country_code", "")),
+            ipc_codes=str(r.get("ipc_codes", "")),
+            title=str(r.get("title", "")),
+            abstract=str(r.get("abstract", ""))[:500],
+            fefta_items=list(r.get("fefta_items", [])),
+            has_fefta_mapping=bool(r.get("has_fefta_mapping", False)),
+        ))
+    return LayerBSearchResponse(query=q, top_k=top_k, hits=results)
+
+
+@router.get("/search/layer-d", response_model=LayerDSearchResponse)
+def search_layer_d_endpoint(
+    q: str = Query(..., description="検索クエリ"),
+    top_k: int = Query(5, ge=1, le=20),
+    eccn: str = Query(None, description="ECCN フィルター (カンマ区切り, 例: 3A001,5A002)"),
+) -> LayerDSearchResponse:
+    """FAISS Layer D（学術論文アブストラクト）を検索する。"""
+    try:
+        from platform_core.services.faiss_e5_service import search_layer_d, layer_d_available, preload
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"FAISS service import error: {e}")
+
+    if not layer_d_available():
+        try:
+            preload(layers=frozenset({"d"}))
+        except Exception:
+            pass
+
+    eccn_filter = [e.strip() for e in eccn.split(",") if e.strip()] if eccn else None
+
+    try:
+        hits = search_layer_d(q, top_k=top_k, eccn_filter=eccn_filter)
+    except Exception as e:
+        logger.warning("Layer D search failed: %s", e)
+        return LayerDSearchResponse(query=q, top_k=top_k, hits=[], error=str(e))
+
+    results = []
+    for h in hits:
+        r = h.__dict__ if hasattr(h, "__dict__") else {}
+        results.append(LayerDResult(
+            score=float(r.get("score", 0.0)),
+            faiss_id=int(r.get("faiss_id", 0)),
+            paper_id=str(r.get("paper_id", "")),
+            title=str(r.get("title", "")),
+            abstract_snippet=str(r.get("abstract_snippet", "")),
+            year=r.get("year"),
+            citation_count=int(r.get("citation_count", 0)),
+            source=str(r.get("source", "s2")),
+            eccn_tags=list(r.get("eccn_tags", [])),
+            keywords_matched=str(r.get("keywords_matched", "")),
+        ))
+    return LayerDSearchResponse(query=q, top_k=top_k, hits=results)

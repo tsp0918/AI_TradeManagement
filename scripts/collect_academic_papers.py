@@ -403,7 +403,8 @@ def main() -> None:
 
     # API Keys
     s2_key = _get_api_key("SEMANTIC_SCHOLAR_API_KEY")
-    lens_key = _get_api_key("LENS_ORG_API_KEY")
+    # Lens.org は LENS_ORG_API_KEY または Scholarly_Works_API を受け付ける
+    lens_key = _get_api_key("LENS_ORG_API_KEY") or _get_api_key("Scholarly_Works_API")
 
     if s2_key:
         print(f"Semantic Scholar API Key: 設定済み")

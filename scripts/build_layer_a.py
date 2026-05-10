@@ -3,22 +3,19 @@ build_layer_a.py
 ────────────────────────────────────────────────────────────────────────────
 Layer A FAISS インデックス構築スクリプト（ローカル実行版）。
 
-ソース（全 2,285+ エントリ）:
-  data/staging/fefta_law_v5.json   → 外為法省令 (law / tsutatsu / parameter)
-  data/staging/ccl_eccn_entries_v8.json → US EAR CCL エントリ (eccn)
+ソース:
+  data/staging/fefta_law_v5.json          → 外為法省令 (law / tsutatsu / parameter)
+                                             ※ entity_list は除外（スクリーニング用途と分離）
+  data/staging/ccl_eccn_entries_v8.json   → US EAR CCL エントリ (eccn)
+  data/staging/usml_itar_entries.json     → ITAR/USML (usml_itar)
+  data/staging/eu_dual_use_entries.json   → EU デュアルユース (eu_dual_use)
+  data/staging/wassenaar_ml_entries.json  → ワッセナー軍需品リスト (wassenaar_ml)
+  data/academic/eccn_tech_terms.json      → ECCN技術用語辞書 (eccn_tech)
 
 モデル: intfloat/multilingual-e5-large  (dim=1024)
 出力:
   data/staging/layer_a.index
   data/staging/layer_a_meta.json
-
-embed_text 方針:
-  "passage: {full_text}"  —— e5-large passage プレフィックス
-  parameter エントリには値・単位情報を末尾付加。
-
-注意:
-  - GPU 推奨 (CUDA/MPS)。CPU のみでは数時間かかる場合があります。
-  - Colab 版は notebooks/build_layer_a_colab.ipynb を参照。
 
 使い方:
   cd /path/to/AI_TradeManagement
@@ -49,13 +46,18 @@ logger = logging.getLogger(__name__)
 
 _ROOT           = Path(__file__).resolve().parents[1]
 _STAGING        = _ROOT / "data" / "staging"
+_ACADEMIC       = _ROOT / "data" / "academic"
 _FEFTA_JSON     = _STAGING / "fefta_law_v5.json"
 _ECCN_JSON      = _STAGING / "ccl_eccn_entries_v8.json"
 _USML_JSON      = _STAGING / "usml_itar_entries.json"
 _EU_DU_JSON     = _STAGING / "eu_dual_use_entries.json"
 _WA_ML_JSON     = _STAGING / "wassenaar_ml_entries.json"
+_ECCN_TERMS_JSON = _ACADEMIC / "eccn_tech_terms.json"
 _OUT_INDEX      = _STAGING / "layer_a.index"
 _OUT_META       = _STAGING / "layer_a_meta.json"
+
+# entity_list は制裁スクリーニング用途であり、品目規制判定には不要なため除外
+_SKIP_SOURCE_TYPES = frozenset({"entity_list"})
 
 _MODEL_NAME     = "intfloat/multilingual-e5-large"
 _PASSAGE_PREFIX = "passage: "
@@ -118,12 +120,14 @@ def _load_records() -> list[dict]:
         with open(_FEFTA_JSON, encoding="utf-8") as f:
             fefta_data = json.load(f)
         fefta_recs = fefta_data.get("records", [])
-        logger.info("FEFTA records: %d", len(fefta_recs))
+        logger.info("FEFTA records: %d (before entity_list filter)", len(fefta_recs))
         for r in fefta_recs:
+            src_type = r.get("source_type", "law")
+            if src_type in _SKIP_SOURCE_TYPES:
+                continue
             et = _embed_text_fefta(r)
             if not et:
                 continue
-            src_type = r.get("source_type", "law")
             records.append({
                 "source_type": src_type,
                 "source_name": r.get("source_name", "fefta_shorei"),
@@ -245,6 +249,40 @@ def _load_records() -> list[dict]:
                 "item_no":     cat,
                 "item_label":  cat,
                 "chunk_level": "category",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
+                "embed_text":  et,
+            })
+
+    # ── ECCN 技術用語辞書 (eccn_tech_terms.json) ──────────────────────────────
+    if not _ECCN_TERMS_JSON.exists():
+        logger.warning("ECCN tech terms JSON not found: %s", _ECCN_TERMS_JSON)
+    else:
+        with open(_ECCN_TERMS_JSON, encoding="utf-8") as f:
+            terms_data = json.load(f)
+        eccn_entries = {k: v for k, v in terms_data.items() if not k.startswith("_")}
+        logger.info("ECCN tech terms entries: %d", len(eccn_entries))
+        for eccn_code, entry in eccn_entries.items():
+            label    = entry.get("label", "")
+            keywords = entry.get("keywords", [])
+            ipc_list = entry.get("ipc_codes", [])
+            if not keywords:
+                continue
+            kw_text = "; ".join(keywords)
+            ipc_text = ", ".join(ipc_list) if ipc_list else ""
+            full = f"ECCN {eccn_code} {label}: {kw_text}"
+            if ipc_text:
+                full += f" (IPC: {ipc_text})"
+            et = _PASSAGE_PREFIX + full[:1200]
+            records.append({
+                "source_type": "eccn_tech",
+                "source_name": "eccn_tech_terms",
+                "article_no":  eccn_code,
+                "title":       label,
+                "item_no":     eccn_code,
+                "item_label":  label,
+                "chunk_level": "keywords",
                 "value_mm":    None,
                 "value_unit":  None,
                 "full_text":   full,

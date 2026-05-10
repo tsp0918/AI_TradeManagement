@@ -159,25 +159,29 @@ class ChatConfigUpdate(BaseModel):
     prompt_supplement: str = ""
 
 
-# ── RAG: FAISS Layer A クエリ ──────────────────────────────────────────────────
+# ── RAG: 多層 FAISS + オントロジー クエリ ─────────────────────────────────────
 
 _RAG_TRIGGER_TERMS = frozenset([
     "ECCN", "外為法", "輸出令", "別表", "規制", "該非", "キャッチオール",
     "リスト規制", "EAR", "BIS", "みなし輸出", "技術的パラメータ", "数値閾値",
     "控制", "Wassenaar", "デュアルユース", "許可要件", "条件", "仕様",
+    "HS", "IPC", "特許", "技術", "核", "半導体", "暗号", "センサー",
 ])
+
+# ECCN / HS / IPC コードを検出する正規表現
+import re as _re
+_ECCN_PATTERN = _re.compile(r'\b([0-9][A-E]\d{3}(?:\.\w+)*)\b', _re.IGNORECASE)
+_HS_PATTERN   = _re.compile(r'\b(\d{4}[\.\s]?\d{2})\b')
+_IPC_PATTERN  = _re.compile(r'\b([A-H]\d{2}[A-Z])\b')
 
 _RAG_MIN_SCORE = 0.60
 _RAG_TOP_K = 4
+_RAG_PATENT_TOP_K = 3
+_RAG_PAPER_TOP_K = 2
 
 
 async def _rag_layer_a(message: str) -> str:
-    """
-    メッセージに規制関連ワードが含まれる場合、platform-core の FAISS Layer A を検索し、
-    関連規制テキストのスニペットを返す。
-
-    返値は system prompt に注入する文字列（空の場合はスキップ）。
-    """
+    """Layer A（規制テキスト）RAG。規制関連語を含む場合に検索して返す。"""
     if not any(t in message for t in _RAG_TRIGGER_TERMS):
         return ""
 
@@ -192,9 +196,6 @@ async def _rag_layer_a(message: str) -> str:
         return ""
 
     hits = data.get("hits", [])
-    if not hits:
-        return ""
-
     lines = []
     for h in hits:
         if h.get("score", 0) < _RAG_MIN_SCORE:
@@ -206,8 +207,204 @@ async def _rag_layer_a(message: str) -> str:
 
     if not lines:
         return ""
+    return "【規制条文DB】\n" + "\n".join(lines[:3])
 
-    return "【関連規制データベース参照】\n" + "\n".join(lines[:3])
+
+async def _rag_ontology(message: str) -> str:
+    """
+    メッセージから ECCN / HS / IPC コードを抽出してオントロジーを検索し、
+    説明チェーン（分類根拠・外為法対応・エビデンス数）を返す。
+    """
+    # コード抽出
+    eccns = _ECCN_PATTERN.findall(message)
+    hs_codes = _HS_PATTERN.findall(message)
+    ipc_codes = _IPC_PATTERN.findall(message)
+
+    queries = []
+    for e in eccns[:2]:
+        queries.append(e.upper())
+    for h in hs_codes[:1]:
+        queries.append(h.replace(".", "").replace(" ", ""))
+    for i in ipc_codes[:1]:
+        queries.append(i.upper())
+
+    if not queries:
+        return ""
+
+    lines = []
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for q in queries:
+            try:
+                resp = await client.get(
+                    f"{_PLATFORM_URL}/api/ontology/lookup",
+                    params={"q": q, "top_k": 2},
+                )
+                if resp.status_code != 200:
+                    continue
+                d = resp.json()
+                chain = d.get("explanation_chain", [])
+                if chain:
+                    lines.append(f"[{q}]")
+                    lines.extend(f"  {c}" for c in chain[:5])
+            except Exception:
+                continue
+
+    if not lines:
+        return ""
+    return "【オントロジー分類根拠】\n" + "\n".join(lines)
+
+
+async def _rag_layer_b(message: str, eccns: list[str] | None = None) -> str:
+    """
+    Layer B（特許）RAG。ECCN タグまたはメッセージ内容で関連特許を検索。
+    技術的根拠・先行技術として提示する。
+    """
+    if not any(t in message for t in _RAG_TRIGGER_TERMS):
+        return ""
+
+    url = f"{_PLATFORM_URL}/api/faiss/search/layer-b"
+    q = message[:200]
+    if eccns:
+        q = f"{' '.join(eccns[:2])} {q}"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, params={"q": q, "top_k": _RAG_PATENT_TOP_K})
+        if resp.status_code != 200:
+            return ""
+        data = resp.json()
+    except Exception:
+        return ""
+
+    hits = data.get("hits", [])
+    lines = []
+    for h in hits:
+        if h.get("score", 0) < _RAG_MIN_SCORE:
+            continue
+        pub_no = h.get("publication_number", "")
+        title  = h.get("title", "")[:60]
+        eccn_tags = h.get("eccn_tags", [])[:2]
+        tag_str = f" [{','.join(eccn_tags)}]" if eccn_tags else ""
+        lines.append(f"・{pub_no}{tag_str}: {title}")
+
+    if not lines:
+        return ""
+    return "【関連特許DB（技術根拠）】\n" + "\n".join(lines)
+
+
+async def _rag_layer_d(message: str, eccns: list[str] | None = None) -> str:
+    """
+    Layer D（学術論文）RAG。技術動向・最新研究を根拠として提示する。
+    """
+    if not any(t in message for t in _RAG_TRIGGER_TERMS):
+        return ""
+
+    url = f"{_PLATFORM_URL}/api/faiss/search/layer-d"
+    q = message[:200]
+    eccn_filter = ",".join(eccns[:2]) if eccns else None
+    params: dict = {"q": q, "top_k": _RAG_PAPER_TOP_K}
+    if eccn_filter:
+        params["eccn"] = eccn_filter
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, params=params)
+        if resp.status_code != 200:
+            return ""
+        data = resp.json()
+    except Exception:
+        return ""
+
+    hits = data.get("hits", [])
+    lines = []
+    for h in hits:
+        if h.get("score", 0) < _RAG_MIN_SCORE:
+            continue
+        title = h.get("title", "")[:60]
+        year  = h.get("year", "")
+        cites = h.get("citation_count", 0)
+        lines.append(f"・{title}（{year}年, 引用{cites}回）")
+
+    if not lines:
+        return ""
+    return "【関連学術論文DB（技術動向）】\n" + "\n".join(lines)
+
+
+async def _rag_country_control(message: str, eccns: list[str]) -> str:
+    """
+    メッセージから仕向国を検出し、ECCN × 仕向国のライセンス要否をRAGコンテキストに注入する。
+    """
+    if not eccns:
+        return ""
+
+    # 国名検出（簡易）
+    msg_lower = message.lower()
+    detected_country = None
+    for name, iso in _COUNTRY_NAME_TO_ISO.items():
+        if name.lower() in msg_lower:
+            detected_country = iso
+            break
+    # ISO コード直接検出
+    if not detected_country:
+        import re as _re
+        m = _re.search(r'\b(CN|US|JP|KR|TW|RU|KP|IR|SY|IN|DE|FR|GB|AU)\b', message.upper())
+        if m:
+            detected_country = m.group(1)
+
+    if not detected_country:
+        return ""
+
+    lines = []
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for eccn in eccns[:2]:
+            try:
+                resp = await client.get(
+                    f"{_PLATFORM_URL}/api/ontology/license-check",
+                    params={"eccn": eccn, "country": detected_country},
+                )
+                if resp.status_code != 200:
+                    continue
+                d = resp.json()
+                verdict = d.get("verdict", "")
+                verdict_label = d.get("verdict_label", "")
+                country_name = d.get("country_name_ja", detected_country)
+                cg = d.get("country_group", "")
+                fefta = d.get("fefta_zone", "")
+                lines.append(
+                    f"・ECCN {eccn} × {country_name}({detected_country}): "
+                    f"{verdict_label} [Group {cg} / {fefta}]"
+                )
+            except Exception:
+                continue
+
+    if not lines:
+        return ""
+    return "【Country Control ライセンス要否】\n" + "\n".join(lines)
+
+
+async def _rag_multilayer(message: str) -> str:
+    """
+    多層 RAG: Layer A（規制）+ オントロジー + Country Control + Layer B（特許）+ Layer D（論文）を
+    並列に検索し、統合されたコンテキストブロックを返す。
+    """
+    # 先にECCNコードを抽出してLayer B/D/Country Control検索に使う
+    eccns_found = [e.upper() for e in _ECCN_PATTERN.findall(message)]
+
+    # 並列実行
+    import asyncio
+    layer_a_task    = asyncio.create_task(_rag_layer_a(message))
+    ontology_task   = asyncio.create_task(_rag_ontology(message))
+    country_task    = asyncio.create_task(_rag_country_control(message, eccns_found))
+    layer_b_task    = asyncio.create_task(_rag_layer_b(message, eccns_found))
+    layer_d_task    = asyncio.create_task(_rag_layer_d(message, eccns_found))
+
+    results = await asyncio.gather(
+        layer_a_task, ontology_task, country_task, layer_b_task, layer_d_task,
+        return_exceptions=True,
+    )
+
+    blocks = [r for r in results if isinstance(r, str) and r.strip()]
+    if not blocks:
+        return ""
+    return "\n\n".join(blocks)
 
 
 # ── User Persona Tracking ─────────────────────────────────────────────────────
@@ -786,9 +983,13 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 
     task_block = f"\n【進行中のタスク】\n{current_task}" if current_task else ""
 
-    # RAG context from Layer A FAISS (injected by chat() when regulation terms detected)
+    # RAG context from multilayer FAISS + ontology (injected by chat() when regulation terms detected)
     rag_block = ctx.get("_rag_context", "")
-    rag_section = f"\n\n{rag_block}" if rag_block else ""
+    rag_section = (
+        f"\n\n【規制・技術知識ベース（参照情報）】\n"
+        f"以下は関連する規制条文・分類根拠・特許・論文の要約です。回答の根拠として活用してください:\n"
+        f"{rag_block}"
+    ) if rag_block else ""
 
     return f"""あなたは輸出管理コンプライアンス業務の AI アシスタントです。
 ユーザーが今この画面で何をしようとしているかを理解し、業務フローの文脈に沿って行動まで完結させてください。
@@ -954,12 +1155,14 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
   choices: [{{"label": "AI分類の手順", "message": "AI分類の手順を教えてください"}}, {{"label": "戻り方", "message": "DAPに戻るにはどうしますか"}}]
 
 【NeuroSymbolic 該非判定エージェント（重要機能）】
-- ユーザーが「該非判定エージェント」「NeuroSymbolicエージェント」「対話形式の判定」「AI質問形式で判定」などと言った場合は、
-  actions に {{"type": "start_agent", "target": "", "initial_query": "<品目の説明>", "transaction_id": <番号またはnull>}} を含める
-- initial_query には品目名・仕様・用途などユーザーが述べた情報をそのまま渡す
+- ユーザーが以下のような意図を示した場合、actions に {{"type": "start_agent", ...}} を含める:
+  「該非判定したい」「規制対象か確認したい」「輸出できるか確認したい」「外為法に引っかかるか」
+  「NeuroSymbolicエージェント」「対話形式で判定」「AI質問形式で判定」など
+- initial_query にはユーザーが述べた品目・仕様・取引に関する情報をそのまま渡す（日本語可）
 - transaction_id はコンテキストから判断できる場合のみ数値で設定（不明な場合は省略）
-- start_agent を含む場合、reply はエージェント起動の説明（「NeuroSymbolicエージェントを起動します。対話形式で外為法・EAR該非判定を行います」など）にする
-- エージェントが起動すると、以降の返答は直接エージェントから来る（Claude を通さない）
+- start_agent を含む場合の reply は「これから〇〇について確認していきます」という自然な誘導文にする
+- エージェントが起動すると、以降の返答はシステムが生成し、ユーザーは自由に日本語・英語で回答できる
+- ユーザーが明示的な専門用語（"civilian"等）を知らなくても構わない。システムが自動的に解釈する
 
 【ユースケース別ナビゲーションガイド — 業務完結まで伴走する】
 
@@ -1095,12 +1298,14 @@ Q: BOM管理でサプライヤーから情報が取れない場合は？
 A: サプライヤーポータルのURL発行機能（UC7 Step1）でサプライヤーに申告書提出を依頼できます。提出期限を設定して催促することも重要です。情報が取得できない場合は「最悪ケース仮定」（全て規制対象と仮定）でDe Minimisを計算し、リスクが高ければ代替部品の調達を検討してください。
 
 【NeuroSymbolic 該非判定エージェント（重要機能）】
-- ユーザーが「該非判定エージェント」「NeuroSymbolicエージェント」「対話形式の判定」「AI質問形式で判定」などと言った場合は、
-  actions に {{"type": "start_agent", "target": "", "initial_query": "<品目の説明>", "transaction_id": <番号またはnull>}} を含める
-- initial_query には品目名・仕様・用途などユーザーが述べた情報をそのまま渡す
+- ユーザーが以下のような意図を示した場合、actions に {{"type": "start_agent", ...}} を含める:
+  「該非判定したい」「規制対象か確認したい」「輸出できるか確認したい」「外為法に引っかかるか」
+  「NeuroSymbolicエージェント」「対話形式で判定」「AI質問形式で判定」など
+- initial_query にはユーザーが述べた品目・仕様・取引に関する情報をそのまま渡す（日本語可）
 - transaction_id はコンテキストから判断できる場合のみ数値で設定（不明な場合は省略）
-- start_agent を含む場合、reply はエージェント起動の説明（「NeuroSymbolicエージェントを起動します。対話形式で外為法・EAR該非判定を行います」など）にする
-- エージェントが起動すると、以降の返答は直接エージェントから来る（Claude を通さない）
+- start_agent を含む場合の reply は「これから〇〇について確認していきます」という自然な誘導文にする
+- エージェントが起動すると、以降の返答はシステムが生成し、ユーザーは自由に日本語・英語で回答できる
+- ユーザーが明示的な専門用語（"civilian"等）を知らなくても構わない。システムが自動的に解釈する
 
 【ルール】
 - reply: マークダウン禁止（**や# など使わない）。100字以内の口語体日本語。
@@ -1147,30 +1352,212 @@ async def _start_agent_session(initial_query: str, transaction_id: Optional[int]
         return resp.json()
 
 
-def _format_agent_turn(agent_resp: dict) -> tuple[str, list[dict]]:
+# 国名 → ISO 2文字コード 簡易辞書
+_COUNTRY_NAME_TO_ISO: dict[str, str] = {
+    "日本": "JP", "japan": "JP", "アメリカ": "US", "米国": "US", "アメリカ合衆国": "US",
+    "united states": "US", "usa": "US", "us": "US", "中国": "CN", "china": "CN",
+    "韓国": "KR", "south korea": "KR", "korea": "KR", "台湾": "TW", "taiwan": "TW",
+    "ドイツ": "DE", "germany": "DE", "フランス": "FR", "france": "FR",
+    "イギリス": "GB", "英国": "GB", "uk": "GB", "united kingdom": "GB",
+    "ロシア": "RU", "russia": "RU", "北朝鮮": "KP", "north korea": "KP",
+    "イラン": "IR", "iran": "IR", "シリア": "SY", "syria": "SY",
+    "インド": "IN", "india": "IN", "シンガポール": "SG", "singapore": "SG",
+    "タイ": "TH", "thailand": "TH", "インドネシア": "ID", "indonesia": "ID",
+    "マレーシア": "MY", "malaysia": "MY", "ベトナム": "VN", "vietnam": "VN",
+    "オーストラリア": "AU", "australia": "AU", "カナダ": "CA", "canada": "CA",
+    "UAE": "AE", "アラブ首長国連邦": "AE", "サウジアラビア": "SA", "saudi arabia": "SA",
+    "パキスタン": "PK", "pakistan": "PK", "ベラルーシ": "BY", "belarus": "BY",
+}
+
+
+async def _extract_attr_value(
+    user_message: str,
+    missing_attr: dict,
+    client: "anthropic.Anthropic",
+) -> str:
     """
-    agent API レスポンスをチャット用 reply + choices に変換する。
+    ユーザーの自然言語回答から属性値を抽出し、エージェントAPIが受け取れる形式に正規化する。
+    抽出失敗時は "unknown" を返す。
+    """
+    attr_key = missing_attr.get("attr_key", "")
+    label = missing_attr.get("label", "")
+    unit = missing_attr.get("unit", "")
+    example = missing_attr.get("example", "")
+
+    # 国名コード変換（ローカル辞書で先に試みる）
+    if attr_key == "destination_country":
+        msg_lower = user_message.strip().lower()
+        # 2文字大文字コードが直接入力された場合
+        import re as _re
+        iso_match = _re.search(r'\b([A-Z]{2})\b', user_message.upper())
+        for key, iso in _COUNTRY_NAME_TO_ISO.items():
+            if key.lower() in msg_lower:
+                return iso
+        if iso_match:
+            return iso_match.group(1)
+
+    # 数値属性: 単純なパース
+    if unit:
+        import re as _re
+        nums = _re.findall(r'[\d]+\.?[\d]*', user_message.replace(",", ""))
+        if nums:
+            return nums[0]
+
+    # LLM による抽出（Haiku - 低コスト）
+    # 属性ごとの有効値ヒント
+    _valid_hints: dict[str, str] = {
+        "end_use_type": "civilian(民生用), military(軍事用), weapons(武器), dual_use_military(デュアルユース), research(研究), government(政府), unknown(不明)",
+        "end_user_type": "commercial(民間企業), military_org(軍事組織), government(政府機関), research_inst(研究機関), individual(個人), unknown(不明)",
+        "substance_type": "cw_precursor(化学兵器前駆体), bw_agent(生物剤), cw_agent(化学剤), industrial_chemical(産業用化学品), pharmaceutical(医薬品)",
+    }
+    valid_hint = _valid_hints.get(attr_key, "")
+
+    extraction_prompt = f"""以下のユーザー回答から「{label}」の値を抽出してください。
+
+属性キー: {attr_key}
+{f'有効な値: {valid_hint}' if valid_hint else ''}
+{f'単位: {unit}' if unit else ''}
+{f'例: {example}' if example else ''}
+
+ユーザー回答:
+{user_message}
+
+【指示】
+- 上記の有効な値のいずれかに最もよく対応するものを1つだけ返してください
+- 数値の場合は数字のみ（単位なし）を返してください
+- 判断できない場合は "unknown" を返してください
+- 理由や説明は不要です。値のみを返してください"""
+
+    try:
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=50,
+            messages=[{"role": "user", "content": extraction_prompt}],
+        )
+        extracted = resp.content[0].text.strip().split("\n")[0].strip()
+        # 空や長すぎる場合はフォールバック
+        if not extracted or len(extracted) > 50:
+            return "unknown"
+        return extracted
+    except Exception:
+        return user_message.strip()  # 抽出失敗時はそのまま渡す
+
+
+def _format_agent_turn(agent_resp: dict, initial_query: str = "") -> tuple[str, list[dict]]:
+    """
+    agent API レスポンスをチャット用 reply + choices に自然な形式で変換する。
     戻り値: (reply, choices)
     """
     if agent_resp.get("is_ready_for_judgment"):
         reply = (
-            "必要な情報が揃いました。最終判定を実行します。"
-            f"（絞り込み候補: {agent_resp.get('candidates_count', 0)}件）"
+            "確認に必要な情報が揃いました。\n\n"
+            "収集した情報をもとに該非判定を実行します。"
+            "「判定を実行」ボタンを押すか、追加で確認したいことがあればお知らせください。"
         )
         choices = [
-            {"label": "判定を実行",     "message": "__hantei_execute_judge__"},
-            {"label": "エージェント終了", "message": "__hantei_cancel__"},
+            {"label": "判定を実行",       "message": "__hantei_execute_judge__"},
+            {"label": "判定前に確認したい", "message": "判定前にもう少し詳しく教えてください"},
+            {"label": "やり直す",          "message": "__hantei_cancel__"},
         ]
     else:
-        question = agent_resp.get("question", "次の質問を確認中...")
-        count = agent_resp.get("candidates_count", "?")
-        reply = f"{question}（候補 {count}件）"
-        choices = [
-            {"label": "わからない",     "message": "よくわかりません。一般的な回答を教えてください"},
-            {"label": "該当なし",       "message": "該当しません"},
-            {"label": "エージェント終了", "message": "__hantei_cancel__"},
-        ]
+        question = agent_resp.get("question", "")
+        missing_attr = agent_resp.get("missing_attr") or {}
+        label = missing_attr.get("label", "")
+
+        if not question:
+            question = "もう少し詳しく教えていただけますか？"
+
+        reply = question
+
+        # コンテキストに応じた選択肢
+        attr_key = missing_attr.get("attr_key", "")
+        if attr_key == "end_use_type":
+            choices = [
+                {"label": "民生・商業用途",  "message": "民間の商業目的での使用です"},
+                {"label": "研究・開発用途",  "message": "研究開発目的での使用です"},
+                {"label": "用途が不明",      "message": "具体的な用途はまだ決まっていません"},
+                {"label": "やめる",          "message": "__hantei_cancel__"},
+            ]
+        elif attr_key == "end_user_type":
+            choices = [
+                {"label": "民間企業",    "message": "民間企業が最終需要者です"},
+                {"label": "研究機関",    "message": "大学・研究機関が最終需要者です"},
+                {"label": "政府・官公庁", "message": "政府機関が最終需要者です"},
+                {"label": "不明",        "message": "最終需要者はまだ確定していません"},
+                {"label": "やめる",      "message": "__hantei_cancel__"},
+            ]
+        elif attr_key == "destination_country":
+            choices = [
+                {"label": "日本国内",      "message": "日本国内向けです"},
+                {"label": "米国",          "message": "アメリカ合衆国向けです"},
+                {"label": "EU域内",        "message": "EU加盟国向けです"},
+                {"label": "中国",          "message": "中国向けです"},
+                {"label": "仕向地不明",    "message": "仕向地はまだ決まっていません"},
+                {"label": "やめる",        "message": "__hantei_cancel__"},
+            ]
+        else:
+            choices = [
+                {"label": "わからない・確認中", "message": "この点についてはまだ確認できていません"},
+                {"label": "やめる",            "message": "__hantei_cancel__"},
+            ]
     return reply, choices
+
+
+def _format_judge_result(judge_data: dict) -> tuple[str, list[dict]]:
+    """判定結果を自然言語でフォーマットする。戻り値: (reply, choices)"""
+    status = judge_data.get("overall_status", "pending")
+    summary = judge_data.get("summary", "")
+    controlled = judge_data.get("controlled_items", [])
+    excluded = judge_data.get("excluded_items", [])
+    reasons = judge_data.get("reasons", [])
+
+    # ステータスラベル
+    status_labels = {
+        "CLEAR":          "✅ 規制対象外（該当なし）",
+        "REVIEW":         "⚠️ 要確認（一部項目について追加調査が必要）",
+        "REQUIRES_PERMIT": "🔴 許可申請必要",
+        "CONTROLLED":     "🔴 規制品目に該当",
+        "pending":        "⏳ 判定保留中",
+    }
+    status_label = status_labels.get(status, f"判定結果: {status}")
+
+    lines = [f"**該非判定が完了しました。**", "", f"**総合判定: {status_label}**", ""]
+
+    if controlled:
+        # FEFTA/ECCN IDを読みやすく変換
+        controlled_readable = []
+        for item in controlled:
+            if item.startswith("FEFTA::"):
+                parts = item.split("::")
+                item_no = parts[1] if len(parts) > 1 else item
+                controlled_readable.append(f"外為法 輸出令別表第1 第{item_no}項")
+            elif item.startswith("ECCN::"):
+                eccn = item.replace("ECCN::", "")
+                controlled_readable.append(f"EAR ECCN {eccn}")
+            else:
+                controlled_readable.append(item)
+        lines.append(f"**規制対象項目:** {' / '.join(controlled_readable)}")
+        lines.append("")
+
+    if excluded:
+        lines.append(f"該当なし（除外）: {len(excluded)}件")
+        lines.append("")
+
+    if summary:
+        lines.append(summary)
+        lines.append("")
+
+    if status in ("REQUIRES_PERMIT", "CONTROLLED"):
+        lines.append("輸出許可証の申請または担当部門への確認が必要です。")
+    elif status == "REVIEW":
+        lines.append("一部項目について追加情報の収集または専門家への確認をお勧めします。")
+
+    choices = [
+        {"label": "判定結果の詳細を確認",   "message": "判定結果の詳細と根拠を詳しく説明してください"},
+        {"label": "許可申請の手続きを確認", "message": "輸出許可申請はどのように進めればよいですか"},
+        {"label": "別の品目を判定する",     "message": "新しい品目で該非判定エージェントを起動したい"},
+    ]
+    return "\n".join(lines), choices
 
 
 @router.post("/api/chat", response_model=ChatResponse)
@@ -1212,10 +1599,11 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
         # キャンセル
         if message == "__hantei_cancel__":
             session_data["hantei_agent_session_id"] = None
+            session_data.pop("hantei_missing_attr", None)
             if req.session_id:
                 _save_session(req.session_id, session_data)
             return ChatResponse(
-                reply="NeuroSymbolic 該非判定エージェントを終了しました。",
+                reply="該非判定を終了しました。いつでも再開できます。何か他にお手伝いできることがあればお気軽にどうぞ。",
                 actions=[],
                 choices=[
                     {"label": "新規判定",     "message": "新しい品目で該非判定エージェントを起動したい"},
@@ -1227,24 +1615,28 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
             if message == "__hantei_execute_judge__":
                 judge_data = await _call_agent_judge(agent_session_id)
                 session_data["hantei_agent_session_id"] = None
+                session_data.pop("hantei_missing_attr", None)
                 if req.session_id:
                     _save_session(req.session_id, session_data)
-                status = judge_data.get("overall_status", "pending")
-                summary = judge_data.get("summary", "")
-                controlled = ", ".join(judge_data.get("controlled_items", [])) or "なし"
-                reply = (
-                    f"判定完了。総合ステータス: {status}。"
-                    f"規制対象項番: {controlled}。"
-                    f"{summary[:100] if summary else ''}"
-                )
-                choices = [
-                    {"label": "判定詳細を確認", "message": "判定結果の詳細を教えてください"},
-                    {"label": "新規判定",       "message": "新しい品目で該非判定エージェントを起動したい"},
-                ]
+                reply, choices = _format_judge_result(judge_data)
                 return ChatResponse(reply=reply, actions=[], choices=choices)
 
-            # 通常回答転送
-            agent_resp = await _call_agent_answer(agent_session_id, message)
+            # 自然言語 → 属性値 抽出（前回のmissing_attrを使用）
+            missing_attr = session_data.get("hantei_missing_attr") or {}
+            if missing_attr and missing_attr.get("attr_key"):
+                normalized = await _extract_attr_value(message, missing_attr, client)
+            else:
+                normalized = message
+
+            # 正規化した値をエージェントAPIに送信
+            agent_resp = await _call_agent_answer(agent_session_id, normalized)
+
+            # 次回の抽出のために missing_attr を保存
+            if agent_resp.get("missing_attr"):
+                session_data["hantei_missing_attr"] = agent_resp["missing_attr"]
+            else:
+                session_data.pop("hantei_missing_attr", None)
+
             reply, choices = _format_agent_turn(agent_resp)
 
             if req.session_id:
@@ -1257,12 +1649,12 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
             return ChatResponse(reply=reply, actions=[], choices=choices)
 
         except httpx.HTTPError as e:
-            # エージェント API エラー: エージェントモードを解除して通常モードへ
             session_data["hantei_agent_session_id"] = None
+            session_data.pop("hantei_missing_attr", None)
             if req.session_id:
                 _save_session(req.session_id, session_data)
             return ChatResponse(
-                reply=f"エージェント接続エラーが発生しました。通常モードに戻ります。（{e}）",
+                reply="一時的に接続できませんでした。もう一度お試しいただくか、しばらく経ってから再開してください。",
                 actions=[],
                 choices=[
                     {"label": "再起動",         "message": "該非判定エージェントをもう一度起動したい"},
@@ -1454,8 +1846,8 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     ctx["_persona_str"]    = _persona_context_str(persona, session_data)
     ctx["_workflow_alerts"] = workflow_alert_str
 
-    # RAG: Layer A 検索（規制関連質問のみ）
-    rag_context = await _rag_layer_a(req.message)
+    # RAG: 多層検索（Layer A 規制条文 + オントロジー + Layer B 特許 + Layer D 論文）
+    rag_context = await _rag_multilayer(req.message)
     if rag_context:
         ctx["_rag_context"] = rag_context
 
@@ -1615,22 +2007,22 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
             new_agent_session_id = agent_start["session_id"]
             session_data["hantei_agent_session_id"] = new_agent_session_id
 
-            # エージェントの最初の質問を reply に差し込む
+            # 最初の missing_attr を保存（次の回答抽出に使用）
+            if agent_start.get("missing_attr"):
+                session_data["hantei_missing_attr"] = agent_start["missing_attr"]
+
+            # エージェントの最初の質問を自然な形で提示
             first_q = agent_start.get("question", "")
-            count = agent_start.get("candidates_count", "?")
             if first_q:
                 reply_text = (
-                    f"NeuroSymbolic 該非判定エージェントを起動しました。"
-                    f"（候補 {count}件で絞り込み開始）\n\n{first_q}"
+                    "該非判定を開始します。いくつか確認させてください。\n\n"
+                    f"{first_q}\n\n"
+                    "日本語でも英語でも、自由に回答していただいて構いません。"
                 )
             result_actions = [a for a in result_actions if a.get("type") != "start_agent"]
-            result_choices = [
-                {"label": "わからない",     "message": "よくわかりません。一般的な回答を教えてください"},
-                {"label": "該当なし",       "message": "該当しません"},
-                {"label": "エージェント終了", "message": "__hantei_cancel__"},
-            ]
+            _, result_choices = _format_agent_turn(agent_start)
         except httpx.HTTPError:
-            reply_text += "（エージェント起動に失敗しました。後でもう一度お試しください）"
+            reply_text += "\n\n（判定エージェントの起動に失敗しました。しばらく経ってから再度お試しください）"
 
     # セッションに保存
     if req.session_id:

@@ -1,0 +1,26 @@
+{
+  "_built_at": "2026-05-10T05:13:09.824182+00:00",
+  "total_nodes": 2512,
+  "total_edges": 6318,
+  "nodes_by_type": {
+    "ECCN": 637,
+    "CATEGORY": 10,
+    "PRODUCT_GROUP": 5,
+    "FEFTA": 17,
+    "HS": 1469,
+    "IPC": 174,
+    "FTERM": 200
+  },
+  "edges_by_type": {
+    "eccn_to_cat": 637,
+    "eccn_to_pg": 637,
+    "eccn_to_fefta": 513,
+    "cat_related": 790,
+    "hs_to_eccn": 1420,
+    "ipc_to_eccn": 2078,
+    "fterm_to_eccn": 243
+  },
+  "is_strongly_connected": false,
+  "weakly_connected_components": 67,
+  "avg_out_degree": 2.52
+}

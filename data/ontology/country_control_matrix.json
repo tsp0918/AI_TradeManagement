@@ -1,0 +1,1354 @@
+{
+  "_version": "1.0",
+  "_built_at": "2026-05-10T04:54:34.259082+00:00",
+  "_description": "EAR Country Control Matrix — 国別輸出規制分類（platform-core API 用）",
+  "stats": {
+    "total_countries": 65,
+    "by_group": {
+      "A": 38,
+      "B": 8,
+      "D:1": 14,
+      "E:1": 5
+    }
+  },
+  "country_groups": {
+    "A": {
+      "label_ja": "グループA（信頼国・同盟国）",
+      "label_en": "Country Group A (White Countries)",
+      "description_ja": "Wassenaar・NSG 等の多国間輸出管理体制加盟国。STA 等の例外が広く適用可能。",
+      "license_tendency": "NLR / STA"
+    },
+    "B": {
+      "label_ja": "グループB（標準国）",
+      "label_en": "Country Group B (Standard Countries)",
+      "description_ja": "上記以外の標準国。GBS/LVS 等の例外が適用可能な場合あり。",
+      "license_tendency": "GBS / LVS 例外"
+    },
+    "D:1": {
+      "label_ja": "グループD:1（国家安全保障懸念国）",
+      "label_en": "Country Group D:1 (NS Concern Countries)",
+      "description_ja": "NS 品目について許可審査が厳格化。MT/NP/CB 品目はほぼ許可必要。",
+      "license_tendency": "LICENSE_REQUIRED（MT/NP/CB品目）/ CIV 例外（NS品目・民需）"
+    },
+    "E:1": {
+      "label_ja": "グループE:1（禁輸国）",
+      "label_en": "Country Group E:1 (Embargoed Countries)",
+      "description_ja": "原則として全品目に輸出禁止。包括的制裁対象。",
+      "license_tendency": "PROHIBITED"
+    }
+  },
+  "countries": {
+    "JP": {
+      "code": "JP",
+      "name_ja": "日本",
+      "name_en": "Japan",
+      "region": "Asia-Pacific",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "US": {
+      "code": "US",
+      "name_ja": "米国",
+      "name_en": "United States",
+      "region": "North America",
+      "country_group": "A",
+      "sta_eligible": false,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "CA": {
+      "code": "CA",
+      "name_ja": "カナダ",
+      "name_en": "Canada",
+      "region": "North America",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "GB": {
+      "code": "GB",
+      "name_ja": "英国",
+      "name_en": "United Kingdom",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "DE": {
+      "code": "DE",
+      "name_ja": "ドイツ",
+      "name_en": "Germany",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "FR": {
+      "code": "FR",
+      "name_ja": "フランス",
+      "name_en": "France",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "IT": {
+      "code": "IT",
+      "name_ja": "イタリア",
+      "name_en": "Italy",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "ES": {
+      "code": "ES",
+      "name_ja": "スペイン",
+      "name_en": "Spain",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "NL": {
+      "code": "NL",
+      "name_ja": "オランダ",
+      "name_en": "Netherlands",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "BE": {
+      "code": "BE",
+      "name_ja": "ベルギー",
+      "name_en": "Belgium",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "SE": {
+      "code": "SE",
+      "name_ja": "スウェーデン",
+      "name_en": "Sweden",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "NO": {
+      "code": "NO",
+      "name_ja": "ノルウェー",
+      "name_en": "Norway",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "DK": {
+      "code": "DK",
+      "name_ja": "デンマーク",
+      "name_en": "Denmark",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "FI": {
+      "code": "FI",
+      "name_ja": "フィンランド",
+      "name_en": "Finland",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "AT": {
+      "code": "AT",
+      "name_ja": "オーストリア",
+      "name_en": "Austria",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "CH": {
+      "code": "CH",
+      "name_ja": "スイス",
+      "name_en": "Switzerland",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "AU": {
+      "code": "AU",
+      "name_ja": "オーストラリア",
+      "name_en": "Australia",
+      "region": "Asia-Pacific",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "NZ": {
+      "code": "NZ",
+      "name_ja": "ニュージーランド",
+      "name_en": "New Zealand",
+      "region": "Asia-Pacific",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "PL": {
+      "code": "PL",
+      "name_ja": "ポーランド",
+      "name_en": "Poland",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "CZ": {
+      "code": "CZ",
+      "name_ja": "チェコ",
+      "name_en": "Czech Republic",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "HU": {
+      "code": "HU",
+      "name_ja": "ハンガリー",
+      "name_en": "Hungary",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "GR": {
+      "code": "GR",
+      "name_ja": "ギリシャ",
+      "name_en": "Greece",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "PT": {
+      "code": "PT",
+      "name_ja": "ポルトガル",
+      "name_en": "Portugal",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "IE": {
+      "code": "IE",
+      "name_ja": "アイルランド",
+      "name_en": "Ireland",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "LU": {
+      "code": "LU",
+      "name_ja": "ルクセンブルク",
+      "name_en": "Luxembourg",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "IS": {
+      "code": "IS",
+      "name_ja": "アイスランド",
+      "name_en": "Iceland",
+      "region": "Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "TR": {
+      "code": "TR",
+      "name_ja": "トルコ",
+      "name_en": "Turkey",
+      "region": "Middle East/Europe",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "white",
+      "notes": ""
+    },
+    "KR": {
+      "code": "KR",
+      "name_ja": "韓国",
+      "name_en": "South Korea",
+      "region": "Asia-Pacific",
+      "country_group": "B",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "TW": {
+      "code": "TW",
+      "name_ja": "台湾",
+      "name_en": "Taiwan",
+      "region": "Asia-Pacific",
+      "country_group": "B",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "SG": {
+      "code": "SG",
+      "name_ja": "シンガポール",
+      "name_en": "Singapore",
+      "region": "Asia-Pacific",
+      "country_group": "B",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "MY": {
+      "code": "MY",
+      "name_ja": "マレーシア",
+      "name_en": "Malaysia",
+      "region": "Asia-Pacific",
+      "country_group": "B",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "TH": {
+      "code": "TH",
+      "name_ja": "タイ",
+      "name_en": "Thailand",
+      "region": "Asia-Pacific",
+      "country_group": "B",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "PH": {
+      "code": "PH",
+      "name_ja": "フィリピン",
+      "name_en": "Philippines",
+      "region": "Asia-Pacific",
+      "country_group": "B",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "ID": {
+      "code": "ID",
+      "name_ja": "インドネシア",
+      "name_en": "Indonesia",
+      "region": "Asia-Pacific",
+      "country_group": "B",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "HK": {
+      "code": "HK",
+      "name_ja": "香港",
+      "name_en": "Hong Kong",
+      "region": "Asia-Pacific",
+      "country_group": "B",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": "2020年以降、米国はHKをCNと同等扱い。実務上D:1相当で取り扱うことを推奨。"
+    },
+    "CN": {
+      "code": "CN",
+      "name_ja": "中国",
+      "name_en": "China",
+      "region": "Asia-Pacific",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": "EAR D:1。半導体・AIチップ等に追加規制（Entity List含む）。外為法 地域別輸出管理強化。"
+    },
+    "RU": {
+      "code": "RU",
+      "name_ja": "ロシア",
+      "name_en": "Russia",
+      "region": "Europe/Asia",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": "2022年ウクライナ侵攻以降の大幅規制強化。EAR D:1 + 広範な制裁。"
+    },
+    "BY": {
+      "code": "BY",
+      "name_ja": "ベラルーシ",
+      "name_en": "Belarus",
+      "region": "Europe",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": "ロシア支援国。EAR D:1。"
+    },
+    "IN": {
+      "code": "IN",
+      "name_ja": "インド",
+      "name_en": "India",
+      "region": "South Asia",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": "D:1 だが Quad パートナー。一部品目は STA/NLR 適用可能。"
+    },
+    "PK": {
+      "code": "PK",
+      "name_ja": "パキスタン",
+      "name_en": "Pakistan",
+      "region": "South Asia",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": "核・ミサイル技術懸念。NP/MT 品目は許可必要。"
+    },
+    "EG": {
+      "code": "EG",
+      "name_ja": "エジプト",
+      "name_en": "Egypt",
+      "region": "Middle East/Africa",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": ""
+    },
+    "SA": {
+      "code": "SA",
+      "name_ja": "サウジアラビア",
+      "name_en": "Saudi Arabia",
+      "region": "Middle East",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": ""
+    },
+    "AE": {
+      "code": "AE",
+      "name_ja": "UAE（アラブ首長国連邦）",
+      "name_en": "United Arab Emirates",
+      "region": "Middle East",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": "再輸出ハブとして要注意。転送先が懸念国の場合は追加確認必要。"
+    },
+    "VN": {
+      "code": "VN",
+      "name_ja": "ベトナム",
+      "name_en": "Vietnam",
+      "region": "Asia-Pacific",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": ""
+    },
+    "MM": {
+      "code": "MM",
+      "name_ja": "ミャンマー",
+      "name_en": "Myanmar",
+      "region": "Asia-Pacific",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": "2021年クーデター後の軍政。制裁あり。"
+    },
+    "IL": {
+      "code": "IL",
+      "name_ja": "イスラエル",
+      "name_en": "Israel",
+      "region": "Middle East",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": ""
+    },
+    "QA": {
+      "code": "QA",
+      "name_ja": "カタール",
+      "name_en": "Qatar",
+      "region": "Middle East",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": ""
+    },
+    "KW": {
+      "code": "KW",
+      "name_ja": "クウェート",
+      "name_en": "Kuwait",
+      "region": "Middle East",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": ""
+    },
+    "VE": {
+      "code": "VE",
+      "name_ja": "ベネズエラ",
+      "name_en": "Venezuela",
+      "region": "Latin America",
+      "country_group": "D:1",
+      "sta_eligible": false,
+      "fefta_zone": "懸念地域",
+      "notes": "OFAC制裁対象政権関連取引に注意。"
+    },
+    "KP": {
+      "code": "KP",
+      "name_ja": "北朝鮮",
+      "name_en": "North Korea",
+      "region": "Asia-Pacific",
+      "country_group": "E:1",
+      "sta_eligible": false,
+      "fefta_zone": "禁輸地域",
+      "notes": "包括的禁輸。EAR E:1・OFAC包括制裁・外為法 特定国家。"
+    },
+    "IR": {
+      "code": "IR",
+      "name_ja": "イラン",
+      "name_en": "Iran",
+      "region": "Middle East",
+      "country_group": "E:1",
+      "sta_eligible": false,
+      "fefta_zone": "禁輸地域",
+      "notes": "包括的禁輸。核・ミサイル・テロ関連制裁。"
+    },
+    "CU": {
+      "code": "CU",
+      "name_ja": "キューバ",
+      "name_en": "Cuba",
+      "region": "Latin America",
+      "country_group": "E:1",
+      "sta_eligible": false,
+      "fefta_zone": "禁輸地域",
+      "notes": "米国包括制裁（CACR）。"
+    },
+    "SY": {
+      "code": "SY",
+      "name_ja": "シリア",
+      "name_en": "Syria",
+      "region": "Middle East",
+      "country_group": "E:1",
+      "sta_eligible": false,
+      "fefta_zone": "禁輸地域",
+      "notes": "化学兵器使用・人権侵害制裁。"
+    },
+    "SD": {
+      "code": "SD",
+      "name_ja": "スーダン",
+      "name_en": "Sudan",
+      "region": "Africa",
+      "country_group": "E:1",
+      "sta_eligible": false,
+      "fefta_zone": "禁輸地域",
+      "notes": "OFAC制裁。軍・武装勢力関連。"
+    },
+    "BG": {
+      "code": "BG",
+      "name_ja": "BG",
+      "name_en": "BG",
+      "region": "Unknown",
+      "country_group": "A",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "CY": {
+      "code": "CY",
+      "name_ja": "CY",
+      "name_en": "CY",
+      "region": "Unknown",
+      "country_group": "A",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "EE": {
+      "code": "EE",
+      "name_ja": "EE",
+      "name_en": "EE",
+      "region": "Unknown",
+      "country_group": "A",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "HR": {
+      "code": "HR",
+      "name_ja": "HR",
+      "name_en": "HR",
+      "region": "Unknown",
+      "country_group": "A",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "LI": {
+      "code": "LI",
+      "name_ja": "LI",
+      "name_en": "LI",
+      "region": "Unknown",
+      "country_group": "A",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "LT": {
+      "code": "LT",
+      "name_ja": "LT",
+      "name_en": "LT",
+      "region": "Unknown",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "LV": {
+      "code": "LV",
+      "name_ja": "LV",
+      "name_en": "LV",
+      "region": "Unknown",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "MT": {
+      "code": "MT",
+      "name_ja": "MT",
+      "name_en": "MT",
+      "region": "Unknown",
+      "country_group": "A",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "RO": {
+      "code": "RO",
+      "name_ja": "RO",
+      "name_en": "RO",
+      "region": "Unknown",
+      "country_group": "A",
+      "sta_eligible": false,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "SI": {
+      "code": "SI",
+      "name_ja": "SI",
+      "name_en": "SI",
+      "region": "Unknown",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    },
+    "SK": {
+      "code": "SK",
+      "name_ja": "SK",
+      "name_en": "SK",
+      "region": "Unknown",
+      "country_group": "A",
+      "sta_eligible": true,
+      "fefta_zone": "普通地域",
+      "notes": ""
+    }
+  },
+  "matrix_summary": {
+    "0A": {
+      "reasons": [
+        "NS1",
+        "NP1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "0B": {
+      "reasons": [
+        "NS1",
+        "NP1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "0C": {
+      "reasons": [
+        "NP1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "0D": {
+      "reasons": [
+        "NS1",
+        "NP1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "0E": {
+      "reasons": [
+        "NS1",
+        "NP1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "1A": {
+      "reasons": [
+        "CB1",
+        "NP1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "1B": {
+      "reasons": [
+        "CB1",
+        "NP1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "1C": {
+      "reasons": [
+        "CB1",
+        "CB2",
+        "CB3",
+        "NP1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "1D": {
+      "reasons": [
+        "CB1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "1E": {
+      "reasons": [
+        "CB1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "2A": {
+      "reasons": [
+        "NS1",
+        "NP1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "2B": {
+      "reasons": [
+        "NS1",
+        "NP1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "2D": {
+      "reasons": [
+        "NS1",
+        "NP1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "2E": {
+      "reasons": [
+        "NS1",
+        "NP1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "3A": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "3B": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "3C": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "3D": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "3E": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "4A": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "4D": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "4E": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "5A": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "5B": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "5D": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "5E": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "6A": {
+      "reasons": [
+        "NS1",
+        "RS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "6B": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "6C": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "6D": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "6E": {
+      "reasons": [
+        "NS1",
+        "RS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "7A": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "7B": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "7D": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "7E": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "8A": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "8B": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "8C": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "8D": {
+      "reasons": [
+        "NS1",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "NLR",
+        "B": "EXCEPTION",
+        "D:1": "EXCEPTION",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "8E": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "9A": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "9B": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "9C": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "9D": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    },
+    "9E": {
+      "reasons": [
+        "NS1",
+        "MT",
+        "AT1"
+      ],
+      "verdicts_by_group": {
+        "A": "EXCEPTION",
+        "B": "EXCEPTION",
+        "D:1": "LICENSE_REQUIRED",
+        "E:1": "PROHIBITED"
+      }
+    }
+  },
+  "fefta_zones": {
+    "white": {
+      "label_ja": "ホワイト国（輸出令別表第3の2）",
+      "description_ja": "安全保障上信頼できる国。特定品目のリスト規制包括許可が適用可能。",
+      "countries": [
+        "JP",
+        "US",
+        "CA",
+        "GB",
+        "DE",
+        "FR",
+        "IT",
+        "ES",
+        "NL",
+        "BE",
+        "SE",
+        "NO",
+        "DK",
+        "FI",
+        "AT",
+        "CH",
+        "AU",
+        "NZ",
+        "PL",
+        "CZ",
+        "HU",
+        "GR",
+        "PT",
+        "IE",
+        "LU",
+        "IS",
+        "TR"
+      ]
+    },
+    "普通地域": {
+      "label_ja": "普通地域",
+      "description_ja": "個別に許可判断が必要な標準地域。",
+      "countries": [
+        "KR",
+        "TW",
+        "SG",
+        "MY",
+        "TH",
+        "PH",
+        "ID",
+        "HK",
+        "BG",
+        "CY",
+        "EE",
+        "HR",
+        "LI",
+        "LT",
+        "LV",
+        "MT",
+        "RO",
+        "SI",
+        "SK"
+      ]
+    },
+    "懸念地域": {
+      "label_ja": "懸念地域",
+      "description_ja": "外為法上の輸出審査強化対象地域。技術流出リスクが高い。",
+      "countries": [
+        "CN",
+        "RU",
+        "BY",
+        "IN",
+        "PK",
+        "EG",
+        "SA",
+        "AE",
+        "VN",
+        "MM",
+        "IL",
+        "QA",
+        "KW",
+        "VE"
+      ]
+    },
+    "禁輸地域": {
+      "label_ja": "禁輸地域（外為法 特定地域・包括制裁）",
+      "description_ja": "EAR E:1 および外為法の包括的輸出禁止地域。",
+      "countries": [
+        "KP",
+        "IR",
+        "CU",
+        "SY",
+        "SD"
+      ]
+    }
+  }
+}

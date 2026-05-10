@@ -34,6 +34,7 @@ from platform_core.routers.proxy import router as proxy_router
 from platform_core.agent.router import router as agent_router
 from platform_core.routers.metrics import router as metrics_router
 from platform_core.routers.faiss_search import router as faiss_search_router
+from platform_core.routers.ontology import router as ontology_router
 from platform_core.routers.regulatory import router as regulatory_router
 from platform_core.routers.counterparty import router as counterparty_router  # proxy → screening
 from platform_core.routers.supply_chain import router as supply_chain_router
@@ -165,6 +166,7 @@ def create_app() -> FastAPI:
     app.include_router(agent_router)
     app.include_router(metrics_router)
     app.include_router(faiss_search_router)
+    app.include_router(ontology_router)
     app.include_router(regulatory_router)
     app.include_router(counterparty_router)
     app.include_router(supply_chain_router)
