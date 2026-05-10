@@ -256,6 +256,16 @@ _KNOWN_MODULES: list[dict] = [
         "health_check_path": "/health",
         "nav_section":       "specialized",
     },
+    {
+        "key":               "ontology_explorer",
+        "name":              "オントロジーエクスプローラー",
+        "description":       "ECCN/HS/FEFTA/IPC/F-term の知識グラフ探索・ライセンス判定・多ホップ経路検索",
+        "base_url":          "",
+        "iframe_url":        "/ui/ontology",
+        "icon":              "🕸️",
+        "health_check_path": "",
+        "nav_section":       "specialized",
+    },
     # ── 管理者・システム ─────────────────────────────────────────────────────
     {
         "key":               "dap",
@@ -664,6 +674,12 @@ async def regime_check_ui(request: Request):
 async def user_guide_ui(request: Request):
     """ユーザーガイド画面。"""
     return templates.TemplateResponse(request, "user_guide.html", {})
+
+
+@router.get("/ontology", response_class=HTMLResponse, include_in_schema=False)
+async def ontology_explorer_ui(request: Request):
+    """オントロジーエクスプローラー画面。"""
+    return templates.TemplateResponse(request, "ontology_explorer.html", {})
 
 
 @router.post("/stop/{module_key}", include_in_schema=False)

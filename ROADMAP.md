@@ -1,5 +1,5 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-10 更新（Phase O-3 完了: Country Control Matrix / NetworkX 多ホップグラフ / F-term 200件 / NeuroSymbolic UX再設計）
+# 2026-05-10 更新（Phase O-4 完了: DAP 7層 RAG / F-term + グラフコンテキスト注入 / オントロジーエクスプローラー UI）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
 > 2026-05-08（3回目）追加: Phase 6 設計レビュー — platform-core から業務ドメイン機能を分離。counterparty→screening / item_version+supply_chain+supplier→ai_classification 統合（Phase 6A 高優先）、export_license / fta_origin 新モジュール抽出（Phase 6B 中優先）、trade_gate 新モジュール抽出（Phase 6C 低優先）。branch: refactor/module-separation。
@@ -79,6 +79,12 @@
 | 文脈適応チョイスボタン（end_use_type / end_user_type / 仕向国 別） | chat.py | ✅ 用途別に最適ボタン生成 |
 | 判定結果自然言語フォーマット（_format_judge_result） | chat.py | ✅ FEFTA/ECCN ID → 日本語説明 |
 | 国名→ISO コード辞書（_COUNTRY_NAME_TO_ISO・25ヶ国語対応） | chat.py | ✅ 「中国」「China」→ CN 自動変換 |
+| **DAP 7層 RAG（Phase O-4）** | **chat.py** | **✅ 2026-05-10 完了** |
+| _rag_fterm（F-term JPO分類 → ECCN 近傍探索・特許分類コンテキスト注入） | chat.py | ✅ 特許F-term検出 → ontology/neighbors 経由 |
+| _rag_graph_context（オントロジーグラフ接続関係 → FEFTA/IPC/HS 多ホップ） | chat.py | ✅ ECCN → depth=1 neighbors → 外為法別表注入 |
+| **オントロジーエクスプローラー UI（Phase O-4）** | **templates/ontology_explorer.html** | **✅ 2026-05-10 完了** |
+| 4タブ UI（コード検索 / パス探索 / ライセンス判定 / 近傍探索） | ontology_explorer.html | ✅ ダークテーマ・既存スタイル踏襲 |
+| /ui/ontology ルート + ポータルナビ「専門ツール」セクション登録 | ui.py | ✅ _KNOWN_MODULES + GET /ui/ontology |
 
 ### 2-2. キャッチオール規制エンジン
 

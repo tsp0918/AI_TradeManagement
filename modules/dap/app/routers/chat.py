@@ -168,11 +168,12 @@ _RAG_TRIGGER_TERMS = frozenset([
     "HS", "IPC", "特許", "技術", "核", "半導体", "暗号", "センサー",
 ])
 
-# ECCN / HS / IPC コードを検出する正規表現
+# ECCN / HS / IPC / F-term コードを検出する正規表現
 import re as _re
-_ECCN_PATTERN = _re.compile(r'\b([0-9][A-E]\d{3}(?:\.\w+)*)\b', _re.IGNORECASE)
-_HS_PATTERN   = _re.compile(r'\b(\d{4}[\.\s]?\d{2})\b')
-_IPC_PATTERN  = _re.compile(r'\b([A-H]\d{2}[A-Z])\b')
+_ECCN_PATTERN  = _re.compile(r'\b([0-9][A-E]\d{3}(?:\.\w+)*)\b', _re.IGNORECASE)
+_HS_PATTERN    = _re.compile(r'\b(\d{4}[\.\s]?\d{2})\b')
+_IPC_PATTERN   = _re.compile(r'\b([A-H]\d{2}[A-Z])\b')
+_FTERM_PATTERN = _re.compile(r'\b(\d[A-Z]\d{3})\b')   # 5F048, 3B001 等
 
 _RAG_MIN_SCORE = 0.60
 _RAG_TOP_K = 4
@@ -328,6 +329,105 @@ async def _rag_layer_d(message: str, eccns: list[str] | None = None) -> str:
     return "【関連学術論文DB（技術動向）】\n" + "\n".join(lines)
 
 
+async def _rag_fterm(message: str, eccns: list[str]) -> str:
+    """
+    F-term コード検出 + F-term → ECCN 逆引きコンテキスト注入。
+    - メッセージ中の F-term コード（5F048, G21C 等）を検出
+    - 検出 ECCN に対応する F-term（特許分類）を提示
+    """
+    fterms_in_msg = [f.upper() for f in _FTERM_PATTERN.findall(message)]
+    ipc_in_msg = [i.upper() for i in _IPC_PATTERN.findall(message)]
+
+    # F-term がメッセージにあれば → それに対応する ECCN を取得
+    lines = []
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for ft in fterms_in_msg[:2]:
+            try:
+                resp = await client.get(
+                    f"{_PLATFORM_URL}/api/ontology/neighbors",
+                    params={"node": f"FTERM:{ft}", "depth": 1, "edge_types": "fterm_to_eccn"},
+                )
+                if resp.status_code != 200:
+                    continue
+                data = resp.json()
+                eccn_nbrs = [n for n in data.get("neighbors", []) if n["node_type"] == "ECCN"]
+                if eccn_nbrs:
+                    eccn_str = " / ".join(
+                        f"{n['label']}（{n.get('label_ja', n.get('label_en', ''))[:30]}）"
+                        for n in eccn_nbrs[:3]
+                    )
+                    lines.append(f"・F-term {ft} → 関連ECCN: {eccn_str}")
+            except Exception:
+                continue
+
+        # 検出 ECCN に紐づく F-term を提示（特許分類の参考情報）
+        for eccn in eccns[:2]:
+            try:
+                resp = await client.get(
+                    f"{_PLATFORM_URL}/api/ontology/neighbors",
+                    params={"node": f"ECCN:{eccn}", "depth": 1, "edge_types": "fterm_to_eccn"},
+                )
+                if resp.status_code != 200:
+                    continue
+                data = resp.json()
+                ft_nbrs = [n for n in data.get("neighbors", []) if n["node_type"] == "FTERM"]
+                if ft_nbrs:
+                    ft_str = " / ".join(n["label"] for n in ft_nbrs[:6])
+                    lines.append(f"・ECCN {eccn} 関連F-term（特許分類）: {ft_str}")
+            except Exception:
+                continue
+
+    if not lines:
+        return ""
+    return "【特許F-term分類（JPO）】\n" + "\n".join(lines)
+
+
+async def _rag_graph_context(message: str, eccns: list[str]) -> str:
+    """
+    NetworkX グラフ近傍: 検出 ECCN に接続する HS・IPC・FEFTA ノードをまとめて提示。
+    _rag_ontology の補完として、グラフ的な接続関係を簡潔に示す。
+    """
+    if not eccns:
+        return ""
+
+    lines = []
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for eccn in eccns[:2]:
+            try:
+                resp = await client.get(
+                    f"{_PLATFORM_URL}/api/ontology/neighbors",
+                    params={"node": f"ECCN:{eccn}", "depth": 1},
+                )
+                if resp.status_code != 200:
+                    continue
+                data = resp.json()
+                nbrs = data.get("neighbors", [])
+
+                fefta = [n for n in nbrs if n["node_type"] == "FEFTA"]
+                hs    = [n for n in nbrs if n["node_type"] == "HS"]
+                ipc   = [n for n in nbrs if n["node_type"] == "IPC"]
+
+                parts = []
+                if fefta:
+                    fefta_str = " / ".join(
+                        f"第{n['label']}項({n.get('label_ja','')[:6]})" for n in fefta[:4]
+                    )
+                    parts.append(f"外為法別表: {fefta_str}")
+                if ipc:
+                    ipc_str = " / ".join(n["label"] for n in ipc[:4])
+                    parts.append(f"IPC: {ipc_str}")
+                if hs:
+                    parts.append(f"関連HSコード: {len(hs)}件")
+                if parts:
+                    lines.append(f"・ECCN {eccn}: " + " | ".join(parts))
+            except Exception:
+                continue
+
+    if not lines:
+        return ""
+    return "【オントロジーグラフ接続関係】\n" + "\n".join(lines)
+
+
 async def _rag_country_control(message: str, eccns: list[str]) -> str:
     """
     メッセージから仕向国を検出し、ECCN × 仕向国のライセンス要否をRAGコンテキストに注入する。
@@ -382,22 +482,24 @@ async def _rag_country_control(message: str, eccns: list[str]) -> str:
 
 async def _rag_multilayer(message: str) -> str:
     """
-    多層 RAG: Layer A（規制）+ オントロジー + Country Control + Layer B（特許）+ Layer D（論文）を
-    並列に検索し、統合されたコンテキストブロックを返す。
+    多層 RAG（7レイヤー）:
+      Layer A（規制） + オントロジー分類 + Country Control + F-term分類 +
+      グラフ接続関係 + Layer B（特許） + Layer D（論文）を並列に検索し統合。
     """
-    # 先にECCNコードを抽出してLayer B/D/Country Control検索に使う
+    import asyncio
     eccns_found = [e.upper() for e in _ECCN_PATTERN.findall(message)]
 
-    # 並列実行
-    import asyncio
     layer_a_task    = asyncio.create_task(_rag_layer_a(message))
     ontology_task   = asyncio.create_task(_rag_ontology(message))
     country_task    = asyncio.create_task(_rag_country_control(message, eccns_found))
+    fterm_task      = asyncio.create_task(_rag_fterm(message, eccns_found))
+    graph_task      = asyncio.create_task(_rag_graph_context(message, eccns_found))
     layer_b_task    = asyncio.create_task(_rag_layer_b(message, eccns_found))
     layer_d_task    = asyncio.create_task(_rag_layer_d(message, eccns_found))
 
     results = await asyncio.gather(
-        layer_a_task, ontology_task, country_task, layer_b_task, layer_d_task,
+        layer_a_task, ontology_task, country_task, fterm_task,
+        graph_task, layer_b_task, layer_d_task,
         return_exceptions=True,
     )
 
