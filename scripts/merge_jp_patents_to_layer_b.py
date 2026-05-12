@@ -1,14 +1,15 @@
 """
 merge_jp_patents_to_layer_b.py
 ──────────────────────────────────────────────────────────────────────────────
-fetch_jp_patents.py が生成した jp_patents_raw.json を既存の layer_b_meta.json に
+特許 raw JSON（lens_patents_raw.json 等）を既存の layer_b_meta.json に
 マージして Layer B を再ビルドするスクリプト。
 
 使い方:
   python scripts/merge_jp_patents_to_layer_b.py [--dry-run] [--batch-size 16]
+  python scripts/merge_jp_patents_to_layer_b.py --input lens_patents_us_ep_raw.json
 
 前提:
-  data/staging/jp_patents_raw.json が存在すること（fetch_jp_patents.py で生成）
+  data/staging/lens_patents_raw.json（または指定ファイル）が存在すること
 """
 from __future__ import annotations
 
@@ -36,8 +37,8 @@ _ROOT          = Path(__file__).resolve().parents[1]
 _STAGING       = _ROOT / "data" / "staging"
 _LAYER_B_META  = _STAGING / "layer_b_meta.json"
 _LAYER_B_INDEX = _STAGING / "layer_b.index"
-# fetch_patents_lens.py → lens_patents_raw.json を優先、フォールバックで jp_patents_raw.json
-_JP_RAW        = (
+# デフォルト raw ファイル（--input で上書き可能）
+_JP_RAW_DEFAULT = (
     _STAGING / "lens_patents_raw.json"
     if (_STAGING / "lens_patents_raw.json").exists()
     else _STAGING / "jp_patents_raw.json"
@@ -91,17 +92,30 @@ def _build_embed_text(r: dict, eccn_tags: list[str]) -> str:
     title    = (r.get("title") or "").strip()
     abstract = (r.get("abstract") or "").strip()[:_ABSTRACT_MAX]
     ipc      = (r.get("ipc_codes") or "").strip()
+    cpc      = (r.get("cpc_codes") or "").strip()
     body = title
     if abstract:
         body += " " + abstract
     if ipc:
         body += f" IPC: {ipc}"
+    if cpc:
+        # CPC は IPC より詳細なので先頭グループのみ embed（重複抑制）
+        cpc_groups = " ".join(dict.fromkeys(
+            c.strip()[:7] for c in cpc.split(",") if c.strip()
+        ))
+        body += f" CPC: {cpc_groups}"
     if eccn_tags:
         body += f" ECCN: {' '.join(eccn_tags)}"
     return (_PASSAGE_PREFIX + body)[:1400]
 
 
-def build(dry_run: bool = False, batch_size: int = _DEFAULT_BATCH) -> None:
+def build(
+    dry_run: bool = False,
+    batch_size: int = _DEFAULT_BATCH,
+    input_path: Path | None = None,
+) -> None:
+    raw_path = input_path or _JP_RAW_DEFAULT
+
     # ── 既存 Layer B ロード ──────────────────────────────────────────────────
     if not _LAYER_B_META.exists():
         logger.error("layer_b_meta.json not found: %s", _LAYER_B_META)
@@ -112,15 +126,15 @@ def build(dry_run: bool = False, batch_size: int = _DEFAULT_BATCH) -> None:
     existing_pub_nos = {r.get("publication_number") for r in existing_records}
     logger.info("既存 Layer B: %d件", len(existing_records))
 
-    # ── JP 特許ロード ────────────────────────────────────────────────────────
-    if not _JP_RAW.exists():
-        logger.error("jp_patents_raw.json not found: %s", _JP_RAW)
-        logger.error("まず fetch_jp_patents.py を実行してください。")
+    # ── 特許ロード ────────────────────────────────────────────────────────
+    if not raw_path.exists():
+        logger.error("raw file not found: %s", raw_path)
+        logger.error("まず fetch_patents_lens.py を実行してください。")
         sys.exit(1)
-    with open(_JP_RAW, encoding="utf-8") as f:
+    with open(raw_path, encoding="utf-8") as f:
         jp_data = json.load(f)
     jp_patents = jp_data.get("patents", [])
-    logger.info("JP 特許（取得済み）: %d件", len(jp_patents))
+    logger.info("特許（取得済み）: %d件 from %s", len(jp_patents), raw_path.name)
 
     # ── 重複チェックしながら新規分を追加 ────────────────────────────────────
     ipc_to_eccns = _load_ipc_eccn_map()
@@ -130,8 +144,11 @@ def build(dry_run: bool = False, batch_size: int = _DEFAULT_BATCH) -> None:
         pub_no = p.get("publication_number", "")
         if pub_no in existing_pub_nos:
             continue
+        # IPC + CPC の両方から ECCN を解決（CPC は IPC と同じプレフィックス体系）
         ipc = str(p.get("ipc_codes") or "")
-        eccn_tags = _resolve_eccn(ipc, ipc_to_eccns)
+        cpc = str(p.get("cpc_codes") or "")
+        combined_codes = ",".join(filter(None, [ipc, cpc]))
+        eccn_tags = _resolve_eccn(combined_codes, ipc_to_eccns)
         fefta_items = _parse_fefta_items(p.get("fefta_items", []))
         embed_text = _build_embed_text(p, eccn_tags)
         new_records.append({
@@ -201,8 +218,8 @@ def build(dry_run: bool = False, batch_size: int = _DEFAULT_BATCH) -> None:
             eccn_coverage[e] = eccn_coverage.get(e, 0) + 1
 
     sb = existing_meta.get("source_breakdown", {}).copy()
-    source_key = "lens_org" if "lens" in str(_JP_RAW) else "jpo_ip_data"
-    sb[source_key] = new_count
+    source_key = "lens_org" if "lens" in str(raw_path) else "jpo_ip_data"
+    sb[source_key] = sb.get(source_key, 0) + new_count  # 累積（上書きバグ修正）
 
     new_meta = {
         "total":            existing_index.ntotal,
@@ -222,9 +239,19 @@ def build(dry_run: bool = False, batch_size: int = _DEFAULT_BATCH) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="JP 特許を Layer B に統合して再ビルド"
+        description="特許 raw JSON を Layer B にマージして再ビルド"
     )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--batch-size", type=int, default=_DEFAULT_BATCH)
+    parser.add_argument(
+        "--input", type=str, default="",
+        help="入力 raw JSON ファイルパス（data/staging/ 配下のファイル名または絶対パス）"
+    )
     args = parser.parse_args()
-    build(dry_run=args.dry_run, batch_size=args.batch_size)
+
+    input_path: Path | None = None
+    if args.input:
+        p = Path(args.input)
+        input_path = p if p.is_absolute() else (_ROOT / "data" / "staging" / p)
+
+    build(dry_run=args.dry_run, batch_size=args.batch_size, input_path=input_path)

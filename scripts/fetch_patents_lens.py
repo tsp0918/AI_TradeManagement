@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 _ROOT    = Path(__file__).resolve().parents[1]
 _STAGING = _ROOT / "data" / "staging"
 _OUT     = _STAGING / "lens_patents_raw.json"
+_OUT_US_EP = _STAGING / "lens_patents_us_ep_raw.json"
 
 _LENS_PATENT_API = "https://api.lens.org/patent/search"
 _LENS_SCHOLARLY_API = "https://api.lens.org/scholarly/search"
@@ -115,6 +116,9 @@ _TARGET_IPC_CODES_PHASE2 = [
     "F03H",   # イオン推進・宇宙推進 (9A004)
 ]
 
+# Phase 3: US + EP 全カバレッジ（Phase 1 + Phase 2 の全 50 コード）
+_TARGET_IPC_CODES_PHASE3 = _TARGET_IPC_CODES_PHASE1 + _TARGET_IPC_CODES_PHASE2
+
 # デフォルト: Phase 2 のみ（Phase 1 は取得済み）
 _TARGET_IPC_CODES = _TARGET_IPC_CODES_PHASE2
 
@@ -141,8 +145,16 @@ def _search_patents(
     # IPC コード前方一致: query_string を全文検索として使用（field指定なし）
     must_clauses: list[dict] = [
         {"query_string": {"query": f"{ipc_prefix}*"}},
-        {"term": {"kind": "A"}},   # 出願のみ（タイトル/アブスト付き）
     ]
+
+    # kind フィルター: 管轄によって kind コードが異なる
+    #   JP: "A"（出願公開）  US: "A1"/"A2"（出願公開）/"B1"/"B2"（登録）
+    #   EP: "A1"/"A2"（出願公開）  WO: "A1"（PCT公開）
+    is_jp_only = country_codes == ["JP"]
+    if is_jp_only:
+        must_clauses.append({"term": {"kind": "A"}})
+    else:
+        must_clauses.append({"terms": {"kind": ["A", "A1", "A2", "B1", "B2"]}})
 
     # 国コードフィルター
     filter_clauses: list[dict] = [
@@ -216,6 +228,10 @@ def _normalize_patent(raw: dict, ipc_prefix: str) -> dict | None:
     ipcr = biblio.get("classifications_ipcr", {}).get("classifications", [])
     ipc_codes = ",".join(c.get("symbol", "") for c in ipcr if c.get("symbol"))
 
+    # CPC コード biblio.classifications_cpc.classifications[].symbol（EP/US特許に付与）
+    cpcr = biblio.get("classifications_cpc", {}).get("classifications", [])
+    cpc_codes = ",".join(c.get("symbol", "") for c in cpcr if c.get("symbol"))
+
     filing_date = raw.get("date_published", "")
 
     return {
@@ -224,6 +240,7 @@ def _normalize_patent(raw: dict, ipc_prefix: str) -> dict | None:
         "publication_number": pub_no,
         "country_code":       jurisdiction,
         "ipc_codes":          ipc_codes[:200],
+        "cpc_codes":          cpc_codes[:400],
         "title":              title[:300],
         "abstract":           abstract[:600],
         "filing_date":        str(filing_date),
@@ -238,6 +255,7 @@ def fetch(
     country_codes: list[str],
     limit_per_ipc: int,
     dry_run: bool,
+    output_path: Path | None = None,
 ) -> None:
     token = _get_api_key()
     if not token:
@@ -310,8 +328,9 @@ def fetch(
         "country_counts": country_counts,
         "patents": all_patents,
     }
-    _OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
-    logger.info("保存: %s (%d件)", _OUT, len(all_patents))
+    dest = output_path or _OUT
+    dest.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info("保存: %s (%d件)", dest, len(all_patents))
 
 
 if __name__ == "__main__":
@@ -323,25 +342,57 @@ if __name__ == "__main__":
         help=f"IPC コードあたり最大取得件数 (default: {_DEFAULT_LIMIT})"
     )
     parser.add_argument(
-        "--country", type=str, default="JP",
-        help="国コードをカンマ区切りで指定 (default: JP, 例: JP,US,EP)"
+        "--country", type=str, default="",
+        help="国コードをカンマ区切りで指定 (例: JP,US,EP)。未指定時は --phase に従う"
     )
     parser.add_argument(
         "--ipc", type=str, default="",
-        help=f"IPC コードをカンマ区切りで指定 (default: 全 {len(_TARGET_IPC_CODES)} コード)"
+        help="IPC コードをカンマ区切りで指定 (未指定時は --phase に従う)"
+    )
+    parser.add_argument(
+        "--phase", type=int, default=2, choices=[1, 2, 3],
+        help=(
+            "取得フェーズ: 1=JP Phase1(20コード), 2=JP Phase2(30コード, default), "
+            "3=US+EP 全50コード → lens_patents_us_ep_raw.json"
+        ),
+    )
+    parser.add_argument(
+        "--output", type=str, default="",
+        help="出力ファイルパス (未指定時は phase に従い自動決定)"
     )
     parser.add_argument("--dry-run", action="store_true", help="接続テストのみ実行")
     args = parser.parse_args()
 
-    ipc_list = (
-        [x.strip() for x in args.ipc.split(",") if x.strip()]
-        if args.ipc else _TARGET_IPC_CODES
-    )
-    country_codes = [x.strip() for x in args.country.split(",") if x.strip()]
+    # IPC リスト解決
+    if args.ipc:
+        ipc_list = [x.strip() for x in args.ipc.split(",") if x.strip()]
+    elif args.phase == 1:
+        ipc_list = _TARGET_IPC_CODES_PHASE1
+    elif args.phase == 3:
+        ipc_list = _TARGET_IPC_CODES_PHASE3
+    else:
+        ipc_list = _TARGET_IPC_CODES_PHASE2
+
+    # 国コード解決
+    if args.country:
+        country_codes = [x.strip() for x in args.country.split(",") if x.strip()]
+    elif args.phase == 3:
+        country_codes = ["US", "EP"]
+    else:
+        country_codes = ["JP"]
+
+    # 出力ファイル解決
+    if args.output:
+        output_path = Path(args.output)
+    elif args.phase == 3:
+        output_path = _OUT_US_EP
+    else:
+        output_path = _OUT
 
     fetch(
         ipc_list=ipc_list,
         country_codes=country_codes,
         limit_per_ipc=args.limit,
         dry_run=args.dry_run,
+        output_path=output_path,
     )
