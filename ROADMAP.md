@@ -1,5 +1,5 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-10 更新（Phase O-4 完了: DAP 7層 RAG / F-term + グラフコンテキスト注入 / オントロジーエクスプローラー UI）
+# 2026-05-12 更新（Layer B 強化: Lens.org JP 特許 1,934件追加 → 1,595 → 3,529 vec）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
 > 2026-05-08（3回目）追加: Phase 6 設計レビュー — platform-core から業務ドメイン機能を分離。counterparty→screening / item_version+supply_chain+supplier→ai_classification 統合（Phase 6A 高優先）、export_license / fta_origin 新モジュール抽出（Phase 6B 中優先）、trade_gate 新モジュール抽出（Phase 6C 低優先）。branch: refactor/module-separation。
@@ -66,7 +66,7 @@
 | AgentTools（FAISS呼出・キャッチオール詳細） | agent/tools.py | ✅ 完成 |
 | キャッチオールエンジン | ontology/rules/catchall_engine.py | ✅ 完成 |
 | FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ 2,184vec（2026-05-10再ビルド・entity_list除外・eccn_tech 20件追加）|
-| FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ 1,595vec（97.7%に ECCN タグ付与・635 ECCN タイプ・build_layer_b_enhanced.py）|
+| FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ 3,529vec（Lens.org JP特許+1,934件・636 ECCN タイプ・2026-05-12 再ビルド）|
 | FAISS Layer C（HSコード） | services/faiss_e5_service.py | ✅ 5,476vec |
 | FAISS Layer D（学術論文） | services/faiss_e5_service.py | ✅ 501vec（2026-05-10再構築・14ECCN）|
 | asyncio 規制動向スケジューラー | main.py (_regulatory_scheduler) | ✅ 24h周期 |
