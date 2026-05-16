@@ -5,6 +5,7 @@
   GET  /api/counterparties               取引先一覧（フィルタ・ページネーション）
   POST /api/counterparties               取引先登録（自動スクリーニング付き）
   POST /api/counterparties/import-csv    CSV一括インポート（取引先マスター）
+  POST /api/counterparties/import-batch  JSON一括インポート（ERP連携・同期スクリーニング）
   GET  /api/counterparties/{id}          取引先詳細
   PUT  /api/counterparties/{id}          取引先更新
   DELETE /api/counterparties/{id}        取引先削除
@@ -216,8 +217,8 @@ async def _run_auto_screening(company_id: uuid.UUID, company_name: str, aliases:
             if not company:
                 return
 
-            is_hit = screen_result.result_status == "hit"
-            matched_lists = list({m.list_type for m in screen_result.matches if m.list_type})
+            is_hit = screen_result.result_status in ("match", "possible_match")
+            matched_lists = list({m.list_source for m in screen_result.matches if m.list_source})
             prev_level = company.overall_risk_level
 
             company.is_sanctioned = is_hit
@@ -413,6 +414,156 @@ async def import_counterparties_csv(
     }
 
 
+# ── ERP JSON 一括インポート ────────────────────────────────────────────────
+
+class BatchCompanyItem(BaseModel):
+    name: str
+    country_code: str | None = None
+    aliases: list[str] | None = None
+    registration_number: str | None = None
+    address: str | None = None
+    roles: list[str] | None = None
+    is_end_user: bool = False
+    is_consignee: bool = False
+    end_use_note: str | None = None
+    external_id: str | None = None  # ERP 側の企業 ID（追跡用）
+
+
+class BatchImportRequest(BaseModel):
+    companies: list[BatchCompanyItem]
+    run_screening: bool = True   # False にするとスクリーニングをスキップ
+    upsert: bool = False         # True にすると同名企業があれば更新
+
+
+@router.post("/import-batch", status_code=201)
+async def import_counterparties_batch(
+    body: BatchImportRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """ERP 連携用 JSON 一括インポート。
+
+    CSVアップロードと同等の取引先マスター登録を JSON で行い、
+    スクリーニングを同期実行して各社の審査結果をそのままレスポンスに含む。
+
+    - 最大 500 件/リクエスト
+    - run_screening=true（デフォルト）のとき各社をその場でスクリーニングし結果を返す
+    - upsert=true のとき同名企業が既存にあれば更新、なければ新規作成
+    """
+    if len(body.companies) > 500:
+        raise HTTPException(status_code=422, detail="1リクエストあたり最大 500 件まで")
+
+    tenant_id = await _get_default_tenant_id(db)
+    results: list[dict] = []
+    errors:  list[dict] = []
+
+    for idx, item in enumerate(body.companies):
+        if not item.name.strip():
+            errors.append({"index": idx, "error": "企業名が空です"})
+            continue
+        try:
+            company: Company | None = None
+
+            if body.upsert:
+                existing = await db.execute(
+                    select(Company).where(Company.name == item.name.strip()).limit(1)
+                )
+                company = existing.scalar_one_or_none()
+
+            if company is None:
+                cr = _country_risk(item.country_code)
+                company = Company(
+                    tenant_id=tenant_id,
+                    name=item.name.strip(),
+                    name_aliases=item.aliases,
+                    country_code=item.country_code,
+                    registration_number=item.registration_number,
+                    address=item.address,
+                    roles=item.roles,
+                    country_risk_score=cr,
+                    overall_risk_level=_calc_overall_risk(None, cr, False),
+                    is_end_user=item.is_end_user,
+                    is_consignee=item.is_consignee,
+                    end_use_note=item.end_use_note,
+                )
+                db.add(company)
+                await db.flush()
+            else:
+                # upsert: フィールドを更新
+                if item.country_code is not None:
+                    company.country_code = item.country_code
+                if item.aliases is not None:
+                    company.name_aliases = item.aliases
+                if item.address is not None:
+                    company.address = item.address
+                if item.roles is not None:
+                    company.roles = item.roles
+                company.country_risk_score = _country_risk(company.country_code)
+
+            screening_status = None
+            screening_score  = None
+            screening_hits   = []
+
+            if body.run_screening:
+                req = ScreenRequest(
+                    company_name=company.name,
+                    country=company.country_code,
+                    company_id=company.id,
+                )
+                screen_result = await run_screening(req, db)
+
+                is_hit = screen_result.result_status in ("match", "possible_match")
+                matched_lists = list({m.list_source for m in screen_result.matches if m.list_source})
+
+                company.is_sanctioned    = is_hit
+                company.sanction_lists   = matched_lists if is_hit else []
+                company.last_screened_at = datetime.now(tz=timezone.utc)
+                company.overall_risk_level = _calc_overall_risk(
+                    company.credit_score, company.country_risk_score or 0, is_hit
+                )
+
+                db.add(CompanyScreeningHistory(
+                    company_id=company.id,
+                    lists_checked=["OFAC_SDN", "BIS_EL", "EU_CONSOLIDATED", "UK_OFSI"],
+                    result_is_hit=is_hit,
+                    result_detail=screen_result.model_dump(mode="json"),
+                ))
+
+                screening_status = screen_result.result_status
+                screening_score  = screen_result.max_score
+                screening_hits   = [
+                    {"entity": m.entity_name, "score": m.score, "list": m.list_source}
+                    for m in screen_result.matches[:3]
+                ]
+
+            results.append({
+                "index":            idx,
+                "external_id":      item.external_id,
+                "name":             company.name,
+                "id":               str(company.id),
+                "country_code":     company.country_code,
+                "overall_risk_level": company.overall_risk_level,
+                "is_sanctioned":    company.is_sanctioned,
+                "screening_status": screening_status,
+                "screening_score":  round(screening_score, 4) if screening_score else None,
+                "screening_hits":   screening_hits,
+            })
+
+        except Exception as exc:
+            logger.warning("batch import error idx=%d name=%r: %s", idx, item.name, exc)
+            errors.append({"index": idx, "name": item.name, "error": str(exc)})
+
+    await db.commit()
+
+    flagged = [r for r in results if r["is_sanctioned"]]
+    return {
+        "imported":     len(results),
+        "errors":       errors,
+        "flagged":      len(flagged),
+        "results":      results,
+        "flagged_list": flagged,
+    }
+
+
 @router.get("/{company_id}")
 async def get_counterparty(company_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Company).where(Company.id == uuid.UUID(company_id)))
@@ -485,11 +636,11 @@ async def screen_counterparty(company_id: str, db: AsyncSession = Depends(get_db
     )
     screen_result = await run_screening(req, db)
 
-    is_hit = screen_result.result_status == "hit"
+    is_hit = screen_result.result_status in ("match", "possible_match")
     prev_level = company.overall_risk_level
 
     company.is_sanctioned = is_hit
-    company.sanction_lists = list({m.list_type for m in screen_result.matches if m.list_type}) if is_hit else []
+    company.sanction_lists = list({m.list_source for m in screen_result.matches if m.list_source}) if is_hit else []
     company.last_screened_at = datetime.now(tz=timezone.utc)
     company.screening_detail = screen_result.model_dump(mode="json")
     company.overall_risk_level = _calc_overall_risk(
