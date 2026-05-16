@@ -63,18 +63,86 @@ MODULE = ModuleInfo(
 )
 
 
+import logging as _logging
+_logger = _logging.getLogger(__name__)
+
+
 async def _init_faiss() -> None:
     """起動時に FAISS インデックスをロードまたは構築する。"""
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Watchlist).where(Watchlist.is_active == True))  # noqa: E712
         entities = result.scalars().all()
     faiss_service.get_or_build(entities)
+    return len(entities)
+
+
+async def _auto_sync_sanctions() -> None:
+    """DB が空の場合に OFAC SDN + BIS Entity List を自動同期する。"""
+    from sqlalchemy import update as sa_update
+    from app.services.sanctions_sync import fetch_ofac_sdn, fetch_bis_entity_list
+
+    _logger.info("Watchlist DB empty — starting auto-sync (OFAC SDN + BIS Entity List)")
+    try:
+        # 同期実行（ネットワーク依存のため別タスクで）
+        import concurrent.futures, asyncio as _asyncio
+        loop = _asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            ofac_fut = loop.run_in_executor(pool, fetch_ofac_sdn)
+            bis_fut  = loop.run_in_executor(pool, lambda: fetch_bis_entity_list(timeout=60))
+            ofac_entries, bis_entries = await _asyncio.gather(ofac_fut, bis_fut, return_exceptions=True)
+
+        all_entries: list[dict] = []
+        if isinstance(ofac_entries, list):
+            all_entries.extend(ofac_entries)
+            _logger.info("OFAC SDN: %d entries", len(ofac_entries))
+        else:
+            _logger.warning("OFAC SDN fetch failed: %s", ofac_entries)
+
+        if isinstance(bis_entries, list):
+            all_entries.extend(bis_entries)
+            _logger.info("BIS Entity List: %d entries", len(bis_entries))
+        else:
+            _logger.warning("BIS Entity List fetch failed: %s", bis_entries)
+
+        if not all_entries:
+            _logger.warning("Auto-sync: no entries fetched, skipping")
+            return
+
+        async with AsyncSessionLocal() as db:
+            new_wl = [
+                Watchlist(
+                    list_source=e["list_source"],
+                    entity_name=e["entity_name"],
+                    aliases=e.get("aliases"),
+                    address=e.get("address"),
+                    country=e.get("country"),
+                    source_id=e.get("source_id"),
+                    reason=e.get("reason"),
+                    risk_level=e.get("risk_level", "high"),
+                    extra=e.get("extra"),
+                )
+                for e in all_entries
+            ]
+            db.add_all(new_wl)
+            await db.commit()
+
+        # FAISS 再構築
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(Watchlist).where(Watchlist.is_active == True))  # noqa: E712
+            entities = result.scalars().all()
+        faiss_service.rebuild(entities)
+        _logger.info("Auto-sync complete: %d entries indexed in FAISS", faiss_service.ntotal())
+
+    except Exception as exc:
+        _logger.error("Auto-sync failed: %s", exc, exc_info=True)
 
 
 async def _startup() -> None:
-    """FAISS 初期化 + 制裁リスト自動同期スケジューラー起動。"""
+    """FAISS 初期化 + DB 空なら自動同期 + 定期同期スケジューラー起動。"""
     from app.services.sync_scheduler import run_sync_loop
-    await _init_faiss()
+    db_count = await _init_faiss()
+    if db_count == 0:
+        asyncio.create_task(_auto_sync_sanctions())
     asyncio.create_task(run_sync_loop())
 
 

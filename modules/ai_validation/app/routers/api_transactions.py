@@ -7,9 +7,12 @@ platform-core の案件ダッシュボードから httpx で呼ばれる。
 """
 from __future__ import annotations
 
+import logging
+import threading
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+import httpx
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -22,9 +25,42 @@ from app.services.two_list import compute_two_lists
 router = APIRouter(prefix="/api/transactions", tags=["api-transactions"])
 
 import os as _os
+_logger = logging.getLogger(__name__)
 # ai_validation 自身のベース URL（ダッシュボードのアクション URL 生成用）
 _BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
 _SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
+
+
+def _screen_counterparty_bg(transaction_id: int, counterparty_name: str) -> None:
+    """取引先をバックグラウンドスレッドで screening モジュールに照合し、結果を transaction に保存する。"""
+    try:
+        resp = httpx.post(
+            f"{_SCREENING_BASE}/api/screen",
+            json={"company_name": counterparty_name, "threshold": 0.75},
+            timeout=15.0,
+            follow_redirects=True,
+        )
+        if resp.status_code != 200:
+            _logger.warning("screening API returned %d for %s", resp.status_code, counterparty_name)
+            return
+        data = resp.json()
+        status    = data.get("result_status", "clear")   # clear / possible_match / match
+        result_id = data.get("id")
+
+        # DB を更新（同期セッションを直接取得）
+        from app.db.session import SessionLocal
+        with SessionLocal() as db:
+            tx = db.get(Transaction, transaction_id)
+            if tx:
+                tx.screening_status    = status
+                tx.screening_result_id = result_id
+                db.commit()
+        _logger.info(
+            "auto-screening done tx=%d counterparty=%s → %s",
+            transaction_id, counterparty_name, status,
+        )
+    except Exception as exc:
+        _logger.warning("auto-screening failed tx=%d: %s", transaction_id, exc)
 
 
 # ──────────────────────────────────────────────
@@ -215,9 +251,8 @@ def create_transaction_api(
         source_module=body.source_module or "dap",
         org_id=x_org_id,
     )
-    # destination_country は extra_info 等に保存（モデルにフィールドがない場合は title に付与）
-    if body.destination_country and not hasattr(Transaction, "destination_country"):
-        tx.title = f"{tx.title}（仕向地: {body.destination_country}）"
+    if body.destination_country:
+        tx.destination_country = body.destination_country
     db.add(tx)
     db.flush()
 
@@ -262,12 +297,22 @@ def create_transaction_api(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(exc))
 
+    # 取引先名があればバックグラウンドでスクリーニングを実行
+    if tx.counterparty_name:
+        t = threading.Thread(
+            target=_screen_counterparty_bg,
+            args=(tx.id, tx.counterparty_name),
+            daemon=True,
+        )
+        t.start()
+
     return {
-        "id":       tx.id,
-        "case_no":  tx.case_no,
-        "title":    tx.title,
-        "status":   tx.status,
-        "url":      f"{_BASE}/ui/transactions/{tx.id}",
+        "id":                tx.id,
+        "case_no":           tx.case_no,
+        "title":             tx.title,
+        "status":            tx.status,
+        "url":               f"{_BASE}/ui/transactions/{tx.id}",
+        "screening_queued":  bool(tx.counterparty_name),
     }
 
 

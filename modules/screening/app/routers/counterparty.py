@@ -1,27 +1,25 @@
 """与信管理 API ルーター（screening モジュール内）。
 
-Phase 6A-1: platform-core/routers/counterparty.py から移管。
-与信管理はスクリーニングの拡張機能であるため、screening モジュールに統合。
-テーブル（plat_company / plat_company_screening_history / plat_counterparty_credit_history）は
-platform-core が Alembic で管理する共有 PostgreSQL DB を継続使用。
-
 エンドポイント:
-  GET  /api/counterparties/stats       リスクダッシュボード集計
-  GET  /api/counterparties             取引先一覧（フィルタ・ページネーション）
-  POST /api/counterparties             取引先登録（自動スクリーニング付き）
-  GET  /api/counterparties/{id}        取引先詳細
-  PUT  /api/counterparties/{id}        取引先更新
-  DELETE /api/counterparties/{id}      取引先削除
-  POST /api/counterparties/{id}/screen スクリーニング実行（手動再実行）
-  GET  /api/counterparties/{id}/history 与信スコア変更履歴
+  GET  /api/counterparties/stats         リスクダッシュボード集計
+  GET  /api/counterparties               取引先一覧（フィルタ・ページネーション）
+  POST /api/counterparties               取引先登録（自動スクリーニング付き）
+  POST /api/counterparties/import-csv    CSV一括インポート（取引先マスター）
+  GET  /api/counterparties/{id}          取引先詳細
+  PUT  /api/counterparties/{id}          取引先更新
+  DELETE /api/counterparties/{id}        取引先削除
+  POST /api/counterparties/{id}/screen   スクリーニング実行（手動再実行）
+  GET  /api/counterparties/{id}/history  与信スコア変更履歴
 """
 
+import csv
+import io
 import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -298,6 +296,121 @@ async def create_counterparty(
     result = _serialize(company)
     result["auto_screening"] = "queued"
     return result
+
+
+# ── CSV 一括インポート ─────────────────────────────────────────────────────
+
+# 対応 CSV ヘッダー（日本語/英語どちらも可）
+_CSV_FIELD_MAP: dict[str, list[str]] = {
+    "name":                ["name", "企業名", "会社名", "取引先名"],
+    "country_code":        ["country_code", "国コード", "国"],
+    "aliases":             ["aliases", "別名", "AKA"],
+    "registration_number": ["registration_number", "法人番号", "登録番号"],
+    "address":             ["address", "住所"],
+    "roles":               ["roles", "役割"],
+    "is_end_user":         ["is_end_user", "最終需要者"],
+    "is_consignee":        ["is_consignee", "荷受人"],
+    "end_use_note":        ["end_use_note", "最終用途備考"],
+}
+
+
+def _csv_get(row: dict, field: str, default: str = "") -> str:
+    for col in _CSV_FIELD_MAP.get(field, [field]):
+        if col in row:
+            return (row[col] or "").strip()
+    return default
+
+
+@router.post("/import-csv", status_code=201)
+async def import_counterparties_csv(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(..., description="取引先マスターCSV"),
+    db: AsyncSession = Depends(get_db),
+):
+    """取引先をCSVファイルから一括インポートする（取引先マスター登録）。
+
+    CSVヘッダー例（英語/日本語どちらも可）:
+      name, country_code, aliases, registration_number, address, roles, is_end_user
+
+    - aliases: セミコロン区切り（例: Huawei;HW Technologies）
+    - roles:   セミコロン区切り（例: customer;vendor）
+    - is_end_user/is_consignee: 1/true/yes → True
+    - 最大 2000 行
+    """
+    if file.content_type not in ("text/csv", "application/csv", "text/plain", "application/octet-stream"):
+        # content_type は信頼しすぎない（ブラウザによって異なるため）
+        pass
+
+    content = await file.read()
+    text = content.decode("utf-8-sig", errors="replace")
+    reader = csv.DictReader(io.StringIO(text))
+
+    if not reader.fieldnames:
+        raise HTTPException(status_code=422, detail="CSV にヘッダー行がありません")
+
+    tenant_id = await _get_default_tenant_id(db)
+    imported: list[dict] = []
+    errors:   list[dict] = []
+    row_num = 1
+
+    for row in reader:
+        row_num += 1
+        if row_num > 2002:
+            errors.append({"row": row_num, "error": "最大 2000 行を超えました。残りは無視されました。"})
+            break
+
+        name = _csv_get(row, "name")
+        if not name:
+            continue
+
+        try:
+            country_raw = _csv_get(row, "country_code")
+            country_code = country_raw[:2].upper() if country_raw else None
+
+            aliases_raw = _csv_get(row, "aliases")
+            aliases = [a.strip() for a in aliases_raw.split(";") if a.strip()] or None
+
+            roles_raw = _csv_get(row, "roles")
+            roles = [r.strip() for r in roles_raw.split(";") if r.strip()] or None
+
+            is_end_user_raw  = _csv_get(row, "is_end_user").lower()
+            is_consignee_raw = _csv_get(row, "is_consignee").lower()
+            is_end_user  = is_end_user_raw  in ("1", "true", "yes", "はい")
+            is_consignee = is_consignee_raw in ("1", "true", "yes", "はい")
+
+            cr = _country_risk(country_code)
+            company = Company(
+                tenant_id=tenant_id,
+                name=name,
+                name_aliases=aliases,
+                country_code=country_code,
+                registration_number=_csv_get(row, "registration_number") or None,
+                address=_csv_get(row, "address") or None,
+                roles=roles,
+                country_risk_score=cr,
+                overall_risk_level=_calc_overall_risk(None, cr, False),
+                is_end_user=is_end_user,
+                is_consignee=is_consignee,
+                end_use_note=_csv_get(row, "end_use_note") or None,
+            )
+            db.add(company)
+            await db.flush()
+
+            background_tasks.add_task(
+                _run_auto_screening, company.id, name, aliases or []
+            )
+            imported.append({"name": name, "id": str(company.id), "country_code": country_code})
+
+        except Exception as exc:
+            errors.append({"row": row_num, "name": name, "error": str(exc)})
+
+    await db.commit()
+    return {
+        "imported": len(imported),
+        "errors":   errors,
+        "items":    imported,
+        "screening": "queued for all imported entries",
+    }
 
 
 @router.get("/{company_id}")

@@ -163,6 +163,15 @@ async def _ensure_columns() -> None:
                 ("end_user_name",         "VARCHAR(255)"),   # 最終需要者名
                 ("end_use_description",   "TEXT"),           # 最終用途
                 ("fdpr_judgment_json",    "TEXT"),           # FDPR 判定結果 JSON
+                # 多拠点管理
+                ("org_id",               "VARCHAR(36)"),    # 担当拠点 UUID
+                # エージェント判定
+                ("agent_judgment_status","VARCHAR(32)"),    # controlled / not_controlled / requires_review
+                ("agent_judged_at",      "DATETIME"),       # エージェント判定日時
+                ("formal_submitted_at",  "DATETIME"),       # 正式審査提出日時
+                # サプライチェーン連携
+                ("supply_chain_node_id", "VARCHAR(36)"),    # plat_supply_chain_node UUID
+                ("de_minimis_result",    "TEXT"),           # De Minimis 計算スナップショット JSON
             ]:
                 if col_name not in existing_tx:
                     conn.execute(text(f"ALTER TABLE transactions ADD COLUMN {col_name} {col_type}"))

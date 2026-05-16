@@ -32,11 +32,14 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-OFAC_SDN_URL = "https://www.treasury.gov/ofac/downloads/sdn.xml"
-CSL_API_URL  = "https://api.trade.gov/consolidated_screening_list/v1/search"
-EU_FSF_URL   = "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content"
-UK_OFSI_XML  = "https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.xml"
-UK_OFSI_CSV  = "https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv"
+OFAC_SDN_URL     = "https://sanctionslistservice.ofac.treas.gov/api/publicationpreview/exports/sdn.xml"
+OFAC_SDN_URL_ALT = "https://www.treasury.gov/ofac/downloads/sdn.xml"   # 旧URL（フォールバック）
+CSL_API_URL      = "https://api.trade.gov/consolidated_screening_list/v1/search"
+# BIS Entity List 直接ダウンロード（CSL API が使えない場合のフォールバック）
+BIS_EL_JSON_URL  = "https://efts.bis.doc.gov/complete-search-of-firm-names-and-addresses?searchOptions=allWords&keyWord=&export=true"
+EU_FSF_URL       = "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content"
+UK_OFSI_XML      = "https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.xml"
+UK_OFSI_CSV      = "https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv"
 
 _NS_SDN = "{http://tempuri.org/sdnList.xsd}"
 
@@ -47,11 +50,17 @@ def fetch_ofac_sdn(timeout: int = 90) -> list[dict[str, Any]]:
     """OFAC SDN XML を取得・パースして WatchlistImportRow 相当のリストを返す。
 
     SDN XML は ~34MB。ストリームせず全件取得する（メモリは約 150MB 以内）。
+    新URLが失敗した場合は旧URLにフォールバックする。
     """
     logger.info("Fetching OFAC SDN XML from %s", OFAC_SDN_URL)
     with httpx.Client(timeout=timeout, follow_redirects=True) as client:
-        resp = client.get(OFAC_SDN_URL)
-        resp.raise_for_status()
+        try:
+            resp = client.get(OFAC_SDN_URL)
+            resp.raise_for_status()
+        except Exception as e:
+            logger.warning("Primary OFAC URL failed (%s), trying fallback: %s", e, OFAC_SDN_URL_ALT)
+            resp = client.get(OFAC_SDN_URL_ALT)
+            resp.raise_for_status()
 
     root = ET.fromstring(resp.content)
     entries: list[dict[str, Any]] = []
@@ -130,7 +139,13 @@ def _fetch_csl_source(
                 "api_key": api_key,
             }
             resp = client.get(CSL_API_URL, params=params)
-            resp.raise_for_status()
+            if resp.status_code != 200:
+                raise RuntimeError(
+                    f"Trade.gov CSL API returned HTTP {resp.status_code}. "
+                    "DEMO_KEY has limited access — register at api.trade.gov for a free key."
+                )
+            if not resp.text.strip():
+                raise RuntimeError("Trade.gov CSL API returned empty response (rate limit or key issue)")
             data = resp.json()
 
             results: list[dict] = data.get("results", [])
