@@ -1,5 +1,5 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-12 更新（Layer B Phase 3: US+EP 4,639件追加 → 10,783 vec / 639 ECCN / Layer D: OpenAlex追加 → 5,765 vec / 25/25 ECCN）
+# 2026-05-16 更新（スクリーニング精度改善・ERP JSON一括インポート追加）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
 > 2026-05-08（3回目）追加: Phase 6 設計レビュー — platform-core から業務ドメイン機能を分離。counterparty→screening / item_version+supply_chain+supplier→ai_classification 統合（Phase 6A 高優先）、export_license / fta_origin 新モジュール抽出（Phase 6B 中優先）、trade_gate 新モジュール抽出（Phase 6C 低優先）。branch: refactor/module-separation。
@@ -25,7 +25,7 @@
 | ai_classification | 8002 | SQLite+PG | ✅ | ✅ | HS Classifier Webhook連携・ECCN付加・品目管理・サプライチェーン・サプライヤー |
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
 | patent_search | 8004 | SQLite | ✅ | ✅ | BigQuery連携・J-PlatPatフォールバック |
-| screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS）・与信管理 |
+| screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS）・与信管理・ERP JSON一括インポート・短名/頭字語検索修正済 |
 | hs_classifier | 8006 | — | — | ✅ | Layer C FAISS（5,476vec）・同期/非同期両対応 |
 | dap | 8010 | SQLite | ✅ | ✅ | 先輩担当者モード・ペルソナ追跡・ガイドバナー・全モジュール埋込済 |
 | export_license | 8012 | PostgreSQL | — | ✅ | EAR BIS-748P / 外為法様式第1 ドラフト生成・申請ライフサイクル（Phase 6B-1） |
@@ -763,6 +763,10 @@ lsof | grep ".db$" | grep -v ".venv"
 | ★★★☆☆ | Layer D 拡充（Semantic Scholar API Key） | API Key 取得後に collect_academic_papers.py を全 25 ECCN で実行（現在 14/25 ECCN・508論文。残り11 ECCN は無料枠でヒットなし）|
 | ✅ | JP 特許 Layer B 追加（Phase 1+2+3） | Phase 1+2: JP 4,549件（50 IPC コード）。Phase 3: US/EP 4,639件（CPC コード対応）→ 合計 10,783vec / 639 ECCN（2026-05-12）|
 | ★★☆☆☆ | D2-5 JP/EP特許 定期収集 | patent_search → ai_validation 連携 + 定期収集スケジューラー |
+| ✅ | スクリーニング精度修正（2026-05-16） | Step0 SQL ILIKE + エイリアス検索追加。サフィックス除去後スコアリング。ZTE/SMIC等の短名・頭字語ヒット。Sony等の偽陽性除去 |
+| ✅ | ERP JSON一括インポート（2026-05-16） | POST /api/counterparties/import-batch（最大500件・同期スクリーニング・upsert・flagged_list即時返却） |
+| ✅ | is_hit バグ修正（2026-05-16） | counterparty.py: `"hit"` → `in ("match", "possible_match")` / `list_type` → `list_source` |
+| ★★★☆☆ | 制裁リスト全量同期 | OFAC SDN URL変更対応済。Trade.gov API キー取得で BIS EL 完全収録（現在 watchlist 15件のみ）|
 
 ---
 
