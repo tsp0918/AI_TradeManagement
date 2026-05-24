@@ -161,19 +161,36 @@
 
 <!-- ===== BOM 可視化ウィジェット ===== -->
 <div class="box mb-3">
-  <div class="level mb-2">
-    <div class="level-left"><h3 class="subtitle is-6 mb-0">🌳 BOM チェーン クイックビュー</h3></div>
-    <div class="level-right" style="gap:0.3rem; display:flex; align-items:center;">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+    <h3 class="subtitle is-6 mb-0">🌳 BOM チェーン クイックビュー</h3>
+    <div style="display:flex; gap:6px; align-items:center;">
+      <!-- リスク凡例（コンパクト） -->
+      <span style="font-size:0.72rem; color:#555; display:flex; align-items:center; gap:6px; margin-right:8px;">
+        <span><span style="display:inline-block;width:10px;height:10px;background:#2563eb;border-radius:2px;vertical-align:middle;"></span> 完成品</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#dc2626;border-radius:2px;vertical-align:middle;"></span> EAR規制</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#f97316;border-radius:2px;vertical-align:middle;"></span> US EAR99</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#059669;border-radius:2px;vertical-align:middle;"></span> 一般</span>
+      </span>
       <input id="bom-code-input" class="input is-small" type="text" placeholder="品目コード" style="width:160px;">
       <button class="button is-small is-info" onclick="loadBomPreview()">検索</button>
+      <button id="bom-export-btn" class="button is-small" style="display:none;" onclick="exportBomPng()">💾 PNG</button>
+      <a id="bom-fullgraph-btn" class="button is-small is-light" style="display:none;" href="#">詳細グラフ →</a>
     </div>
   </div>
-  <div id="bom-preview-container" style="width:100%; height:300px; background:#fafafa; border:1px solid #dbdbdb; border-radius:4px; position:relative;">
-    <div id="bom-preview-msg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#888;font-size:0.85rem;">
+
+  <!-- グラフキャンバス -->
+  <div id="bom-preview-container" style="width:100%; height:340px; background:#f9fafb;
+       border:1.5px solid #e5e7eb; border-radius:8px; position:relative;">
+    <div id="bom-preview-msg" style="position:absolute;top:50%;left:50%;
+         transform:translate(-50%,-50%);color:#9ca3af;font-size:0.85rem; text-align:center; pointer-events:none;">
       品目コードを入力して BOM ツリーを表示
     </div>
   </div>
-  <div id="bom-preview-detail" style="display:none; margin-top:0.5rem; font-size:0.8rem; background:#f8faff; padding:0.5rem 0.75rem; border-radius:4px; border:1px solid #bfdbfe;"></div>
+
+  <!-- リスクサマリーバー -->
+  <div id="bom-preview-detail" style="display:none; margin-top:8px; font-size:0.8rem;
+       background:#f8faff; padding:8px 14px; border-radius:6px; border:1px solid #bfdbfe;
+       display:flex; align-items:center; gap:16px; flex-wrap:wrap;"></div>
 </div>
 
 <!-- ===== リスクリスト ===== -->
@@ -215,88 +232,174 @@
   {% endif %}
 </div>
 
-<!-- Cytoscape.js for BOM preview -->
+<!-- Cytoscape + dagre （順序重要） -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
-<script>
-let previewCy = null;
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
 
-function nodeColor(n) {
-  if (n.node_type === "product") return "#3273dc";
-  if (n.is_us_origin && n.eccn && n.eccn.toUpperCase() !== "EAR99") return "#f14668";
-  if (n.is_us_origin) return "#ff9f43";
-  return "#48c774";
+<script>
+if (typeof cytoscapeDagre !== 'undefined') cytoscape.use(cytoscapeDagre);
+
+let previewCy   = null;
+let _previewCode = '';
+
+function _risk(n) {
+  if (n.node_type === 'product') return 'product';
+  const isUs = n.is_us_origin;
+  const eccn = (n.eccn || '').toUpperCase();
+  if (isUs && eccn && eccn !== 'EAR99') return 'high';
+  if (isUs) return 'medium';
+  return 'safe';
+}
+const _COLORS = {
+  product: { bg:'#2563eb', border:'#1d4ed8', ec:'#9ca3af', ew:1.5 },
+  high:    { bg:'#dc2626', border:'#7f1d1d', ec:'#dc2626', ew:3   },
+  medium:  { bg:'#f97316', border:'#9a3412', ec:'#f97316', ew:2.5 },
+  safe:    { bg:'#059669', border:'#064e3b', ec:'#9ca3af', ew:1.5 },
+};
+
+function _makeLabel(n) {
+  const code = (n.product_code || n.name || '').slice(0, 14);
+  const r = _risk(n);
+  if (r === 'product') {
+    return n.eccn ? `${code}\nECCN: ${n.eccn}` : code;
+  }
+  if (r === 'high')   return `⚠ ${code}\n🇺🇸 EAR規制`;
+  if (r === 'medium') return `${code}\n🇺🇸 US原産`;
+  return code;
 }
 
 async function loadBomPreview() {
-  const code = document.getElementById("bom-code-input").value.trim();
+  const code = document.getElementById('bom-code-input').value.trim();
   if (!code) return;
-  const msg = document.getElementById("bom-preview-msg");
-  msg.style.display = "block";
-  msg.textContent = "⏳ 読み込み中...";
+  _previewCode = code;
+
+  const msg = document.getElementById('bom-preview-msg');
+  msg.style.display = 'block';
+  msg.textContent   = '⏳ 読み込み中…';
   if (previewCy) { previewCy.destroy(); previewCy = null; }
-  document.getElementById("bom-preview-detail").style.display = "none";
+  document.getElementById('bom-preview-detail').style.display = 'none';
+  document.getElementById('bom-export-btn').style.display     = 'none';
+  document.getElementById('bom-fullgraph-btn').style.display  = 'none';
 
   try {
-    const res = await fetch(`/api/supply-chain/by-product-code/${encodeURIComponent(code)}`);
+    const res  = await fetch(`/api/supply-chain/by-product-code/${encodeURIComponent(code)}`);
     const data = await res.json();
 
     if (!data.node) {
-      msg.textContent = `⚠️ "${code}" の SC ノードが未登録です（BOM同期が必要）`;
+      msg.textContent = `⚠️ "${code}" の SC ノードが未登録（BOM同期が必要）`;
       return;
     }
-    msg.style.display = "none";
+    msg.style.display = 'none';
 
     const root = data.node;
-    const els = [{
-      data: { id: root.id, label: root.product_code || root.name, ...root,
-        color: nodeColor(root), shape: "roundrectangle" }
-    }];
-    for (const c of (data.children || [])) {
-      els.push({ data: { id: c.id, label: c.product_code || c.name, ...c,
-        color: nodeColor(c), shape: "ellipse" } });
-      els.push({ data: { id: `e_${root.id}_${c.id}`, source: root.id, target: c.id,
-        label: c.quantity !== 1 ? `×${c.quantity}` : "" } });
+    const ch   = data.children || [];
+    const els  = [];
+
+    const rr = _risk(root);
+    els.push({ data: { id: root.id,
+      label: _makeLabel(root), risk: rr,
+      bg: _COLORS[rr].bg, border: _COLORS[rr].border,
+      bw: 2, w: 140, h: 52, fsize:'11px', bold:'bold', nd: root } });
+
+    for (const c of ch) {
+      const rc = _risk(c);
+      const pct = c.unit === 'ratio' ? `${Math.round(c.quantity*100)}%` : (c.quantity !== 1 ? `×${c.quantity}` : '');
+      els.push({ data: { id: c.id,
+        label: _makeLabel(c), risk: rc,
+        bg: _COLORS[rc].bg, border: _COLORS[rc].border,
+        bw: rc === 'high' ? 4 : 2, w: 120, h: 46, fsize:'10px', bold:'normal', nd: c } });
+      els.push({ data: { id:`e_${root.id}_${c.id}`,
+        source: root.id, target: c.id,
+        label: pct, ec: _COLORS[rc].ec, ew: _COLORS[rc].ew } });
     }
 
+    const layoutName = (typeof cytoscapeDagre !== 'undefined') ? 'dagre' : 'breadthfirst';
+
     previewCy = cytoscape({
-      container: document.getElementById("bom-preview-container"),
-      elements: els,
+      container: document.getElementById('bom-preview-container'),
+      elements:  els,
       style: [
-        { selector: "node", style: {
-          "background-color": "data(color)", "shape": "data(shape)",
-          "label": "data(label)", "font-size": "10px", "color": "#fff",
-          "text-valign": "center", "width": 80, "height": 30,
-          "border-width": 2, "border-color": "#fff"
+        { selector: 'node', style: {
+          'background-color':  'data(bg)',
+          'border-color':      'data(border)',
+          'border-width':      'data(bw)',
+          'shape':             'roundrectangle',
+          'label':             'data(label)',
+          'color':             '#fff',
+          'font-size':         'data(fsize)',
+          'font-weight':       'data(bold)',
+          'font-family':       '-apple-system, BlinkMacSystemFont, sans-serif',
+          'text-valign':       'center',
+          'text-halign':       'center',
+          'text-wrap':         'wrap',
+          'text-max-width':    '110px',
+          'width':             'data(w)',
+          'height':            'data(h)',
         }},
-        { selector: "node[node_type='product']", style: { "width": 110, "height": 40, "font-size": "12px", "font-weight": "bold" }},
-        { selector: "edge", style: {
-          "width": 1.5, "line-color": "#ccc", "target-arrow-color": "#ccc",
-          "target-arrow-shape": "triangle", "curve-style": "bezier",
-          "label": "data(label)", "font-size": "9px"
-        }}
+        { selector: "node[risk='high']", style: {
+          'shadow-blur':    14, 'shadow-color': '#dc2626',
+          'shadow-opacity': 0.6, 'shadow-offset-x': 0, 'shadow-offset-y': 0,
+        }},
+        { selector: 'edge', style: {
+          'width':               'data(ew)',
+          'line-color':          'data(ec)',
+          'target-arrow-color':  'data(ec)',
+          'target-arrow-shape':  'triangle',
+          'curve-style':         'taxi',
+          'taxi-direction':      'downward',
+          'label':               'data(label)',
+          'font-size':           '10px',
+          'color':               '#374151',
+          'text-background-color':   '#fff',
+          'text-background-opacity': 0.9,
+          'text-background-padding': '2px',
+        }},
       ],
-      layout: { name: "breadthfirst", directed: true, padding: 15 }
+      layout: layoutName === 'dagre' ? {
+        name: 'dagre', rankDir: 'TB', nodeSep: 50, rankSep: 80, padding: 20,
+      } : {
+        name: 'breadthfirst', directed: true, padding: 20, spacingFactor: 1.4,
+      }
     });
 
-    // 詳細表示
-    const detail = document.getElementById("bom-preview-detail");
-    const highRisk = (data.children || []).filter(c => c.is_us_origin && c.eccn && c.eccn.toUpperCase() !== "EAR99");
-    const usNodes = (data.children || []).filter(c => c.is_us_origin);
-    detail.innerHTML = `
-      <strong>${root.product_code}</strong> — ${data.children.length} 構成品
-      &nbsp;|&nbsp; 🇺🇸 US原産: <strong>${usNodes.length}</strong>件
-      &nbsp;|&nbsp; 🔴 EAR規制品: <strong style="color:${highRisk.length > 0 ? '#c53030' : '#276749'}">${highRisk.length}</strong>件
-      ${highRisk.length > 0 ? `&nbsp;|&nbsp; <a href="/products/${code}/bom/graph" style="font-size:.78rem;">詳細グラフ →</a>` : ""}
+    /* リスクサマリーバー */
+    const hi  = ch.filter(c => _risk(c) === 'high');
+    const me  = ch.filter(c => _risk(c) === 'medium');
+    const sa  = ch.filter(c => _risk(c) === 'safe');
+    const det = document.getElementById('bom-preview-detail');
+    det.style.display = 'flex';
+    det.innerHTML = `
+      <strong>${root.product_code || code}</strong> — 構成品 ${ch.length}件
+      &nbsp;
+      <span style="color:#dc2626; font-weight:700;">🔴 HIGH ${hi.length}件</span>
+      <span style="color:#f97316; font-weight:700;">🟡 MED ${me.length}件</span>
+      <span style="color:#059669; font-weight:700;">✅ SAFE ${sa.length}件</span>
     `;
-    detail.style.display = "block";
-  } catch(e) {
-    msg.textContent = "❌ 読み込みエラー: " + e.message;
+
+    /* PNG ボタン + 詳細リンク */
+    document.getElementById('bom-export-btn').style.display = 'inline-flex';
+    const fullBtn = document.getElementById('bom-fullgraph-btn');
+    fullBtn.href  = `/products/${encodeURIComponent(code)}/bom/graph`;
+    fullBtn.style.display = 'inline-flex';
+
+  } catch(err) {
+    msg.textContent = '❌ エラー: ' + err.message;
   }
 }
 
-// Enterキーでも検索
-document.getElementById("bom-code-input").addEventListener("keydown", e => {
-  if (e.key === "Enter") loadBomPreview();
+function exportBomPng() {
+  if (!previewCy) return;
+  const date = new Date().toISOString().slice(0,10);
+  const png  = previewCy.png({ scale: 2, bg: '#ffffff', full: true });
+  const a    = document.createElement('a');
+  a.href     = png;
+  a.download = `BOM_${_previewCode}_${date}.png`;
+  a.click();
+}
+
+document.getElementById('bom-code-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadBomPreview();
 });
 </script>
 {% endblock %}

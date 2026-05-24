@@ -53,6 +53,14 @@ class SupplyChainNode(PlatformBase):
     # ai_classification 品目コード（soft FK, products.code）
     product_code: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
 
+    # ECCN 該非判定連携（ai_validation モジュール）
+    eccn_validation_tx_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    eccn_judgment_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # "pending" | "ai_completed" | "confirmed" | "rejected"
+    eccn_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # "supplier_attestation" | "ai_judgment" | "manual"
+    judgment_evidence: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
     # plat_item との正式紐付け (Integration C)
     item_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),

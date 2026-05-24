@@ -1,7 +1,10 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-24 更新（輸入品管理基盤 Phase I-1/II-1/II-3/I-2/III-1/III-2/III-3/IV-1 全完了）
+# 2026-05-24 更新（URL整合性修正・データ一元化完了）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
+> 2026-05-24（6回目）追加: URL整合性修正・データ一元化完了。①全モジュールのハードコードlocalhost URLを環境変数化（item_version.py/export_license.py/import_profiles.html/transaction_detail.html）②BOM→AI判定リンクのURLパス修正（/transactions/{id}→/ui/transactions/{id}）③transaction_detail.html BOMコンテキストカード追加（ai_classification起案時にspec_text key-valueグリッド・バックリンク表示）④ヒットなし時 FAISS 候補チップ表示（catchall_recommended の場合）⑤supply_chain_node_id を Transaction に自動リンク（portal_submit / request-eccn 双方）⑥FAISS + 2リスト自動実行（fire-and-forget）。
+> 2026-05-24（5回目）追加: サプライヤーポータル → AI 2リスト該非判定 → BOM 自動更新フロー完全実装。Alembic m1n2o3p4q5r6（ECCN判定4フィールド）・supplier_portal.py AI判定自動トリガー・sync-eccn FAISS照合ロジック・bom_graph.html 判定ステータスバッジ（⏳/🤖/✅/❌）・Graphviz DOT スタイル可視化（cytoscape-dagre）。デモ: EUV-PR-001 BOM の EUV-RM-002（PAG） サプライヤー申告 1C010.a → FAISS Layer A 1C010 候補一致確認 → eccn_judgment_status=ai_completed → ECCN=1C010.a 自動書込。
+> 2026-05-24（4回目）追加: Phase IV-2 輸出入統合ダッシュボード（GET /dashboard/import-export + GET /api/dashboard/import-export）。SQLite品目集計 + PostgreSQL ImportProfile/SupplyChainNode 集計・仕入先国バーチャート・品目種別バーチャート・BOMチェーン クイックビュー（Cytoscape.js）・要対応アクションリスト（high/medium/low）。ドライランデモ実行：全8モジュール稼働確認・BOM同期4品目・インパクト分析・スクリーニング/HS判定連動テスト完了。
 > 2026-05-24（3回目）追加: Phase I-2 BOM統合（bom_json→plat_supply_chain_node 自動同期・SC同期ボタン）・Phase III-1 輸入品ECCN付番フロー（ai_validation連携・判定ステータス追跡）・Phase III-2 BOM上流輸入品影響分析（GET /api/supply-chain/impact/{code} 逆引き）・Phase III-3 US EAR再輸出許可申請自動トリガー（export_license連携）・Phase IV-1 BOMチェーン可視化（Cytoscape.js /bom/graph ページ）。
 > 2026-05-24（2回目）追加: 輸入品管理基盤。item_type 6種確立（PURCHASED_PART/RAW_MATERIAL/INTERNAL_TRANSFER/SOFTWARE追加）・輸入品 Lookup 3タブ追加・plat_import_profile テーブル新設（Alembic: i7j8k9l0m1n2）・ImportProfile CRUD + 輸入規制チェック（化審法/REACH/CITES/EAR）+ fta_origin 自動照合。
 > 2026-05-24（1回目）追加: キャッチオール自動評価（AI run 後 LOW 判定で自動 CatchallAssessment 生成）+ 制裁リスト無料3ソース（OFAC SDN CSV/UN SC/EU Consolidated）自動同期 + pending_actions にキャッチオール未判定アクション（Step 2.5）追加。
@@ -25,7 +28,7 @@
 |-----------|--------|-----|-----|--------|------|
 | platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 4レイヤー（A/B/C/D）・知識グラフ・規制スケジューラー（業務ロジック分離済） |
 | ai_validation | 8011 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent・AI run 後キャッチオール自動評価 |
-| ai_classification | 8002 | SQLite+PG | ✅ | ✅ | 品目管理・6種 item_type・輸入品プロファイル・BOM→SC自動同期・BOMグラフ可視化・輸入品影響分析・ECCN付番フロー・US EAR再輸出申請トリガー |
+| ai_classification | 8002 | SQLite+PG | ✅ | ✅ | 品目管理・6種 item_type・輸入品プロファイル・BOM→SC自動同期・BOMグラフ可視化（cytoscape-dagre）・輸入品影響分析・ECCN付番フロー・US EAR再輸出申請トリガー・**サプライヤー→AI該非判定→BOM自動更新** |
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
 | patent_search | 8004 | SQLite | ✅ | ✅ | BigQuery連携・J-PlatPatフォールバック |
 | screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS/UN/EU）・与信管理・ERP JSON一括インポート・無料3ソース自動同期 |
@@ -615,6 +618,7 @@ Ph.D — patent_search 双方向リンク
 |------|------|--------|
 | platform-core 業務ドメインルーター — Phase 6A〜6C で全7本をプロキシスタブ化済み ✅ | — | 解消済み |
 | 各モジュールの pg_session.py が個別実装 | 接続パラメータ変更時に全モジュール修正が必要 | 低（env var 統一で対応済み） |
+| ハードコードURL → 全モジュール環境変数化 ✅（2026-05-24 修正） | — | 解消済み（item_version.py / export_license.py / transaction_detail.html / import_profiles.html）|
 
 ---
 

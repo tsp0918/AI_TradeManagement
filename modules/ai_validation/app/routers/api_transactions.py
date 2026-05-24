@@ -442,9 +442,10 @@ def get_transaction_detail(tx_id: int, db: Session = Depends(get_db)) -> Dict[st
             "run_type": latest_run.run_type,
             "finished_at": latest_run.finished_at.isoformat() if latest_run.finished_at else None,
         } if latest_run else None,
+        "supply_chain_node_id": tx.supply_chain_node_id,
         "created_at": tx.created_at.isoformat(),
         "updated_at": tx.updated_at.isoformat(),
-        "url": f"/transactions/{tx.id}",
+        "url": f"/ui/transactions/{tx.id}",
     }
 
 

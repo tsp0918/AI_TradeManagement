@@ -41,6 +41,9 @@ templates = Jinja2Templates(directory="templates")
 
 _FTA_ORIGIN_URL = os.environ.get("MODULE_FTA_ORIGIN_URL", "http://localhost:8014")
 _AI_VALIDATION_URL = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+_AI_VALIDATION_PUBLIC_URL = os.environ.get(
+    "MODULE_AI_VALIDATION_PUBLIC_URL", "https://validation.tsp-aitrademanagement.com"
+)
 _EXPORT_LICENSE_URL = os.environ.get("MODULE_EXPORT_LICENSE_URL", "http://localhost:8012")
 
 
@@ -484,7 +487,7 @@ async def request_eccn(
         "profile_id": str(profile_id),
         "tx_id": data["id"],
         "tx_case_no": data.get("case_no"),
-        "tx_url": f"{_AI_VALIDATION_URL}/transactions/{data['id']}",
+        "tx_url": f"{_AI_VALIDATION_PUBLIC_URL}/ui/transactions/{data['id']}",
     }
 
 
@@ -525,7 +528,7 @@ async def sync_eccn_status(
         "tx_id": profile.eccn_validation_tx_id,
         "tx_status": data.get("status"),
         "agent_judgment_status": judgment,
-        "tx_url": f"{_AI_VALIDATION_URL}/transactions/{profile.eccn_validation_tx_id}",
+        "tx_url": f"{_AI_VALIDATION_PUBLIC_URL}/ui/transactions/{profile.eccn_validation_tx_id}",
         "note": "ECCN が確定したら「ECCN申告値」欄を手動で更新してください。" if judgment else "",
     }
 

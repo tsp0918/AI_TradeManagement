@@ -16,6 +16,7 @@ EAR BIS-748P / 外為法 様式第1 のドラフト自動生成・申請ライ�
   GET  /api/export-licenses/{id}/preview           HTML プレビュー
 """
 
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -31,7 +32,7 @@ from platform_core.models.export_license import ExportLicenseApplication
 
 router = APIRouter(tags=["export_license"])
 
-_AI_VALIDATION_URL = "http://localhost:8011"
+_AI_VALIDATION_URL = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
 
 # ── Pydantic スキーマ ─────────────────────────────────────────────
 

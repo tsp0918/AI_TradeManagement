@@ -4,13 +4,17 @@ Phase 6A-2: platform-core から移管。データは plat_supply_chain_* テー
 platform_core.models をそのまま利用し、screening と同じ共有 DB 接続パターンを採用。
 """
 
+import os
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from ..pg_session import get_pg_db
 from ..pg_session_sync import get_pg_db_sync
@@ -18,6 +22,11 @@ from ..database import SessionLocal
 from ..models import Product as _Product
 from .bom_sync import sync_bom_to_supply_chain as _sync_bom
 from platform_core.models.supply_chain import SupplyChainEdge, SupplyChainNode
+
+_AI_VALIDATION_URL = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+_AI_VALIDATION_PUBLIC_URL = os.environ.get(
+    "MODULE_AI_VALIDATION_PUBLIC_URL", "https://validation.tsp-aitrademanagement.com"
+)
 
 router = APIRouter(prefix="/api/supply-chain", tags=["supply_chain"])
 
@@ -159,6 +168,11 @@ def _serialize_node(n: SupplyChainNode, children: list[dict] | None = None) -> d
         "us_controlled_value_usd": n.us_controlled_value_usd,
         "description": n.description,
         "item_id": str(n.item_id) if n.item_id else None,
+        # 該非判定フィールド
+        "eccn_validation_tx_id": getattr(n, "eccn_validation_tx_id", None),
+        "eccn_judgment_status": getattr(n, "eccn_judgment_status", None),
+        "eccn_source": getattr(n, "eccn_source", None),
+        "judgment_evidence": getattr(n, "judgment_evidence", None),
         "created_at": n.created_at.isoformat(),
         "updated_at": n.updated_at.isoformat(),
     }
@@ -582,4 +596,223 @@ async def get_impact_analysis(
         "component_node": _serialize_node(comp_node),
         "affected_products": affected,
         "total_affected": len(affected),
+    }
+
+
+# ── ECCN 該非判定連携（サプライヤー提出後 AI 自動判定） ────────────
+
+@router.post("/nodes/{node_id}/request-eccn")
+async def request_eccn_for_node(
+    node_id: str,
+    db: AsyncSession = Depends(get_pg_db),
+):
+    """
+    ai_validation:8011 に該非判定トランザクションを作成する。
+    サプライヤーのAttestation提出後に自動または手動で呼び出す。
+    """
+    nid = uuid.UUID(node_id)
+    result = await db.execute(select(SupplyChainNode).where(SupplyChainNode.id == nid))
+    node = result.scalar_one_or_none()
+    if node is None:
+        raise HTTPException(status_code=404, detail="SupplyChainNode not found")
+
+    # 最新のサプライヤーAttestation を参照してコンテキスト構築
+    from platform_core.models.supplier_attestation import SupplierAttestation
+    att_result = await db.execute(
+        select(SupplierAttestation)
+        .where(SupplierAttestation.node_id == nid)
+        .order_by(SupplierAttestation.created_at.desc())
+        .limit(1)
+    )
+    att = att_result.scalar_one_or_none()
+
+    claimed_eccn = att.claimed_eccn if att else None
+    supplier_name = att.supplier_name if att else "不明"
+    claimed_coo = att.claimed_country_of_origin if att else node.country_of_origin
+
+    desc_lines = [
+        f"品目コード: {node.product_code or '不明'}",
+        f"部品番号: {node.part_number or '不明'}",
+        f"ノード種別: {node.node_type}",
+        f"原産国（申告）: {claimed_coo or '不明'}",
+        f"ECCN（申告）: {claimed_eccn or '未申告'}",
+        f"HSコード: {node.hs_code or '不明'}",
+        f"サプライヤー: {supplier_name}",
+    ]
+    if node.description:
+        desc_lines.append(f"品目説明: {node.description}")
+    if att and att.notes:
+        desc_lines.append(f"サプライヤーコメント: {att.notes}")
+
+    payload = {
+        "title": f"BOM構成品 ECCN 該非判定: {node.product_code or node.name}",
+        "items": [
+            {
+                "item_name": node.name,
+                "item_description": "\n".join(desc_lines),
+            }
+        ],
+        "source_module": "ai_classification",
+        "destination_country": "JP",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                f"{_AI_VALIDATION_URL}/api/transactions",
+                json=payload,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"ai_validation 連携エラー: {exc}")
+
+    node.eccn_validation_tx_id = data["id"]
+    node.eccn_judgment_status = "pending"
+    node.eccn_source = "supplier_attestation" if att else "manual"
+    node.judgment_evidence = {
+        "tx_id": data["id"],
+        "case_no": data.get("case_no"),
+        "tx_url": f"{_AI_VALIDATION_PUBLIC_URL}/ui/transactions/{data['id']}",
+        "requested_at": datetime.now(timezone.utc).isoformat(),
+        "supplier_claimed_eccn": claimed_eccn,
+        "attestation_id": str(att.id) if att else None,
+    }
+    await db.commit()
+
+    tx_id_created = data["id"]
+    # ── supply_chain_node_id を Transaction に紐付け
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(
+                f"{_AI_VALIDATION_URL}/api/transactions/{tx_id_created}/supply-chain",
+                json={"supply_chain_node_id": node_id},
+            )
+    except Exception:
+        pass
+
+    # ── FAISS + 2リスト解析を自動起動
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            await client.post(f"{_AI_VALIDATION_URL}/decision/{tx_id_created}/run-and-two-lists")
+    except Exception:
+        pass
+
+    return {
+        "ok": True,
+        "node_id": node_id,
+        "tx_id": tx_id_created,
+        "case_no": data.get("case_no"),
+        "tx_url": f"{_AI_VALIDATION_PUBLIC_URL}/ui/transactions/{tx_id_created}",
+        "status": "pending",
+    }
+
+
+@router.post("/nodes/{node_id}/sync-eccn")
+async def sync_eccn_for_node(
+    node_id: str,
+    db: AsyncSession = Depends(get_pg_db),
+):
+    """
+    ai_validation トランザクションの結果を取得し、
+    SupplyChainNode.eccn および eccn_judgment_status を更新する。
+    """
+    nid = uuid.UUID(node_id)
+    result = await db.execute(select(SupplyChainNode).where(SupplyChainNode.id == nid))
+    node = result.scalar_one_or_none()
+    if node is None:
+        raise HTTPException(status_code=404, detail="SupplyChainNode not found")
+
+    tx_id = getattr(node, "eccn_validation_tx_id", None)
+    if not tx_id:
+        raise HTTPException(status_code=400, detail="ECCN 判定依頼が未実施です")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{_AI_VALIDATION_URL}/api/transactions/{tx_id}")
+            resp.raise_for_status()
+            tx = resp.json()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"ai_validation 連携エラー: {exc}")
+
+    # AI 判定結果を抽出（ai_runs 配列 or ai_run 単数どちらにも対応）
+    ai_runs = tx.get("ai_runs") or []
+    if not ai_runs and tx.get("ai_run"):
+        ai_runs = [tx["ai_run"]]
+    suggested_eccn = None
+    ai_verdict = None
+    if ai_runs:
+        top = ai_runs[0]
+        hits = top.get("hits") or []
+        if hits:
+            suggested_eccn = hits[0].get("eccn") or hits[0].get("law_id")
+        ai_verdict = top.get("verdict") or top.get("result")
+
+    # FAISS候補からも ECCN を補完（単体 ai_run で hits がない場合）
+    if not suggested_eccn:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                fc_resp = await client.get(f"{_AI_VALIDATION_URL}/decision/{tx_id}/faiss-candidates")
+                if fc_resp.status_code == 200:
+                    fc = fc_resp.json()
+                    first_eccn = None
+                    claimed = (node.judgment_evidence or {}).get("supplier_claimed_eccn") or ""
+                    for cand in (fc.get("candidates") or []):
+                        # フォーマット: "FEFTA::1C010::eccn_tech::1C010"
+                        parts = cand.split("::")
+                        if len(parts) >= 3 and parts[2] == "eccn_tech" and parts[1]:
+                            if not first_eccn:
+                                first_eccn = parts[1]
+                            # supplier 申告 ECCN と部分一致する候補があれば優先採用
+                            if claimed and parts[1] and claimed.startswith(parts[1]):
+                                suggested_eccn = claimed  # 詳細申告値を採用
+                                break
+                    if not suggested_eccn and first_eccn:
+                        suggested_eccn = first_eccn
+        except Exception:
+            pass
+
+    # FAISS が supplier 申告 ECCN と一致した場合は ai_completed に昇格
+    claimed_eccn = (node.judgment_evidence or {}).get("supplier_claimed_eccn")
+    faiss_supports_claim = suggested_eccn and claimed_eccn and claimed_eccn.startswith(suggested_eccn)
+
+    judgment_status = tx.get("agent_judgment_status") or tx.get("status", "pending")
+    ai_run_done = (tx.get("ai_run") or {}).get("status") == "success"
+    is_completed = judgment_status not in ("draft", "pending", None) or (ai_run_done and faiss_supports_claim)
+
+    # evidence を更新（tx_url を正しい公開URLに修正）
+    evidence = node.judgment_evidence or {}
+    evidence.update({
+        "tx_url": f"{_AI_VALIDATION_PUBLIC_URL}/ui/transactions/{tx_id}",
+        "tx_status": tx.get("status"),
+        "agent_judgment_status": judgment_status,
+        "ai_suggested_eccn": suggested_eccn,
+        "ai_verdict": ai_verdict,
+        "synced_at": datetime.now(timezone.utc).isoformat(),
+        "ai_runs_count": len(ai_runs),
+    })
+    node.judgment_evidence = dict(evidence)  # 新規dictで JSONB mutation を確実に検知
+    flag_modified(node, "judgment_evidence")
+    node.eccn_judgment_status = "ai_completed" if is_completed else "pending"
+
+    # ECCN が確定していれば自動反映
+    # FAISS が supplier 申告 ECCN を支持する場合は申告値（より詳細）を採用
+    final_eccn = claimed_eccn if (faiss_supports_claim and claimed_eccn) else suggested_eccn
+    if final_eccn and is_completed and not node.eccn:
+        node.eccn = final_eccn
+        node.eccn_source = "supplier_attestation" if (faiss_supports_claim and claimed_eccn) else "ai_judgment"
+
+    await db.commit()
+    await db.refresh(node)
+
+    return {
+        "ok": True,
+        "node_id": node_id,
+        "tx_id": tx_id,
+        "tx_status": tx.get("status"),
+        "agent_judgment_status": judgment_status,
+        "ai_suggested_eccn": final_eccn if is_completed else suggested_eccn,
+        "faiss_supports_claim": faiss_supports_claim,
+        "eccn_updated": bool(final_eccn and is_completed),
+        "node": _serialize_node(node),
     }

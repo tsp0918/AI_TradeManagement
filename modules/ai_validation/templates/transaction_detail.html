@@ -194,14 +194,46 @@ async function createExportLicense(txId) {
 </div>
 {% endif %}
 
-<!-- UI_xxx 詳細: 正式取引起案ボタン -->
+<!-- ===== BOM 出所コンテキスト（ai_classification 起案時） ===== -->
 {% if tx.source_module == "ai_classification" %}
-<div style="margin-bottom:16px; display:flex; align-items:center; gap:10px;">
-  <a href="/ui/transactions/new?parent_transaction_id={{ tx.id }}&parent_case_no={{ tx.case_no }}"
-     style="background:var(--primary,#1a73e8); color:#fff; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; text-decoration:none;">
-    → この審査を引き継いで正式取引審査を起案
-  </a>
-  <span class="muted small">品目管理から起案された事前審査（UI審査）</span>
+<div id="bom-context-card" style="
+  background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:10px;
+  padding:14px 18px; margin-bottom:14px;">
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+    <span style="font-size:1rem;">🔗</span>
+    <span style="font-weight:700; font-size:.9rem; color:#0369a1;">BOM 品目管理 — 該非判定起案</span>
+    <span style="font-size:.78rem; color:#64748b; margin-left:4px;">品目管理モジュールのサプライヤー申告から自動起案された事前審査です</span>
+  </div>
+
+  <!-- spec_text からコンテキスト情報を表示 -->
+  {% if items %}
+  {% set spec = items[0].spec_text or "" %}
+  <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px; font-size:.82rem;">
+    {% for line in spec.split('\n') %}
+      {% if ': ' in line %}
+        {% set kv = line.split(': ', 1) %}
+        <div style="background:#fff; border-radius:6px; padding:6px 10px; border:1px solid #e0f2fe;">
+          <span style="color:#64748b; font-size:.74rem;">{{ kv[0] }}</span><br>
+          <span style="font-weight:600; color:#0c4a6e;">{{ kv[1] }}</span>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+    <a href="https://classification.tsp-aitrademanagement.com/products"
+       target="_blank"
+       style="font-size:.8rem; padding:5px 12px; background:#0369a1; color:#fff;
+              border-radius:6px; text-decoration:none; font-weight:600;">
+      ← BOM 品目管理へ戻る
+    </a>
+    <a href="/ui/transactions/new?parent_transaction_id={{ tx.id }}&parent_case_no={{ tx.case_no }}"
+       style="font-size:.8rem; padding:5px 12px; background:#fff; color:#0369a1;
+              border:1px solid #bae6fd; border-radius:6px; text-decoration:none;">
+      → 正式取引審査を起案
+    </a>
+  </div>
 </div>
 {% endif %}
 
@@ -297,15 +329,39 @@ async function createExportLicense(txId) {
 </div>
 
 {% elif two_lists and two_lists.counts.total_unique_items == 0 %}
-<div class="card" style="padding:16px; font-size:.92rem">
-  <span style="color:var(--muted);">マトリクス照合なし。用途テキストを具体的に入力して再実行してください。</span>
+<div class="card" style="padding:16px 20px; font-size:.92rem;">
+
   {% if two_lists.catchall_recommended %}
-  <div style="margin-top:10px; padding:10px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:.85rem; color:#1e40af;">
-    🛡️ <b>リスト規制への該当は検出されませんでした。</b>
-    下部のキャッチオール規制チェックリストで自己判定を完了してください。
-    <a href="#sec-catchall" style="margin-left:8px; font-weight:700;">→ 判定へ</a>
+  <div style="display:flex; align-items:flex-start; gap:10px; padding:12px 14px;
+       background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:.85rem; color:#1e40af;">
+    <span style="font-size:1.2rem;">🛡️</span>
+    <div>
+      <strong>2リスト照合ヒットなし → キャッチオール審査が必要です</strong>
+      <p style="margin:4px 0 0; color:#374151; font-size:.82rem;">
+        品名・用途テキストが外為法・EAR規制項目テキストと直接一致しませんでした。
+        化学物質・複合材料・先端素材などは CAS番号や物質クラスで個別に判定する必要があり、
+        2リスト以外のキャッチオール規制（Section 4）で審査を完結してください。
+      </p>
+      <a href="#sec-catchall" style="margin-top:6px; display:inline-block; font-weight:700; color:#1d4ed8;">
+        → キャッチオール判定へ ↓
+      </a>
+    </div>
   </div>
+  {% else %}
+  <span style="color:var(--muted);">マトリクス照合なし。用途テキストを具体的に入力して再実行してください。</span>
   {% endif %}
+
+  <!-- FAISS 類似候補（ヒントとして表示） -->
+  <div style="margin-top:14px;">
+    <div style="font-size:.8rem; font-weight:700; color:#475569; margin-bottom:6px;">
+      🔍 FAISS 類似候補（参考）
+      <span style="font-weight:400; color:#94a3b8; margin-left:6px;">— 規制テキスト類似度上位。最終判定には専門家確認が必要です</span>
+    </div>
+    <div id="faiss-candidates-panel">
+      <span style="font-size:.8rem; color:#94a3b8;">読み込み中…</span>
+    </div>
+  </div>
+
 </div>
 {% elif not two_lists and not two_lists_error %}
 <div class="card" style="padding:16px; color:var(--muted); font-size:.92rem">
@@ -731,7 +787,7 @@ async function createExportLicense(txId) {
 <script>
 // ── サプライチェーン / De Minimis 連携 ──────────────────────────
 const _TX_ID = {{ tx.id }};
-const _PLATFORM_URL = 'http://localhost:8000';
+const _PLATFORM_URL = 'https://app.tsp-aitrademanagement.com';
 let _selectedScNodeId = null;
 let _scSearchTimer = null;
 
@@ -1923,6 +1979,64 @@ function renderEuDualUse(j, area) {
   html += `</div>`;
   area.innerHTML = html;
 }
+</script>
+
+<!-- FAISS candidates fetch（ヒットなし時） -->
+<script>
+(function() {
+  const panel = document.getElementById('faiss-candidates-panel');
+  if (!panel) return;
+  const TX_ID = {{ tx.id }};
+
+  // ECCN prefix → 外為法別表 簡易マッピング
+  const ECCN_HINT = {
+    '0': '核兵器関連', '1': '化学・生物・素材', '2': '製造設備',
+    '3': '電子部品', '4': 'コンピュータ', '5': '通信・情報セキュリティ',
+    '6': 'センサー・レーザー', '7': '航法・航空', '8': '海上輸送', '9': '宇宙・推進',
+  };
+  const ECCN_COLOR = {
+    '0': '#dc2626', '1': '#ea580c', '2': '#d97706', '3': '#7c3aed',
+    '4': '#1d4ed8', '5': '#0891b2', '6': '#0f766e', '7': '#4d7c0f',
+    '8': '#1e40af', '9': '#be185d',
+  };
+
+  fetch(`/decision/${TX_ID}/faiss-candidates`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data || !data.candidates || data.candidates.length === 0) {
+        panel.innerHTML = '<span style="font-size:.78rem;color:#94a3b8;">候補なし</span>';
+        return;
+      }
+      // eccn_tech 種別を優先、それ以外も表示
+      const eccnTech = data.candidates.filter(c => c.includes('eccn_tech')).slice(0, 5);
+      const others   = data.candidates.filter(c => !c.includes('eccn_tech') && c.includes('FEFTA') && !c.includes('::law')).slice(0, 3);
+      const all = [...eccnTech, ...others];
+      if (all.length === 0) {
+        panel.innerHTML = '<span style="font-size:.78rem;color:#94a3b8;">該当候補なし</span>';
+        return;
+      }
+      const chips = all.map(cand => {
+        const parts = cand.split('::');
+        const code = parts[1] || cand;
+        const cat = code.charAt(0);
+        const color = ECCN_COLOR[cat] || '#6b7280';
+        const hint = ECCN_HINT[cat] || '';
+        const isEccn = parts[2] === 'eccn_tech';
+        return `<span style="display:inline-flex; align-items:center; gap:4px;
+          padding:3px 10px; border-radius:14px; font-size:.78rem; font-weight:600;
+          background:${color}18; color:${color}; border:1px solid ${color}44;
+          margin:2px;">
+          ${isEccn ? '📋 ' : '📌 '}<strong>${code}</strong>
+          ${hint ? `<span style="font-weight:400; color:#6b7280; font-size:.72rem;">${hint}</span>` : ''}
+        </span>`;
+      }).join('');
+      panel.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap:4px;">${chips}</div>
+        <p style="font-size:.72rem; color:#94a3b8; margin:6px 0 0;">
+          ※ FAISS ベクトル類似度による候補です。キャッチオール判定の参考としてください。
+        </p>`;
+    })
+    .catch(() => { panel.innerHTML = '<span style="font-size:.78rem;color:#94a3b8;">取得失敗</span>'; });
+})();
 </script>
 
 <!-- ===== Section 6: 実行履歴（折りたたみ） ===== -->

@@ -2,216 +2,413 @@
 {% block title %}BOM グラフ — {{ product.code }}{% endblock %}
 
 {% block content %}
-<div class="level mb-3">
-  <div class="level-left">
-    <div>
-      <h2 class="subtitle mb-0">
-        BOM チェーン可視化 &nbsp;
-        <span class="tag is-primary is-light">{{ product.code }}</span>
-        <span class="has-text-grey is-size-7 ml-2">{{ product.name }}</span>
-      </h2>
+<!-- ページヘッダー -->
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+  <div>
+    <h1 style="font-size:1.25rem; font-weight:800; color:var(--text);">
+      BOM チェーン可視化
+      <span class="chip" style="margin-left:8px;">{{ product.code }}</span>
+    </h1>
+    <p style="color:var(--muted); font-size:.85rem; margin-top:3px;">{{ product.name }}</p>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <a href="/products/{{ product.id }}/edit" class="btn btn-sm">← 品目詳細</a>
+    <button onclick="loadGraph()" class="btn btn-sm">🔄 再読込</button>
+    <button onclick="cy && cy.fit()" class="btn btn-sm">⬛ フィット</button>
+    <button onclick="exportPng()" class="btn btn-primary btn-sm">💾 PNG出力</button>
+  </div>
+</div>
+
+<!-- リスクサマリーバー -->
+<div id="risk-bar" style="display:none; background:#fff; border:1.5px solid var(--border);
+     border-radius:8px; padding:10px 18px; margin-bottom:12px;
+     display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+  <span style="font-size:.8rem; font-weight:700; color:var(--muted);">リスクサマリー</span>
+  <span id="rs-high"  style="font-size:.88rem; font-weight:700; color:#dc2626;">―</span>
+  <span id="rs-med"   style="font-size:.88rem; font-weight:700; color:#f97316;">―</span>
+  <span id="rs-safe"  style="font-size:.88rem; font-weight:700; color:#059669;">―</span>
+  <span id="rs-judgment" style="font-size:.82rem; color:#6366f1; display:none;"></span>
+</div>
+
+<!-- メイン: グラフ ＋ サイドバー -->
+<div style="display:grid; grid-template-columns:1fr 230px; gap:14px; align-items:start;">
+
+  <!-- グラフ本体 -->
+  <div id="cy-container" style="height:640px; background:#f9fafb;
+       border:1.5px solid var(--border); border-radius:10px; position:relative; overflow:hidden;">
+    <div id="cy-msg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+         color:var(--muted); font-size:.9rem; text-align:center; pointer-events:none;">
+      ⏳ グラフを読み込み中…
     </div>
   </div>
-  <div class="level-right" style="gap:0.4rem; display:flex;">
-    <a class="button is-small is-light" href="/products/{{ product.id }}/edit">← 品目詳細</a>
-    <button class="button is-small is-info is-light" id="reload-btn" onclick="loadGraph()">🔄 再読込</button>
-    <button class="button is-small" id="fit-btn" onclick="cy && cy.fit()">フィット</button>
+
+  <!-- サイドバー -->
+  <div style="display:flex; flex-direction:column; gap:12px;">
+
+    <!-- 凡例 -->
+    <div class="card" style="padding:14px 16px;">
+      <div style="font-size:.78rem; font-weight:800; color:var(--muted); text-transform:uppercase;
+           letter-spacing:.06em; margin-bottom:10px;">凡例</div>
+      <div style="display:flex; flex-direction:column; gap:7px; font-size:.8rem; color:var(--text);">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:32px;height:18px;background:#2563eb;border-radius:4px;flex-shrink:0;"></span>完成品 / 親品目
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:32px;height:18px;background:#dc2626;border-radius:4px;flex-shrink:0;
+                box-shadow:0 0 6px rgba(220,38,38,.5);"></span>
+          <span>🇺🇸 US EAR規制品 <strong style="color:#dc2626;">HIGH</strong></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:32px;height:18px;background:#f97316;border-radius:4px;flex-shrink:0;"></span>
+          <span>🇺🇸 US原産 EAR99/未設定 <span style="color:#f97316;">MED</span></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:32px;height:18px;background:#059669;border-radius:4px;flex-shrink:0;"></span>一般構成品
+        </div>
+      </div>
+      <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border);
+           font-size:.75rem; color:var(--text);">
+        <div style="font-weight:700; margin-bottom:4px; color:var(--muted);">AI 判定ステータス</div>
+        <div>⏳ <span style="color:#7c3aed;">処理中</span> — 紫点線枠</div>
+        <div>🤖 <span style="color:#4338ca;">AI完了</span> — 紫実線枠</div>
+        <div>✅ 確定済み</div>
+      </div>
+      <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border);
+           font-size:.75rem; color:var(--muted);">
+        エッジ色 = 接続先のリスクレベル<br>
+        数字 = 組成比 / 使用数量
+      </div>
+    </div>
+
+    <!-- ノード詳細（クリックで表示） -->
+    <div id="node-detail" class="card" style="padding:14px 16px; display:none;">
+      <div style="font-size:.78rem; font-weight:800; color:var(--muted); text-transform:uppercase;
+           letter-spacing:.06em; margin-bottom:10px;">🔍 ノード詳細</div>
+      <div id="nd-content"></div>
+    </div>
+
   </div>
 </div>
 
-<!-- 凡例 -->
-<div style="display:flex; gap:1rem; align-items:center; font-size:0.78rem; margin-bottom:0.5rem; flex-wrap:wrap;">
-  <span><span style="display:inline-block;width:14px;height:14px;background:#3273dc;border-radius:3px;vertical-align:middle;"></span> 完成品</span>
-  <span><span style="display:inline-block;width:14px;height:14px;background:#48c774;border-radius:3px;vertical-align:middle;"></span> BOM構成品</span>
-  <span><span style="display:inline-block;width:14px;height:14px;background:#f14668;border-radius:3px;vertical-align:middle;"></span> US原産（EAR規制）</span>
-  <span><span style="display:inline-block;width:14px;height:14px;background:#ff9f43;border-radius:3px;vertical-align:middle;"></span> US原産（EAR99/未ECCN）</span>
-  <span><span style="display:inline-block;width:14px;height:14px;background:#aaa;border-radius:3px;vertical-align:middle;"></span> 輸入品・購入品</span>
-</div>
-
-<div id="cy-container" style="width:100%; height:520px; background:#fafafa; border:1px solid #dbdbdb; border-radius:6px; position:relative;">
-  <div id="cy-spinner" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#888;font-size:0.9rem;">
-    ⏳ グラフを読み込み中...
-  </div>
-</div>
-
-<!-- ノード詳細パネル -->
-<div id="node-detail" style="display:none; margin-top:0.75rem; padding:0.75rem 1rem; background:#f8faff;
-     border:1px solid #bfdbfe; border-radius:6px; font-size:0.85rem;">
-  <strong id="nd-code">—</strong> &nbsp;
-  <span id="nd-name" class="has-text-grey"></span>
-  <span class="ml-3" id="nd-badges"></span>
-  <div class="mt-1" id="nd-links"></div>
-</div>
-
-<!-- Cytoscape.js CDN -->
+<!-- Cytoscape + dagre CDN（順序重要） -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
 
 <script>
-const PRODUCT_CODE = "{{ product.code }}";
-const PRODUCT_ID = {{ product.id }};
+/* ── dagre 登録 ── */
+if (typeof cytoscapeDagre !== 'undefined') cytoscape.use(cytoscapeDagre);
 
+const PRODUCT_CODE = "{{ product.code }}";
+const PRODUCT_ID   = {{ product.id }};
 let cy = null;
 
-function nodeColor(n) {
-  const t = n.node_type || "";
-  const isUs = n.is_us_origin;
-  const eccn = (n.eccn || "").toUpperCase();
-  const hasEccn = eccn && eccn !== "EAR99";
-  if (t === "product") return "#3273dc";
-  if (isUs && hasEccn) return "#f14668";
-  if (isUs) return "#ff9f43";
-  const imp = ["PURCHASED_PART","RAW_MATERIAL","INTERNAL_TRANSFER"];
-  // node_type=component で購入品系はグレー
-  return "#48c774";
+/* ── リスク判定 ── */
+function risk(n) {
+  if (n.node_type === 'product') return 'product';
+  const isUs  = n.is_us_origin;
+  const eccn  = (n.eccn || '').toUpperCase();
+  const hasEc = eccn && eccn !== 'EAR99';
+  if (isUs && hasEc)  return 'high';
+  if (isUs)           return 'medium';
+  return 'safe';
 }
 
-function nodeShape(n) {
-  return n.node_type === "product" ? "roundrectangle" : "ellipse";
+/* ── AI 判定ステータス ── */
+const JUDGMENT_ICON = {
+  pending:      '⏳',
+  ai_completed: '🤖',
+  confirmed:    '✅',
+  rejected:     '❌',
+};
+function judgmentIcon(n) {
+  return JUDGMENT_ICON[n.eccn_judgment_status] || '';
 }
 
+const RISK_STYLE = {
+  product: { bg: '#2563eb', border: '#1d4ed8', glow: null  },
+  high:    { bg: '#dc2626', border: '#7f1d1d', glow: '#dc2626' },
+  medium:  { bg: '#f97316', border: '#9a3412', glow: null  },
+  safe:    { bg: '#059669', border: '#064e3b', glow: null  },
+};
+
+const RISK_LABEL = {
+  product: '🏭 完成品',
+  high:    '🔴 US EAR規制品',
+  medium:  '🟡 US EAR99/未設定',
+  safe:    '✅ 一般構成品',
+};
+
+/* ── ノードラベル（3行まで） ── */
+function makeLabel(n) {
+  const code = (n.product_code || n.name || '').slice(0, 15);
+  const r    = risk(n);
+  const ji   = judgmentIcon(n);
+  const jSuffix = ji ? ` ${ji}` : '';
+  if (r === 'product') {
+    const lines = [code + jSuffix];
+    if (n.eccn)    lines.push(`ECCN: ${n.eccn}`);
+    if (n.hs_code) lines.push(`HS: ${n.hs_code}`);
+    return lines.join('\n');
+  }
+  if (r === 'high')   return `⚠ ${code}${jSuffix}\n🇺🇸 EAR規制品\n${n.eccn || ''}`;
+  if (r === 'medium') return `${code}${jSuffix}\n🇺🇸 US原産\n${n.eccn || 'ECCN未設定'}`;
+  const extra = n.eccn ? `\n${n.eccn}` : '';
+  return `${code}${jSuffix}${extra}`;
+}
+
+/* ── エッジラベル ── */
+function edgeLabel(c) {
+  if (c.unit === 'ratio') return `${(c.quantity * 100).toFixed(0)}%`;
+  return c.quantity !== 1 ? `×${c.quantity}` : '';
+}
+
+/* ── Cytoscape elements 構築 ── */
 function buildElements(data) {
   const els = [];
   if (!data.node) return els;
-
   const root = data.node;
-  els.push({
-    data: {
-      id: root.id,
-      label: (root.product_code || root.name || "").slice(0, 18),
-      fullLabel: root.name,
-      node_type: root.node_type,
-      product_code: root.product_code,
-      is_us_origin: root.is_us_origin,
-      eccn: root.eccn,
-      hs_code: root.hs_code,
-      color: nodeColor(root),
-      shape: nodeShape(root),
-    }
-  });
+  const rr   = risk(root);
 
-  for (const child of (data.children || [])) {
-    els.push({
-      data: {
-        id: child.id,
-        label: (child.product_code || child.name || "").slice(0, 16),
-        fullLabel: child.name,
-        node_type: child.node_type,
-        product_code: child.product_code,
-        is_us_origin: child.is_us_origin,
-        eccn: child.eccn,
-        hs_code: child.hs_code,
-        color: nodeColor(child),
-        shape: nodeShape(child),
-        qty: child.quantity,
-        unit: child.unit,
-      }
-    });
-    els.push({
-      data: {
-        id: `e_${root.id}_${child.id}`,
-        source: root.id,
-        target: child.id,
-        label: child.quantity !== 1 ? `×${child.quantity}` : "",
-      }
-    });
+  els.push({ data: { id: root.id, label: makeLabel(root), risk: rr,
+    bg: RISK_STYLE[rr].bg, border: RISK_STYLE[rr].border,
+    bw: rr === 'high' ? 4 : 2, fsize: '12px', w: 160, h: 64,
+    bold: 'bold', node: root,
+    jstatus: root.eccn_judgment_status || '',
+    jsource: root.eccn_source || '' } });
+
+  for (const c of (data.children || [])) {
+    const rc = risk(c);
+    const hasPending = c.eccn_judgment_status === 'pending';
+    els.push({ data: { id: c.id, label: makeLabel(c), risk: rc,
+      bg: RISK_STYLE[rc].bg, border: RISK_STYLE[rc].border,
+      bw: hasPending ? 3 : (rc === 'high' ? 4 : 2),
+      borderStyle: hasPending ? 'dashed' : 'solid',
+      fsize: '10px', w: 130, h: 54,
+      bold: 'normal', node: c,
+      jstatus: c.eccn_judgment_status || '',
+      jsource: c.eccn_source || '' } });
+
+    const edgeColor = rc === 'high' ? '#dc2626' : rc === 'medium' ? '#f97316' : '#9ca3af';
+    const edgeW     = rc === 'high' ? 3 : rc === 'medium' ? 2.5 : 1.5;
+    els.push({ data: { id: `e_${root.id}_${c.id}`,
+      source: root.id, target: c.id,
+      label: edgeLabel(c), ec: edgeColor, ew: edgeW } });
   }
   return els;
 }
 
+/* ── グラフ描画 ── */
 async function loadGraph() {
-  const spinner = document.getElementById("cy-spinner");
-  spinner.style.display = "block";
+  const msg = document.getElementById('cy-msg');
+  msg.textContent = '⏳ グラフを読み込み中…';
+  msg.style.display = 'block';
   if (cy) { cy.destroy(); cy = null; }
 
   try {
-    const res = await fetch(`/api/supply-chain/by-product-code/${encodeURIComponent(PRODUCT_CODE)}`);
+    const res  = await fetch(`/api/supply-chain/by-product-code/${encodeURIComponent(PRODUCT_CODE)}`);
     const data = await res.json();
-    spinner.style.display = "none";
 
     if (!data.node) {
-      spinner.textContent = "⚠️ SC同期が未実行です。品目詳細の「🔄 SC同期」ボタンを押してから再試行してください。";
-      spinner.style.display = "block";
+      msg.textContent = '⚠️ SC同期が未実行です。品目詳細の「🔄 SC同期」を押してから再試行してください。';
       return;
     }
+    msg.style.display = 'none';
 
-    const elements = buildElements(data);
+    /* リスクサマリーバー更新 */
+    const ch      = data.children || [];
+    const hi      = ch.filter(c => risk(c) === 'high');
+    const me      = ch.filter(c => risk(c) === 'medium');
+    const sa      = ch.filter(c => risk(c) === 'safe');
+    const jPend   = ch.filter(c => c.eccn_judgment_status === 'pending');
+    const jAiOk   = ch.filter(c => c.eccn_judgment_status === 'ai_completed');
+    const jConf   = ch.filter(c => c.eccn_judgment_status === 'confirmed');
+    const bar     = document.getElementById('risk-bar');
+    bar.style.display = 'flex';
+    document.getElementById('rs-high').textContent = `🔴 HIGH ${hi.length}件`;
+    document.getElementById('rs-med' ).textContent = `🟡 MEDIUM ${me.length}件`;
+    document.getElementById('rs-safe').textContent = `✅ SAFE ${sa.length}件`;
+    const jEl = document.getElementById('rs-judgment');
+    if (jPend.length || jAiOk.length || jConf.length) {
+      jEl.style.display = 'inline';
+      jEl.textContent = `｜ AI判定: ⏳${jPend.length} 🤖${jAiOk.length} ✅${jConf.length}`;
+    } else {
+      jEl.style.display = 'none';
+    }
+
+    const layoutName = (typeof cytoscapeDagre !== 'undefined') ? 'dagre' : 'breadthfirst';
+
     cy = cytoscape({
-      container: document.getElementById("cy-container"),
-      elements,
+      container: document.getElementById('cy-container'),
+      elements:  buildElements(data),
       style: [
         {
-          selector: "node",
+          selector: 'node',
           style: {
-            "background-color": "data(color)",
-            "shape": "data(shape)",
-            "label": "data(label)",
-            "font-size": "10px",
-            "color": "#fff",
-            "text-valign": "center",
-            "text-halign": "center",
-            "width": 80,
-            "height": 36,
-            "border-width": 2,
-            "border-color": "#fff",
+            'background-color':   'data(bg)',
+            'border-color':       'data(border)',
+            'border-width':       'data(bw)',
+            'shape':              'roundrectangle',
+            'label':              'data(label)',
+            'color':              '#fff',
+            'font-size':          'data(fsize)',
+            'font-weight':        'data(bold)',
+            'font-family':        '-apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif',
+            'text-valign':        'center',
+            'text-halign':        'center',
+            'text-wrap':          'wrap',
+            'text-max-width':     '120px',
+            'text-outline-width': 0,
+            'width':              'data(w)',
+            'height':             'data(h)',
           }
         },
         {
-          selector: "node[node_type='product']",
-          style: { "width": 110, "height": 44, "font-size": "12px", "font-weight": "bold" }
-        },
-        {
-          selector: "edge",
+          selector: "node[risk='high']",
           style: {
-            "width": 1.5,
-            "line-color": "#ccc",
-            "target-arrow-color": "#ccc",
-            "target-arrow-shape": "triangle",
-            "curve-style": "bezier",
-            "label": "data(label)",
-            "font-size": "9px",
-            "color": "#888",
+            'shadow-blur':    18,
+            'shadow-color':   '#dc2626',
+            'shadow-opacity': 0.65,
+            'shadow-offset-x': 0,
+            'shadow-offset-y': 0,
           }
         },
         {
-          selector: ":selected",
+          selector: "node[jstatus='pending']",
           style: {
-            "border-width": 3,
-            "border-color": "#363636",
+            'border-style':   'dashed',
+            'border-width':   3,
+            'border-color':   '#a78bfa',
           }
+        },
+        {
+          selector: "node[jstatus='ai_completed']",
+          style: {
+            'border-style':   'solid',
+            'border-color':   '#6366f1',
+            'border-width':   3,
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width':               'data(ew)',
+            'line-color':          'data(ec)',
+            'target-arrow-color':  'data(ec)',
+            'target-arrow-shape':  'triangle',
+            'curve-style':         'taxi',
+            'taxi-direction':      'downward',
+            'label':               'data(label)',
+            'font-size':           '10px',
+            'color':               '#374151',
+            'text-background-color':   '#fff',
+            'text-background-opacity': 0.9,
+            'text-background-padding': '2px',
+            'text-border-opacity':     0,
+          }
+        },
+        {
+          selector: ':selected',
+          style: { 'border-width': 4, 'border-color': '#1a0f08' }
         }
       ],
-      layout: {
-        name: "breadthfirst",
-        directed: true,
-        padding: 20,
-        spacingFactor: 1.4,
+      layout: layoutName === 'dagre' ? {
+        name:       'dagre',
+        rankDir:    'TB',
+        nodeSep:    55,
+        rankSep:    90,
+        padding:    30,
+        ranker:     'tight-tree',
+      } : {
+        name:           'breadthfirst',
+        directed:       true,
+        padding:        30,
+        spacingFactor:  1.5,
       }
     });
 
-    cy.on("tap", "node", function(e) {
-      const n = e.target.data();
-      const panel = document.getElementById("node-detail");
-      document.getElementById("nd-code").textContent = n.product_code || n.id.slice(0,8);
-      document.getElementById("nd-name").textContent = n.fullLabel || "";
-      let badges = "";
-      if (n.is_us_origin) badges += `<span class="tag is-danger is-light is-small">US原産</span> `;
-      if (n.eccn) badges += `<span class="tag is-warning is-light is-small">${n.eccn}</span> `;
-      if (n.hs_code) badges += `<span class="tag is-info is-light is-small">HS ${n.hs_code}</span> `;
-      document.getElementById("nd-badges").innerHTML = badges;
-      let links = "";
-      if (n.product_code) {
-        links = `<a href="/api/supply-chain/impact/${encodeURIComponent(n.product_code)}?us_origin_only=true" target="_blank" style="font-size:0.78rem;">
-          🔍 この品目を使う完成品を検索
-        </a>`;
-      }
-      document.getElementById("nd-links").innerHTML = links;
-      panel.style.display = "block";
+    /* ── 判定ステータスバッジ HTML ── */
+    const JSTATUS_LABEL = {
+      pending:      { icon: '⏳', label: 'AI判定処理中', col: '#7c3aed', bg: '#ede9fe' },
+      ai_completed: { icon: '🤖', label: 'AI判定完了',   col: '#4338ca', bg: '#e0e7ff' },
+      confirmed:    { icon: '✅', label: '確定済み',       col: '#065f46', bg: '#d1fae5' },
+      rejected:     { icon: '❌', label: '判定却下',       col: '#991b1b', bg: '#fee2e2' },
+    };
+    const JSOURCE_LABEL = {
+      supplier_attestation: 'サプライヤー申告',
+      ai_judgment:          'AI自動判定',
+      manual:               '手動入力',
+    };
+
+    /* ノードクリック → 詳細パネル */
+    cy.on('tap', 'node', function(e) {
+      const d  = e.target.data();
+      const n  = d.node || {};
+      const r  = d.risk;
+      const col = RISK_STYLE[r]?.bg || '#555';
+      const js  = n.eccn_judgment_status;
+      const jsi = js ? JSTATUS_LABEL[js] : null;
+      const ev  = n.judgment_evidence || {};
+      const txId = ev.tx_id || n.eccn_validation_tx_id;
+      const _AI_VALIDATION_PUBLIC_URL = 'https://validation.tsp-aitrademanagement.com';
+
+      const judgmentHtml = jsi ? `
+        <div style="margin-top:8px; padding:6px 10px; border-radius:6px;
+             background:${jsi.bg}; color:${jsi.col}; font-size:.75rem; font-weight:700;">
+          ${jsi.icon} ${jsi.label}
+          ${ev.case_no ? `<span style="font-weight:400; margin-left:6px;">#${ev.case_no}</span>` : ''}
+        </div>
+        ${n.eccn_source ? `<div style="margin-top:4px; font-size:.74rem; color:var(--muted);">
+          ソース: ${JSOURCE_LABEL[n.eccn_source] || n.eccn_source}</div>` : ''}
+        ${txId ? `<div style="margin-top:4px;">
+          <a href="${_AI_VALIDATION_PUBLIC_URL}/ui/transactions/${txId}" target="_blank"
+             style="font-size:.74rem; color:#4f46e5;">🔍 AI判定結果を確認 →</a>
+        </div>` : ''}
+      ` : '';
+
+      document.getElementById('nd-content').innerHTML = `
+        <div style="font-size:.82rem;">
+          <div style="font-weight:800; font-size:.9rem; margin-bottom:4px;">${n.product_code || d.id.slice(0,8)}</div>
+          <div style="color:var(--muted); font-size:.76rem; margin-bottom:8px;">${n.name || ''}</div>
+          <span style="display:inline-block; padding:2px 10px; border-radius:12px;
+                background:${col}; color:#fff; font-size:.72rem; font-weight:700; margin-bottom:8px;">
+            ${RISK_LABEL[r] || r}
+          </span>
+          ${judgmentHtml}
+          ${n.is_us_origin ? '<div style="margin-top:4px;">🇺🇸 米国原産品</div>' : ''}
+          ${n.eccn      ? `<div style="margin-top:4px;"><strong>ECCN:</strong> ${n.eccn}</div>` : ''}
+          ${n.hs_code   ? `<div style="margin-top:4px;"><strong>HS:</strong> ${n.hs_code}</div>` : ''}
+          ${n.unit_value_usd ? `<div style="margin-top:4px;"><strong>単価:</strong> USD ${n.unit_value_usd.toLocaleString()}</div>` : ''}
+          ${n.product_code ? `
+          <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border);">
+            <a href="/api/supply-chain/impact/${encodeURIComponent(n.product_code)}?us_origin_only=true"
+               target="_blank" style="font-size:.76rem;">🔍 この構成品を使う完成品を検索 →</a>
+          </div>` : ''}
+        </div>
+      `;
+      document.getElementById('node-detail').style.display = 'block';
     });
 
-  } catch(e) {
-    spinner.textContent = "❌ 読み込みエラー: " + e.message;
-    spinner.style.display = "block";
+    /* 背景クリックで詳細パネルを閉じる */
+    cy.on('tap', function(e) {
+      if (e.target === cy) document.getElementById('node-detail').style.display = 'none';
+    });
+
+  } catch(err) {
+    msg.textContent = '❌ 読み込みエラー: ' + err.message;
+    msg.style.display = 'block';
   }
+}
+
+/* PNG エクスポート */
+function exportPng() {
+  if (!cy) return;
+  const date = new Date().toISOString().slice(0, 10);
+  const png  = cy.png({ scale: 2, bg: '#ffffff', full: true });
+  const a    = document.createElement('a');
+  a.href     = png;
+  a.download = `BOM_${PRODUCT_CODE}_${date}.png`;
+  a.click();
 }
 
 loadGraph();

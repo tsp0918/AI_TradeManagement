@@ -223,7 +223,7 @@
                   onclick="syncEccnStatus('{{ p.id }}', this)">状態確認</button>
               {% elif p.eccn_judgment_status == 'controlled' %}
                 <span style="color:#c53030; font-size:.78rem;">⚠️ 規制該当</span>
-                <br><a href="http://localhost:8011/transactions/{{ p.eccn_validation_tx_id }}" target="_blank"
+                <br><a href="https://validation.tsp-aitrademanagement.com/ui/transactions/{{ p.eccn_validation_tx_id }}" target="_blank"
                   style="font-size:.72rem;">判定確認 →</a>
               {% elif p.eccn_judgment_status == 'not_controlled' %}
                 <span style="color:#276749; font-size:.78rem;">✅ 非該当</span>
@@ -242,7 +242,7 @@
             {% elif p.reexport_license_id %}
               <span style="color:#2e7d32; font-size:.78rem;">✅ 申請済</span>
               <br>
-              <a href="http://localhost:8012/export-licenses/{{ p.reexport_license_id }}"
+              <a href="https://license.tsp-aitrademanagement.com/export-licenses/{{ p.reexport_license_id }}"
                  target="_blank" style="font-size:.72rem;">申請確認 →</a>
             {% elif p.eccn_claimed %}
               <button class="btn btn-light btn-sm"

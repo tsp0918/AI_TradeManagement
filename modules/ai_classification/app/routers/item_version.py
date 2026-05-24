@@ -8,6 +8,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+import os
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -20,7 +22,7 @@ from platform_core.models.item_version import ComplianceChangeEvent, ItemVersion
 
 router = APIRouter(prefix="/api/item-versions", tags=["item_version"])
 
-_VALIDATION_BASE = "http://localhost:8011"
+_VALIDATION_BASE = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
 
 # ── 影響レベルアセスメント ────────────────────────────────────────────────────
 

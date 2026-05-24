@@ -3,11 +3,14 @@
 Phase 6A-2: platform-core から移管。データは plat_supplier_portal_token テーブル（共有 PostgreSQL）。
 """
 
+import logging
+import os
 import pathlib
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -18,6 +21,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..pg_session import get_pg_db
 from platform_core.models.supplier_attestation import SupplierAttestation
 from platform_core.models.supplier_portal_token import SupplierPortalToken
+
+logger = logging.getLogger(__name__)
+_AI_VALIDATION_URL = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+# ユーザー向けリンクに使う公開URL（ブラウザから開ける必要がある）
+_AI_VALIDATION_PUBLIC_URL = os.environ.get(
+    "MODULE_AI_VALIDATION_PUBLIC_URL", "https://validation.tsp-aitrademanagement.com"
+)
 from platform_core.models.supply_chain import SupplyChainNode
 
 _TEMPLATES_DIR = pathlib.Path(__file__).parent.parent.parent / "templates"
@@ -274,6 +284,76 @@ async def portal_submit(request: Request, token_str: str, db: AsyncSession = Dep
         t.is_active = False
     await db.commit()
 
+    # ── AI 該非判定を自動トリガー ──────────────────────────────────
+    tx_id = None
+    tx_case_no = None
+    tx_url = None
+    try:
+        rn2 = await db.execute(select(SupplyChainNode).where(SupplyChainNode.id == t.node_id))
+        node = rn2.scalar_one_or_none()
+        if node:
+            desc_lines = [
+                f"品目コード: {node.product_code or '不明'}",
+                f"部品番号: {node.part_number or '不明'}",
+                f"ノード種別: {node.node_type}",
+                f"原産国（申告）: {attest.claimed_country_of_origin or node.country_of_origin or '不明'}",
+                f"ECCN（申告）: {attest.claimed_eccn or '未申告'}",
+                f"HSコード: {node.hs_code or '不明'}",
+                f"サプライヤー: {t.supplier_name}",
+            ]
+            if attest.notes:
+                desc_lines.append(f"サプライヤーコメント: {attest.notes}")
+
+            payload = {
+                "title": f"BOM構成品 ECCN 該非判定: {node.product_code or node.name}",
+                "items": [{"item_name": node.name, "item_description": "\n".join(desc_lines)}],
+                "source_module": "ai_classification",
+                "destination_country": "JP",
+            }
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(f"{_AI_VALIDATION_URL}/api/transactions", json=payload)
+                resp.raise_for_status()
+                tx_data = resp.json()
+
+            tx_id = tx_data["id"]
+            tx_case_no = tx_data.get("case_no")
+            tx_url = f"{_AI_VALIDATION_PUBLIC_URL}/ui/transactions/{tx_id}"
+
+            node.eccn_validation_tx_id = tx_id
+            node.eccn_judgment_status = "pending"
+            node.eccn_source = "supplier_attestation"
+            node.judgment_evidence = {
+                "tx_id": tx_id,
+                "case_no": tx_case_no,
+                "tx_url": tx_url,
+                "requested_at": datetime.now(timezone.utc).isoformat(),
+                "supplier_claimed_eccn": attest.claimed_eccn,
+                "attestation_id": str(attest.id),
+            }
+            await db.commit()
+
+            # ── supply_chain_node_id を Transaction に紐付け（De Minimis・BOM文脈表示用）
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    await client.post(
+                        f"{_AI_VALIDATION_URL}/api/transactions/{tx_id}/supply-chain",
+                        json={"supply_chain_node_id": str(t.node_id)},
+                    )
+            except Exception:
+                pass
+
+            # ── FAISS + 2リスト解析を自動起動（非同期 fire-and-forget）
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    await client.post(
+                        f"{_AI_VALIDATION_URL}/decision/{tx_id}/run-and-two-lists",
+                    )
+            except Exception:
+                pass
+
+    except Exception as exc:
+        logger.warning("AI 該非判定トリガー失敗（非致命的）: %s", exc)
+
     return templates.TemplateResponse(
         request, "supplier_portal_confirm.html",
         {
@@ -282,6 +362,9 @@ async def portal_submit(request: Request, token_str: str, db: AsyncSession = Dep
             "claimed_eccn": attest.claimed_eccn or "—",
             "claimed_country": attest.claimed_country_of_origin or "—",
             "attestation_id": str(attest.id),
+            "tx_id": tx_id,
+            "tx_case_no": tx_case_no,
+            "tx_url": tx_url,
         },
     )
 
