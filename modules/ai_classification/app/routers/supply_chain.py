@@ -508,6 +508,39 @@ async def get_by_product_code(product_code: str, db: AsyncSession = Depends(get_
     }
 
 
+@router.get("/nodes/{node_id}/product-link")
+async def get_product_link(node_id: str, db: AsyncSession = Depends(get_pg_db)):
+    """SC ノードから ai_classification の品目 ID・BOM グラフ URL を返す（transaction_detail 連携用）。"""
+    try:
+        r = await db.execute(select(SupplyChainNode).where(SupplyChainNode.id == uuid.UUID(node_id)))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid node_id")
+    node = r.scalar_one_or_none()
+    if node is None:
+        raise HTTPException(status_code=404, detail="Node not found")
+
+    product_code = node.product_code
+    if not product_code:
+        return {"product_id": None, "product_code": None, "bom_graph_url": None, "products_search_url": None}
+
+    sqlite_db = SessionLocal()
+    try:
+        p = sqlite_db.query(_Product).filter(_Product.code == product_code).first()
+        product_id = p.id if p else None
+    finally:
+        sqlite_db.close()
+
+    classification_base = os.environ.get(
+        "MODULE_AI_CLASSIFICATION_PUBLIC_URL", "https://classification.tsp-aitrademanagement.com"
+    )
+    return {
+        "product_id": product_id,
+        "product_code": product_code,
+        "bom_graph_url": f"{classification_base}/products/{product_id}/bom/graph" if product_id else None,
+        "products_search_url": f"{classification_base}/products?search={product_code}",
+    }
+
+
 @router.post("/sync-from-bom/{product_id}", status_code=200)
 def sync_from_bom(product_id: int):
     """

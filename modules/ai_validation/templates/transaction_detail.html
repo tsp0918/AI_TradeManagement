@@ -205,10 +205,10 @@ async function createExportLicense(txId) {
     <span style="font-size:.78rem; color:#64748b; margin-left:4px;">品目管理モジュールのサプライヤー申告から自動起案された事前審査です</span>
   </div>
 
-  <!-- spec_text からコンテキスト情報を表示 -->
+  <!-- spec_text からサプライヤー申告情報を表示 -->
   {% if items %}
   {% set spec = items[0].spec_text or "" %}
-  <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px; font-size:.82rem;">
+  <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:8px; font-size:.82rem; margin-bottom:12px;">
     {% for line in spec.split('\n') %}
       {% if ': ' in line %}
         {% set kv = line.split(': ', 1) %}
@@ -221,7 +221,15 @@ async function createExportLicense(txId) {
   </div>
   {% endif %}
 
-  <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+  <!-- BOM ノード詳細（JS で動的取得） -->
+  <div id="bom-node-detail" style="font-size:.82rem; margin-bottom:12px;">
+    <span style="color:#94a3b8; font-size:.8rem;">⟳ BOM ノード情報を取得中...</span>
+  </div>
+
+  <!-- BOM 構成品一覧（JS で動的取得） -->
+  <div id="bom-composition" style="font-size:.82rem; margin-bottom:12px;"></div>
+
+  <div id="bom-nav-links" style="display:flex; gap:8px; margin-top:4px; flex-wrap:wrap;">
     <a href="https://classification.tsp-aitrademanagement.com/products"
        target="_blank"
        style="font-size:.8rem; padding:5px 12px; background:#0369a1; color:#fff;
@@ -231,6 +239,45 @@ async function createExportLicense(txId) {
     <a href="/ui/transactions/new?parent_transaction_id={{ tx.id }}&parent_case_no={{ tx.case_no }}"
        style="font-size:.8rem; padding:5px 12px; background:#fff; color:#0369a1;
               border:1px solid #bae6fd; border-radius:6px; text-decoration:none;">
+      → 正式取引審査を起案
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<!-- ===== R&D 出所コンテキスト（rnd_assessment 起案時） ===== -->
+{% if tx.source_module == "rnd_assessment" %}
+<div id="rnd-context-card" style="
+  background:#fdf4ff; border:1.5px solid #e9d5ff; border-radius:10px;
+  padding:14px 18px; margin-bottom:14px;">
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+    <span style="font-size:1rem;">🔬</span>
+    <span style="font-weight:700; font-size:.9rem; color:#7c3aed;">R&D リスク評価 — 該非判定起案</span>
+    <span style="font-size:.78rem; color:#64748b; margin-left:4px;">R&D管理モジュールの研究プロファイルから自動起案された事前審査です</span>
+  </div>
+  {% if items %}
+  <div style="background:#fff; border-radius:6px; padding:8px 12px; border:1px solid #ede9fe; font-size:.82rem; margin-bottom:10px;">
+    <span style="color:#7c3aed; font-weight:600;">{{ items[0].item_name }}</span>
+    {% if items[0].spec_text %}
+    <div style="color:#475569; margin-top:4px; white-space:pre-line; line-height:1.5;">{{ items[0].spec_text[:300] }}{% if items[0].spec_text|length > 300 %}...{% endif %}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% if tx.counterparty_name %}
+  <div style="font-size:.82rem; color:#475569; margin-bottom:10px;">
+    相手先企業: <strong style="color:#1e293b;">{{ tx.counterparty_name }}</strong>
+  </div>
+  {% endif %}
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <a href="https://rnd.tsp-aitrademanagement.com/ui/cases"
+       target="_blank"
+       style="font-size:.8rem; padding:5px 12px; background:#7c3aed; color:#fff;
+              border-radius:6px; text-decoration:none; font-weight:600;">
+      ← R&D 案件管理へ戻る
+    </a>
+    <a href="/ui/transactions/new?parent_transaction_id={{ tx.id }}&parent_case_no={{ tx.case_no }}"
+       style="font-size:.8rem; padding:5px 12px; background:#fff; color:#7c3aed;
+              border:1px solid #e9d5ff; border-radius:6px; text-decoration:none;">
       → 正式取引審査を起案
     </a>
   </div>
@@ -2320,5 +2367,129 @@ details[open] > .detail-summary::before { transform: rotate(90deg); }
 }
 .mono-sm { font-family: monospace; font-size: .8rem; }
 </style>
+
+<script>
+// ── BOM コンテキストカード — ノード詳細 & 構成品 動的取得 ──
+(function() {
+  const nodeId = '{{ tx.supply_chain_node_id or "" }}';
+  const srcModule = '{{ tx.source_module or "" }}';
+  if (srcModule !== 'ai_classification' || !nodeId) return;
+
+  const PLAT = _PLATFORM_URL;
+  const EAR_RISK_LABEL = { high:'🔴 US管理品（許可要）', medium:'🟡 US原産・EAR99', safe:'🟢 非US規制品' };
+  const EAR_RISK_COLOR = { high:'#dc2626', medium:'#d97706', safe:'#16a34a' };
+
+  function earRisk(node) {
+    if (!node.is_us_origin) return 'safe';
+    if (node.eccn && node.eccn !== 'EAR99') return 'high';
+    return 'medium';
+  }
+
+  async function loadBomContext() {
+    const detailEl = document.getElementById('bom-node-detail');
+    const compEl   = document.getElementById('bom-composition');
+    const navEl    = document.getElementById('bom-nav-links');
+
+    try {
+      // ① ノード詳細取得
+      const nodeResp = await fetch(`${PLAT}/api/supply-chain/nodes/${nodeId}`);
+      if (!nodeResp.ok) { detailEl.innerHTML = '<span style="color:#94a3b8;font-size:.8rem;">BOMノード情報の取得に失敗しました</span>'; return; }
+      const node = await nodeResp.json();
+
+      const risk = earRisk(node);
+      const riskColor = EAR_RISK_COLOR[risk];
+      const riskLabel = EAR_RISK_LABEL[risk];
+      const jStatus = node.eccn_judgment_status;
+      const jIcon = { pending:'⏳', ai_completed:'🤖', confirmed:'✅', rejected:'❌' }[jStatus] || '';
+
+      detailEl.innerHTML = `
+        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:8px;">
+          <div style="background:#fff; border-radius:6px; padding:6px 10px; border:1px solid #e0f2fe;">
+            <span style="color:#64748b; font-size:.74rem;">品目コード</span><br>
+            <span style="font-weight:600; color:#0c4a6e;">${node.product_code || node.name || '—'}</span>
+          </div>
+          ${node.hs_code ? `<div style="background:#fff; border-radius:6px; padding:6px 10px; border:1px solid #e0f2fe;">
+            <span style="color:#64748b; font-size:.74rem;">HS コード</span><br>
+            <span style="font-weight:600; color:#0c4a6e;">${node.hs_code}</span>
+          </div>` : ''}
+          ${node.eccn ? `<div style="background:#fff; border-radius:6px; padding:6px 10px; border:1px solid #e0f2fe;">
+            <span style="color:#64748b; font-size:.74rem;">ECCN</span><br>
+            <span style="font-weight:600; color:#0c4a6e;">${node.eccn}</span>
+          </div>` : ''}
+          <div style="background:#fff; border-radius:6px; padding:6px 10px; border:1px solid #e0f2fe;">
+            <span style="color:#64748b; font-size:.74rem;">原産国</span><br>
+            <span style="font-weight:600; color:#0c4a6e;">${node.country_of_origin || '—'}</span>
+          </div>
+          <div style="background:#fff; border-radius:6px; padding:6px 10px; border:1px solid #e0f2fe;">
+            <span style="color:#64748b; font-size:.74rem;">EAR リスク</span><br>
+            <span style="font-weight:700; color:${riskColor};">${riskLabel}</span>
+          </div>
+          ${jStatus ? `<div style="background:#fff; border-radius:6px; padding:6px 10px; border:1px solid #e0f2fe;">
+            <span style="color:#64748b; font-size:.74rem;">ECCN 判定ステータス</span><br>
+            <span style="font-weight:600; color:#4f46e5;">${jIcon} ${jStatus}</span>
+          </div>` : ''}
+        </div>`;
+
+      // ② 品目リンク取得（BOMグラフURL）
+      const linkResp = await fetch(`${PLAT}/api/supply-chain/nodes/${nodeId}/product-link`);
+      if (linkResp.ok) {
+        const link = await linkResp.json();
+        if (link.bom_graph_url || link.products_search_url) {
+          const targetUrl = link.bom_graph_url || link.products_search_url;
+          const linkBtn = document.createElement('a');
+          linkBtn.href = targetUrl;
+          linkBtn.target = '_blank';
+          linkBtn.textContent = '📊 BOM グラフを表示 →';
+          linkBtn.style.cssText = 'font-size:.8rem; padding:5px 12px; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; border-radius:6px; text-decoration:none;';
+          navEl.insertBefore(linkBtn, navEl.children[1]);
+          // 品目管理リンクもコード付きに更新
+          const backBtn = navEl.children[0];
+          if (link.products_search_url) backBtn.href = link.products_search_url;
+        }
+      }
+
+      // ③ BOM 構成品一覧取得（product_code がある場合）
+      if (node.product_code) {
+        const bomResp = await fetch(`${PLAT}/api/supply-chain/by-product-code/${encodeURIComponent(node.product_code)}`);
+        if (bomResp.ok) {
+          const bom = await bomResp.json();
+          const children = bom.children || [];
+          if (children.length > 0) {
+            let rows = children.map(c => {
+              const cr = earRisk(c);
+              const crColor = EAR_RISK_COLOR[cr];
+              return `<tr>
+                <td style="padding:4px 8px;">${c.name}</td>
+                <td style="padding:4px 8px; font-family:monospace;">${c.hs_code || '—'}</td>
+                <td style="padding:4px 8px; font-family:monospace;">${c.eccn || '—'}</td>
+                <td style="padding:4px 8px;">${c.country_of_origin || '—'}</td>
+                <td style="padding:4px 8px; font-weight:700; color:${crColor};">${c.is_us_origin ? (c.eccn && c.eccn !== 'EAR99' ? '🔴' : '🟡') : '🟢'}</td>
+              </tr>`;
+            }).join('');
+            compEl.innerHTML = `
+              <div style="font-weight:600; font-size:.82rem; color:#0369a1; margin-bottom:6px;">📦 BOM 構成品 (${children.length}件)</div>
+              <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; font-size:.8rem; background:#fff; border-radius:6px; overflow:hidden; border:1px solid #e0f2fe;">
+                <thead><tr style="background:#e0f2fe; color:#0369a1;">
+                  <th style="padding:5px 8px; text-align:left;">品名</th>
+                  <th style="padding:5px 8px; text-align:left;">HS コード</th>
+                  <th style="padding:5px 8px; text-align:left;">ECCN</th>
+                  <th style="padding:5px 8px; text-align:left;">原産国</th>
+                  <th style="padding:5px 8px; text-align:left;">EAR</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+              </div>`;
+          }
+        }
+      }
+    } catch(e) {
+      document.getElementById('bom-node-detail').innerHTML = '<span style="color:#94a3b8; font-size:.8rem;">BOM情報の取得に失敗しました</span>';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadBomContext);
+})();
+</script>
 
 {% endblock %}

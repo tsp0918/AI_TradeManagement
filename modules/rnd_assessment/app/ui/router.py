@@ -687,39 +687,53 @@ def run_ai_validation(
     if not case:
         raise HTTPException(status_code=404, detail="case not found")
 
-    # 1. ai_validation に Transaction を作成（follow_redirects=False で Location を取得）
-    form_data = {
+    # end_user_template_json から企業名を取得（取引先スクリーニング連携用）
+    eu = profile.end_user_template_json or {}
+    counterparty_name = (eu.get("end_user_name") or "").strip() or None
+
+    # 用途テキストを結合してitem descriptionに使う
+    desc_parts = []
+    if profile.use_requirements_raw:
+        desc_parts.append(f"用途要件: {profile.use_requirements_raw}")
+    if profile.end_user_requirements_raw:
+        desc_parts.append(f"需要者要件: {profile.end_user_requirements_raw}")
+
+    # 1. ai_validation に Transaction を作成（JSON API 使用）
+    payload = {
         "title": f"[R&D] {case.title} ver.{profile.version_no}",
-        "description": profile.use_requirements_raw or "",
-        "product_code": f"RND-{case_id[:8]}",
-        "spec_text": profile.end_user_requirements_raw or "",
-        "case_no": f"RND-{case_id[:8]}-v{profile.version_no}",
+        "counterparty_name": counterparty_name,
+        "items": [
+            {
+                "item_name": case.title,
+                "item_description": "\n".join(desc_parts),
+            }
+        ],
+        "usage_requirements": [
+            {"source": "rnd_assessment", "text": profile.use_requirements_raw}
+        ] if profile.use_requirements_raw else [],
+        "source_module": "rnd_assessment",
     }
     try:
         with httpx.Client(timeout=10.0) as client:
             resp = client.post(
-                f"{AI_VALIDATION_BASE}/ui/transactions/new",
-                data=form_data,
-                follow_redirects=False,
+                f"{AI_VALIDATION_BASE}/api/transactions",
+                json=payload,
             )
+            resp.raise_for_status()
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"ai_validation への接続に失敗しました: {exc}")
 
-    # 2. Location ヘッダーから transaction_id を取得
-    location = resp.headers.get("location", "")
-    tx_id_match = re.search(r"/ui/transactions/(\d+)", location)
-    if not tx_id_match:
-        raise HTTPException(status_code=502, detail=f"ai_validation からの応答が不正です (location={location!r})")
-    transaction_id = int(tx_id_match.group(1))
+    tx_data = resp.json()
+    transaction_id = tx_data["id"]
 
-    # 3. パイプライン実行（タイムアウト長め）
+    # 2. FAISS + 2リスト解析を自動起動（fire-and-forget）
     try:
-        with httpx.Client(timeout=120.0) as client:
-            client.post(f"{AI_VALIDATION_BASE}/ui/transactions/{transaction_id}/run", follow_redirects=False)
+        with httpx.Client(timeout=60.0) as client:
+            client.post(f"{AI_VALIDATION_BASE}/decision/{transaction_id}/run-and-two-lists")
     except Exception:
-        pass  # タイムアウト等でも transaction_id は保存する
+        pass
 
-    # 4. 2リスト結果からリスクレベルを取得
+    # 3. 2リスト結果からリスクレベルを取得
     risk = "none"
     try:
         with httpx.Client(timeout=15.0) as client:
@@ -737,7 +751,7 @@ def run_ai_validation(
     except Exception:
         pass
 
-    # 5. プロファイルに保存
+    # 4. プロファイルに保存
     crud.update_profile_ai_validation(db, profile_id, transaction_id, risk)
 
     return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest", status_code=303)

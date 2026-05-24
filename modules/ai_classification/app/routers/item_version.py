@@ -23,6 +23,9 @@ from platform_core.models.item_version import ComplianceChangeEvent, ItemVersion
 router = APIRouter(prefix="/api/item-versions", tags=["item_version"])
 
 _VALIDATION_BASE = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+_VALIDATION_PUBLIC_URL = os.environ.get(
+    "MODULE_AI_VALIDATION_PUBLIC_URL", "https://validation.tsp-aitrademanagement.com"
+)
 
 # ── 影響レベルアセスメント ────────────────────────────────────────────────────
 
@@ -591,18 +594,45 @@ async def request_validation(event_id: uuid.UUID, db: AsyncSession = Depends(get
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             r = await client.post(f"{_VALIDATION_BASE}/api/transactions", json=payload)
-        if r.status_code == 201:
-            data = r.json()
-            return {
-                "ok": True,
-                "tx_id": data["id"],
-                "case_no": data["case_no"],
-                "url": data["url"],
-                "redirect_url": f"/proxy/ai_validation/ui/transactions/{data['id']}",
-            }
-        raise HTTPException(502, f"ai_validation エラー: HTTP {r.status_code}")
+        if r.status_code != 201:
+            raise HTTPException(502, f"ai_validation エラー: HTTP {r.status_code}")
+        data = r.json()
+        tx_id = data["id"]
     except httpx.RequestError:
         raise HTTPException(503, "ai_validation に接続できません。ポート 8011 を確認してください。")
+
+    # supply_chain_node_id を自動リンク（item_code → SC ノード逆引き）
+    if item.item_code:
+        from platform_core.models.supply_chain import SupplyChainNode
+        from sqlalchemy import select as _select
+        sc_r = await db.execute(
+            _select(SupplyChainNode).where(SupplyChainNode.product_code == item.item_code)
+        )
+        sc_node = sc_r.scalar_one_or_none()
+        if sc_node:
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    await client.post(
+                        f"{_VALIDATION_BASE}/api/transactions/{tx_id}/supply-chain",
+                        json={"supply_chain_node_id": str(sc_node.id)},
+                    )
+            except Exception:
+                pass
+
+    # FAISS + 2リスト解析を自動起動（fire-and-forget）
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            await client.post(f"{_VALIDATION_BASE}/decision/{tx_id}/run-and-two-lists")
+    except Exception:
+        pass
+
+    return {
+        "ok": True,
+        "tx_id": tx_id,
+        "case_no": data["case_no"],
+        "url": f"{_VALIDATION_PUBLIC_URL}/ui/transactions/{tx_id}",
+        "redirect_url": f"{_VALIDATION_PUBLIC_URL}/ui/transactions/{tx_id}",
+    }
 
 
 @router.post("/events/{event_id}/resolve")

@@ -433,6 +433,7 @@ def get_transaction_detail(tx_id: int, db: Session = Depends(get_db)) -> Dict[st
         "agent_judgment_status": tx.agent_judgment_status,
         "destination_country": tx.destination_country,
         "source_module": tx.source_module,
+        "counterparty_name": tx.counterparty_name,
         "items": [
             {"item_name": i.item_name, "spec_text": i.spec_text}
             for i in tx.items

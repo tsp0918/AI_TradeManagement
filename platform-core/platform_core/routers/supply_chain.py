@@ -56,3 +56,13 @@ async def supply_chain_edges_path(request: Request, path: str):
 @router.api_route("/api/supply-chain/nodes/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def supply_chain_nodes_path(request: Request, path: str):
     return await _proxy(request, f"nodes/{path}")
+
+
+@router.api_route("/api/supply-chain/by-product-code/{path:path}", methods=["GET"])
+async def supply_chain_by_product_code(request: Request, path: str):
+    return await _proxy(request, f"by-product-code/{path}")
+
+
+@router.api_route("/api/supply-chain/impact/{path:path}", methods=["GET"])
+async def supply_chain_impact(request: Request, path: str):
+    return await _proxy(request, f"impact/{path}")
