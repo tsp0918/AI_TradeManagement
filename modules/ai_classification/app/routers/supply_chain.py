@@ -101,6 +101,7 @@ async def _accumulate(
 class NodeCreate(BaseModel):
     name: str
     part_number: str | None = None
+    product_code: str | None = None
     node_type: str = "component"
     country_of_origin: str | None = None
     is_us_origin: bool = False
@@ -117,6 +118,7 @@ class NodeCreate(BaseModel):
 class NodeUpdate(BaseModel):
     name: str | None = None
     part_number: str | None = None
+    product_code: str | None = None
     node_type: str | None = None
     country_of_origin: str | None = None
     is_us_origin: bool | None = None
@@ -143,6 +145,7 @@ def _serialize_node(n: SupplyChainNode, children: list[dict] | None = None) -> d
         "id": str(n.id),
         "name": n.name,
         "part_number": n.part_number,
+        "product_code": n.product_code,
         "node_type": n.node_type,
         "country_of_origin": n.country_of_origin,
         "is_us_origin": n.is_us_origin,
@@ -236,6 +239,7 @@ async def create_node(body: NodeCreate, db: AsyncSession = Depends(get_pg_db)):
         tenant_id=tid,
         name=body.name,
         part_number=body.part_number,
+        product_code=body.product_code,
         node_type=body.node_type,
         country_of_origin=body.country_of_origin,
         is_us_origin=body.is_us_origin,
@@ -289,7 +293,7 @@ async def update_node(node_id: str, body: NodeUpdate, db: AsyncSession = Depends
     node = result.scalar_one_or_none()
     if node is None:
         raise HTTPException(status_code=404, detail="Not found")
-    for f in ("name", "part_number", "node_type", "country_of_origin", "is_us_origin",
+    for f in ("name", "part_number", "product_code", "node_type", "country_of_origin", "is_us_origin",
               "hs_code", "eccn", "unit_value_usd", "us_controlled_value_usd",
               "description", "extra"):
         val = getattr(body, f)
@@ -447,3 +451,68 @@ async def delete_edge(edge_id: int, db: AsyncSession = Depends(get_pg_db)):
         raise HTTPException(status_code=404, detail="Not found")
     await db.delete(edge)
     await db.commit()
+
+
+# ── BOM 統合エンドポイント ──────────────────────────────────────────
+
+@router.get("/by-product-code/{product_code}")
+async def get_by_product_code(product_code: str, db: AsyncSession = Depends(get_pg_db)):
+    """品目コードに紐づく SupplyChainNode ツリーを返す（Phase IV-1 可視化基盤）。"""
+    result = await db.execute(
+        select(SupplyChainNode).where(SupplyChainNode.product_code == product_code)
+    )
+    parent = result.scalar_one_or_none()
+    if parent is None:
+        return {"product_code": product_code, "node": None, "children": []}
+
+    edges_result = await db.execute(
+        select(SupplyChainEdge).where(SupplyChainEdge.parent_node_id == parent.id)
+    )
+    edges = edges_result.scalars().all()
+
+    children = []
+    for edge in edges:
+        child_result = await db.execute(
+            select(SupplyChainNode).where(SupplyChainNode.id == edge.child_node_id)
+        )
+        child = child_result.scalar_one_or_none()
+        if child:
+            children.append({
+                **_serialize_node(child),
+                "quantity": edge.quantity,
+                "unit": edge.unit,
+            })
+
+    return {
+        "product_code": product_code,
+        "node": _serialize_node(parent),
+        "children": children,
+    }
+
+
+@router.post("/sync-from-bom/{product_id}", status_code=200)
+def sync_from_bom(product_id: int):
+    """
+    品目IDを指定して bom_json → plat_supply_chain_node/edge を手動同期する。
+    BOM upload 後は自動同期されるが、既存データの移行やデバッグ目的に使用。
+    """
+    import sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from ..database import SessionLocal
+    from ..models import Product as ProdModel
+    from ..pg_session_sync import get_pg_db_sync
+    from .bom_sync import sync_bom_to_supply_chain as _sync
+
+    sqlite_db = SessionLocal()
+    try:
+        product = sqlite_db.get(ProdModel, product_id)
+        if product is None:
+            raise HTTPException(status_code=404, detail="Product not found")
+        pg = get_pg_db_sync()
+        try:
+            result = _sync(product, pg)
+        finally:
+            pg.close()
+        return {"product_id": product_id, "product_code": product.code, **result}
+    finally:
+        sqlite_db.close()

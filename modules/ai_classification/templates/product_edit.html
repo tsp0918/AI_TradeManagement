@@ -327,6 +327,10 @@
         <div class="level-right">
           <a class="btn btn-sm" href="/products/{{ product.id }}/bom">BOM CSV アップロード</a>
           <a class="btn btn-sm" href="/products/{{ product.id }}/bom/history" style="margin-left:6px;">BOM 履歴</a>
+          <button class="btn btn-sm is-info is-light" style="margin-left:6px;" id="bom-sync-btn"
+                  onclick="syncBomToSC({{ product.id }})" title="bom_json → plat_supply_chain_node 同期">
+            🔄 SC同期
+          </button>
         </div>
       </div>
 
@@ -1892,6 +1896,28 @@
     <input type="hidden" name="redirect_to" value="/products/{{ product.id }}/edit">
   </form>
   {% endif %}
+
+  <script>
+  async function syncBomToSC(productId) {
+    const btn = document.getElementById("bom-sync-btn");
+    btn.disabled = true;
+    btn.textContent = "⏳ 同期中...";
+    try {
+      const res = await fetch(`/api/supply-chain/sync-from-bom/${productId}`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        btn.textContent = `✅ 同期完了 (${data.synced_components}件)`;
+      } else {
+        btn.textContent = "❌ 同期失敗";
+        console.error(data);
+      }
+    } catch (e) {
+      btn.textContent = "❌ エラー";
+      console.error(e);
+    }
+    setTimeout(() => { btn.textContent = "🔄 SC同期"; btn.disabled = false; }, 4000);
+  }
+  </script>
 
 </section>
 {% endblock %}

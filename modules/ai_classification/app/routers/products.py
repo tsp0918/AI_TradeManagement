@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 from datetime import datetime
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 import pandas as pd
 from fastapi import (
@@ -28,6 +31,8 @@ import httpx
 from ..database import get_db
 from ..models import Product, BomHistory, ProductCountryProfile
 from ..settings import settings
+from ..pg_session_sync import get_pg_db_sync
+from .bom_sync import sync_bom_to_supply_chain
 from ..services.external_app_client import ExternalAppClient
 
 from urllib.parse import quote_plus as _quote_plus
@@ -1249,6 +1254,18 @@ def bom_upload(
     db.add(history)
 
     db.commit()
+
+    # BOM を plat_supply_chain_node/edge に同期
+    try:
+        pg = get_pg_db_sync()
+        try:
+            db.refresh(product)
+            sync_bom_to_supply_chain(product, pg)
+        finally:
+            pg.close()
+    except Exception as e:
+        logger.warning("BOM sync to supply chain failed (non-fatal): %s", e)
+
     return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
 
 

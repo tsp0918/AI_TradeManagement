@@ -50,6 +50,9 @@ class SupplyChainNode(PlatformBase):
     us_controlled_value_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
     # unit_value_usd のうちEAR規制対象のUS原産価値。通常は is_us_origin=True かつ eccn≠EAR99 の場合に unit_value_usd と同値
 
+    # ai_classification 品目コード（soft FK, products.code）
+    product_code: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+
     # plat_item との正式紐付け (Integration C)
     item_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
