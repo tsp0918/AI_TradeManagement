@@ -38,6 +38,23 @@ templates.env.filters["urlencode"] = lambda s: _quote_plus(str(s) if s is not No
 
 
 # =========================
+# 品目種別（item_type）定義
+# =========================
+
+ITEM_TYPE_CONFIG: dict[str, dict] = {
+    "FINISHED_GOODS":    {"label": "完成品",         "color": "primary",  "icon": "📦", "category": "export"},
+    "BOM_COMPONENT":     {"label": "BOM構成品",      "color": "light",    "icon": "🔩", "category": "export"},
+    "PURCHASED_PART":    {"label": "購入品",          "color": "info",     "icon": "🛒", "category": "import"},
+    "RAW_MATERIAL":      {"label": "原材料",          "color": "link",     "icon": "⚗️", "category": "import"},
+    "INTERNAL_TRANSFER": {"label": "グループ内移管品", "color": "warning",  "icon": "🏭", "category": "import"},
+    "SOFTWARE":          {"label": "ソフトウェア・技術", "color": "success", "icon": "💻", "category": "export"},
+}
+
+# 輸入品種別（購入品・原材料・グループ内移管）
+_IMPORT_ITEM_TYPES = {"PURCHASED_PART", "RAW_MATERIAL", "INTERNAL_TRANSFER"}
+
+
+# =========================
 # Lookup タブ定義
 # =========================
 
@@ -57,6 +74,13 @@ _LOOKUP_DEFS: list[dict] = [
         "priority": "critical",
         "description": "完成品で輸出管理判定が未実施の品目",
     },
+    {
+        "key": "import_us_origin",
+        "label": "輸入品・米国原産",
+        "color": "danger",
+        "priority": "critical",
+        "description": "購入品/原材料/移管品で米国原産（EAR再輸出管理対象の可能性）",
+    },
     # ── 要対応（橙）──────────────────────────────────────────
     {
         "key": "erp_unconfirmed",
@@ -71,6 +95,13 @@ _LOOKUP_DEFS: list[dict] = [
         "color": "warning",
         "priority": "action",
         "description": "該当・要注意・要確認判定の品目",
+    },
+    {
+        "key": "import_no_eccn",
+        "label": "輸入品・ECCN未設定",
+        "color": "warning",
+        "priority": "action",
+        "description": "購入品/原材料/移管品でECCNが未設定（再輸出管理リスク）",
     },
     # ── 監視（青／グレー）────────────────────────────────────
     {
@@ -100,6 +131,13 @@ _LOOKUP_DEFS: list[dict] = [
         "color": "light",
         "priority": "monitor",
         "description": "外部AI判定がキューイングまたはエラーの品目",
+    },
+    {
+        "key": "import_all",
+        "label": "輸入品一覧",
+        "color": "light",
+        "priority": "monitor",
+        "description": "購入品・原材料・グループ内移管品の全一覧",
     },
 ]
 
@@ -145,6 +183,19 @@ def _apply_lookup(q, key: str):
     if key == "ai_pending":
         return q.filter(
             Product.external_eval_status.in_(["queued", "pending", "error"])
+        )
+    # ── 輸入品 Lookup ────────────────────────────────────────────────
+    if key == "import_all":
+        return q.filter(Product.item_type.in_(_IMPORT_ITEM_TYPES))
+    if key == "import_no_eccn":
+        return q.filter(
+            Product.item_type.in_(_IMPORT_ITEM_TYPES),
+            or_(Product.eccn.is_(None), Product.eccn == ""),
+        )
+    if key == "import_us_origin":
+        return q.filter(
+            Product.item_type.in_(_IMPORT_ITEM_TYPES),
+            Product.country_of_origin == "US",
         )
     return q
 
@@ -710,7 +761,7 @@ class _ErpSyncRequest(BaseModel):
     hs_code: Optional[str] = None
     eccn: Optional[str] = None
     country_of_origin: Optional[str] = None
-    item_type: Optional[str] = None          # "FINISHED_GOODS" | "BOM_COMPONENT"
+    item_type: Optional[str] = None  # FINISHED_GOODS/BOM_COMPONENT/PURCHASED_PART/RAW_MATERIAL/INTERNAL_TRANSFER/SOFTWARE
     std_price: Optional[float] = None
     export_control_status: Optional[str] = None
     export_control_reason: Optional[str] = None
@@ -1432,7 +1483,7 @@ def import_products(file: UploadFile = File(...), db: Session = Depends(get_db))
         has_eccn       = "eccn"       in df.columns
         has_description = "description" in df.columns
 
-        _valid_item_types = {"FINISHED_GOODS", "BOM_COMPONENT"}
+        _valid_item_types = set(ITEM_TYPE_CONFIG.keys())
 
         for _, row in df.iterrows():
             code = str(row["code"]).strip()

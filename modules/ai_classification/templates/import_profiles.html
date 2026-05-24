@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>輸入品プロファイル管理 — AI Trade Management</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; color: #1a1a2e; }
+  .topbar { background: #1a1a2e; color: #fff; padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
+  .topbar h1 { font-size: 1.1rem; font-weight: 600; }
+  .topbar a { color: #90caf9; font-size: 0.85rem; text-decoration: none; }
+  .container { max-width: 1400px; margin: 24px auto; padding: 0 20px; }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: #fff; border-radius: 10px; padding: 14px 18px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .stat-card .val { font-size: 1.8rem; font-weight: 700; color: #1976d2; }
+  .stat-card .lbl { font-size: 0.75rem; color: #666; margin-top: 2px; }
+  .stat-card.warn .val { color: #e65100; }
+  .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; margin-bottom: 20px; }
+  .card-header { padding: 14px 18px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+  .card-header h2 { font-size: 0.95rem; font-weight: 600; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; padding: 12px 18px; background: #f9fafb; border-bottom: 1px solid #eee; }
+  .toolbar input, .toolbar select { padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; text-decoration: none; }
+  .btn-primary { background: #1976d2; color: #fff; }
+  .btn-success { background: #388e3c; color: #fff; }
+  .btn-warning { background: #f57c00; color: #fff; }
+  .btn-light { background: #f5f5f5; color: #333; border: 1px solid #ddd; }
+  .btn-sm { padding: 4px 10px; font-size: 0.78rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { background: #f5f5f5; padding: 9px 10px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e0e0e0; white-space: nowrap; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  tr:hover td { background: #fafafa; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.72rem; font-weight: 600; }
+  .badge-purchase    { background: #e3f2fd; color: #1565c0; }
+  .badge-intra       { background: #fff3e0; color: #e65100; }
+  .badge-consignment { background: #f3e5f5; color: #6a1b9a; }
+  .badge-fta-yes     { background: #e8f5e9; color: #2e7d32; }
+  .badge-fta-no      { background: #f5f5f5; color: #999; }
+  .badge-ear-yes     { background: #ffebee; color: #c62828; }
+  .badge-co-obtained { background: #e8f5e9; color: #2e7d32; }
+  .badge-co-pending  { background: #fff8e1; color: #f57f17; }
+  .badge-co-expired  { background: #ffebee; color: #c62828; }
+  .badge-co-noreq    { background: #f5f5f5; color: #999; }
+  .restrictions-ok   { color: #2e7d32; }
+  .restrictions-warn { color: #e65100; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: #fff; border-radius: 12px; padding: 28px; width: 680px; max-width: 96vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
+  .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 18px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-group label { font-size: 0.78rem; font-weight: 600; color: #555; }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem;
+  }
+  .form-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #eee; }
+  .form-section h4 { font-size: 0.82rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px; }
+  .alert { padding: 10px 14px; border-radius: 6px; font-size: 0.82rem; margin-bottom: 12px; }
+  .alert-info { background: #e3f2fd; color: #1565c0; }
+  .alert-warn { background: #fff8e1; color: #e65100; }
+  .empty-state { padding: 48px; text-align: center; color: #aaa; }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🛒 輸入品プロファイル管理</h1>
+  <a href="/products">← 品目一覧</a>
+  <a href="/products?lookup=import_all">輸入品フィルタ表示</a>
+</div>
+
+<div class="container">
+
+  <!-- 統計カード -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="val">{{ profiles|length }}</div>
+      <div class="lbl">プロファイル総数</div>
+    </div>
+    <div class="stat-card">
+      <div class="val">{{ stats.get('purchase', 0) }}</div>
+      <div class="lbl">🛒 外部購入品</div>
+    </div>
+    <div class="stat-card">
+      <div class="val">{{ stats.get('intra_group', 0) }}</div>
+      <div class="lbl">🏭 グループ内移管</div>
+    </div>
+    <div class="stat-card {% if profiles|selectattr('us_reexport_applicable')|list|length > 0 %}warn{% endif %}">
+      <div class="val">{{ profiles|selectattr('us_reexport_applicable')|list|length }}</div>
+      <div class="lbl">🇺🇸 EAR再輸出対象</div>
+    </div>
+    <div class="stat-card {% if profiles|selectattr('fta_applicable')|list|length > 0 %}{% endif %}">
+      <div class="val">{{ profiles|selectattr('fta_applicable')|list|length }}</div>
+      <div class="lbl">📋 FTA適用</div>
+    </div>
+  </div>
+
+  <!-- メインカード -->
+  <div class="card">
+    <div class="card-header">
+      <h2>輸入品プロファイル一覧</h2>
+      <button class="btn btn-primary" onclick="openCreateModal()">＋ 新規登録</button>
+    </div>
+
+    <!-- フィルタバー -->
+    <div class="toolbar">
+      <form method="get" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <select name="import_type" onchange="this.form.submit()">
+          <option value="">すべての種別</option>
+          <option value="purchase"    {% if filter_import_type == 'purchase'    %}selected{% endif %}>🛒 外部購入品</option>
+          <option value="intra_group" {% if filter_import_type == 'intra_group' %}selected{% endif %}>🏭 グループ内移管</option>
+          <option value="consignment" {% if filter_import_type == 'consignment' %}selected{% endif %}>📦 委託品</option>
+        </select>
+        <select name="exporter_country" onchange="this.form.submit()">
+          <option value="">すべての輸出国</option>
+          <option value="US" {% if filter_exporter_country == 'US' %}selected{% endif %}>🇺🇸 米国 (US)</option>
+          <option value="CN" {% if filter_exporter_country == 'CN' %}selected{% endif %}>🇨🇳 中国 (CN)</option>
+          <option value="KR" {% if filter_exporter_country == 'KR' %}selected{% endif %}>🇰🇷 韓国 (KR)</option>
+          <option value="DE" {% if filter_exporter_country == 'DE' %}selected{% endif %}>🇩🇪 ドイツ (DE)</option>
+          <option value="TW" {% if filter_exporter_country == 'TW' %}selected{% endif %}>🇹🇼 台湾 (TW)</option>
+        </select>
+        <select name="us_reexport" onchange="this.form.submit()">
+          <option value="">EAR 全件</option>
+          <option value="true"  {% if filter_us_reexport == true  %}selected{% endif %}>🇺🇸 EAR対象のみ</option>
+          <option value="false" {% if filter_us_reexport == false %}selected{% endif %}>EAR対象外のみ</option>
+        </select>
+        <a class="btn btn-light" href="/import-profiles">リセット</a>
+      </form>
+    </div>
+
+    <!-- テーブル -->
+    {% if profiles %}
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>品目コード</th>
+          <th>品目名</th>
+          <th>種別</th>
+          <th>輸出者</th>
+          <th>輸出国</th>
+          <th>HSコード(輸入)</th>
+          <th>FTA</th>
+          <th>原産地証明</th>
+          <th>EAR再輸出</th>
+          <th>輸入規制</th>
+          <th>輸入頻度</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in profiles %}
+        <tr>
+          <td><a href="/products?search={{ p.product_code }}" style="font-family:monospace;">{{ p.product_code }}</a></td>
+          <td>{{ p.product_name or '—' }}</td>
+          <td>
+            {% if p.import_type == 'purchase' %}
+              <span class="badge badge-purchase">🛒 外部購入品</span>
+            {% elif p.import_type == 'intra_group' %}
+              <span class="badge badge-intra">🏭 グループ内移管</span>
+            {% else %}
+              <span class="badge badge-consignment">📦 委託品</span>
+            {% endif %}
+          </td>
+          <td>{{ p.exporter_name or '—' }}</td>
+          <td>{{ p.exporter_country or '—' }}</td>
+          <td><code>{{ p.hs_code_import or '—' }}</code></td>
+          <td>
+            {% if p.fta_applicable %}
+              <span class="badge badge-fta-yes">✅ {{ p.fta_agreement_code or 'FTA' }}</span>
+              {% if p.preferential_rate_pct is not none %}
+                <br><small style="color:#2e7d32;">{{ "%.1f"|format(p.preferential_rate_pct) }}%</small>
+              {% endif %}
+              <button class="btn btn-light btn-sm" style="margin-top:2px;"
+                onclick="runFtaCheck('{{ p.id }}', this)">再照合</button>
+            {% elif p.hs_code_import %}
+              <button class="btn btn-light btn-sm"
+                onclick="runFtaCheck('{{ p.id }}', this)">FTA照合</button>
+            {% else %}
+              <span class="badge badge-fta-no" title="HSコードを設定してください">HS未設定</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if p.co_status == 'obtained' %}
+              <span class="badge badge-co-obtained">✅ 取得済</span>
+            {% elif p.co_status == 'pending' %}
+              <span class="badge badge-co-pending">⏳ 取得中</span>
+            {% elif p.co_status == 'expired' %}
+              <span class="badge badge-co-expired">❌ 期限切れ</span>
+            {% else %}
+              <span class="badge badge-co-noreq">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if p.us_reexport_applicable %}
+              <span class="badge badge-ear-yes">🇺🇸 対象</span>
+              {% if p.eccn_claimed %}
+                <br><code style="font-size:.72rem;">{{ p.eccn_claimed }}</code>
+              {% endif %}
+            {% else %}
+              <span style="color:#bbb;">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if p.import_restrictions_checked %}
+              {% set any_warn = namespace(v=false) %}
+              {% if p.import_restrictions_result %}
+                {% for k, v in p.import_restrictions_result.items() %}
+                  {% if v.status in ['review_required', 'applicable', 'prohibited'] %}
+                    {% set any_warn.v = true %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+              {% if any_warn.v %}
+                <span class="restrictions-warn">⚠️ 要確認</span>
+              {% else %}
+                <span class="restrictions-ok">✅ クリア</span>
+              {% endif %}
+            {% else %}
+              <button class="btn btn-light btn-sm"
+                onclick="runRestrictionCheck('{{ p.id }}', this)">チェック実行</button>
+            {% endif %}
+          </td>
+          <td>
+            {% if p.import_frequency %}
+              {{ {'one_time':'単発','monthly':'月次','quarterly':'四半期','annual':'年次','irregular':'不定期'}.get(p.import_frequency, p.import_frequency) }}
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <button class="btn btn-light btn-sm" onclick="openEditModal('{{ p.id }}')">編集</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">🛒</div>
+      <p>輸入品プロファイルがありません</p>
+      <p style="margin-top:8px; font-size:.85rem; color:#bbb;">「＋ 新規登録」ボタンから追加してください</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 輸入規制チェックについての説明 -->
+  <div class="card" style="background:#fffde7;">
+    <div class="card-header" style="background:transparent; border-bottom:none;">
+      <h2>📋 輸入規制チェックの確認項目</h2>
+    </div>
+    <div style="padding:14px 18px; font-size:0.82rem; display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px;">
+      <div><strong>化審法</strong><br>化学品（HS 28-29章）の届出要否</div>
+      <div><strong>REACH SVHC</strong><br>EU向け輸入時の高懸念物質チェック</div>
+      <div><strong>CITES</strong><br>ワシントン条約対象種（動植物・木材）</div>
+      <div><strong>輸入禁止品目</strong><br>銃砲（HS 93章）・核物質（2844）等</div>
+      <div><strong>EAR 再輸出管理</strong><br>米国原産品の再輸出規制（§736）</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 新規作成モーダル -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal">
+    <h3>＋ 輸入品プロファイル 新規登録</h3>
+    <form id="createForm">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>品目コード *</label>
+          <input type="text" name="product_code" required placeholder="例: PART-001">
+        </div>
+        <div class="form-group">
+          <label>品目名</label>
+          <input type="text" name="product_name" placeholder="例: パワーアンプ基板">
+        </div>
+        <div class="form-group">
+          <label>輸入種別 *</label>
+          <select name="import_type">
+            <option value="purchase">🛒 外部購入品</option>
+            <option value="intra_group">🏭 グループ内移管</option>
+            <option value="consignment">📦 委託品</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>輸出者名（仕入先）</label>
+          <input type="text" name="exporter_name" placeholder="例: Acme Corp.">
+        </div>
+        <div class="form-group">
+          <label>輸出者国（ISO2）</label>
+          <input type="text" name="exporter_country" placeholder="US / CN / DE" maxlength="2" style="text-transform:uppercase;">
+        </div>
+        <div class="form-group">
+          <label>輸入先国</label>
+          <select name="import_country">
+            <option value="JP">🇯🇵 日本（JP）</option>
+            <option value="US">🇺🇸 米国（US）</option>
+            <option value="EU">🇪🇺 EU</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>HS・税関情報</h4>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>HSコード（輸入申告用）</label>
+            <input type="text" name="hs_code_import" placeholder="例: 8542.31">
+          </div>
+          <div class="form-group">
+            <label>税関申告価格（USD）</label>
+            <input type="number" step="0.01" name="customs_value_usd" placeholder="例: 15000.00">
+          </div>
+          <div class="form-group">
+            <label>通貨</label>
+            <select name="currency">
+              <option value="USD">USD</option>
+              <option value="JPY">JPY</option>
+              <option value="EUR">EUR</option>
+              <option value="CNY">CNY</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>輸入数量</label>
+            <input type="number" step="0.001" name="import_quantity" placeholder="例: 100">
+          </div>
+          <div class="form-group">
+            <label>単位</label>
+            <input type="text" name="import_unit" placeholder="each / kg / m / L">
+          </div>
+          <div class="form-group">
+            <label>輸入頻度</label>
+            <select name="import_frequency">
+              <option value="">—</option>
+              <option value="one_time">単発</option>
+              <option value="monthly">月次</option>
+              <option value="quarterly">四半期</option>
+              <option value="annual">年次</option>
+              <option value="irregular">不定期</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>FTA / EPA 特恵税率</h4>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>FTA適用</label>
+            <select name="fta_applicable">
+              <option value="false">適用なし</option>
+              <option value="true">適用あり</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>FTA協定コード</label>
+            <input type="text" name="fta_agreement_code" placeholder="例: RCEP / JAEPA">
+          </div>
+          <div class="form-group">
+            <label>特恵税率（%）</label>
+            <input type="number" step="0.1" name="preferential_rate_pct" placeholder="例: 0.0">
+          </div>
+          <div class="form-group">
+            <label>原産地証明ステータス</label>
+            <select name="co_status">
+              <option value="not_required">不要</option>
+              <option value="pending">取得中</option>
+              <option value="obtained">取得済</option>
+              <option value="expired">期限切れ</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>EAR 再輸出管理（米国原産品）</h4>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>EAR再輸出規制対象</label>
+            <select name="us_reexport_applicable">
+              <option value="false">対象外</option>
+              <option value="true">対象（米国原産）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>輸出者申告 ECCN</label>
+            <input type="text" name="eccn_claimed" placeholder="例: 5E002 / EAR99">
+          </div>
+          <div class="form-group">
+            <label>ライセンス例外</label>
+            <input type="text" name="ear_license_exception" placeholder="例: ENC / TSR / NLR">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>その他</h4>
+        <div class="form-group full">
+          <label>メモ</label>
+          <textarea name="notes" rows="2" placeholder="仕入先担当者・輸入条件・特記事項"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" class="btn btn-light" onclick="closeModal('createModal')">キャンセル</button>
+        <button type="submit" class="btn btn-primary">登録</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openCreateModal() {
+  document.getElementById('createModal').classList.add('active');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+document.getElementById('createForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = {};
+  for (const [k, v] of fd.entries()) {
+    if (v === '') continue;
+    if (k === 'fta_applicable' || k === 'us_reexport_applicable') { body[k] = v === 'true'; continue; }
+    if (k === 'customs_value_usd' || k === 'preferential_rate_pct' || k === 'import_quantity') {
+      body[k] = parseFloat(v) || null; continue;
+    }
+    body[k] = v;
+  }
+  try {
+    const resp = await fetch('/api/import-profiles', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+    });
+    if (!resp.ok) { const d = await resp.json(); alert('エラー: ' + JSON.stringify(d.detail)); return; }
+    location.reload();
+  } catch (err) { alert('通信エラー: ' + err); }
+});
+
+async function openEditModal(id) {
+  const resp = await fetch('/api/import-profiles/' + id);
+  const p = await resp.json();
+  // 簡易: 新規登録フォームを再利用してフィールドをセット
+  const form = document.getElementById('createForm');
+  form.product_code.value = p.product_code || '';
+  form.product_name.value = p.product_name || '';
+  form.import_type.value = p.import_type || 'purchase';
+  form.exporter_name.value = p.exporter_name || '';
+  form.exporter_country.value = p.exporter_country || '';
+  form.import_country.value = p.import_country || 'JP';
+  form.hs_code_import.value = p.hs_code_import || '';
+  form.customs_value_usd.value = p.customs_value_usd || '';
+  form.currency.value = p.currency || 'USD';
+  form.import_quantity.value = p.import_quantity || '';
+  form.import_unit.value = p.import_unit || '';
+  form.import_frequency.value = p.import_frequency || '';
+  form.fta_applicable.value = p.fta_applicable ? 'true' : 'false';
+  form.fta_agreement_code.value = p.fta_agreement_code || '';
+  form.preferential_rate_pct.value = p.preferential_rate_pct || '';
+  form.co_status.value = p.co_status || 'not_required';
+  form.us_reexport_applicable.value = p.us_reexport_applicable ? 'true' : 'false';
+  form.eccn_claimed.value = p.eccn_claimed || '';
+  form.ear_license_exception.value = p.ear_license_exception || '';
+  form.notes.value = p.notes || '';
+
+  // submit を PUT に切り替え
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const fd2 = new FormData(form);
+    const body = {};
+    for (const [k, v] of fd2.entries()) {
+      if (v === '') continue;
+      if (k === 'fta_applicable' || k === 'us_reexport_applicable') { body[k] = v === 'true'; continue; }
+      if (k === 'customs_value_usd' || k === 'preferential_rate_pct' || k === 'import_quantity') {
+        body[k] = parseFloat(v) || null; continue;
+      }
+      body[k] = v;
+    }
+    const r = await fetch('/api/import-profiles/' + id, {
+      method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+    });
+    if (!r.ok) { const d = await r.json(); alert('エラー: ' + JSON.stringify(d.detail)); return; }
+    location.reload();
+  };
+
+  document.querySelector('#createModal h3').textContent = '✏️ 輸入品プロファイル 編集';
+  openCreateModal();
+}
+
+async function runFtaCheck(id, btn) {
+  btn.disabled = true;
+  btn.textContent = '照合中…';
+  try {
+    const resp = await fetch('/api/import-profiles/' + id + '/check-fta', { method: 'POST' });
+    const data = await resp.json();
+    if (!resp.ok) { alert('エラー: ' + JSON.stringify(data.detail)); btn.disabled = false; btn.textContent = 'FTA照合'; return; }
+    if (data.fta_applicable) {
+      alert(`FTA適用あり: ${data.fta_agreement_code || '—'} (${data.preferential_rate_pct ?? '—'}%)\n対象協定数: ${data.rates_found}`);
+    } else {
+      alert('対象FTA協定が見つかりませんでした（MFN税率が適用されます）');
+    }
+    location.reload();
+  } catch (err) { alert('通信エラー: ' + err); btn.disabled = false; btn.textContent = 'FTA照合'; }
+}
+
+async function runRestrictionCheck(id, btn) {
+  btn.disabled = true;
+  btn.textContent = '実行中…';
+  try {
+    const resp = await fetch('/api/import-profiles/' + id + '/check-restrictions', { method: 'POST' });
+    if (!resp.ok) { alert('エラーが発生しました'); return; }
+    location.reload();
+  } catch (err) { alert('通信エラー: ' + err); btn.disabled = false; btn.textContent = 'チェック実行'; }
+}
+
+// モーダル外クリックで閉じる
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('active'); });
+});
+</script>
+</body>
+</html>

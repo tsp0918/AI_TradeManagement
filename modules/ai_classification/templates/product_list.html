@@ -22,6 +22,7 @@
     {% endif %}
     <a class="button is-small is-primary" href="/products/new">＋ 新規品目</a>
     <a class="button is-small is-link" href="/products/import">CSVインポート</a>
+    <a class="button is-small is-info is-light" href="/import-profiles">🛒 輸入プロファイル</a>
   </div>
 </div>
 
@@ -170,8 +171,16 @@
           <div class="select is-small">
             <select name="item_type">
               <option value="">すべて</option>
-              <option value="FINISHED_GOODS" {% if item_type_filter == "FINISHED_GOODS" %}selected{% endif %}>完成品</option>
-              <option value="BOM_COMPONENT"  {% if item_type_filter == "BOM_COMPONENT"  %}selected{% endif %}>BOM構成品</option>
+              <optgroup label="輸出品">
+                <option value="FINISHED_GOODS"    {% if item_type_filter == "FINISHED_GOODS"    %}selected{% endif %}>📦 完成品</option>
+                <option value="BOM_COMPONENT"     {% if item_type_filter == "BOM_COMPONENT"     %}selected{% endif %}>🔩 BOM構成品</option>
+                <option value="SOFTWARE"          {% if item_type_filter == "SOFTWARE"          %}selected{% endif %}>💻 ソフトウェア・技術</option>
+              </optgroup>
+              <optgroup label="輸入品">
+                <option value="PURCHASED_PART"    {% if item_type_filter == "PURCHASED_PART"    %}selected{% endif %}>🛒 購入品</option>
+                <option value="RAW_MATERIAL"      {% if item_type_filter == "RAW_MATERIAL"      %}selected{% endif %}>⚗️ 原材料</option>
+                <option value="INTERNAL_TRANSFER" {% if item_type_filter == "INTERNAL_TRANSFER" %}selected{% endif %}>🏭 グループ内移管品</option>
+              </optgroup>
             </select>
           </div>
         </div>
@@ -221,7 +230,9 @@
   </thead>
   <tbody>
     {% for p in products %}
-    <tr {% if p.is_unconfirmed %}style="background-color:#fffbeb;"{% endif %}>
+    <tr {% if p.is_unconfirmed %}style="background-color:#fffbeb;"
+        {% elif p.item_type in ["PURCHASED_PART","RAW_MATERIAL","INTERNAL_TRANSFER"] %}style="background-color:#f0f9ff;"
+        {% endif %}>
       <td><a href="/products/{{ p.id }}/edit">{{ p.id }}</a></td>
       <td><code>{{ p.code }}</code></td>
       <td>{{ p.name }}</td>
@@ -261,9 +272,17 @@
       </td>
       <td>
         {% if p.item_type == "FINISHED_GOODS" %}
-          <span class="tag is-primary is-light is-small">完成品</span>
+          <span class="tag is-primary is-light is-small">📦 完成品</span>
         {% elif p.item_type == "BOM_COMPONENT" %}
-          <span class="tag is-light is-small">BOM品</span>
+          <span class="tag is-light is-small">🔩 BOM品</span>
+        {% elif p.item_type == "SOFTWARE" %}
+          <span class="tag is-success is-light is-small">💻 SW/技術</span>
+        {% elif p.item_type == "PURCHASED_PART" %}
+          <span class="tag is-info is-light is-small">🛒 購入品</span>
+        {% elif p.item_type == "RAW_MATERIAL" %}
+          <span class="tag is-link is-light is-small">⚗️ 原材料</span>
+        {% elif p.item_type == "INTERNAL_TRANSFER" %}
+          <span class="tag is-warning is-light is-small">🏭 移管品</span>
         {% else %}
           <span class="tag is-light is-small" style="color:#aaa;">—</span>
         {% endif %}

@@ -42,6 +42,25 @@
       {% endif %}
     </div>
 
+    <!-- ===== 輸入品バナー ===== -->
+    {% if product.item_type in ["PURCHASED_PART", "RAW_MATERIAL", "INTERNAL_TRANSFER"] %}
+    <div style="
+      display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+      background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px;
+      padding:10px 16px; margin-bottom:16px; font-size:13px; color:#1d4ed8;
+    ">
+      🛒 <strong>輸入品</strong>
+      {% if product.item_type == "PURCHASED_PART" %}（外部購入品）{% elif product.item_type == "RAW_MATERIAL" %}（原材料）{% else %}（グループ内移管品）{% endif %}
+      <a href="/import-profiles?product_code={{ product.code | urlencode }}"
+         style="background:#1d4ed8; color:#fff; border-radius:5px; padding:3px 12px; font-size:12px; font-weight:600; text-decoration:none;">
+        🛒 輸入プロファイルを管理
+      </a>
+      <a href="/api/import-profiles/product/{{ product.code | urlencode }}"
+         target="_blank"
+         style="color:#1d4ed8; font-size:12px;">API →</a>
+    </div>
+    {% endif %}
+
     <!-- ===== 基本情報フォーム ===== -->
     <div class="box">
       <form method="post" action="/products/{{ product.id }}/edit">
@@ -89,8 +108,16 @@
                     <div class="select">
                       <select name="item_type">
                         <option value="">— 未設定 —</option>
-                        <option value="FINISHED_GOODS" {% if product.item_type == "FINISHED_GOODS" %}selected{% endif %}>完成品</option>
-                        <option value="BOM_COMPONENT"  {% if product.item_type == "BOM_COMPONENT"  %}selected{% endif %}>BOM構成品</option>
+                        <optgroup label="輸出品">
+                          <option value="FINISHED_GOODS"    {% if product.item_type == "FINISHED_GOODS"    %}selected{% endif %}>📦 完成品</option>
+                          <option value="BOM_COMPONENT"     {% if product.item_type == "BOM_COMPONENT"     %}selected{% endif %}>🔩 BOM構成品</option>
+                          <option value="SOFTWARE"          {% if product.item_type == "SOFTWARE"          %}selected{% endif %}>💻 ソフトウェア・技術</option>
+                        </optgroup>
+                        <optgroup label="輸入品">
+                          <option value="PURCHASED_PART"    {% if product.item_type == "PURCHASED_PART"    %}selected{% endif %}>🛒 購入品</option>
+                          <option value="RAW_MATERIAL"      {% if product.item_type == "RAW_MATERIAL"      %}selected{% endif %}>⚗️ 原材料</option>
+                          <option value="INTERNAL_TRANSFER" {% if product.item_type == "INTERNAL_TRANSFER" %}selected{% endif %}>🏭 グループ内移管品</option>
+                        </optgroup>
                       </select>
                     </div>
                   </div>
