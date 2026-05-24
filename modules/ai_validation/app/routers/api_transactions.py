@@ -410,6 +410,44 @@ class SupplyChainLinkBody(BaseModel):
     de_minimis_result: Optional[Dict[str, Any]] = None
 
 
+@router.get("/{tx_id}")
+def get_transaction_detail(tx_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    単一取引の詳細を返す（ai_classification 等の外部モジュール向け）。
+    status / agent_judgment_status / items[].item_name が主な参照フィールド。
+    """
+    tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
+    if tx is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    latest_run = (
+        db.query(AiRun)
+        .filter(AiRun.transaction_id == tx_id)
+        .order_by(AiRun.started_at.desc())
+        .first()
+    )
+    return {
+        "id": tx.id,
+        "case_no": tx.case_no,
+        "title": tx.title,
+        "status": tx.status,
+        "agent_judgment_status": tx.agent_judgment_status,
+        "destination_country": tx.destination_country,
+        "source_module": tx.source_module,
+        "items": [
+            {"item_name": i.item_name, "spec_text": i.spec_text}
+            for i in tx.items
+        ],
+        "ai_run": {
+            "status": latest_run.status,
+            "run_type": latest_run.run_type,
+            "finished_at": latest_run.finished_at.isoformat() if latest_run.finished_at else None,
+        } if latest_run else None,
+        "created_at": tx.created_at.isoformat(),
+        "updated_at": tx.updated_at.isoformat(),
+        "url": f"/transactions/{tx.id}",
+    }
+
+
 @router.post("/{tx_id}/supply-chain")
 def save_supply_chain_link(
     tx_id: int,

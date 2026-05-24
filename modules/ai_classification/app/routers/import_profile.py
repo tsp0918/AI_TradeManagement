@@ -40,6 +40,7 @@ router = APIRouter(tags=["import_profile"])
 templates = Jinja2Templates(directory="templates")
 
 _FTA_ORIGIN_URL = os.environ.get("MODULE_FTA_ORIGIN_URL", "http://localhost:8014")
+_AI_VALIDATION_URL = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
 
 
 # ── スキーマ ──────────────────────────────────────────────────────────
@@ -419,3 +420,110 @@ async def import_profiles_page(
         "filter_exporter_country": exporter_country or "",
         "filter_us_reexport":     us_reexport,
     })
+
+
+# ── Phase III-1: ECCN 付番フロー ──────────────────────────────────
+
+@router.post("/api/import-profiles/{profile_id}/request-eccn")
+async def request_eccn(
+    profile_id: uuid.UUID,
+    db: AsyncSession = Depends(get_pg_db),
+):
+    """
+    ai_validation:8011 にトランザクションを作成し、
+    ECCN 判定を依頼する（Phase III-1）。
+    profile.eccn_validation_tx_id に transaction ID を保存する。
+    """
+    result = await db.execute(select(ImportProfile).where(ImportProfile.id == profile_id))
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(status_code=404, detail="ImportProfile not found")
+
+    product_desc = profile.product_name or profile.product_code
+    hs = profile.hs_code_import or ""
+    exporter = profile.exporter_country or ""
+
+    payload = {
+        "title": f"輸入品 ECCN 判定依頼: {profile.product_code}",
+        "items": [
+            {
+                "item_name": product_desc,
+                "item_description": (
+                    f"輸入品コード: {profile.product_code}\n"
+                    f"HS: {hs}\n"
+                    f"仕入先国: {exporter}\n"
+                    f"輸入種別: {profile.import_type}\n"
+                    + (f"備考: {profile.notes}" if profile.notes else "")
+                ),
+            }
+        ],
+        "source_module": "ai_classification",
+    }
+    if profile.exporter_country:
+        payload["destination_country"] = None  # 輸出先（自社なので None）
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{_AI_VALIDATION_URL}/api/transactions",
+                json=payload,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"ai_validation 連携エラー: {e}")
+
+    profile.eccn_validation_tx_id = data["id"]
+    profile.eccn_requested_at = datetime.utcnow()
+    profile.eccn_judgment_status = "pending"
+    await db.commit()
+
+    return {
+        "ok": True,
+        "profile_id": str(profile_id),
+        "tx_id": data["id"],
+        "tx_case_no": data.get("case_no"),
+        "tx_url": f"{_AI_VALIDATION_URL}/transactions/{data['id']}",
+    }
+
+
+@router.post("/api/import-profiles/{profile_id}/sync-eccn-status")
+async def sync_eccn_status(
+    profile_id: uuid.UUID,
+    db: AsyncSession = Depends(get_pg_db),
+):
+    """
+    ai_validation トランザクションの最新状態を取得し、
+    profile.eccn_judgment_status を更新する。
+    判定完了（agent_judgment_status あり）の場合は eccn_claimed にも反映を促す。
+    """
+    result = await db.execute(select(ImportProfile).where(ImportProfile.id == profile_id))
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(status_code=404, detail="ImportProfile not found")
+
+    if not profile.eccn_validation_tx_id:
+        raise HTTPException(status_code=400, detail="ECCN 判定依頼が未実施です")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{_AI_VALIDATION_URL}/api/transactions/{profile.eccn_validation_tx_id}"
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"ai_validation 連携エラー: {e}")
+
+    judgment = data.get("agent_judgment_status")
+    profile.eccn_judgment_status = judgment or data.get("status", "pending")
+    await db.commit()
+
+    return {
+        "ok": True,
+        "tx_id": profile.eccn_validation_tx_id,
+        "tx_status": data.get("status"),
+        "agent_judgment_status": judgment,
+        "tx_url": f"{_AI_VALIDATION_URL}/transactions/{profile.eccn_validation_tx_id}",
+        "note": "ECCN が確定したら「ECCN申告値」欄を手動で更新してください。" if judgment else "",
+    }

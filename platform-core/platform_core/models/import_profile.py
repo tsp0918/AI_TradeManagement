@@ -89,7 +89,17 @@ class ImportProfile(PlatformBase):
     # ── EAR 再輸出管理 ────────────────────────────────────────────────────
     eccn_claimed: Mapped[str | None] = mapped_column(
         String(32), nullable=True
-    )  # 輸出者申告 ECCN
+    )  # 輸出者申告 ECCN（手動または ai_validation 取得）
+    # ai_validation 連携（Phase III-1）
+    eccn_validation_tx_id: Mapped[int | None] = mapped_column(
+        nullable=True
+    )  # ai_validation.transactions.id
+    eccn_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )  # ECCN 判定依頼日時
+    eccn_judgment_status: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )  # ai_validation の agent_judgment_status（controlled/not_controlled/requires_review）
     us_reexport_applicable: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )  # EAR §736 再輸出管理対象か
