@@ -1,8 +1,9 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-24 更新（キャッチオール自動評価 + 制裁リスト無料3ソース自動同期）
+# 2026-05-24 更新（輸入品管理基盤 Phase I-1/II-1/II-3 + キャッチオール自動評価）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
-> 2026-05-24 追加: キャッチオール自動評価（AI run 後 LOW 判定で自動 CatchallAssessment 生成）+ 制裁リスト無料3ソース（OFAC SDN CSV/UN SC/EU Consolidated）自動同期 + pending_actions にキャッチオール未判定アクション（Step 2.5）追加。
+> 2026-05-24（2回目）追加: 輸入品管理基盤。item_type 6種確立（PURCHASED_PART/RAW_MATERIAL/INTERNAL_TRANSFER/SOFTWARE追加）・輸入品 Lookup 3タブ追加・plat_import_profile テーブル新設（Alembic: i7j8k9l0m1n2）・ImportProfile CRUD + 輸入規制チェック（化審法/REACH/CITES/EAR）+ fta_origin 自動照合。
+> 2026-05-24（1回目）追加: キャッチオール自動評価（AI run 後 LOW 判定で自動 CatchallAssessment 生成）+ 制裁リスト無料3ソース（OFAC SDN CSV/UN SC/EU Consolidated）自動同期 + pending_actions にキャッチオール未判定アクション（Step 2.5）追加。
 > 2026-05-08（3回目）追加: Phase 6 設計レビュー — platform-core から業務ドメイン機能を分離。counterparty→screening / item_version+supply_chain+supplier→ai_classification 統合（Phase 6A 高優先）、export_license / fta_origin 新モジュール抽出（Phase 6B 中優先）、trade_gate 新モジュール抽出（Phase 6C 低優先）。branch: refactor/module-separation。
 > 2026-05-08（2回目）追加: Phase 2 R&Dアクセス制御（tech_sensitivity/みなし輸出自動検知）・DAP-B ワークフローモード（chat-widget.js UCセレクタ・進捗バー・自動ナビ）・Phase 3 グローバル品目マスター（local_eccn/license_required・国数バッジ）・Phase 4 トランザクション多テナント化（org_id/ダッシュボード拠点フィルタートグル）。
 > 2026-05-08（1回目）追加: Phase 1 多拠点基盤（plat_tenant拡張・拠点スイッチャー・X-Organization-Idインターセプト）・DAP-A ワークフロー伴走（DapWorkflowSession・6 UC定義）・DAP-C 知識ベース更新（UC別ナビゲーションガイド）。
@@ -23,7 +24,7 @@
 |-----------|--------|-----|-----|--------|------|
 | platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 4レイヤー（A/B/C/D）・知識グラフ・規制スケジューラー（業務ロジック分離済） |
 | ai_validation | 8011 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent・AI run 後キャッチオール自動評価 |
-| ai_classification | 8002 | SQLite+PG | ✅ | ✅ | HS Classifier Webhook連携・ECCN付加・品目管理・サプライチェーン・サプライヤー |
+| ai_classification | 8002 | SQLite+PG | ✅ | ✅ | 品目管理・6種 item_type・輸入品プロファイル（plat_import_profile）・FTA照合・輸入規制チェック・HS Webhook・ECCN付加・サプライチェーン・サプライヤー |
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
 | patent_search | 8004 | SQLite | ✅ | ✅ | BigQuery連携・J-PlatPatフォールバック |
 | screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS/UN/EU）・与信管理・ERP JSON一括インポート・無料3ソース自動同期 |
