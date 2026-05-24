@@ -41,6 +41,7 @@ templates = Jinja2Templates(directory="templates")
 
 _FTA_ORIGIN_URL = os.environ.get("MODULE_FTA_ORIGIN_URL", "http://localhost:8014")
 _AI_VALIDATION_URL = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+_EXPORT_LICENSE_URL = os.environ.get("MODULE_EXPORT_LICENSE_URL", "http://localhost:8012")
 
 
 # ── スキーマ ──────────────────────────────────────────────────────────
@@ -526,4 +527,84 @@ async def sync_eccn_status(
         "agent_judgment_status": judgment,
         "tx_url": f"{_AI_VALIDATION_URL}/transactions/{profile.eccn_validation_tx_id}",
         "note": "ECCN が確定したら「ECCN申告値」欄を手動で更新してください。" if judgment else "",
+    }
+
+
+# ── Phase III-3: 再輸出許可申請自動トリガー ───────────────────────
+
+@router.post("/api/import-profiles/{profile_id}/trigger-reexport-check")
+async def trigger_reexport_check(
+    profile_id: uuid.UUID,
+    destination_country: Optional[str] = None,
+    db: AsyncSession = Depends(get_pg_db),
+):
+    """
+    US EAR 対象輸入品を再輸出する際に export_license:8012 で許可申請ドラフトを自動作成する。
+
+    条件: us_reexport_applicable=True かつ eccn_claimed が設定済み。
+    destination_country（再輸出先）を指定するとドラフトに反映される。
+    """
+    result = await db.execute(select(ImportProfile).where(ImportProfile.id == profile_id))
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(status_code=404, detail="ImportProfile not found")
+
+    if not profile.us_reexport_applicable:
+        raise HTTPException(
+            status_code=400,
+            detail="us_reexport_applicable が False のため再輸出申請は不要です",
+        )
+
+    if not profile.eccn_claimed:
+        raise HTTPException(
+            status_code=400,
+            detail="eccn_claimed（ECCN申告値）が未設定です。先に ECCN 付番を完了してください",
+        )
+
+    product_desc = (
+        f"輸入品（{profile.product_code}）の EAR 再輸出申請\n"
+        f"仕入先国: {profile.exporter_country or '不明'}\n"
+        f"HS: {profile.hs_code_import or '未設定'}\n"
+        + (f"EARライセンス例外: {profile.ear_license_exception}" if profile.ear_license_exception else "")
+    )
+
+    payload = {
+        "license_type": "EAR",
+        "form_type": "BIS748P",
+        "item_description": product_desc,
+        "eccn": profile.eccn_claimed,
+        "destination_country": destination_country or None,
+        "value_usd": profile.customs_value_usd,
+        "notes": (
+            f"ImportProfile ID: {profile_id}\n"
+            f"品目コード: {profile.product_code}\n"
+            f"仕入先: {profile.exporter_name or '不明'} ({profile.exporter_country or '—'})\n"
+            f"EAR再輸出対象。輸入品から自動トリガー（ai_classification Phase III-3）"
+        ),
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{_EXPORT_LICENSE_URL}/api/export-licenses",
+                json=payload,
+            )
+            resp.raise_for_status()
+            license_data = resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"export_license 連携エラー: {e}")
+
+    import uuid as _uuid
+    profile.reexport_license_id = _uuid.UUID(license_data["id"])
+    profile.reexport_triggered_at = datetime.utcnow()
+    await db.commit()
+
+    return {
+        "ok": True,
+        "profile_id": str(profile_id),
+        "license_id": license_data["id"],
+        "license_no": license_data.get("application_no"),
+        "license_url": f"{_EXPORT_LICENSE_URL}/export-licenses/{license_data['id']}",
+        "status": license_data.get("status"),
+        "note": "輸出許可申請ドラフトを作成しました。export_license モジュールで内容を確認してください。",
     }

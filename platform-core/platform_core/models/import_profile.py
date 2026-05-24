@@ -131,6 +131,14 @@ class ImportProfile(PlatformBase):
         UUID(as_uuid=True), nullable=True
     )
 
+    # ── Phase III-3: 再輸出許可申請連携 ─────────────────────────────────
+    reexport_license_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )  # export_license.plat_export_license_application.id
+    reexport_triggered_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
+
     # ── 組織フィルタ ─────────────────────────────────────────────────────
     org_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
 

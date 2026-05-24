@@ -147,6 +147,7 @@
           <th>原産地証明</th>
           <th>EAR再輸出</th>
           <th>ECCN判定</th>
+          <th>再輸出申請</th>
           <th>輸入規制</th>
           <th>輸入頻度</th>
           <th>操作</th>
@@ -232,6 +233,22 @@
             {% else %}
               <button class="btn btn-light btn-sm"
                 onclick="requestEccn('{{ p.id }}', this)">ECCN判定依頼</button>
+            {% endif %}
+          </td>
+          <!-- 再輸出申請列 -->
+          <td>
+            {% if not p.us_reexport_applicable %}
+              <span style="color:#bbb; font-size:.78rem;">対象外</span>
+            {% elif p.reexport_license_id %}
+              <span style="color:#2e7d32; font-size:.78rem;">✅ 申請済</span>
+              <br>
+              <a href="http://localhost:8012/export-licenses/{{ p.reexport_license_id }}"
+                 target="_blank" style="font-size:.72rem;">申請確認 →</a>
+            {% elif p.eccn_claimed %}
+              <button class="btn btn-light btn-sm"
+                onclick="triggerReexport('{{ p.id }}', this)">再輸出申請</button>
+            {% else %}
+              <span style="color:#b7791f; font-size:.72rem;">ECCN付番後に申請可能</span>
             {% endif %}
           </td>
           <td>
@@ -589,6 +606,27 @@ async function syncEccnStatus(id, btn) {
   } catch(e) {
     btn.textContent = "❌ エラー";
     setTimeout(() => { btn.textContent = "状態確認"; btn.disabled = false; }, 3000);
+  }
+}
+
+async function triggerReexport(id, btn) {
+  btn.disabled = true;
+  btn.textContent = "⏳ 申請中...";
+  try {
+    const res = await fetch(`/api/import-profiles/${id}/trigger-reexport-check`, { method: "POST" });
+    const data = await res.json();
+    if (res.ok) {
+      btn.textContent = "✅ 申請作成";
+      if (data.license_url) window.open(data.license_url, "_blank");
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      alert(data.detail || "エラーが発生しました");
+      btn.textContent = "再輸出申請";
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.textContent = "❌ エラー";
+    setTimeout(() => { btn.textContent = "再輸出申請"; btn.disabled = false; }, 3000);
   }
 }
 </script>
