@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.db.deps import get_db
 from app.db.models.ai_run import AiRun, RunType
+from app.db.models.catchall_assessment import CatchallAssessment
 from app.db.models.transaction import Transaction, TransactionItem, UsageRequirement
 from app.services.two_list import compute_two_lists
 
@@ -71,12 +72,13 @@ def _pending_actions(
     tx: Transaction,
     has_ai_run: bool,
     counts: Optional[Dict[str, Any]],
+    has_catchall: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     各ステップの未完了アクションを優先度付きで返す。
 
     返却フィールド:
-        step     : 1=スクリーニング / 2=AI判定 / 3=報告書
+        step     : 1=スクリーニング / 2=AI判定 / 2.5=キャッチオール / 3=報告書
         key      : アクション識別子
         label    : ボタン表示文字列
         url      : 遷移先 URL
@@ -116,6 +118,25 @@ def _pending_actions(
             "method":   "POST",
             "priority": "info",
         })
+
+    # ── Step 2.5: キャッチオール自己判定 ────────
+    # AI判定が LOW（リスト規制なし）かつ仕向国あり → キャッチオール必須
+    if has_ai_run and counts:
+        hit_count = (counts.get("intersection") or 0) + (counts.get("core_only") or 0)
+        is_low    = hit_count == 0
+        if is_low and not has_catchall:
+            # 仕向国が懸念国ならdanger、それ以外はwarn
+            _CONCERN = {"CN", "RU", "KP", "IR", "SY", "BY", "CU", "VE", "MM", "SD", "LY", "YE"}
+            dest = (tx.destination_country or "").upper()
+            priority = "danger" if dest in _CONCERN else "warn"
+            actions.append({
+                "step":     2,
+                "key":      "catchall_run",
+                "label":    "キャッチオール自己判定を実行",
+                "url":      f"{_BASE}/ui/transactions/{tx.id}#sec-catchall",
+                "method":   "GET",
+                "priority": priority,
+            })
 
     # ── Step 3: 報告書 ─────────────────────────
     if has_ai_run and counts:
@@ -185,6 +206,11 @@ def get_recent_transactions(
             except Exception:
                 counts = {}
 
+        # キャッチオール判定済みか確認
+        has_catchall = db.query(CatchallAssessment).filter(
+            CatchallAssessment.transaction_id == tx.id
+        ).first() is not None
+
         results.append({
             "id":                   tx.id,
             "case_no":              tx.case_no,
@@ -194,9 +220,10 @@ def get_recent_transactions(
             "screening_result_id":  tx.screening_result_id,
             "screening_status":     tx.screening_status,
             "has_ai_run":           has_ai_run,
+            "has_catchall":         has_catchall,
             "last_run_at":          last_run_at.isoformat() if last_run_at else None,
             "counts":               counts,
-            "pending_actions":      _pending_actions(tx, has_ai_run, counts),
+            "pending_actions":      _pending_actions(tx, has_ai_run, counts, has_catchall),
         })
 
     return {"transactions": results, "total": len(results)}

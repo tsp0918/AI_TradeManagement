@@ -207,6 +207,8 @@ async def sync_sanctions(
     from sqlalchemy import update as sa_update
     from app.services.sanctions_sync import (
         fetch_ofac_sdn,
+        fetch_ofac_sdn_csv,
+        fetch_un_consolidated,
         fetch_bis_entity_list,
         fetch_bis_unverified,
         fetch_bis_meu,
@@ -215,20 +217,30 @@ async def sync_sanctions(
         fetch_uk_ofsi,
     )
 
+    # APIキー不要ソース（"free" で一括指定可）
+    FREE_SOURCES = {"ofac_sdn_csv", "un_sc", "eu_consolidated"}
+
     ALL_SOURCES = {
-        "ofac_sdn":        fetch_ofac_sdn,
+        "ofac_sdn":        fetch_ofac_sdn,       # OFAC SDN XML（28MB・低速）
+        "ofac_sdn_csv":    fetch_ofac_sdn_csv,    # OFAC SDN CSV（5.5MB・高速）※推奨
+        "un_sc":           fetch_un_consolidated, # UN SC Consolidated（APIキー不要）
+        "eu_consolidated": fetch_eu_consolidated, # EU Consolidated（APIキー不要）
+        "uk_ofsi":         fetch_uk_ofsi,         # UK OFSI（APIキー不要）
         "bis_entity":      lambda: fetch_bis_entity_list(api_key=csl_api_key),
         "bis_uvl":         lambda: fetch_bis_unverified(api_key=csl_api_key),
         "bis_meu":         lambda: fetch_bis_meu(api_key=csl_api_key),
         "bis_dpl":         lambda: fetch_bis_dpl(api_key=csl_api_key),
-        "eu_consolidated": fetch_eu_consolidated,
-        "uk_ofsi":         fetch_uk_ofsi,
     }
 
-    requested = set(
-        ALL_SOURCES.keys() if sources.strip().lower() == "all"
-        else [s.strip() for s in sources.split(",") if s.strip() in ALL_SOURCES]
-    )
+    # "all" は全ソース、"free" は APIキー不要ソースのみ
+    src_lower = sources.strip().lower()
+    if src_lower == "all":
+        requested = set(ALL_SOURCES.keys())
+    elif src_lower == "free":
+        requested = FREE_SOURCES
+    else:
+        requested = {s.strip() for s in sources.split(",") if s.strip() in ALL_SOURCES}
+
     if not requested:
         raise HTTPException(status_code=422, detail=f"Invalid sources: {sources}")
 

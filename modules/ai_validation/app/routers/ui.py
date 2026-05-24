@@ -477,6 +477,56 @@ def external_requests_page(request: Request, db: Session = Depends(get_db)):
     )
 
 
+def _auto_catchall(db: Session, tx: Transaction, two_lists: dict) -> None:
+    """AI run 後、キャッチオール推奨かつ未判定なら自動で初回評価を実行する。
+
+    - 仕向国が設定されていれば destination_country を渡す
+    - スクリーニング結果が match/possible_match なら rf7（懸念国経由）を True に
+    - 既に CatchallAssessment がある場合はスキップ
+    """
+    if not two_lists.get("catchall_recommended"):
+        return
+    existing = db.query(CatchallAssessment).filter(
+        CatchallAssessment.transaction_id == tx.id
+    ).first()
+    if existing:
+        return
+
+    try:
+        from platform_core.ontology.models.catchall import (
+            CatchallContext, RedFlagAnswers,
+        )
+        from platform_core.ontology.rules.catchall_engine import evaluate_catchall
+
+        rf7 = tx.screening_status in ("match", "possible_match")
+        ctx = CatchallContext(
+            transaction_id=tx.id,
+            destination_country=tx.destination_country or None,
+            inform_notified=False,
+            red_flags=RedFlagAnswers(rf7_concern_country_routing=rf7),
+        )
+        judgment = evaluate_catchall(ctx)
+
+        record = CatchallAssessment(
+            transaction_id=tx.id,
+            verdict=judgment.verdict.value,
+            catchall_type=judgment.catchall_type.value if judgment.catchall_type else None,
+            destination_country=judgment.destination_country,
+            destination_risk_level=judgment.country_risk_level.value if judgment.country_risk_level else None,
+            red_flag_positive_count=judgment.red_flag_positive_count,
+            judgment_json=judgment.to_dict(),
+            evaluated_by="auto",
+        )
+        db.add(record)
+        db.flush()
+        logger.info(
+            "auto-catchall tx=%d dest=%s verdict=%s rf7=%s",
+            tx.id, tx.destination_country, judgment.verdict.value, rf7,
+        )
+    except Exception as exc:
+        logger.warning("auto-catchall failed tx=%d: %s", tx.id, exc)
+
+
 @router.post("/ui/transactions/{transaction_id}/run", response_class=HTMLResponse)
 def run_pipeline_and_show(
     request: Request,
@@ -495,13 +545,24 @@ def run_pipeline_and_show(
         )
     run_until_matrix_match(db=db, transaction_id=transaction_id, threshold=threshold)
 
-    # 最新 matrix_match run を引いて、その run_id を付けて詳細へ戻す
+    # 最新 matrix_match run を引いて two_lists を計算
     latest = (
         db.query(AiRun)
         .filter(AiRun.transaction_id == transaction_id, AiRun.run_type == RunType.matrix_match.value)
         .order_by(desc(AiRun.id))
         .first()
     )
+
+    # AI run 完了後にキャッチオール自動評価（LOW 判定 + 仕向国あり の場合）
+    if latest:
+        try:
+            tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+            two_lists = compute_two_lists(db=db, transaction_id=transaction_id, run_id=latest.id)
+            if tx:
+                _auto_catchall(db=db, tx=tx, two_lists=two_lists)
+                db.commit()
+        except Exception as exc:
+            logger.warning("post-run auto_catchall error tx=%d: %s", transaction_id, exc)
 
     url = f"/ui/transactions/{transaction_id}"
     if latest:

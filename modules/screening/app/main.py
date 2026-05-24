@@ -77,32 +77,36 @@ async def _init_faiss() -> None:
 
 
 async def _auto_sync_sanctions() -> None:
-    """DB が空の場合に OFAC SDN + BIS Entity List を自動同期する。"""
-    from sqlalchemy import update as sa_update
-    from app.services.sanctions_sync import fetch_ofac_sdn, fetch_bis_entity_list
+    """DB が空の場合に OFAC SDN CSV + UN SC + EU Consolidated を自動同期する（APIキー不要）。"""
+    from app.services.sanctions_sync import (
+        fetch_ofac_sdn_csv,
+        fetch_un_consolidated,
+        fetch_eu_consolidated,
+    )
 
-    _logger.info("Watchlist DB empty — starting auto-sync (OFAC SDN + BIS Entity List)")
+    _logger.info("Watchlist DB empty — starting auto-sync (OFAC SDN CSV + UN SC + EU Consolidated)")
     try:
-        # 同期実行（ネットワーク依存のため別タスクで）
         import concurrent.futures, asyncio as _asyncio
         loop = _asyncio.get_event_loop()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-            ofac_fut = loop.run_in_executor(pool, fetch_ofac_sdn)
-            bis_fut  = loop.run_in_executor(pool, lambda: fetch_bis_entity_list(timeout=60))
-            ofac_entries, bis_entries = await _asyncio.gather(ofac_fut, bis_fut, return_exceptions=True)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+            ofac_fut = loop.run_in_executor(pool, lambda: fetch_ofac_sdn_csv(timeout=60))
+            un_fut   = loop.run_in_executor(pool, lambda: fetch_un_consolidated(timeout=60))
+            eu_fut   = loop.run_in_executor(pool, lambda: fetch_eu_consolidated(timeout=60))
+            ofac_entries, un_entries, eu_entries = await _asyncio.gather(
+                ofac_fut, un_fut, eu_fut, return_exceptions=True
+            )
 
         all_entries: list[dict] = []
-        if isinstance(ofac_entries, list):
-            all_entries.extend(ofac_entries)
-            _logger.info("OFAC SDN: %d entries", len(ofac_entries))
-        else:
-            _logger.warning("OFAC SDN fetch failed: %s", ofac_entries)
-
-        if isinstance(bis_entries, list):
-            all_entries.extend(bis_entries)
-            _logger.info("BIS Entity List: %d entries", len(bis_entries))
-        else:
-            _logger.warning("BIS Entity List fetch failed: %s", bis_entries)
+        for label, result in [
+            ("OFAC SDN CSV", ofac_entries),
+            ("UN SC Consolidated", un_entries),
+            ("EU Consolidated", eu_entries),
+        ]:
+            if isinstance(result, list):
+                all_entries.extend(result)
+                _logger.info("%s: %d entries", label, len(result))
+            else:
+                _logger.warning("%s fetch failed: %s", label, result)
 
         if not all_entries:
             _logger.warning("Auto-sync: no entries fetched, skipping")
