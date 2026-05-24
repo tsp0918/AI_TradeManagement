@@ -327,6 +327,7 @@
         <div class="level-right">
           <a class="btn btn-sm" href="/products/{{ product.id }}/bom">BOM CSV アップロード</a>
           <a class="btn btn-sm" href="/products/{{ product.id }}/bom/history" style="margin-left:6px;">BOM 履歴</a>
+          <a class="btn btn-sm is-success is-light" href="/products/{{ product.id }}/bom/graph" style="margin-left:6px;">📊 グラフ</a>
           <button class="btn btn-sm is-info is-light" style="margin-left:6px;" id="bom-sync-btn"
                   onclick="syncBomToSC({{ product.id }})" title="bom_json → plat_supply_chain_node 同期">
             🔄 SC同期

@@ -1269,6 +1269,14 @@ def bom_upload(
     return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
 
 
+@router.get("/products/{product_id}/bom/graph", response_class=HTMLResponse)
+def bom_graph(request: Request, product_id: int, db: Session = Depends(get_db)):
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return templates.TemplateResponse(request, "bom_graph.html", {"product": product})
+
+
 @router.get("/products/{product_id}/bom/history", response_class=HTMLResponse)
 def bom_history_list(request: Request, product_id: int, db: Session = Depends(get_db)):
     product = db.get(Product, product_id)

@@ -13,6 +13,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..pg_session import get_pg_db
+from ..pg_session_sync import get_pg_db_sync
+from ..database import SessionLocal
+from ..models import Product as _Product
+from .bom_sync import sync_bom_to_supply_chain as _sync_bom
 from platform_core.models.supply_chain import SupplyChainEdge, SupplyChainNode
 
 router = APIRouter(prefix="/api/supply-chain", tags=["supply_chain"])
@@ -496,23 +500,86 @@ def sync_from_bom(product_id: int):
     品目IDを指定して bom_json → plat_supply_chain_node/edge を手動同期する。
     BOM upload 後は自動同期されるが、既存データの移行やデバッグ目的に使用。
     """
-    import sys, os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-    from ..database import SessionLocal
-    from ..models import Product as ProdModel
-    from ..pg_session_sync import get_pg_db_sync
-    from .bom_sync import sync_bom_to_supply_chain as _sync
-
     sqlite_db = SessionLocal()
     try:
-        product = sqlite_db.get(ProdModel, product_id)
+        product = sqlite_db.get(_Product, product_id)
         if product is None:
             raise HTTPException(status_code=404, detail="Product not found")
         pg = get_pg_db_sync()
         try:
-            result = _sync(product, pg)
+            result = _sync_bom(product, pg)
         finally:
             pg.close()
         return {"product_id": product_id, "product_code": product.code, **result}
     finally:
         sqlite_db.close()
+
+
+# ── Phase III-2: 輸入品影響分析 ───────────────────────────────────
+
+@router.get("/impact/{component_code}")
+async def get_impact_analysis(
+    component_code: str,
+    us_origin_only: bool = Query(False, description="US原産品のみ対象"),
+    db: AsyncSession = Depends(get_pg_db),
+):
+    """
+    指定した部品コード（輸入品・購入品）を BOM に含む完成品一覧を返す。
+    「この US 原産購入品を使う完成品はどれか」を逆引き可能。
+
+    Phase III-3（US EAR 再輸出チェック）のベースにもなる。
+    """
+    # 対象コンポーネントノードを取得
+    comp_result = await db.execute(
+        select(SupplyChainNode).where(SupplyChainNode.product_code == component_code)
+    )
+    comp_node = comp_result.scalar_one_or_none()
+
+    if comp_node is None:
+        return {
+            "component_code": component_code,
+            "component_node": None,
+            "affected_products": [],
+            "note": "このコードの SupplyChainNode が見つかりません。BOM同期を実行してください。",
+        }
+
+    if us_origin_only and not comp_node.is_us_origin:
+        return {
+            "component_code": component_code,
+            "component_node": _serialize_node(comp_node),
+            "affected_products": [],
+            "note": "US原産フラグが立っていません。",
+        }
+
+    # このコンポーネントを子に持つエッジを取得（= このコンポーネントを使う親製品）
+    edges_result = await db.execute(
+        select(SupplyChainEdge).where(SupplyChainEdge.child_node_id == comp_node.id)
+    )
+    edges = edges_result.scalars().all()
+
+    affected = []
+    for edge in edges:
+        parent_result = await db.execute(
+            select(SupplyChainNode).where(SupplyChainNode.id == edge.parent_node_id)
+        )
+        parent = parent_result.scalar_one_or_none()
+        if parent is None:
+            continue
+
+        # EAR再輸出リスク評価
+        is_us_ctrl = comp_node.is_us_origin and comp_node.eccn and comp_node.eccn.upper() not in ("", "EAR99")
+        ear_reexport_risk = "high" if is_us_ctrl else ("medium" if comp_node.is_us_origin else "low")
+
+        affected.append({
+            **_serialize_node(parent),
+            "bom_quantity": edge.quantity,
+            "bom_unit": edge.unit,
+            "ear_reexport_risk": ear_reexport_risk,
+        })
+
+    return {
+        "component_code": component_code,
+        "component_node": _serialize_node(comp_node),
+        "affected_products": affected,
+        "total_affected": len(affected),
+    }

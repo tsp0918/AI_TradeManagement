@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}BOM グラフ — {{ product.code }}{% endblock %}
+
+{% block content %}
+<div class="level mb-3">
+  <div class="level-left">
+    <div>
+      <h2 class="subtitle mb-0">
+        BOM チェーン可視化 &nbsp;
+        <span class="tag is-primary is-light">{{ product.code }}</span>
+        <span class="has-text-grey is-size-7 ml-2">{{ product.name }}</span>
+      </h2>
+    </div>
+  </div>
+  <div class="level-right" style="gap:0.4rem; display:flex;">
+    <a class="button is-small is-light" href="/products/{{ product.id }}/edit">← 品目詳細</a>
+    <button class="button is-small is-info is-light" id="reload-btn" onclick="loadGraph()">🔄 再読込</button>
+    <button class="button is-small" id="fit-btn" onclick="cy && cy.fit()">フィット</button>
+  </div>
+</div>
+
+<!-- 凡例 -->
+<div style="display:flex; gap:1rem; align-items:center; font-size:0.78rem; margin-bottom:0.5rem; flex-wrap:wrap;">
+  <span><span style="display:inline-block;width:14px;height:14px;background:#3273dc;border-radius:3px;vertical-align:middle;"></span> 完成品</span>
+  <span><span style="display:inline-block;width:14px;height:14px;background:#48c774;border-radius:3px;vertical-align:middle;"></span> BOM構成品</span>
+  <span><span style="display:inline-block;width:14px;height:14px;background:#f14668;border-radius:3px;vertical-align:middle;"></span> US原産（EAR規制）</span>
+  <span><span style="display:inline-block;width:14px;height:14px;background:#ff9f43;border-radius:3px;vertical-align:middle;"></span> US原産（EAR99/未ECCN）</span>
+  <span><span style="display:inline-block;width:14px;height:14px;background:#aaa;border-radius:3px;vertical-align:middle;"></span> 輸入品・購入品</span>
+</div>
+
+<div id="cy-container" style="width:100%; height:520px; background:#fafafa; border:1px solid #dbdbdb; border-radius:6px; position:relative;">
+  <div id="cy-spinner" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#888;font-size:0.9rem;">
+    ⏳ グラフを読み込み中...
+  </div>
+</div>
+
+<!-- ノード詳細パネル -->
+<div id="node-detail" style="display:none; margin-top:0.75rem; padding:0.75rem 1rem; background:#f8faff;
+     border:1px solid #bfdbfe; border-radius:6px; font-size:0.85rem;">
+  <strong id="nd-code">—</strong> &nbsp;
+  <span id="nd-name" class="has-text-grey"></span>
+  <span class="ml-3" id="nd-badges"></span>
+  <div class="mt-1" id="nd-links"></div>
+</div>
+
+<!-- Cytoscape.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+
+<script>
+const PRODUCT_CODE = "{{ product.code }}";
+const PRODUCT_ID = {{ product.id }};
+
+let cy = null;
+
+function nodeColor(n) {
+  const t = n.node_type || "";
+  const isUs = n.is_us_origin;
+  const eccn = (n.eccn || "").toUpperCase();
+  const hasEccn = eccn && eccn !== "EAR99";
+  if (t === "product") return "#3273dc";
+  if (isUs && hasEccn) return "#f14668";
+  if (isUs) return "#ff9f43";
+  const imp = ["PURCHASED_PART","RAW_MATERIAL","INTERNAL_TRANSFER"];
+  // node_type=component で購入品系はグレー
+  return "#48c774";
+}
+
+function nodeShape(n) {
+  return n.node_type === "product" ? "roundrectangle" : "ellipse";
+}
+
+function buildElements(data) {
+  const els = [];
+  if (!data.node) return els;
+
+  const root = data.node;
+  els.push({
+    data: {
+      id: root.id,
+      label: (root.product_code || root.name || "").slice(0, 18),
+      fullLabel: root.name,
+      node_type: root.node_type,
+      product_code: root.product_code,
+      is_us_origin: root.is_us_origin,
+      eccn: root.eccn,
+      hs_code: root.hs_code,
+      color: nodeColor(root),
+      shape: nodeShape(root),
+    }
+  });
+
+  for (const child of (data.children || [])) {
+    els.push({
+      data: {
+        id: child.id,
+        label: (child.product_code || child.name || "").slice(0, 16),
+        fullLabel: child.name,
+        node_type: child.node_type,
+        product_code: child.product_code,
+        is_us_origin: child.is_us_origin,
+        eccn: child.eccn,
+        hs_code: child.hs_code,
+        color: nodeColor(child),
+        shape: nodeShape(child),
+        qty: child.quantity,
+        unit: child.unit,
+      }
+    });
+    els.push({
+      data: {
+        id: `e_${root.id}_${child.id}`,
+        source: root.id,
+        target: child.id,
+        label: child.quantity !== 1 ? `×${child.quantity}` : "",
+      }
+    });
+  }
+  return els;
+}
+
+async function loadGraph() {
+  const spinner = document.getElementById("cy-spinner");
+  spinner.style.display = "block";
+  if (cy) { cy.destroy(); cy = null; }
+
+  try {
+    const res = await fetch(`/api/supply-chain/by-product-code/${encodeURIComponent(PRODUCT_CODE)}`);
+    const data = await res.json();
+    spinner.style.display = "none";
+
+    if (!data.node) {
+      spinner.textContent = "⚠️ SC同期が未実行です。品目詳細の「🔄 SC同期」ボタンを押してから再試行してください。";
+      spinner.style.display = "block";
+      return;
+    }
+
+    const elements = buildElements(data);
+    cy = cytoscape({
+      container: document.getElementById("cy-container"),
+      elements,
+      style: [
+        {
+          selector: "node",
+          style: {
+            "background-color": "data(color)",
+            "shape": "data(shape)",
+            "label": "data(label)",
+            "font-size": "10px",
+            "color": "#fff",
+            "text-valign": "center",
+            "text-halign": "center",
+            "width": 80,
+            "height": 36,
+            "border-width": 2,
+            "border-color": "#fff",
+          }
+        },
+        {
+          selector: "node[node_type='product']",
+          style: { "width": 110, "height": 44, "font-size": "12px", "font-weight": "bold" }
+        },
+        {
+          selector: "edge",
+          style: {
+            "width": 1.5,
+            "line-color": "#ccc",
+            "target-arrow-color": "#ccc",
+            "target-arrow-shape": "triangle",
+            "curve-style": "bezier",
+            "label": "data(label)",
+            "font-size": "9px",
+            "color": "#888",
+          }
+        },
+        {
+          selector: ":selected",
+          style: {
+            "border-width": 3,
+            "border-color": "#363636",
+          }
+        }
+      ],
+      layout: {
+        name: "breadthfirst",
+        directed: true,
+        padding: 20,
+        spacingFactor: 1.4,
+      }
+    });
+
+    cy.on("tap", "node", function(e) {
+      const n = e.target.data();
+      const panel = document.getElementById("node-detail");
+      document.getElementById("nd-code").textContent = n.product_code || n.id.slice(0,8);
+      document.getElementById("nd-name").textContent = n.fullLabel || "";
+      let badges = "";
+      if (n.is_us_origin) badges += `<span class="tag is-danger is-light is-small">US原産</span> `;
+      if (n.eccn) badges += `<span class="tag is-warning is-light is-small">${n.eccn}</span> `;
+      if (n.hs_code) badges += `<span class="tag is-info is-light is-small">HS ${n.hs_code}</span> `;
+      document.getElementById("nd-badges").innerHTML = badges;
+      let links = "";
+      if (n.product_code) {
+        links = `<a href="/api/supply-chain/impact/${encodeURIComponent(n.product_code)}?us_origin_only=true" target="_blank" style="font-size:0.78rem;">
+          🔍 この品目を使う完成品を検索
+        </a>`;
+      }
+      document.getElementById("nd-links").innerHTML = links;
+      panel.style.display = "block";
+    });
+
+  } catch(e) {
+    spinner.textContent = "❌ 読み込みエラー: " + e.message;
+    spinner.style.display = "block";
+  }
+}
+
+loadGraph();
+</script>
+{% endblock %}
