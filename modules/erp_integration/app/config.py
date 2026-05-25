@@ -51,6 +51,18 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("ERP_WEBHOOK_API_KEY", "AI_TM_API_KEY"),
     )
 
+    # ── ERP マスターデータ取得 API（AI_TM → ERP プル型） ─────────────────────
+    # ERP REST API のベース URL（品目・取引先マスター取得用）
+    ERP_API_URL: str = Field(
+        default="http://localhost:8888",
+        validation_alias=AliasChoices("ERP_API_URL", "ERP_BASE_URL"),
+    )
+    # ERP API 認証キー（ERP 側の API_KEY と一致させる）
+    ERP_API_KEY: str = Field(
+        default="dev-erp-api-key",
+        validation_alias=AliasChoices("ERP_API_KEY", "ERP_PULL_API_KEY"),
+    )
+
     # ── HTTP クライアント設定 ─────────────────────────────────────────────────
     HTTP_TIMEOUT: float = 30.0
 

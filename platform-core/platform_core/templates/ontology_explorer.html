@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>オントロジーエクスプローラー — AI Trade Management</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+  .topbar { background: #1e293b; border-bottom: 1px solid #334155; padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
+  .topbar a { color: #94a3b8; font-size: 0.82rem; text-decoration: none; }
+  .topbar a:hover { color: #e2e8f0; }
+  .topbar-title { font-size: 1rem; font-weight: 700; color: #f8fafc; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 28px 20px; }
+  h2 { font-size: 1rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
+
+  /* タブ */
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; background: #1e293b; border-radius: 10px; padding: 4px; width: fit-content; }
+  .tab-btn { padding: 8px 20px; border-radius: 8px; border: none; background: transparent; color: #64748b; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .tab-btn.active { background: #334155; color: #f1f5f9; }
+  .tab-btn:hover:not(.active) { color: #94a3b8; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* カード */
+  .card { background: #1e293b; border-radius: 12px; padding: 22px; margin-bottom: 20px; border: 1px solid #334155; }
+
+  /* フォーム */
+  .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
+  label { font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  input, select { background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; padding: 9px 13px; font-size: 0.9rem; outline: none; width: 100%; }
+  input:focus, select:focus { border-color: #6366f1; }
+  .btn { border: none; padding: 9px 22px; border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-weight: 600; transition: opacity 0.15s; white-space: nowrap; }
+  .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; }
+  .btn-secondary { background: #334155; color: #e2e8f0; }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* バッジ */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+  .badge-eccn  { background: #312e81; color: #a5b4fc; }
+  .badge-hs    { background: #1e3a5f; color: #7dd3fc; }
+  .badge-ipc   { background: #1c3424; color: #86efac; }
+  .badge-fefta { background: #431407; color: #fdba74; }
+  .badge-fterm { background: #322d17; color: #fde68a; }
+  .badge-green { background: #14532d; color: #86efac; }
+  .badge-red   { background: #7f1d1d; color: #fca5a5; }
+  .badge-blue  { background: #1e3a8a; color: #93c5fd; }
+  .badge-warn  { background: #78350f; color: #fcd34d; }
+
+  /* 結果セクション */
+  #lookup-result, #expand-result, #path-result, #license-result, #neighbors-result { margin-top: 20px; }
+  .result-hidden { display: none !important; }
+
+  /* 説明チェーン */
+  .chain-list { list-style: none; padding: 0; }
+  .chain-list li { padding: 6px 12px; border-left: 3px solid #334155; margin-bottom: 4px; font-size: 0.85rem; color: #cbd5e1; }
+  .chain-list li:first-child { border-color: #6366f1; color: #a5b4fc; font-weight: 600; }
+
+  /* グリッド */
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .info-card { background: #0f172a; border-radius: 8px; padding: 14px; border: 1px solid #334155; }
+  .info-card h4 { font-size: 0.72rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .info-card p { font-size: 0.85rem; color: #e2e8f0; }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+  /* パスビジュアライザ */
+  .path-visual { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 0; }
+  .path-node { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 6px 14px; font-size: 0.82rem; text-align: center; min-width: 80px; }
+  .path-node.eccn  { border-color: #6366f1; color: #a5b4fc; }
+  .path-node.hs    { border-color: #0ea5e9; color: #7dd3fc; }
+  .path-node.ipc   { border-color: #22c55e; color: #86efac; }
+  .path-node.fefta { border-color: #f97316; color: #fdba74; }
+  .path-node.fterm { border-color: #eab308; color: #fde68a; }
+  .path-node.cat,.path-node.pg { border-color: #94a3b8; color: #cbd5e1; font-size: 0.75rem; }
+  .path-arrow { color: #475569; font-size: 1.2rem; }
+
+  /* 判定バナー */
+  .verdict-banner { border-radius: 10px; padding: 14px 20px; font-size: 1rem; font-weight: 700; margin-bottom: 16px; }
+  .verdict-nlr       { background: #14532d40; border: 2px solid #22c55e; color: #86efac; }
+  .verdict-exception { background: #1e3a8a40; border: 2px solid #3b82f6; color: #93c5fd; }
+  .verdict-required  { background: #7f1d1d40; border: 2px solid #ef4444; color: #fca5a5; }
+  .verdict-prohibited{ background: #450a0a40; border: 2px solid #991b1b; color: #fca5a5; }
+
+  /* ローディング */
+  .loading { display: inline-block; width: 18px; height: 18px; border: 2px solid #475569; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-left: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* エラー */
+  .error-msg { background: #7f1d1d30; border: 1px solid #b91c1c; border-radius: 8px; padding: 12px 16px; color: #fca5a5; font-size: 0.85rem; margin-top: 12px; }
+
+  /* 近傍リスト */
+  .nbr-section { margin-bottom: 14px; }
+  .nbr-section h4 { font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .nbr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .nbr-chip { background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 4px 10px; font-size: 0.78rem; cursor: pointer; transition: border-color 0.15s; }
+  .nbr-chip:hover { border-color: #6366f1; color: #a5b4fc; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/ui">← ポータル</a>
+  <span style="color:#475569">/</span>
+  <span class="topbar-title">🔬 オントロジーエクスプローラー</span>
+  <span style="color:#475569; font-size:0.78rem; margin-left:auto;">ECCN / HS / IPC / F-term / 外為法 統合知識グラフ</span>
+</div>
+
+<div class="container">
+
+  <!-- タブ -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('lookup')">コード検索</button>
+    <button class="tab-btn" onclick="switchTab('path')">パス探索</button>
+    <button class="tab-btn" onclick="switchTab('license')">ライセンス判定</button>
+    <button class="tab-btn" onclick="switchTab('neighbors')">近傍探索</button>
+  </div>
+
+  <!-- ① コード検索 -->
+  <div id="tab-lookup" class="tab-panel active">
+    <div class="card">
+      <h2>コード検索 — ECCN / HS / IPC</h2>
+      <div class="form-row">
+        <div class="form-group" style="max-width:320px;">
+          <label>検索コード</label>
+          <input id="lookup-q" type="text" placeholder="例: 3A001 / 854231 / H01L" onkeydown="if(event.key==='Enter')doLookup()">
+        </div>
+        <div class="form-group" style="max-width:100px;">
+          <label>件数</label>
+          <select id="lookup-topk">
+            <option value="3">3件</option>
+            <option value="5" selected>5件</option>
+            <option value="10">10件</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="doLookup()">検索</button>
+      </div>
+    </div>
+
+    <div id="lookup-result" class="result-hidden"></div>
+  </div>
+
+  <!-- ② パス探索 -->
+  <div id="tab-path" class="tab-panel">
+    <div class="card">
+      <h2>パス探索 — 2ノード間の最短経路</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>起点ノード</label>
+          <input id="path-from" type="text" placeholder="例: HS:854231 / 3A001 / H01L">
+        </div>
+        <div class="form-group">
+          <label>終点ノード</label>
+          <input id="path-to" type="text" placeholder="例: FEFTA:7 / ECCN:3A001 / CAT:3">
+        </div>
+        <button class="btn btn-primary" onclick="doPath()">探索</button>
+      </div>
+      <p style="color:#64748b; font-size:0.78rem; margin-top:10px;">
+        例: HS:854231 → FEFTA:7（ HSコード → 外為法別表第7項への経路）
+      </p>
+    </div>
+    <div id="path-result" class="result-hidden"></div>
+  </div>
+
+  <!-- ③ ライセンス判定 -->
+  <div id="tab-license" class="tab-panel">
+    <div class="card">
+      <h2>ライセンス判定 — ECCN × 仕向国</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ECCN コード</label>
+          <input id="lc-eccn" type="text" placeholder="例: 3A001">
+        </div>
+        <div class="form-group">
+          <label>仕向国（ISO 2文字）</label>
+          <input id="lc-country" type="text" placeholder="例: CN / JP / US / KP">
+        </div>
+        <div class="form-group">
+          <label>エンドユーザー</label>
+          <select id="lc-enduser">
+            <option value="commercial">民間企業</option>
+            <option value="government">政府機関</option>
+            <option value="military">軍・防衛</option>
+            <option value="research_inst">研究機関</option>
+            <option value="unknown">不明</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="doLicenseCheck()">判定</button>
+      </div>
+    </div>
+    <div id="license-result" class="result-hidden"></div>
+  </div>
+
+  <!-- ④ 近傍探索 -->
+  <div id="tab-neighbors" class="tab-panel">
+    <div class="card">
+      <h2>近傍探索 — グラフ接続ノード</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>中心ノード</label>
+          <input id="nbr-node" type="text" placeholder="例: ECCN:3A001 / FEFTA:7 / IPC:H01L">
+        </div>
+        <div class="form-group" style="max-width:120px;">
+          <label>探索深さ</label>
+          <select id="nbr-depth">
+            <option value="1" selected>1ホップ</option>
+            <option value="2">2ホップ</option>
+            <option value="3">3ホップ</option>
+          </select>
+        </div>
+        <div class="form-group" style="max-width:200px;">
+          <label>エッジ種別（省略=全て）</label>
+          <input id="nbr-edge" type="text" placeholder="例: eccn_to_fefta">
+        </div>
+        <button class="btn btn-primary" onclick="doNeighbors()">探索</button>
+      </div>
+    </div>
+    <div id="neighbors-result" class="result-hidden"></div>
+  </div>
+
+</div>
+
+<script>
+const API = '';
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active', b.textContent.includes({'lookup':'コード','path':'パス','license':'ライセンス','neighbors':'近傍'}[name]));
+  });
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+function nodeClass(type) {
+  const m = {ECCN:'eccn',HS:'hs',IPC:'ipc',FEFTA:'fefta',FTERM:'fterm',CATEGORY:'cat',PRODUCT_GROUP:'pg'};
+  return m[type] || '';
+}
+
+function badgeForType(type) {
+  const m = {ECCN:'badge-eccn',HS:'badge-hs',IPC:'badge-ipc',FEFTA:'badge-fefta',FTERM:'badge-fterm'};
+  return m[type] || 'badge-blue';
+}
+
+function verdictClass(v) {
+  if (v==='NLR') return 'verdict-nlr';
+  if (v==='EXCEPTION') return 'verdict-exception';
+  if (v==='PROHIBITED') return 'verdict-prohibited';
+  return 'verdict-required';
+}
+
+async function doLookup() {
+  const q = document.getElementById('lookup-q').value.trim();
+  const topk = document.getElementById('lookup-topk').value;
+  if (!q) return;
+  const el = document.getElementById('lookup-result');
+  el.className = '';
+  el.innerHTML = '<span class="loading"></span> 検索中...';
+  try {
+    const r = await fetch(`${API}/api/ontology/lookup?q=${encodeURIComponent(q)}&top_k=${topk}`);
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    renderLookup(el, d, q);
+  } catch(e) {
+    el.innerHTML = `<div class="error-msg">エラー: ${e.message}</div>`;
+  }
+}
+
+function renderLookup(el, d, q) {
+  const eccns = d.eccns || [];
+  const chain = d.explanation_chain || [];
+  const fefta = d.fefta_items || [];
+  let html = `
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <h2 style="margin:0;">検索結果: <span style="color:#a5b4fc;">${d.query}</span></h2>
+        <span class="badge badge-blue">${d.query_type}</span>
+        <span style="color:#64748b;font-size:0.78rem;">${eccns.length}件ヒット</span>
+      </div>`;
+
+  // 説明チェーン
+  if (chain.length) {
+    html += `<div style="margin-bottom:18px;"><h2 style="margin-bottom:10px;">分類根拠チェーン</h2>
+      <ul class="chain-list">${chain.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></div>`;
+  }
+
+  // ECCN カード群
+  if (eccns.length) {
+    html += `<div style="margin-bottom:18px;"><h2 style="margin-bottom:10px;">該当 ECCN</h2>
+      <div class="info-grid">`;
+    for (const n of eccns) {
+      const rfcs = (n.reason_for_control||[]).join(' / ') || '—';
+      html += `<div class="info-card" style="cursor:pointer" onclick="jumpToExpand('${n.eccn}')">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span class="badge badge-eccn">${n.eccn}</span>
+          <span class="badge badge-fefta">Cat.${n.category}${n.product_group}</span>
+        </div>
+        <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:6px;">${esc(n.label_en||'')}</p>
+        <div class="tag-list">
+          ${(n.fefta_item_nos||[]).map(f=>`<span class="badge badge-fefta">別表第${f}項</span>`).join('')}
+        </div>
+        <p style="font-size:0.75rem;color:#64748b;margin-top:8px;">統制理由: ${rfcs}</p>
+        ${n.patent_count ? `<p style="font-size:0.75rem;color:#64748b;">特許 ${n.patent_count}件 / 論文 ${n.paper_count||0}件</p>` : ''}
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // 外為法別表
+  if (fefta.length) {
+    html += `<div><h2 style="margin-bottom:10px;">外為法 輸出令別表第1</h2><div class="info-grid">`;
+    for (const fi of fefta) {
+      html += `<div class="info-card">
+        <h4>第${fi.fefta_item_no}項 — ${esc(fi.fefta_label||'')}</h4>
+        <p style="font-size:0.8rem;color:#94a3b8;">${esc((fi.description||'').slice(0,120))}</p>
+        ${fi.catch_all_applicable ? '<span class="badge badge-warn" style="margin-top:6px;">キャッチオール対象</span>' : ''}
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function jumpToExpand(eccn) {
+  document.getElementById('nbr-node').value = 'ECCN:' + eccn;
+  switchTab('neighbors');
+  doNeighbors();
+}
+
+async function doPath() {
+  const from = document.getElementById('path-from').value.trim();
+  const to = document.getElementById('path-to').value.trim();
+  if (!from || !to) return;
+  const el = document.getElementById('path-result');
+  el.className = '';
+  el.innerHTML = '<span class="loading"></span> 探索中...';
+  try {
+    const r = await fetch(`${API}/api/ontology/path?from_node=${encodeURIComponent(from)}&to_node=${encodeURIComponent(to)}`);
+    if (!r.ok) { const t = await r.text(); throw new Error(t); }
+    const d = await r.json();
+    renderPath(el, d);
+  } catch(e) {
+    el.innerHTML = `<div class="error-msg">エラー: ${e.message}</div>`;
+  }
+}
+
+function renderPath(el, d) {
+  const steps = d.path || [];
+  let html = `<div class="card">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <h2 style="margin:0;">最短パス</h2>
+      <span class="badge badge-blue">${d.path_length} ホップ</span>
+      ${d.undirected_fallback ? '<span class="badge badge-warn">無向グラフ検索</span>' : ''}
+    </div>
+    <div class="path-visual">`;
+  for (let i=0; i<steps.length; i++) {
+    const s = steps[i];
+    html += `<div class="path-node ${nodeClass(s.node_type)}">
+      <div style="font-size:0.7rem;color:#64748b;">${s.node_type}</div>
+      <div style="font-weight:700;">${esc(s.label)}</div>
+      ${s.label_ja ? `<div style="font-size:0.7rem;color:#94a3b8;">${esc(s.label_ja.slice(0,12))}</div>` : ''}
+    </div>`;
+    if (i < steps.length-1) {
+      const et = steps[i].edge_to_next || '';
+      html += `<div class="path-arrow" title="${et}">→</div>`;
+    }
+  }
+  html += `</div></div>`;
+  el.innerHTML = html;
+}
+
+async function doLicenseCheck() {
+  const eccn = document.getElementById('lc-eccn').value.trim();
+  const country = document.getElementById('lc-country').value.trim().toUpperCase();
+  const eu = document.getElementById('lc-enduser').value;
+  if (!eccn || !country) return;
+  const el = document.getElementById('license-result');
+  el.className = '';
+  el.innerHTML = '<span class="loading"></span> 判定中...';
+  try {
+    const r = await fetch(`${API}/api/ontology/license-check?eccn=${encodeURIComponent(eccn)}&country=${encodeURIComponent(country)}&end_user_type=${eu}`);
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    renderLicense(el, d);
+  } catch(e) {
+    el.innerHTML = `<div class="error-msg">エラー: ${e.message}</div>`;
+  }
+}
+
+function renderLicense(el, d) {
+  const vc = verdictClass(d.verdict);
+  let html = `<div class="card">
+    <div class="verdict-banner ${vc}">${esc(d.verdict_label)}</div>
+    <div class="info-grid">
+      <div class="info-card">
+        <h4>品目・仕向国</h4>
+        <p><span class="badge badge-eccn">${d.eccn}</span>
+           <span class="badge badge-hs" style="margin-left:6px;">${d.country} — ${esc(d.country_name_ja)}</span></p>
+        <p style="margin-top:6px;font-size:0.82rem;color:#94a3b8;">Country Group: <b>${d.country_group}</b> | 外為法ゾーン: ${esc(d.fefta_zone)}</p>
+      </div>
+      <div class="info-card">
+        <h4>規制理由</h4>
+        <div class="tag-list">${(d.reasons_for_control||[]).map(r=>`<span class="badge badge-warn">${r}</span>`).join('')}</div>
+      </div>
+      <div class="info-card">
+        <h4>ライセンス例外</h4>
+        <div class="tag-list">${(d.applicable_exceptions||[]).map(e=>`<span class="badge badge-green">${e}</span>`).join('') || '<span style="color:#64748b;">なし</span>'}</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      <h4 style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">判断根拠</h4>
+      ${(d.rationale||[]).map(r=>`<p style="font-size:0.83rem;color:#94a3b8;margin-bottom:4px;">・${esc(r)}</p>`).join('')}
+    </div>
+    <div style="margin-top:16px;">
+      <h4 style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">推奨アクション</h4>
+      ${(d.recommended_actions||[]).map(a=>`<p style="font-size:0.83rem;color:#e2e8f0;margin-bottom:4px;">▶ ${esc(a)}</p>`).join('')}
+    </div>
+    <div style="margin-top:16px;">
+      <h4 style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">説明チェーン</h4>
+      <ul class="chain-list">${(d.explanation_chain||[]).map(c=>`<li>${esc(c)}</li>`).join('')}</ul>
+    </div>
+  </div>`;
+  el.innerHTML = html;
+}
+
+async function doNeighbors() {
+  const node = document.getElementById('nbr-node').value.trim();
+  const depth = document.getElementById('nbr-depth').value;
+  const edge = document.getElementById('nbr-edge').value.trim();
+  if (!node) return;
+  const el = document.getElementById('neighbors-result');
+  el.className = '';
+  el.innerHTML = '<span class="loading"></span> 探索中...';
+  let url = `${API}/api/ontology/neighbors?node=${encodeURIComponent(node)}&depth=${depth}`;
+  if (edge) url += `&edge_types=${encodeURIComponent(edge)}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    renderNeighbors(el, d);
+  } catch(e) {
+    el.innerHTML = `<div class="error-msg">エラー: ${e.message}</div>`;
+  }
+}
+
+function renderNeighbors(el, d) {
+  const nbrs = d.neighbors || [];
+  const grouped = {};
+  for (const n of nbrs) {
+    if (!grouped[n.node_type]) grouped[n.node_type] = [];
+    grouped[n.node_type].push(n);
+  }
+  const typeOrder = ['FEFTA','ECCN','HS','IPC','FTERM','CATEGORY','PRODUCT_GROUP'];
+  const typeLabel = {FEFTA:'外為法別表',ECCN:'ECCN',HS:'HSコード',IPC:'IPC分類',FTERM:'F-term',CATEGORY:'カテゴリ',PRODUCT_GROUP:'製品グループ'};
+
+  let html = `<div class="card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <h2 style="margin:0;">近傍ノード: <span style="color:#a5b4fc;">${esc(d.center)}</span></h2>
+      <span class="badge badge-blue">深さ ${d.depth}</span>
+      <span style="color:#64748b;font-size:0.78rem;">${d.total_neighbors} ノード</span>
+    </div>`;
+
+  for (const type of typeOrder) {
+    const nodes = grouped[type];
+    if (!nodes) continue;
+    const badgeClass = badgeForType(type);
+    html += `<div class="nbr-section">
+      <h4>${typeLabel[type]||type} (${nodes.length}件)</h4>
+      <div class="nbr-chips">`;
+    for (const n of nodes.slice(0,30)) {
+      const tip = n.label_ja ? ` title="${n.label_ja}"` : '';
+      const et = n.edge_type ? ` <span style="font-size:0.65rem;color:#475569;">[${n.edge_type}]</span>` : '';
+      html += `<span class="nbr-chip badge ${badgeClass}"${tip} onclick="jumpNeighbor('${n.node_id}')">${esc(n.label)}${et}</span>`;
+    }
+    if (nodes.length > 30) html += `<span style="color:#64748b;font-size:0.78rem;">...他${nodes.length-30}件</span>`;
+    html += `</div></div>`;
+  }
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function jumpNeighbor(nodeId) {
+  document.getElementById('nbr-node').value = nodeId;
+  doNeighbors();
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// URLパラメータから初期クエリをセット
+const urlParams = new URLSearchParams(window.location.search);
+const initQ = urlParams.get('q');
+if (initQ) {
+  document.getElementById('lookup-q').value = initQ;
+  doLookup();
+}
+</script>
+</body>
+</html>

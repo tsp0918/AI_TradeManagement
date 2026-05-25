@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+{% block title %}輸出入統合ダッシュボード{% endblock %}
+
+{% block content %}
+<div class="level mb-3">
+  <div class="level-left">
+    <h2 class="subtitle mb-0">📊 輸出入統合ダッシュボード</h2>
+  </div>
+  <div class="level-right" style="gap:0.4rem; display:flex;">
+    <a class="button is-small is-light" href="/products">品目一覧</a>
+    <a class="button is-small is-light" href="/import-profiles">輸入プロファイル</a>
+    <button class="button is-small is-info is-light" onclick="location.reload()">🔄 更新</button>
+  </div>
+</div>
+
+<!-- ===== KPI カード行 ===== -->
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:0.75rem; margin-bottom:1rem;">
+
+  {% set s = data.summary %}
+  <div class="box py-3 px-4" style="text-align:center;">
+    <div style="font-size:1.8rem; font-weight:700; color:#3273dc;">{{ s.total_products }}</div>
+    <div style="font-size:0.78rem; color:#555;">総品目数</div>
+  </div>
+  <div class="box py-3 px-4" style="text-align:center; background:#eff6ff;">
+    <div style="font-size:1.8rem; font-weight:700; color:#1d4ed8;">{{ s.export_products }}</div>
+    <div style="font-size:0.78rem; color:#555;">輸出品</div>
+  </div>
+  <div class="box py-3 px-4" style="text-align:center; background:#f0f9ff;">
+    <div style="font-size:1.8rem; font-weight:700; color:#0369a1;">{{ s.import_products }}</div>
+    <div style="font-size:0.78rem; color:#555;">輸入品</div>
+  </div>
+  <div class="box py-3 px-4" style="text-align:center; background:#fff7ed;">
+    <div style="font-size:1.8rem; font-weight:700; color:#c2410c;">{{ s.us_origin_products }}</div>
+    <div style="font-size:0.78rem; color:#555;">US原産品目</div>
+  </div>
+  <div class="box py-3 px-4" style="text-align:center; {% if s.no_eccn_export > 0 %}background:#feecf0;{% endif %}">
+    <div style="font-size:1.8rem; font-weight:700; color:{% if s.no_eccn_export > 0 %}#c53030{% else %}#276749{% endif %};">{{ s.no_eccn_export }}</div>
+    <div style="font-size:0.78rem; color:#555;">ECCN未設定輸出品</div>
+  </div>
+  <div class="box py-3 px-4" style="text-align:center; {% if s.unconfirmed > 0 %}background:#fffde7;{% endif %}">
+    <div style="font-size:1.8rem; font-weight:700; color:#b7791f;">{{ s.unconfirmed }}</div>
+    <div style="font-size:0.78rem; color:#555;">未確認品目</div>
+  </div>
+
+</div>
+
+<!-- ===== メインコンテンツ 2列 ===== -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+
+  <!-- 左列: 輸入プロファイル状況 -->
+  <div class="box">
+    <h3 class="subtitle is-6 mb-2">🛒 輸入プロファイル ステータス</h3>
+    {% set ip = data.import_profiles %}
+    <table class="table is-fullwidth is-size-7 is-narrow">
+      <tbody>
+        <tr>
+          <td>総プロファイル数</td>
+          <td class="has-text-right"><strong>{{ ip.total }}</strong></td>
+        </tr>
+        <tr style="background:#fff3cd;">
+          <td>🇺🇸 EAR再輸出対象</td>
+          <td class="has-text-right has-text-weight-bold">{{ ip.ear_reexport_applicable }}</td>
+        </tr>
+        <tr>
+          <td>　└ ECCN申告済</td>
+          <td class="has-text-right">{{ ip.eccn_claimed }}</td>
+        </tr>
+        <tr>
+          <td>　└ 再輸出申請作成済</td>
+          <td class="has-text-right">{{ ip.reexport_triggered }}</td>
+        </tr>
+        <tr>
+          <td>　└ ECCN判定依頼済</td>
+          <td class="has-text-right">{{ ip.eccn_requested }}</td>
+        </tr>
+        <tr style="background:#f0fff4;">
+          <td>FTA優遇適用</td>
+          <td class="has-text-right">{{ ip.fta_applicable }}</td>
+        </tr>
+        <tr>
+          <td>輸入規制チェック済</td>
+          <td class="has-text-right">{{ ip.restrictions_checked }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- 仕入先国 内訳チャート -->
+    {% if ip.by_exporter_country %}
+    <h4 style="font-size:0.8rem; font-weight:600; margin-top:0.75rem; margin-bottom:0.4rem; color:#555;">仕入先国 内訳</h4>
+    {% set total_c = ip.total or 1 %}
+    {% for country, cnt in ip.by_exporter_country.items() %}
+      {% set pct = (cnt / total_c * 100)|round(0)|int %}
+      <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px; font-size:0.78rem;">
+        <span style="width:28px; font-weight:600;">{{ country }}</span>
+        <div style="flex:1; background:#eee; border-radius:3px; height:12px; overflow:hidden;">
+          <div style="width:{{ pct }}%; background:{% if country == 'US' %}#f14668{% elif country == 'CN' %}#ff9f43{% else %}#3273dc{% endif %}; height:100%;"></div>
+        </div>
+        <span style="width:22px; text-align:right; color:#555;">{{ cnt }}</span>
+      </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+
+  <!-- 右列: BOM / サプライチェーン状況 -->
+  <div class="box">
+    <h3 class="subtitle is-6 mb-2">🔗 BOM / サプライチェーン</h3>
+    {% set sc = data.supply_chain %}
+    <table class="table is-fullwidth is-size-7 is-narrow">
+      <tbody>
+        <tr>
+          <td>登録 SC ノード数</td>
+          <td class="has-text-right"><strong>{{ sc.total_nodes }}</strong></td>
+        </tr>
+        <tr style="background:#fff3cd;">
+          <td>🇺🇸 US原産ノード</td>
+          <td class="has-text-right">{{ sc.us_origin_nodes }}</td>
+        </tr>
+        <tr style="background:#feecf0;">
+          <td>　└ 高リスク (EAR規制品)</td>
+          <td class="has-text-right has-text-weight-bold" style="color:#c53030;">{{ sc.high_risk_nodes }}</td>
+        </tr>
+        <tr style="background:#fffde7;">
+          <td>　└ 中リスク (EAR99/未判定)</td>
+          <td class="has-text-right">{{ sc.medium_risk_nodes }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- 品目種別 内訳 -->
+    <h4 style="font-size:0.8rem; font-weight:600; margin-top:0.75rem; margin-bottom:0.4rem; color:#555;">品目種別 内訳</h4>
+    {% set type_colors = {
+      "FINISHED_GOODS": "#3273dc",
+      "BOM_COMPONENT": "#48c774",
+      "SOFTWARE": "#00d1b2",
+      "PURCHASED_PART": "#ff9f43",
+      "RAW_MATERIAL": "#9b59b6",
+      "INTERNAL_TRANSFER": "#aaa"
+    } %}
+    {% set type_labels = {
+      "FINISHED_GOODS": "完成品",
+      "BOM_COMPONENT": "BOM構成品",
+      "SOFTWARE": "SW/技術",
+      "PURCHASED_PART": "購入品",
+      "RAW_MATERIAL": "原材料",
+      "INTERNAL_TRANSFER": "移管品"
+    } %}
+    {% set total_t = data.summary.total_products or 1 %}
+    {% for tp, cnt in data.by_item_type.items() %}
+      {% set pct = (cnt / total_t * 100)|round(0)|int %}
+      <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px; font-size:0.78rem;">
+        <span style="width:64px; font-size:0.72rem;">{{ type_labels.get(tp, tp) }}</span>
+        <div style="flex:1; background:#eee; border-radius:3px; height:12px; overflow:hidden;">
+          <div style="width:{{ pct }}%; background:{{ type_colors.get(tp, '#888') }}; height:100%;"></div>
+        </div>
+        <span style="width:22px; text-align:right; color:#555;">{{ cnt }}</span>
+      </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<!-- ===== BOM 可視化ウィジェット ===== -->
+<div class="box mb-3">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+    <h3 class="subtitle is-6 mb-0">🌳 BOM チェーン クイックビュー</h3>
+    <div style="display:flex; gap:6px; align-items:center;">
+      <!-- リスク凡例（コンパクト） -->
+      <span style="font-size:0.72rem; color:#555; display:flex; align-items:center; gap:6px; margin-right:8px;">
+        <span><span style="display:inline-block;width:10px;height:10px;background:#2563eb;border-radius:2px;vertical-align:middle;"></span> 完成品</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#dc2626;border-radius:2px;vertical-align:middle;"></span> EAR規制</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#f97316;border-radius:2px;vertical-align:middle;"></span> US EAR99</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#059669;border-radius:2px;vertical-align:middle;"></span> 一般</span>
+      </span>
+      <input id="bom-code-input" class="input is-small" type="text" placeholder="品目コード" style="width:160px;">
+      <button class="button is-small is-info" onclick="loadBomPreview()">検索</button>
+      <button id="bom-export-btn" class="button is-small" style="display:none;" onclick="exportBomPng()">💾 PNG</button>
+      <a id="bom-fullgraph-btn" class="button is-small is-light" style="display:none;" href="#">詳細グラフ →</a>
+    </div>
+  </div>
+
+  <!-- グラフキャンバス -->
+  <div id="bom-preview-container" style="width:100%; height:340px; background:#f9fafb;
+       border:1.5px solid #e5e7eb; border-radius:8px; position:relative;">
+    <div id="bom-preview-msg" style="position:absolute;top:50%;left:50%;
+         transform:translate(-50%,-50%);color:#9ca3af;font-size:0.85rem; text-align:center; pointer-events:none;">
+      品目コードを入力して BOM ツリーを表示
+    </div>
+  </div>
+
+  <!-- リスクサマリーバー -->
+  <div id="bom-preview-detail" style="display:none; margin-top:8px; font-size:0.8rem;
+       background:#f8faff; padding:8px 14px; border-radius:6px; border:1px solid #bfdbfe;
+       display:flex; align-items:center; gap:16px; flex-wrap:wrap;"></div>
+</div>
+
+<!-- ===== リスクリスト ===== -->
+<div class="box">
+  <h3 class="subtitle is-6 mb-2">⚠️ 要対応アクション</h3>
+  {% if data.risk_items %}
+  <table class="table is-fullwidth is-striped is-size-7">
+    <thead>
+      <tr>
+        <th style="width:70px;">レベル</th>
+        <th style="width:100px;">カテゴリ</th>
+        <th>内容</th>
+        <th style="width:70px;">アクション</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in data.risk_items %}
+      <tr>
+        <td>
+          {% if item.level == "high" %}
+            <span class="tag is-danger is-small">🔴 高</span>
+          {% elif item.level == "medium" %}
+            <span class="tag is-warning is-small">🟡 中</span>
+          {% else %}
+            <span class="tag is-light is-small">⚪ 低</span>
+          {% endif %}
+        </td>
+        <td><span class="tag is-light is-small">{{ item.category }}</span></td>
+        <td>{{ item.message }}</td>
+        <td>
+          <a class="button is-small is-light" href="{{ item.action }}">確認</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="has-text-grey has-text-centered">要対応アクションはありません ✅</p>
+  {% endif %}
+</div>
+
+<!-- Cytoscape + dagre （順序重要） -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+
+<script>
+if (typeof cytoscapeDagre !== 'undefined') cytoscape.use(cytoscapeDagre);
+
+let previewCy   = null;
+let _previewCode = '';
+
+function _risk(n) {
+  if (n.node_type === 'product') return 'product';
+  const isUs = n.is_us_origin;
+  const eccn = (n.eccn || '').toUpperCase();
+  if (isUs && eccn && eccn !== 'EAR99') return 'high';
+  if (isUs) return 'medium';
+  return 'safe';
+}
+const _COLORS = {
+  product: { bg:'#2563eb', border:'#1d4ed8', ec:'#9ca3af', ew:1.5 },
+  high:    { bg:'#dc2626', border:'#7f1d1d', ec:'#dc2626', ew:3   },
+  medium:  { bg:'#f97316', border:'#9a3412', ec:'#f97316', ew:2.5 },
+  safe:    { bg:'#059669', border:'#064e3b', ec:'#9ca3af', ew:1.5 },
+};
+
+function _makeLabel(n) {
+  const code = (n.product_code || n.name || '').slice(0, 14);
+  const r = _risk(n);
+  if (r === 'product') {
+    return n.eccn ? `${code}\nECCN: ${n.eccn}` : code;
+  }
+  if (r === 'high')   return `⚠ ${code}\n🇺🇸 EAR規制`;
+  if (r === 'medium') return `${code}\n🇺🇸 US原産`;
+  return code;
+}
+
+async function loadBomPreview() {
+  const code = document.getElementById('bom-code-input').value.trim();
+  if (!code) return;
+  _previewCode = code;
+
+  const msg = document.getElementById('bom-preview-msg');
+  msg.style.display = 'block';
+  msg.textContent   = '⏳ 読み込み中…';
+  if (previewCy) { previewCy.destroy(); previewCy = null; }
+  document.getElementById('bom-preview-detail').style.display = 'none';
+  document.getElementById('bom-export-btn').style.display     = 'none';
+  document.getElementById('bom-fullgraph-btn').style.display  = 'none';
+
+  try {
+    const res  = await fetch(`/api/supply-chain/by-product-code/${encodeURIComponent(code)}`);
+    const data = await res.json();
+
+    if (!data.node) {
+      msg.textContent = `⚠️ "${code}" の SC ノードが未登録（BOM同期が必要）`;
+      return;
+    }
+    msg.style.display = 'none';
+
+    const root = data.node;
+    const ch   = data.children || [];
+    const els  = [];
+
+    const rr = _risk(root);
+    els.push({ data: { id: root.id,
+      label: _makeLabel(root), risk: rr,
+      bg: _COLORS[rr].bg, border: _COLORS[rr].border,
+      bw: 2, w: 140, h: 52, fsize:'11px', bold:'bold', nd: root } });
+
+    for (const c of ch) {
+      const rc = _risk(c);
+      const pct = c.unit === 'ratio' ? `${Math.round(c.quantity*100)}%` : (c.quantity !== 1 ? `×${c.quantity}` : '');
+      els.push({ data: { id: c.id,
+        label: _makeLabel(c), risk: rc,
+        bg: _COLORS[rc].bg, border: _COLORS[rc].border,
+        bw: rc === 'high' ? 4 : 2, w: 120, h: 46, fsize:'10px', bold:'normal', nd: c } });
+      els.push({ data: { id:`e_${root.id}_${c.id}`,
+        source: root.id, target: c.id,
+        label: pct, ec: _COLORS[rc].ec, ew: _COLORS[rc].ew } });
+    }
+
+    const layoutName = (typeof cytoscapeDagre !== 'undefined') ? 'dagre' : 'breadthfirst';
+
+    previewCy = cytoscape({
+      container: document.getElementById('bom-preview-container'),
+      elements:  els,
+      style: [
+        { selector: 'node', style: {
+          'background-color':  'data(bg)',
+          'border-color':      'data(border)',
+          'border-width':      'data(bw)',
+          'shape':             'roundrectangle',
+          'label':             'data(label)',
+          'color':             '#fff',
+          'font-size':         'data(fsize)',
+          'font-weight':       'data(bold)',
+          'font-family':       '-apple-system, BlinkMacSystemFont, sans-serif',
+          'text-valign':       'center',
+          'text-halign':       'center',
+          'text-wrap':         'wrap',
+          'text-max-width':    '110px',
+          'width':             'data(w)',
+          'height':            'data(h)',
+        }},
+        { selector: "node[risk='high']", style: {
+          'shadow-blur':    14, 'shadow-color': '#dc2626',
+          'shadow-opacity': 0.6, 'shadow-offset-x': 0, 'shadow-offset-y': 0,
+        }},
+        { selector: 'edge', style: {
+          'width':               'data(ew)',
+          'line-color':          'data(ec)',
+          'target-arrow-color':  'data(ec)',
+          'target-arrow-shape':  'triangle',
+          'curve-style':         'taxi',
+          'taxi-direction':      'downward',
+          'label':               'data(label)',
+          'font-size':           '10px',
+          'color':               '#374151',
+          'text-background-color':   '#fff',
+          'text-background-opacity': 0.9,
+          'text-background-padding': '2px',
+        }},
+      ],
+      layout: layoutName === 'dagre' ? {
+        name: 'dagre', rankDir: 'TB', nodeSep: 50, rankSep: 80, padding: 20,
+      } : {
+        name: 'breadthfirst', directed: true, padding: 20, spacingFactor: 1.4,
+      }
+    });
+
+    /* リスクサマリーバー */
+    const hi  = ch.filter(c => _risk(c) === 'high');
+    const me  = ch.filter(c => _risk(c) === 'medium');
+    const sa  = ch.filter(c => _risk(c) === 'safe');
+    const det = document.getElementById('bom-preview-detail');
+    det.style.display = 'flex';
+    det.innerHTML = `
+      <strong>${root.product_code || code}</strong> — 構成品 ${ch.length}件
+      &nbsp;
+      <span style="color:#dc2626; font-weight:700;">🔴 HIGH ${hi.length}件</span>
+      <span style="color:#f97316; font-weight:700;">🟡 MED ${me.length}件</span>
+      <span style="color:#059669; font-weight:700;">✅ SAFE ${sa.length}件</span>
+    `;
+
+    /* PNG ボタン + 詳細リンク */
+    document.getElementById('bom-export-btn').style.display = 'inline-flex';
+    const fullBtn = document.getElementById('bom-fullgraph-btn');
+    fullBtn.href  = `/products/${encodeURIComponent(code)}/bom/graph`;
+    fullBtn.style.display = 'inline-flex';
+
+  } catch(err) {
+    msg.textContent = '❌ エラー: ' + err.message;
+  }
+}
+
+function exportBomPng() {
+  if (!previewCy) return;
+  const date = new Date().toISOString().slice(0,10);
+  const png  = previewCy.png({ scale: 2, bg: '#ffffff', full: true });
+  const a    = document.createElement('a');
+  a.href     = png;
+  a.download = `BOM_${_previewCode}_${date}.png`;
+  a.click();
+}
+
+document.getElementById('bom-code-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadBomPreview();
+});
+</script>
+{% endblock %}

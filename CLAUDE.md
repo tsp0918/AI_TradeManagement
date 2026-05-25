@@ -8,7 +8,7 @@
 | モジュール | ポート | DB | 役割 |
 |---|---|---|---|
 | platform-core | 8000 | PostgreSQL | 共通基盤・FAISS・知識グラフ・規制スケジューラー・Agent |
-| ai_validation | 8011 | SQLite | AI該非判定（FAISS Layer A/B + HanteiAgent）※8001はDocker占有のため8011使用 |
+| ai_validation | 8011 | SQLite | AI取引審査（取引・品目・仕向地の輸出審査管理）※8001はDocker占有のため8011使用 |
 | ai_classification | 8002 | SQLite | 品目管理・SDS解析・HS分類連携・国別規制プロファイル |
 | rnd_assessment | 8003 | SQLite | R&Dリスク評価・みなし輸出・人物管理 |
 | patent_search | 8004 | SQLite | 特許検索（BigQuery + J-PlatPatフォールバック） |
@@ -74,13 +74,21 @@
 | ドメイン | モジュール | ポート |
 |----------|-----------|--------|
 | app.tsp-aitrademanagement.com | platform-core (portal) | 8000 |
-| validation.tsp-aitrademanagement.com | ai_validation | 8001 |
+| validation.tsp-aitrademanagement.com | ai_validation | 8011 |
 | classification.tsp-aitrademanagement.com | ai_classification | 8002 |
 | rnd.tsp-aitrademanagement.com | rnd_assessment | 8003 |
 | patent.tsp-aitrademanagement.com | patent_search | 8004 |
 | screening.tsp-aitrademanagement.com | screening | 8005 |
 | hs.tsp-aitrademanagement.com | hs_classifier | 8006 |
 | dap.tsp-aitrademanagement.com | dap | 8010 |
+
+### 環境変数（.env）
+
+- `MODULE_*_URL` — サーバー間通信用（localhost）
+- `MODULE_*_PUBLIC_URL` — ブラウザ向けリンク用（Cloudflare Tunnel ドメイン）
+  - `MODULE_AI_VALIDATION_PUBLIC_URL=https://validation.tsp-aitrademanagement.com`
+  - `MODULE_PLATFORM_PUBLIC_URL=https://app.tsp-aitrademanagement.com`
+  - その他モジュールも同様に `MODULE_<NAME>_PUBLIC_URL` で設定
 
 ### 起動・確認コマンド
 

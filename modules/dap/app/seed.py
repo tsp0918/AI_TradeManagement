@@ -167,7 +167,7 @@ def _ensure_ai_validation(db: Session) -> None:
     if db.query(DapApp).filter(DapApp.app_key == "ai_validation_local").first():
         return
 
-    app = DapApp(app_key="ai_validation_local", name="AI該非判定（ローカル）")
+    app = DapApp(app_key="ai_validation_local", name="AI取引審査（ローカル）")
     db.add(app)
     db.flush()
 

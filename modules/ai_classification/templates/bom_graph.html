@@ -1,0 +1,527 @@
+{% extends "base.html" %}
+{% block title %}BOM グラフ — {{ product.code }}{% endblock %}
+
+{% block content %}
+<!-- ページヘッダー -->
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+  <div>
+    <h1 style="font-size:1.25rem; font-weight:800; color:var(--text);">
+      BOM チェーン可視化
+      <span class="chip" style="margin-left:8px;">{{ product.code }}</span>
+    </h1>
+    <p style="color:var(--muted); font-size:.85rem; margin-top:3px;">{{ product.name }}</p>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <a href="/products/{{ product.id }}/edit" class="btn btn-sm">← 品目詳細</a>
+    <button onclick="loadGraph()" class="btn btn-sm">🔄 再読込</button>
+    <button onclick="cy && cy.fit()" class="btn btn-sm">⬛ フィット</button>
+    <button onclick="exportPng()" class="btn btn-primary btn-sm">💾 PNG出力</button>
+  </div>
+</div>
+
+<!-- リスクサマリーバー -->
+<div id="risk-bar" style="display:none; background:#fff; border:1.5px solid var(--border);
+     border-radius:8px; padding:10px 18px; margin-bottom:12px;
+     display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+  <span style="font-size:.8rem; font-weight:700; color:var(--muted);">リスクサマリー</span>
+  <span id="rs-high"  style="font-size:.88rem; font-weight:700; color:#dc2626;">―</span>
+  <span id="rs-med"   style="font-size:.88rem; font-weight:700; color:#f97316;">―</span>
+  <span id="rs-safe"  style="font-size:.88rem; font-weight:700; color:#059669;">―</span>
+  <span id="rs-judgment" style="font-size:.82rem; color:#6366f1; display:none;"></span>
+</div>
+
+<!-- メイン: グラフ ＋ サイドバー -->
+<div style="display:grid; grid-template-columns:1fr 230px; gap:14px; align-items:start;">
+
+  <!-- グラフ本体 -->
+  <div id="cy-container" style="height:640px; background:#f9fafb;
+       border:1.5px solid var(--border); border-radius:10px; position:relative; overflow:hidden;">
+    <div id="cy-msg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+         color:var(--muted); font-size:.9rem; text-align:center; pointer-events:none;">
+      ⏳ グラフを読み込み中…
+    </div>
+  </div>
+
+  <!-- サイドバー -->
+  <div style="display:flex; flex-direction:column; gap:12px;">
+
+    <!-- 凡例 -->
+    <div class="card" style="padding:14px 16px;">
+      <div style="font-size:.78rem; font-weight:800; color:var(--muted); text-transform:uppercase;
+           letter-spacing:.06em; margin-bottom:10px;">凡例</div>
+      <div style="display:flex; flex-direction:column; gap:7px; font-size:.8rem; color:var(--text);">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:32px;height:18px;background:#2563eb;border-radius:4px;flex-shrink:0;"></span>完成品 / 親品目
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:32px;height:18px;background:#dc2626;border-radius:4px;flex-shrink:0;
+                box-shadow:0 0 6px rgba(220,38,38,.5);"></span>
+          <span>🇺🇸 US EAR規制品 <strong style="color:#dc2626;">HIGH</strong></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:32px;height:18px;background:#f97316;border-radius:4px;flex-shrink:0;"></span>
+          <span>🇺🇸 US原産 EAR99/未設定 <span style="color:#f97316;">MED</span></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:32px;height:18px;background:#059669;border-radius:4px;flex-shrink:0;"></span>一般構成品
+        </div>
+      </div>
+      <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border);
+           font-size:.75rem; color:var(--text);">
+        <div style="font-weight:700; margin-bottom:4px; color:var(--muted);">AI 判定ステータス</div>
+        <div>⏳ <span style="color:#7c3aed;">処理中</span> — 紫点線枠</div>
+        <div>🤖 <span style="color:#4338ca;">AI完了</span> — 紫実線枠</div>
+        <div>✅ 確定済み</div>
+      </div>
+      <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border);
+           font-size:.75rem; color:var(--muted);">
+        エッジ色 = 接続先のリスクレベル<br>
+        数字 = 組成比 / 使用数量
+      </div>
+    </div>
+
+    <!-- ノード詳細（クリックで表示） -->
+    <div id="node-detail" class="card" style="padding:14px 16px; display:none;">
+      <div style="font-size:.78rem; font-weight:800; color:var(--muted); text-transform:uppercase;
+           letter-spacing:.06em; margin-bottom:10px;">🔍 ノード詳細</div>
+      <div id="nd-content"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Cytoscape + dagre CDN（順序重要） -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+
+<script>
+/* ── dagre 登録 ── */
+if (typeof cytoscapeDagre !== 'undefined') cytoscape.use(cytoscapeDagre);
+
+const PRODUCT_CODE = "{{ product.code }}";
+const PRODUCT_ID   = {{ product.id }};
+let cy = null;
+
+/* ── リスク判定 ── */
+function risk(n) {
+  if (n.node_type === 'product') return 'product';
+  const isUs  = n.is_us_origin;
+  const eccn  = (n.eccn || '').toUpperCase();
+  const hasEc = eccn && eccn !== 'EAR99';
+  if (isUs && hasEc)  return 'high';
+  if (isUs)           return 'medium';
+  return 'safe';
+}
+
+/* ── AI 判定ステータス ── */
+const JUDGMENT_ICON = {
+  pending:      '⏳',
+  ai_completed: '🤖',
+  confirmed:    '✅',
+  rejected:     '❌',
+};
+function judgmentIcon(n) {
+  return JUDGMENT_ICON[n.eccn_judgment_status] || '';
+}
+
+const RISK_STYLE = {
+  product: { bg: '#2563eb', border: '#1d4ed8', glow: null  },
+  high:    { bg: '#dc2626', border: '#7f1d1d', glow: '#dc2626' },
+  medium:  { bg: '#f97316', border: '#9a3412', glow: null  },
+  safe:    { bg: '#059669', border: '#064e3b', glow: null  },
+};
+
+const RISK_LABEL = {
+  product: '🏭 完成品',
+  high:    '🔴 US EAR規制品',
+  medium:  '🟡 US EAR99/未設定',
+  safe:    '✅ 一般構成品',
+};
+
+/* ── ノードラベル（3行まで） ── */
+function makeLabel(n) {
+  const code = (n.product_code || n.name || '').slice(0, 15);
+  const r    = risk(n);
+  const ji   = judgmentIcon(n);
+  const jSuffix = ji ? ` ${ji}` : '';
+  if (r === 'product') {
+    const lines = [code + jSuffix];
+    if (n.eccn)    lines.push(`ECCN: ${n.eccn}`);
+    if (n.hs_code) lines.push(`HS: ${n.hs_code}`);
+    return lines.join('\n');
+  }
+  if (r === 'high')   return `⚠ ${code}${jSuffix}\n🇺🇸 EAR規制品\n${n.eccn || ''}`;
+  if (r === 'medium') return `${code}${jSuffix}\n🇺🇸 US原産\n${n.eccn || 'ECCN未設定'}`;
+  const extra = n.eccn ? `\n${n.eccn}` : '';
+  return `${code}${jSuffix}${extra}`;
+}
+
+/* ── エッジラベル ── */
+function edgeLabel(c) {
+  if (c.unit === 'ratio') return `${(c.quantity * 100).toFixed(0)}%`;
+  return c.quantity !== 1 ? `×${c.quantity}` : '';
+}
+
+/* ── Cytoscape elements 構築 ── */
+function buildElements(data) {
+  const els = [];
+  if (!data.node) return els;
+  const root = data.node;
+  const rr   = risk(root);
+
+  els.push({ data: { id: root.id, label: makeLabel(root), risk: rr,
+    bg: RISK_STYLE[rr].bg, border: RISK_STYLE[rr].border,
+    bw: rr === 'high' ? 4 : 2, fsize: '12px', w: 160, h: 64,
+    bold: 'bold', node: root,
+    jstatus: root.eccn_judgment_status || '',
+    jsource: root.eccn_source || '' } });
+
+  for (const c of (data.children || [])) {
+    const rc = risk(c);
+    const hasPending = c.eccn_judgment_status === 'pending';
+    els.push({ data: { id: c.id, label: makeLabel(c), risk: rc,
+      bg: RISK_STYLE[rc].bg, border: RISK_STYLE[rc].border,
+      bw: hasPending ? 3 : (rc === 'high' ? 4 : 2),
+      borderStyle: hasPending ? 'dashed' : 'solid',
+      fsize: '10px', w: 130, h: 54,
+      bold: 'normal', node: c,
+      jstatus: c.eccn_judgment_status || '',
+      jsource: c.eccn_source || '' } });
+
+    const edgeColor = rc === 'high' ? '#dc2626' : rc === 'medium' ? '#f97316' : '#9ca3af';
+    const edgeW     = rc === 'high' ? 3 : rc === 'medium' ? 2.5 : 1.5;
+    els.push({ data: { id: `e_${root.id}_${c.id}`,
+      source: root.id, target: c.id,
+      label: edgeLabel(c), ec: edgeColor, ew: edgeW } });
+  }
+  return els;
+}
+
+/* ── グラフ描画 ── */
+async function loadGraph() {
+  const msg = document.getElementById('cy-msg');
+  msg.textContent = '⏳ グラフを読み込み中…';
+  msg.style.display = 'block';
+  if (cy) { cy.destroy(); cy = null; }
+
+  try {
+    const res  = await fetch(`/api/supply-chain/by-product-code/${encodeURIComponent(PRODUCT_CODE)}`);
+    const data = await res.json();
+
+    if (!data.node) {
+      msg.textContent = '⚠️ SC同期が未実行です。品目詳細の「🔄 SC同期」を押してから再試行してください。';
+      return;
+    }
+    msg.style.display = 'none';
+
+    /* リスクサマリーバー更新 */
+    const ch      = data.children || [];
+    const hi      = ch.filter(c => risk(c) === 'high');
+    const me      = ch.filter(c => risk(c) === 'medium');
+    const sa      = ch.filter(c => risk(c) === 'safe');
+    const jPend   = ch.filter(c => c.eccn_judgment_status === 'pending');
+    const jAiOk   = ch.filter(c => c.eccn_judgment_status === 'ai_completed');
+    const jConf   = ch.filter(c => c.eccn_judgment_status === 'confirmed');
+    const bar     = document.getElementById('risk-bar');
+    bar.style.display = 'flex';
+    document.getElementById('rs-high').textContent = `🔴 HIGH ${hi.length}件`;
+    document.getElementById('rs-med' ).textContent = `🟡 MEDIUM ${me.length}件`;
+    document.getElementById('rs-safe').textContent = `✅ SAFE ${sa.length}件`;
+    const jEl = document.getElementById('rs-judgment');
+    if (jPend.length || jAiOk.length || jConf.length) {
+      jEl.style.display = 'inline';
+      jEl.textContent = `｜ AI判定: ⏳${jPend.length} 🤖${jAiOk.length} ✅${jConf.length}`;
+    } else {
+      jEl.style.display = 'none';
+    }
+
+    const layoutName = (typeof cytoscapeDagre !== 'undefined') ? 'dagre' : 'breadthfirst';
+
+    cy = cytoscape({
+      container: document.getElementById('cy-container'),
+      elements:  buildElements(data),
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'background-color':   'data(bg)',
+            'border-color':       'data(border)',
+            'border-width':       'data(bw)',
+            'shape':              'roundrectangle',
+            'label':              'data(label)',
+            'color':              '#fff',
+            'font-size':          'data(fsize)',
+            'font-weight':        'data(bold)',
+            'font-family':        '-apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif',
+            'text-valign':        'center',
+            'text-halign':        'center',
+            'text-wrap':          'wrap',
+            'text-max-width':     '120px',
+            'text-outline-width': 0,
+            'width':              'data(w)',
+            'height':             'data(h)',
+          }
+        },
+        {
+          selector: "node[risk='high']",
+          style: {
+            'shadow-blur':    18,
+            'shadow-color':   '#dc2626',
+            'shadow-opacity': 0.65,
+            'shadow-offset-x': 0,
+            'shadow-offset-y': 0,
+          }
+        },
+        {
+          selector: "node[jstatus='pending']",
+          style: {
+            'border-style':   'dashed',
+            'border-width':   3,
+            'border-color':   '#a78bfa',
+          }
+        },
+        {
+          selector: "node[jstatus='ai_completed']",
+          style: {
+            'border-style':   'solid',
+            'border-color':   '#6366f1',
+            'border-width':   3,
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width':               'data(ew)',
+            'line-color':          'data(ec)',
+            'target-arrow-color':  'data(ec)',
+            'target-arrow-shape':  'triangle',
+            'curve-style':         'taxi',
+            'taxi-direction':      'downward',
+            'label':               'data(label)',
+            'font-size':           '10px',
+            'color':               '#374151',
+            'text-background-color':   '#fff',
+            'text-background-opacity': 0.9,
+            'text-background-padding': '2px',
+            'text-border-opacity':     0,
+          }
+        },
+        {
+          selector: ':selected',
+          style: { 'border-width': 4, 'border-color': '#1a0f08' }
+        }
+      ],
+      layout: layoutName === 'dagre' ? {
+        name:       'dagre',
+        rankDir:    'TB',
+        nodeSep:    55,
+        rankSep:    90,
+        padding:    30,
+        ranker:     'tight-tree',
+      } : {
+        name:           'breadthfirst',
+        directed:       true,
+        padding:        30,
+        spacingFactor:  1.5,
+      }
+    });
+
+    /* ── 判定ステータスバッジ HTML ── */
+    const JSTATUS_LABEL = {
+      pending:      { icon: '⏳', label: 'AI判定処理中', col: '#7c3aed', bg: '#ede9fe' },
+      ai_completed: { icon: '🤖', label: 'AI判定完了',   col: '#4338ca', bg: '#e0e7ff' },
+      confirmed:    { icon: '✅', label: '確定済み',       col: '#065f46', bg: '#d1fae5' },
+      rejected:     { icon: '❌', label: '判定却下',       col: '#991b1b', bg: '#fee2e2' },
+    };
+    const JSOURCE_LABEL = {
+      supplier_attestation: 'サプライヤー申告',
+      ai_judgment:          'AI自動判定',
+      manual:               '手動入力',
+    };
+
+    /* ── ECCN 操作関数 ── */
+    let _activeNodeId = null;
+
+    async function requestEccn(nodeId) {
+      const btn = document.getElementById('btn-request-eccn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ 依頼中…'; }
+      try {
+        const r = await fetch(`/api/supply-chain/nodes/${nodeId}/request-eccn`, { method: 'POST' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || 'エラー');
+        alert(`✅ AI 判定を依頼しました\n案件番号: ${d.tx_case_no || d.tx_id}`);
+        await refreshNodeInGraph(nodeId);
+      } catch(e) {
+        alert('❌ ' + e.message);
+        if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 判定を依頼'; }
+      }
+    }
+
+    async function syncEccn(nodeId) {
+      const btn = document.getElementById('btn-sync-eccn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ 同期中…'; }
+      try {
+        const r = await fetch(`/api/supply-chain/nodes/${nodeId}/sync-eccn`, { method: 'POST' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || 'エラー');
+        const eccnMsg = d.node?.eccn ? `\nECCN: ${d.node.eccn}` : '';
+        alert(`✅ ECCN 同期完了\nステータス: ${d.node?.eccn_judgment_status || '—'}${eccnMsg}`);
+        await refreshNodeInGraph(nodeId);
+      } catch(e) {
+        alert('❌ ' + e.message);
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 ECCN 同期'; }
+      }
+    }
+
+    async function refreshNodeInGraph(nodeId) {
+      try {
+        const r = await fetch(`/api/supply-chain/nodes/${nodeId}`);
+        if (!r.ok) return;
+        const updated = await r.json();
+        const cyNode = cy.getElementById(nodeId);
+        if (!cyNode.length) return;
+        // Cytoscape データ更新
+        const risk = updated.is_us_origin
+          ? (updated.eccn && updated.eccn !== 'EAR99' ? 'high' : 'medium')
+          : 'safe';
+        cyNode.data('risk', risk);
+        cyNode.data('jstatus', updated.eccn_judgment_status || '');
+        cyNode.data('node', updated);
+        // パネルを再描画（ノードを再タップ扱い）
+        showNodeDetail(cyNode.data());
+        // リスクサマリーも更新
+        updateRiskBar();
+      } catch(e) { /* silent */ }
+    }
+
+    function updateRiskBar() {
+      const nodes = cy.nodes();
+      let high = 0, med = 0, safe = 0, pend = 0, aiOk = 0, conf = 0;
+      nodes.forEach(n => {
+        const r = n.data('risk');
+        if (r === 'high') high++;
+        else if (r === 'medium') med++;
+        else safe++;
+        const js = n.data('jstatus');
+        if (js === 'pending') pend++;
+        else if (js === 'ai_completed') aiOk++;
+        else if (js === 'confirmed') conf++;
+      });
+      document.getElementById('rs-high').textContent  = `🔴 HIGH ${high}`;
+      document.getElementById('rs-med').textContent   = `🟡 MEDIUM ${med}`;
+      document.getElementById('rs-safe').textContent  = `🟢 SAFE ${safe}`;
+      const jEl = document.getElementById('rs-judgment');
+      if (pend + aiOk + conf > 0) {
+        jEl.style.display = '';
+        jEl.textContent = `｜ AI判定: ⏳${pend} 🤖${aiOk} ✅${conf}`;
+      }
+    }
+
+    function showNodeDetail(d) {
+      const n   = d.node || {};
+      const r   = d.risk;
+      const col = RISK_STYLE[r]?.bg || '#555';
+      const js  = n.eccn_judgment_status;
+      const jsi = js ? JSTATUS_LABEL[js] : null;
+      const ev  = n.judgment_evidence || {};
+      const txId = ev.tx_id || n.eccn_validation_tx_id;
+      const nodeId = d.id;
+      const _AI_VALIDATION_PUBLIC_URL = 'https://validation.tsp-aitrademanagement.com';
+
+      // 判定ステータスバッジ
+      const judgmentHtml = jsi ? `
+        <div style="margin-top:8px; padding:6px 10px; border-radius:6px;
+             background:${jsi.bg}; color:${jsi.col}; font-size:.75rem; font-weight:700;">
+          ${jsi.icon} ${jsi.label}
+          ${ev.case_no ? `<span style="font-weight:400; margin-left:6px;">#${ev.case_no}</span>` : ''}
+        </div>
+        ${n.eccn_source ? `<div style="margin-top:4px; font-size:.74rem; color:var(--muted);">
+          ソース: ${JSOURCE_LABEL[n.eccn_source] || n.eccn_source}</div>` : ''}
+        ${txId ? `<div style="margin-top:4px;">
+          <a href="${_AI_VALIDATION_PUBLIC_URL}/ui/transactions/${txId}" target="_blank"
+             style="font-size:.74rem; color:#4f46e5;">🔍 AI判定結果を確認 →</a>
+        </div>` : ''}
+      ` : '';
+
+      // アクションボタン
+      const canSync    = txId && js === 'ai_completed';
+      const canRequest = !txId && n.is_us_origin;
+      const actionHtml = `
+        <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border);
+             display:flex; flex-direction:column; gap:6px;">
+          ${canSync ? `
+          <button id="btn-sync-eccn"
+            onclick="syncEccn('${nodeId}')"
+            style="width:100%; padding:5px 0; font-size:.76rem; font-weight:700;
+                   background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe;
+                   border-radius:5px; cursor:pointer;">
+            🔄 ECCN 同期
+          </button>` : ''}
+          ${canRequest ? `
+          <button id="btn-request-eccn"
+            onclick="requestEccn('${nodeId}')"
+            style="width:100%; padding:5px 0; font-size:.76rem; font-weight:700;
+                   background:#ede9fe; color:#5b21b6; border:1px solid #ddd6fe;
+                   border-radius:5px; cursor:pointer;">
+            🤖 AI 判定を依頼
+          </button>` : ''}
+          ${n.product_code ? `
+          <a href="/api/supply-chain/impact/${encodeURIComponent(n.product_code)}?us_origin_only=true"
+             target="_blank"
+             style="display:block; text-align:center; padding:4px 0; font-size:.74rem;
+                    color:#6366f1; text-decoration:none;">
+            🔍 この品目を使う完成品を検索 →
+          </a>` : ''}
+        </div>`;
+
+      document.getElementById('nd-content').innerHTML = `
+        <div style="font-size:.82rem;">
+          <div style="font-weight:800; font-size:.9rem; margin-bottom:4px;">${n.product_code || d.id.slice(0,8)}</div>
+          <div style="color:var(--muted); font-size:.76rem; margin-bottom:8px;">${n.name || ''}</div>
+          <span style="display:inline-block; padding:2px 10px; border-radius:12px;
+                background:${col}; color:#fff; font-size:.72rem; font-weight:700; margin-bottom:8px;">
+            ${RISK_LABEL[r] || r}
+          </span>
+          ${judgmentHtml}
+          ${n.is_us_origin ? '<div style="margin-top:4px;">🇺🇸 米国原産品</div>' : ''}
+          ${n.eccn      ? `<div style="margin-top:4px;"><strong>ECCN:</strong> ${n.eccn}</div>` : ''}
+          ${n.hs_code   ? `<div style="margin-top:4px;"><strong>HS:</strong> ${n.hs_code}</div>` : ''}
+          ${n.unit_value_usd ? `<div style="margin-top:4px;"><strong>単価:</strong> USD ${n.unit_value_usd.toLocaleString()}</div>` : ''}
+          ${actionHtml}
+        </div>
+      `;
+      document.getElementById('node-detail').style.display = 'block';
+    }
+
+    /* ノードクリック → 詳細パネル */
+    cy.on('tap', 'node', function(e) {
+      _activeNodeId = e.target.data('id') || e.target.id();
+      showNodeDetail(e.target.data());
+    });
+
+    /* 背景クリックで詳細パネルを閉じる */
+    cy.on('tap', function(e) {
+      if (e.target === cy) document.getElementById('node-detail').style.display = 'none';
+    });
+
+  } catch(err) {
+    msg.textContent = '❌ 読み込みエラー: ' + err.message;
+    msg.style.display = 'block';
+  }
+}
+
+/* PNG エクスポート */
+function exportPng() {
+  if (!cy) return;
+  const date = new Date().toISOString().slice(0, 10);
+  const png  = cy.png({ scale: 2, bg: '#ffffff', full: true });
+  const a    = document.createElement('a');
+  a.href     = png;
+  a.download = `BOM_${PRODUCT_CODE}_${date}.png`;
+  a.click();
+}
+
+loadGraph();
+</script>
+{% endblock %}

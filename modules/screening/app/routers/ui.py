@@ -30,3 +30,8 @@ async def results_page(request: Request):
 @router.get("/watchlist", response_class=HTMLResponse, include_in_schema=False)
 async def watchlist_page(request: Request):
     return templates.TemplateResponse(request, "watchlist.html", {})
+
+
+@router.get("/counterparties", response_class=HTMLResponse, include_in_schema=False)
+async def counterparties_page(request: Request):
+    return templates.TemplateResponse(request, "counterparty.html", {})

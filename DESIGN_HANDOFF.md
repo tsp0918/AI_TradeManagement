@@ -39,7 +39,7 @@
 |-----------|-----------|--------|---------|
 | 業務フロー | R&Dリスク評価 | 8003 | プロジェクト一覧・バージョン詳細・みなし輸出 |
 | 業務フロー | 品目管理 | 8002 | 品目一覧・編集・HS 分類・国別規制プロファイル |
-| 業務フロー | AI該非判定 | 8011 | 取引一覧・新規審査・2リスト照合結果 |
+| 業務フロー | AI取引審査 | 8011 | 取引一覧・新規審査・2リスト照合結果 |
 | 業務フロー | 役務取引管理 | 8011 | 役務申請・みなし輸出台帳 |
 | 業務フロー | 取引先スクリーニング | 8005 | 一括照合・結果一覧 |
 | 業務フロー | 取引審査キュー | 8000 | ERP 伝票の承認キュー |
@@ -82,7 +82,7 @@
 |-----------|------|------|
 | R&D評価（8003） | `#E8833A`（オレンジ） | `--bg:#FFF8F3` 暖色系、`.score-orb` 円形バッジ |
 | 品目管理（8002） | `#E8833A`（同上） | 同じトークンを使用しているが CSS 非共有 |
-| AI該非判定（8011） | `#E8833A`（同上） | 同上 |
+| AI取引審査（8011） | `#E8833A`（同上） | 同上 |
 | 取引先スクリーニング（8005） | `#E8833A`（同上） | 同上 |
 | 特許検索（8004） | `#E8833A`（同上） | 同上 |
 
@@ -107,12 +107,12 @@
        └─ セキュリティポスチャカード（カラーバッジ+因子チップ）（刷新済み）
 [プロファイル本文（生テキスト <pre> 表示）]
 [知財評価（IP Review）フォーム + エビデンスアップロード]
-[AI該非判定セクション（2リスト照合テーブル）]
+[AI取引審査セクション（2リスト照合テーブル）]
 [取引先スクリーニングセクション]
 [品目管理への登録セクション]
 ```
 
-### 4-2. AI該非判定 取引詳細
+### 4-2. AI取引審査 取引詳細
 
 ```
 [取引メタ情報]
@@ -216,7 +216,7 @@
 | 案件ダッシュボード | `https://app.tsp-aitrademanagement.com/ui/dashboard` |
 | R&D プロジェクト一覧 | `https://app.tsp-aitrademanagement.com/proxy/rnd_assessment/ui/cases` |
 | R&D プロジェクト詳細 | `https://app.tsp-aitrademanagement.com/proxy/rnd_assessment/ui/cases/{id}/profiles/latest` |
-| AI該非判定 取引一覧 | `https://app.tsp-aitrademanagement.com/proxy/ai_validation/ui/transactions` |
+| AI取引審査 取引一覧 | `https://app.tsp-aitrademanagement.com/proxy/ai_validation/ui/transactions` |
 | 品目管理 | `https://app.tsp-aitrademanagement.com/proxy/ai_classification/products` |
 | EPA/FTA 特恵税率 | `https://app.tsp-aitrademanagement.com/ui/fta-check` |
 | 調達・BOM 管理 | `https://app.tsp-aitrademanagement.com/ui/supply-chain` |

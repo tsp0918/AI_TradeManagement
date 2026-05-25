@@ -34,8 +34,9 @@ from platform_core.routers.proxy import router as proxy_router
 from platform_core.agent.router import router as agent_router
 from platform_core.routers.metrics import router as metrics_router
 from platform_core.routers.faiss_search import router as faiss_search_router
+from platform_core.routers.ontology import router as ontology_router
 from platform_core.routers.regulatory import router as regulatory_router
-from platform_core.routers.counterparty import router as counterparty_router
+from platform_core.routers.counterparty import router as counterparty_router  # proxy → screening
 from platform_core.routers.supply_chain import router as supply_chain_router
 from platform_core.routers.supplier_attestation import router as supplier_attestation_router
 from platform_core.routers.supplier_portal import router as supplier_portal_router
@@ -45,6 +46,7 @@ from platform_core.routers.compliance_lookup import router as compliance_lookup_
 from platform_core.routers.transaction_review import router as transaction_review_router
 from platform_core.routers.fta import router as fta_router
 from platform_core.routers.organizations import router as organizations_router
+from platform_core.routers.erp_pull_proxy import router as erp_pull_proxy_router
 
 logger = logging.getLogger(__name__)
 _STATIC_DIR = pathlib.Path(__file__).parent / "static"
@@ -164,6 +166,7 @@ def create_app() -> FastAPI:
     app.include_router(agent_router)
     app.include_router(metrics_router)
     app.include_router(faiss_search_router)
+    app.include_router(ontology_router)
     app.include_router(regulatory_router)
     app.include_router(counterparty_router)
     app.include_router(supply_chain_router)
@@ -175,6 +178,7 @@ def create_app() -> FastAPI:
     app.include_router(transaction_review_router)
     app.include_router(fta_router)
     app.include_router(organizations_router)
+    app.include_router(erp_pull_proxy_router)
 
     @app.get("/", include_in_schema=False)
     async def root():

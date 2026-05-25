@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+{% block title %}取引先マスター — スクリーニング{% endblock %}
+{% block nav_counterparties %} active{% endblock %}
+
+{% block content %}
+<div class="page-hd">
+  <h1>取引先マスター</h1>
+  <p>ERP連携・CSV登録された取引先の常時スクリーニング対象マスターです。登録と同時に制裁リストと照合し、リスクレベルを自動設定します。</p>
+</div>
+
+<!-- ダッシュボード統計 -->
+<div id="stats-area" style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;"></div>
+
+<!-- アクション行 -->
+<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
+  <button class="btn btn-primary" onclick="openAddModal()">＋ 取引先登録</button>
+  <label class="btn" style="cursor:pointer;">
+    📂 CSVインポート
+    <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none;" onchange="importCsv(this)">
+  </label>
+  <a href="/static/counterparty_template.csv" download class="btn" style="font-size:.8rem;">
+    📋 CSVテンプレート
+  </a>
+  <input type="search" id="search-input" placeholder="企業名・国で絞り込み…"
+    style="max-width:280px; padding:8px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:.88rem;"
+    oninput="filterTable()" />
+  <select id="risk-filter" onchange="filterTable()"
+    style="padding:8px 10px; border:1.5px solid var(--border); border-radius:8px; font-size:.84rem; background:var(--surface);">
+    <option value="">リスク: すべて</option>
+    <option value="CRITICAL">CRITICAL</option>
+    <option value="HIGH">HIGH</option>
+    <option value="MEDIUM">MEDIUM</option>
+    <option value="LOW">LOW</option>
+  </select>
+  <span id="count-label" class="muted" style="font-size:.82rem; margin-left:auto;"></span>
+</div>
+
+<!-- CSV インポート進捗 -->
+<div id="import-progress" style="display:none;" class="card" style="padding:12px 16px; margin-bottom:12px;">
+  <span id="import-msg">⏳ CSVインポート中…</span>
+</div>
+
+<!-- 一覧テーブル -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <div style="overflow-x:auto;">
+    <table class="table" style="table-layout:fixed; min-width:900px;">
+      <thead>
+        <tr>
+          <th style="width:260px;">企業名</th>
+          <th style="width:60px;">国</th>
+          <th style="width:110px;">リスクレベル</th>
+          <th style="width:120px;">制裁ステータス</th>
+          <th style="width:130px;">最終スクリーニング</th>
+          <th style="width:100px;">役割</th>
+          <th style="width:90px;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="cp-tbody">
+        <tr><td colspan="7" style="text-align:center; padding:32px; color:var(--muted);">⏳ 読み込み中…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ページネーション -->
+<div id="pagination" style="display:flex; gap:8px; justify-content:center; margin-top:12px;"></div>
+
+<!-- ── 取引先登録モーダル ── -->
+<div id="add-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100; align-items:center; justify-content:center;">
+  <div class="card" style="width:min(540px,95vw); max-height:90vh; overflow-y:auto; position:relative;">
+    <button onclick="closeAddModal()"
+      style="position:absolute; top:10px; right:12px; background:none; border:none; font-size:1.2rem; cursor:pointer;">✕</button>
+    <h2 style="font-size:1rem; font-weight:800; margin-bottom:16px;">取引先登録</h2>
+    <form id="add-form" onsubmit="submitAdd(event)">
+      <div class="form-grid">
+        <div class="field full">
+          <label>企業名 <span style="color:#ef4444">*</span></label>
+          <input type="text" name="name" required placeholder="Huawei Technologies Co., Ltd." />
+        </div>
+        <div class="field">
+          <label>国コード</label>
+          <input type="text" name="country_code" maxlength="2" placeholder="CN" style="text-transform:uppercase;" />
+        </div>
+        <div class="field">
+          <label>法人番号 / 登録番号</label>
+          <input type="text" name="registration_number" placeholder="1234567890123" />
+        </div>
+        <div class="field full">
+          <label>別名 (AKA, セミコロン区切り)</label>
+          <input type="text" name="aliases" placeholder="Huawei; HW Technologies" />
+        </div>
+        <div class="field full">
+          <label>住所</label>
+          <input type="text" name="address" placeholder="Bantian, Longgang District, Shenzhen, China" />
+        </div>
+        <div class="field full">
+          <label>Webサイト</label>
+          <input type="text" name="website" placeholder="https://www.huawei.com" />
+        </div>
+        <div class="field full">
+          <label>役割 (セミコロン区切り)</label>
+          <input type="text" name="roles" placeholder="customer; vendor; distributor" />
+        </div>
+        <div class="field" style="flex-direction:row; align-items:center; gap:8px;">
+          <input type="checkbox" name="is_end_user" id="is_end_user" />
+          <label for="is_end_user" style="font-size:.88rem; cursor:pointer;">最終需要者</label>
+        </div>
+        <div class="field" style="flex-direction:row; align-items:center; gap:8px;">
+          <input type="checkbox" name="is_consignee" id="is_consignee" />
+          <label for="is_consignee" style="font-size:.88rem; cursor:pointer;">荷受人</label>
+        </div>
+        <div class="field full">
+          <label>最終用途備考</label>
+          <textarea name="end_use_note" rows="2" placeholder="用途の詳細など…"
+            style="padding:8px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:.88rem; resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" class="btn" onclick="closeAddModal()">キャンセル</button>
+        <button type="submit" class="btn btn-primary" id="add-submit-btn">登録 + スクリーニング</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+.page-hd { margin-bottom:16px; }
+.page-hd h1 { font-size:1.35rem; font-weight:800; margin:0 0 4px; }
+.page-hd p  { font-size:.84rem; color:var(--muted); margin:0; }
+
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,10px);
+        padding:18px 20px; margin-bottom:14px; box-shadow:var(--shadow); }
+
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
+       padding:7px 16px; border-radius:8px; font-size:.84rem; font-weight:600;
+       cursor:pointer; border:1.5px solid var(--border); background:var(--surface);
+       color:var(--text); text-decoration:none; transition:background .12s; }
+.btn:hover { background:var(--bg); }
+.btn-primary { background:var(--primary); color:#fff; border:none; }
+.btn-primary:hover { filter:brightness(1.1); }
+.btn-primary:disabled { opacity:.6; cursor:not-allowed; }
+
+.muted { color:var(--muted); }
+
+.table { width:100%; border-collapse:collapse; font-size:.84rem; }
+.table thead th {
+  background:var(--bg); padding:10px 12px; font-size:.72rem; font-weight:800;
+  color:var(--muted); text-align:left; border-bottom:2px solid var(--border);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.table td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.table tr:last-child td { border-bottom:none; }
+.table tr:hover td { background:var(--bg); }
+
+.risk-CRITICAL { background:#fef2f2; color:#991b1b; border:1px solid #fecdd3; }
+.risk-HIGH     { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
+.risk-MEDIUM   { background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
+.risk-LOW      { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+.risk-badge    { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px;
+                 font-size:.7rem; font-weight:700; white-space:nowrap; }
+
+.sanction-yes  { color:#dc2626; font-weight:700; font-size:.8rem; }
+.sanction-no   { color:#16a34a; font-size:.8rem; }
+
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:10px;
+             padding:12px 16px; min-width:110px; text-align:center; box-shadow:var(--shadow); }
+.stat-card .val  { font-size:1.6rem; font-weight:800; line-height:1; }
+.stat-card .lbl  { font-size:.72rem; color:var(--muted); margin-top:4px; }
+
+.field { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
+.field label { font-size:.78rem; font-weight:700; color:var(--muted); }
+.field input, .field textarea {
+  padding:8px 12px; border:1.5px solid var(--border); border-radius:8px;
+  font-size:.88rem; background:var(--surface);
+}
+.field.full { flex-basis:100%; }
+.form-grid { display:flex; flex-wrap:wrap; gap:12px; }
+</style>
+
+<script>
+const PAGE_SIZE = 50;
+let _allData = [];
+let _page    = 1;
+
+// ── 統計 ─────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const d = await fetch("/api/counterparties/stats").then(r => r.json());
+    const area = document.getElementById("stats-area");
+    const items = [
+      { val: d.total,      lbl: "総取引先数",   color: "var(--text)"  },
+      { val: d.sanctioned, lbl: "制裁対象",     color: "#dc2626"       },
+      { val: (d.by_risk_level?.CRITICAL || 0) + (d.by_risk_level?.HIGH || 0),
+                           lbl: "HIGH以上リスク", color: "#d97706"     },
+      { val: d.by_risk_level?.LOW || 0, lbl: "LOW リスク",   color: "#16a34a" },
+    ];
+    area.innerHTML = items.map(it => `
+      <div class="stat-card">
+        <div class="val" style="color:${it.color}">${it.val}</div>
+        <div class="lbl">${it.lbl}</div>
+      </div>`).join("");
+  } catch(e) { console.error(e); }
+}
+
+// ── 一覧 ─────────────────────────────────────────────────────────────────
+async function loadList() {
+  try {
+    const d = await fetch("/api/counterparties?limit=200").then(r => r.json());
+    _allData = d.items || [];
+    _page = 1;
+    renderTable(_allData);
+  } catch(e) {
+    document.getElementById("cp-tbody").innerHTML =
+      `<tr><td colspan="7" style="text-align:center;padding:24px;color:#ef4444;">読み込みエラー</td></tr>`;
+  }
+}
+
+function filterTable() {
+  const q    = document.getElementById("search-input").value.toLowerCase();
+  const risk = document.getElementById("risk-filter").value;
+  const filtered = _allData.filter(c => {
+    const nameMatch = !q || c.name.toLowerCase().includes(q)
+                         || (c.country_code || "").toLowerCase().includes(q)
+                         || (c.name_aliases || []).some(a => a.toLowerCase().includes(q));
+    const riskMatch = !risk || c.overall_risk_level === risk;
+    return nameMatch && riskMatch;
+  });
+  _page = 1;
+  renderTable(filtered);
+}
+
+function renderTable(rows) {
+  document.getElementById("count-label").textContent = `${rows.length} 件`;
+  const start  = (_page - 1) * PAGE_SIZE;
+  const page   = rows.slice(start, start + PAGE_SIZE);
+  const tbody  = document.getElementById("cp-tbody");
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">
+      取引先が登録されていません。CSVインポートまたは手動登録してください。</td></tr>`;
+    document.getElementById("pagination").innerHTML = "";
+    return;
+  }
+
+  tbody.innerHTML = page.map(c => {
+    const rl = c.overall_risk_level || "UNKNOWN";
+    const sanctioned = c.is_sanctioned
+      ? `<span class="sanction-yes">🚨 制裁対象</span>`
+      : `<span class="sanction-no">✓ クリア</span>`;
+    const screened = c.last_screened_at
+      ? new Date(c.last_screened_at).toLocaleDateString("ja-JP")
+      : `<span style="color:var(--muted);">未実施</span>`;
+    const roles = (c.roles || []).slice(0,2).map(r =>
+      `<span style="font-size:.68rem;background:#f3f4f6;padding:1px 5px;border-radius:4px;">${r}</span>`
+    ).join(" ");
+    const aliases = (c.name_aliases || []).slice(0,1).map(a =>
+      `<div style="font-size:.72rem;color:var(--muted);">(${a})</div>`
+    ).join("");
+    return `<tr>
+      <td>
+        <div style="font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+        ${aliases}
+      </td>
+      <td style="font-size:.82rem;color:var(--muted);">${c.country_code || "—"}</td>
+      <td><span class="risk-badge risk-${rl}">${rl}</span></td>
+      <td>${sanctioned}</td>
+      <td style="font-size:.78rem;color:var(--muted);">${screened}</td>
+      <td>${roles}</td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="btn" style="padding:3px 8px;font-size:.72rem;" onclick="rescreen('${c.id}','${c.name}')">再検索</button>
+          <a href="/ui/screen?company_name=${encodeURIComponent(c.name)}" class="btn" style="padding:3px 8px;font-size:.72rem;">詳細</a>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+
+  // ページネーション
+  const total = Math.ceil(rows.length / PAGE_SIZE);
+  const pag   = document.getElementById("pagination");
+  if (total <= 1) { pag.innerHTML = ""; return; }
+  pag.innerHTML = Array.from({length: total}, (_, i) => `
+    <button class="btn${i+1===_page ? ' btn-primary' : ''}" style="min-width:36px;padding:4px 8px;"
+      onclick="_page=${i+1};renderTable(${JSON.stringify(rows)})">${i+1}</button>
+  `).join("");
+}
+
+// ── 手動スクリーニング再実行 ──────────────────────────────────────────────
+async function rescreen(id, name) {
+  const btn = event.currentTarget;
+  btn.disabled = true;
+  btn.textContent = "⏳";
+  try {
+    const d = await fetch(`/api/counterparties/${id}/screen`, {method:"POST"}).then(r=>r.json());
+    const status = d.company?.overall_risk_level || "?";
+    const hit    = d.is_hit;
+    btn.textContent = hit ? "🚨" : "✓";
+    btn.style.color = hit ? "#dc2626" : "#16a34a";
+    setTimeout(() => { loadList(); loadStats(); }, 600);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = "再検索";
+    alert("スクリーニングに失敗しました: " + e.message);
+  }
+}
+
+// ── 取引先登録モーダル ────────────────────────────────────────────────────
+function openAddModal()  { document.getElementById("add-modal").style.display = "flex"; }
+function closeAddModal() { document.getElementById("add-modal").style.display = "none"; }
+
+async function submitAdd(e) {
+  e.preventDefault();
+  const btn = document.getElementById("add-submit-btn");
+  btn.disabled = true;
+  btn.textContent = "⏳ 登録中…";
+  const fd = new FormData(e.target);
+  const body = {
+    name:                fd.get("name"),
+    country_code:        fd.get("country_code")?.toUpperCase() || null,
+    registration_number: fd.get("registration_number") || null,
+    address:             fd.get("address") || null,
+    website:             fd.get("website") || null,
+    end_use_note:        fd.get("end_use_note") || null,
+    is_end_user:         !!fd.get("is_end_user"),
+    is_consignee:        !!fd.get("is_consignee"),
+    name_aliases: fd.get("aliases")
+      ? fd.get("aliases").split(";").map(s=>s.trim()).filter(Boolean)
+      : null,
+    roles: fd.get("roles")
+      ? fd.get("roles").split(";").map(s=>s.trim()).filter(Boolean)
+      : null,
+  };
+  try {
+    const res = await fetch("/api/counterparties", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    closeAddModal();
+    e.target.reset();
+    await loadList();
+    await loadStats();
+  } catch(err) {
+    alert("登録に失敗しました: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "登録 + スクリーニング";
+  }
+}
+
+// ── CSV インポート ────────────────────────────────────────────────────────
+async function importCsv(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = "";
+
+  const prog = document.getElementById("import-progress");
+  const msg  = document.getElementById("import-msg");
+  prog.style.display = "";
+  msg.textContent = `⏳ ${file.name} をインポート中…`;
+
+  try {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res  = await fetch("/api/counterparties/import-csv", { method:"POST", body: fd });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+
+    let txt = `✅ ${data.imported} 件インポート完了（スクリーニング自動実行中）`;
+    if (data.errors?.length) {
+      txt += `　⚠ エラー ${data.errors.length} 件 (行: ${data.errors.slice(0,3).map(e=>e.row).join(", ")}${data.errors.length>3?"…":""})`;
+    }
+    msg.textContent = txt;
+    await loadList();
+    await loadStats();
+    setTimeout(() => { prog.style.display = "none"; }, 5000);
+  } catch(err) {
+    msg.textContent = `❌ インポートエラー: ${err.message}`;
+    setTimeout(() => { prog.style.display = "none"; }, 4000);
+  }
+}
+
+// ── 初期ロード ────────────────────────────────────────────────────────────
+loadStats();
+loadList();
+</script>
+{% endblock %}

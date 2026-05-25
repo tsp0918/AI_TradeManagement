@@ -11,7 +11,7 @@
 AI_TradeManagement/
 ├── platform-core/          # 共通基盤 (認証・DB・モジュールレジストリ・ポータル UI)
 ├── modules/
-│   ├── ai_validation/      # 🔐 AI該非判定         (port 8001)
+│   ├── ai_validation/      # 🔐 AI取引審査         (port 8001)
 │   ├── ai_classification/  # 📦 品目管理            (port 8002)
 │   ├── rnd_assessment/     # 🔬 R&Dリスク評価       (port 8003)
 │   ├── patent_search/      # 📋 AI特許検索          (port 8004)
@@ -153,7 +153,7 @@ PYTHONPATH=platform-core/ .venv/bin/uvicorn platform_core.main:app \
 | モジュール | ポート | 概要 | AI依存 |
 |---|---|---|---|
 | platform-core | 8000 | ポータル・認証・共通API | — |
-| ai_validation | 8001 | AI該非判定 (外為法) | FAISS + sentence-transformers |
+| ai_validation | 8001 | AI取引審査 (外為法) | FAISS + sentence-transformers |
 | ai_classification | 8002 | 品目管理・SDS解析 | Ollama |
 | rnd_assessment | 8003 | R&Dリスク評価 | — |
 | patent_search | 8004 | 特許検索・用途抽出 | Ollama + BigQuery |

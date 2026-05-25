@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>申告受付完了 — AI Trade Management</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f4f8; color: #1a202c; min-height: 100vh;
+    }
+    header {
+      background: #1a56db; color: #fff;
+      padding: 14px 24px; display: flex; align-items: center; gap: 12px;
+    }
+    header .logo { font-size: 1.1rem; font-weight: 700; }
+    .container { max-width: 560px; margin: 48px auto; padding: 0 16px; }
+    .check-icon { text-align: center; font-size: 3.5rem; margin-bottom: 16px; }
+    .card {
+      background: #fff; border-radius: 12px; padding: 32px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08); border-top: 4px solid #10b981;
+      margin-bottom: 16px;
+    }
+    .card h1 { font-size: 1.25rem; color: #059669; margin-bottom: 8px; }
+    .card .subtitle { font-size: .9rem; color: #6b7280; margin-bottom: 24px; }
+    .detail-row {
+      display: flex; gap: 8px; padding: 8px 0;
+      border-bottom: 1px solid #f3f4f6; font-size: .9rem;
+    }
+    .detail-row:last-of-type { border-bottom: none; }
+    .dl { color: #6b7280; min-width: 140px; flex-shrink: 0; }
+    .dv { color: #111827; font-weight: 500; word-break: break-all; }
+    .ref-box {
+      margin-top: 20px; background: #f0fdf4;
+      border: 1px solid #bbf7d0; border-radius: 8px;
+      padding: 12px 16px; font-size: .82rem; color: #065f46;
+    }
+    .ref-box strong { display: block; margin-bottom: 4px; }
+    .ref-id { font-family: monospace; font-size: .85rem; color: #374151; }
+
+    /* AI判定ステータスカード */
+    .ai-card {
+      background: #fff; border-radius: 12px; padding: 24px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08); border-top: 4px solid #6366f1;
+      margin-bottom: 16px;
+    }
+    .ai-card h2 { font-size: 1rem; color: #4338ca; margin-bottom: 12px; }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 20px; font-size: .85rem; font-weight: 700;
+    }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-none { background: #f3f4f6; color: #6b7280; }
+    .ai-detail { margin-top: 12px; font-size: .82rem; color: #374151; line-height: 1.6; }
+    .ai-link {
+      display: inline-block; margin-top: 12px; padding: 8px 16px;
+      background: #4f46e5; color: #fff; border-radius: 8px;
+      font-size: .82rem; font-weight: 600; text-decoration: none;
+    }
+    .ai-link:hover { background: #4338ca; }
+    .footer { font-size: .78rem; color: #9ca3af; margin-top: 24px; text-align: center; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .pulse { animation: pulse 1.8s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+<header>
+  <span class="logo">🏭 AI Trade Management — サプライヤーポータル</span>
+</header>
+<div class="container">
+  <div class="check-icon">✅</div>
+
+  <!-- 申告内容 -->
+  <div class="card">
+    <h1>申告が受け付けられました</h1>
+    <p class="subtitle">以下の内容でサプライヤー申告が登録されました。担当者が内容を確認いたします。</p>
+
+    <div class="detail-row"><span class="dl">サプライヤー名</span><span class="dv">{{ supplier_name }}</span></div>
+    <div class="detail-row"><span class="dl">申告対象品目</span><span class="dv">{{ node_name }}</span></div>
+    <div class="detail-row"><span class="dl">申告 ECCN</span><span class="dv">{{ claimed_eccn }}</span></div>
+    <div class="detail-row"><span class="dl">申告原産国</span><span class="dv">{{ claimed_country }}</span></div>
+
+    <div class="ref-box">
+      <strong>受付番号（お問い合わせ時にご提示ください）</strong>
+      <span class="ref-id">{{ attestation_id }}</span>
+    </div>
+  </div>
+
+  <!-- AI取引審査ステータス -->
+  <div class="ai-card">
+    <h2>🤖 AI取引審査（2リスト自動審査）</h2>
+
+    {% if tx_id %}
+      <span class="status-badge status-pending pulse">⏳ 判定処理中</span>
+      <div class="ai-detail">
+        <p>申告内容をもとに AI取引審査（外為法・EAR 2リスト）を自動起動しました。</p>
+        <p style="margin-top:6px;">
+          <strong>案件番号:</strong> {{ tx_case_no or tx_id }}<br>
+          担当者が判定結果を確認後、ECCN をシステムに登録します。
+        </p>
+      </div>
+      {% if tx_url %}
+      <a class="ai-link" href="{{ tx_url }}" target="_blank">🔍 判定結果を確認する →</a>
+      {% endif %}
+    {% else %}
+      <span class="status-badge status-none">— 自動判定なし</span>
+      <div class="ai-detail">
+        担当者が手動で該非判定を実施します。
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="footer">
+    ご申告いただきありがとうございます。内容に変更が必要な場合は、発行元担当者にご連絡ください。
+  </div>
+</div>
+</body>
+</html>

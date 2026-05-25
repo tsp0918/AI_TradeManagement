@@ -261,7 +261,7 @@ def analytics_summary(app_key: str, db: Session = Depends(get_db)):
 
 _CHEATSHEETS: dict[str, dict] = {
     "ai_validation": {
-        "module": "AI該非判定",
+        "module": "AI取引審査",
         "icon": "🔬",
         "sections": [
             {
@@ -344,7 +344,7 @@ _CHEATSHEETS: dict[str, dict] = {
                     "①品目を新規登録（品目コード・名称・仕様）",
                     "②HSコード判定（hs_classifier連携）",
                     "③ECCN分類を設定",
-                    "④AI該非判定モジュールと連携",
+                    "④AI取引審査モジュールと連携",
                 ],
             },
             {
@@ -420,7 +420,7 @@ _CHEATSHEETS: dict[str, dict] = {
                 "items": [
                     "①キーワードまたは技術説明文を入力",
                     "②FAISSセマンティック検索で関連特許を取得",
-                    "③AI該非判定のusage_expandステップと連携",
+                    "③AI取引審査のusage_expandステップと連携",
                 ],
             },
         ],

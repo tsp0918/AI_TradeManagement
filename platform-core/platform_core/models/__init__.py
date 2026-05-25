@@ -20,6 +20,7 @@ from platform_core.models.export_license import ExportLicenseApplication  # noqa
 from platform_core.models.item_version import ItemVersion, ComplianceChangeEvent  # noqa: F401
 from platform_core.models.transaction_review import TransactionReview  # noqa: F401
 from platform_core.models.fta import FtaAgreement, FtaRate  # noqa: F401
+from platform_core.models.import_profile import ImportProfile  # noqa: F401
 
 __all__ = [
     "Tenant",
@@ -47,4 +48,5 @@ __all__ = [
     "TransactionReview",
     "FtaAgreement",
     "FtaRate",
+    "ImportProfile",
 ]

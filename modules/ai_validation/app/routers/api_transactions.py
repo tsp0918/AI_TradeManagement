@@ -7,24 +7,64 @@ platform-core の案件ダッシュボードから httpx で呼ばれる。
 """
 from __future__ import annotations
 
+import logging
+import threading
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+import httpx
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.db.deps import get_db
 from app.db.models.ai_run import AiRun, RunType
+from app.db.models.catchall_assessment import CatchallAssessment
 from app.db.models.transaction import Transaction, TransactionItem, UsageRequirement
 from app.services.two_list import compute_two_lists
 
 router = APIRouter(prefix="/api/transactions", tags=["api-transactions"])
 
 import os as _os
-# ai_validation 自身のベース URL（ダッシュボードのアクション URL 生成用）
-_BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+_logger = logging.getLogger(__name__)
+# ブラウザからのアクション URL → public URL（Cloudflare Tunnel 経由）
+_BASE = _os.environ.get("MODULE_AI_VALIDATION_PUBLIC_URL", "https://validation.tsp-aitrademanagement.com")
+# サーバー間通信（スクリーニング照合 POST）用内部 URL
 _SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
+# スクリーニング結果確認リンク（ブラウザ向け）
+_SCREENING_PUBLIC = _os.environ.get("MODULE_SCREENING_PUBLIC_URL", "https://screening.tsp-aitrademanagement.com")
+
+
+def _screen_counterparty_bg(transaction_id: int, counterparty_name: str) -> None:
+    """取引先をバックグラウンドスレッドで screening モジュールに照合し、結果を transaction に保存する。"""
+    try:
+        resp = httpx.post(
+            f"{_SCREENING_BASE}/api/screen",
+            json={"company_name": counterparty_name, "threshold": 0.75},
+            timeout=15.0,
+            follow_redirects=True,
+        )
+        if resp.status_code != 200:
+            _logger.warning("screening API returned %d for %s", resp.status_code, counterparty_name)
+            return
+        data = resp.json()
+        status    = data.get("result_status", "clear")   # clear / possible_match / match
+        result_id = data.get("id")
+
+        # DB を更新（同期セッションを直接取得）
+        from app.db.session import SessionLocal
+        with SessionLocal() as db:
+            tx = db.get(Transaction, transaction_id)
+            if tx:
+                tx.screening_status    = status
+                tx.screening_result_id = result_id
+                db.commit()
+        _logger.info(
+            "auto-screening done tx=%d counterparty=%s → %s",
+            transaction_id, counterparty_name, status,
+        )
+    except Exception as exc:
+        _logger.warning("auto-screening failed tx=%d: %s", transaction_id, exc)
 
 
 # ──────────────────────────────────────────────
@@ -35,12 +75,13 @@ def _pending_actions(
     tx: Transaction,
     has_ai_run: bool,
     counts: Optional[Dict[str, Any]],
+    has_catchall: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     各ステップの未完了アクションを優先度付きで返す。
 
     返却フィールド:
-        step     : 1=スクリーニング / 2=AI判定 / 3=報告書
+        step     : 1=スクリーニング / 2=AI判定 / 2.5=キャッチオール / 3=報告書
         key      : アクション識別子
         label    : ボタン表示文字列
         url      : 遷移先 URL
@@ -65,7 +106,7 @@ def _pending_actions(
                 "step":     1,
                 "key":      "screening_review",
                 "label":    "スクリーニング結果を確認",
-                "url":      f"{_SCREENING_BASE}/ui/results",
+                "url":      f"{_SCREENING_PUBLIC}/ui/results",
                 "method":   "GET",
                 "priority": "danger",
             })
@@ -80,6 +121,25 @@ def _pending_actions(
             "method":   "POST",
             "priority": "info",
         })
+
+    # ── Step 2.5: キャッチオール自己判定 ────────
+    # AI判定が LOW（リスト規制なし）かつ仕向国あり → キャッチオール必須
+    if has_ai_run and counts:
+        hit_count = (counts.get("intersection") or 0) + (counts.get("core_only") or 0)
+        is_low    = hit_count == 0
+        if is_low and not has_catchall:
+            # 仕向国が懸念国ならdanger、それ以外はwarn
+            _CONCERN = {"CN", "RU", "KP", "IR", "SY", "BY", "CU", "VE", "MM", "SD", "LY", "YE"}
+            dest = (tx.destination_country or "").upper()
+            priority = "danger" if dest in _CONCERN else "warn"
+            actions.append({
+                "step":     2,
+                "key":      "catchall_run",
+                "label":    "キャッチオール自己判定を実行",
+                "url":      f"{_BASE}/ui/transactions/{tx.id}#sec-catchall",
+                "method":   "GET",
+                "priority": priority,
+            })
 
     # ── Step 3: 報告書 ─────────────────────────
     if has_ai_run and counts:
@@ -149,6 +209,11 @@ def get_recent_transactions(
             except Exception:
                 counts = {}
 
+        # キャッチオール判定済みか確認
+        has_catchall = db.query(CatchallAssessment).filter(
+            CatchallAssessment.transaction_id == tx.id
+        ).first() is not None
+
         results.append({
             "id":                   tx.id,
             "case_no":              tx.case_no,
@@ -158,9 +223,10 @@ def get_recent_transactions(
             "screening_result_id":  tx.screening_result_id,
             "screening_status":     tx.screening_status,
             "has_ai_run":           has_ai_run,
+            "has_catchall":         has_catchall,
             "last_run_at":          last_run_at.isoformat() if last_run_at else None,
             "counts":               counts,
-            "pending_actions":      _pending_actions(tx, has_ai_run, counts),
+            "pending_actions":      _pending_actions(tx, has_ai_run, counts, has_catchall),
         })
 
     return {"transactions": results, "total": len(results)}
@@ -215,9 +281,8 @@ def create_transaction_api(
         source_module=body.source_module or "dap",
         org_id=x_org_id,
     )
-    # destination_country は extra_info 等に保存（モデルにフィールドがない場合は title に付与）
-    if body.destination_country and not hasattr(Transaction, "destination_country"):
-        tx.title = f"{tx.title}（仕向地: {body.destination_country}）"
+    if body.destination_country:
+        tx.destination_country = body.destination_country
     db.add(tx)
     db.flush()
 
@@ -262,12 +327,22 @@ def create_transaction_api(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(exc))
 
+    # 取引先名があればバックグラウンドでスクリーニングを実行
+    if tx.counterparty_name:
+        t = threading.Thread(
+            target=_screen_counterparty_bg,
+            args=(tx.id, tx.counterparty_name),
+            daemon=True,
+        )
+        t.start()
+
     return {
-        "id":       tx.id,
-        "case_no":  tx.case_no,
-        "title":    tx.title,
-        "status":   tx.status,
-        "url":      f"{_BASE}/ui/transactions/{tx.id}",
+        "id":                tx.id,
+        "case_no":           tx.case_no,
+        "title":             tx.title,
+        "status":            tx.status,
+        "url":               f"{_BASE}/ui/transactions/{tx.id}",
+        "screening_queued":  bool(tx.counterparty_name),
     }
 
 
@@ -336,6 +411,46 @@ def get_stuck_transactions(
 class SupplyChainLinkBody(BaseModel):
     supply_chain_node_id: Optional[str] = None
     de_minimis_result: Optional[Dict[str, Any]] = None
+
+
+@router.get("/{tx_id}")
+def get_transaction_detail(tx_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    単一取引の詳細を返す（ai_classification 等の外部モジュール向け）。
+    status / agent_judgment_status / items[].item_name が主な参照フィールド。
+    """
+    tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
+    if tx is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    latest_run = (
+        db.query(AiRun)
+        .filter(AiRun.transaction_id == tx_id)
+        .order_by(AiRun.started_at.desc())
+        .first()
+    )
+    return {
+        "id": tx.id,
+        "case_no": tx.case_no,
+        "title": tx.title,
+        "status": tx.status,
+        "agent_judgment_status": tx.agent_judgment_status,
+        "destination_country": tx.destination_country,
+        "source_module": tx.source_module,
+        "counterparty_name": tx.counterparty_name,
+        "items": [
+            {"item_name": i.item_name, "spec_text": i.spec_text}
+            for i in tx.items
+        ],
+        "ai_run": {
+            "status": latest_run.status,
+            "run_type": latest_run.run_type,
+            "finished_at": latest_run.finished_at.isoformat() if latest_run.finished_at else None,
+        } if latest_run else None,
+        "supply_chain_node_id": tx.supply_chain_node_id,
+        "created_at": tx.created_at.isoformat(),
+        "updated_at": tx.updated_at.isoformat(),
+        "url": f"/ui/transactions/{tx.id}",
+    }
 
 
 @router.post("/{tx_id}/supply-chain")

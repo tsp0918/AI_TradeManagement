@@ -44,22 +44,28 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import httpx
+from dotenv import load_dotenv
 
 # ── パス設定 ─────────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
+load_dotenv(PROJECT_ROOT / ".env")
 TERMS_PATH = PROJECT_ROOT / "data" / "academic" / "eccn_tech_terms.json"
 DB_PATH = PROJECT_ROOT / "data" / "academic" / "academic_intel.db"
 
 # ── API 設定 ──────────────────────────────────────────────────────────────────
 S2_BASE = "https://api.semanticscholar.org/graph/v1"
 LENS_BASE = "https://api.lens.org/scholarly/search"
+OPENALEX_BASE = "https://api.openalex.org/works"
 
 S2_PAPER_FIELDS = (
     "paperId,title,abstract,year,citationCount,"
     "influentialCitationCount,authors,externalIds,fieldsOfStudy,publicationDate"
 )
 S2_AUTHOR_FIELDS = "authorId,name,hIndex,affiliations,papers.year,papers.citationCount"
+
+_OA_MAILTO = "tsp0918@gmail.com"  # OpenAlex 推奨 polite pool 用メール
+
 
 # ── DB 初期化 ─────────────────────────────────────────────────────────────────
 def init_db(conn: sqlite3.Connection) -> None:
@@ -180,8 +186,9 @@ def lens_search(query: str, limit: int = 100, api_key: str = "",
         print("    [Lens SKIP] LENS_ORG_API_KEY が未設定のためスキップ", file=sys.stderr)
         return []
 
+    # query_string で title/abstract/keywords 全フィールドを横断検索（AND演算子）
     must_clauses: list[dict] = [
-        {"match": {"title": query}},
+        {"query_string": {"query": query, "default_operator": "AND"}},
     ]
     if year_from:
         must_clauses.append({"range": {"year_published": {"gte": year_from}}})
@@ -203,13 +210,105 @@ def lens_search(query: str, limit: int = 100, api_key: str = "",
     try:
         resp = httpx.post(LENS_BASE, json=payload, headers=headers, timeout=30)
         resp.raise_for_status()
-        return resp.json().get("data", [])
+        data = resp.json()
+        return data.get("data", [])
     except httpx.HTTPStatusError as e:
         print(f"    [Lens WARN] HTTP {e.response.status_code} for '{query}'", file=sys.stderr)
         return []
     except Exception as e:
         print(f"    [Lens WARN] {e}", file=sys.stderr)
         return []
+
+
+# ── OpenAlex ─────────────────────────────────────────────────────────────────
+def _oa_reconstruct_abstract(inverted_index: dict | None) -> str:
+    """OpenAlex abstract_inverted_index（単語→位置リスト）を文字列に復元する。"""
+    if not inverted_index:
+        return ""
+    max_pos = max((max(v) for v in inverted_index.values() if v), default=0) + 1
+    tokens: list[str] = [""] * max_pos
+    for word, positions in inverted_index.items():
+        for pos in positions:
+            if pos < max_pos:
+                tokens[pos] = word
+    return " ".join(t for t in tokens if t)
+
+
+def openalex_search(query: str, limit: int = 100,
+                    year_from: int | None = None) -> list[dict]:
+    """OpenAlex Works API でキーワード検索（APIキー不要）。"""
+    filters = ["has_abstract:true"]
+    if year_from:
+        filters.append(f"from_publication_date:{year_from}-01-01")
+    params: dict = {
+        "search":       query,
+        "filter":       ",".join(filters),
+        "per-page":     min(limit, 200),
+        "select":       "id,title,abstract_inverted_index,publication_year,cited_by_count,authorships,concepts",
+        "sort":         "cited_by_count:desc",
+        "mailto":       _OA_MAILTO,
+    }
+    try:
+        resp = httpx.get(OPENALEX_BASE, params=params, timeout=30)
+        resp.raise_for_status()
+        return resp.json().get("results", [])
+    except httpx.HTTPStatusError as e:
+        print(f"    [OA WARN] HTTP {e.response.status_code} for '{query}'", file=sys.stderr)
+        return []
+    except Exception as e:
+        print(f"    [OA WARN] {e}", file=sys.stderr)
+        return []
+
+
+def upsert_oa_paper(conn: sqlite3.Connection, paper: dict,
+                     eccn: str, keyword: str) -> None:
+    """OpenAlex 論文を papers テーブルに upsert する。"""
+    now = datetime.utcnow().isoformat()
+    oa_id = paper.get("id", "")
+    if not oa_id:
+        return
+    paper_id = f"oa:{oa_id.split('/')[-1]}"  # 例: oa:W2741809807
+
+    abstract = _oa_reconstruct_abstract(paper.get("abstract_inverted_index"))
+    if not abstract:
+        return
+
+    # external_ids: DOI が concepts の中にあることも
+    ext_ids: dict[str, str] = {}
+    for c in paper.get("concepts", []) or []:
+        pass  # concepts は分野分類なので external_ids は不要
+
+    year = paper.get("publication_year")
+    conn.execute(
+        """INSERT OR REPLACE INTO papers
+           (paper_id, source, title, abstract, year, citation_count,
+            influential_citation_count, fields_of_study, external_ids,
+            publication_date, fetched_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            paper_id, "openalex",
+            paper.get("title"), abstract,
+            year,
+            paper.get("cited_by_count", 0), 0,
+            json.dumps([c.get("display_name", "") for c in (paper.get("concepts") or [])[:5]]),
+            json.dumps(ext_ids),
+            f"{year}-01-01" if year else None,
+            now,
+        ),
+    )
+    conn.execute(
+        "INSERT OR IGNORE INTO paper_eccn_tags VALUES (?,?,?)",
+        (paper_id, eccn, keyword),
+    )
+    for authorship in (paper.get("authorships") or [])[:5]:
+        author = authorship.get("author") or {}
+        author_id = f"oa:{(author.get('id') or '').split('/')[-1]}"
+        author_name = author.get("display_name", "")
+        if author_id and author_name:
+            conn.execute(
+                "INSERT OR IGNORE INTO paper_authors VALUES (?,?,?)",
+                (paper_id, author_id, author_name),
+            )
 
 
 # ── DB 書き込み ────────────────────────────────────────────────────────────────
@@ -342,7 +441,7 @@ def collect_eccn(
             print(f"    [S2]   {eccn} / '{kw}' → {new_in_kw} 件")
             _sleep(rate_sleep)
 
-        # Lens.org
+        # Lens.org Scholar
         if source in ("lens", "both"):
             papers_l = lens_search(kw, limit=limit, api_key=lens_key, year_from=year_from)
             new_lens = 0
@@ -354,7 +453,18 @@ def collect_eccn(
             conn.commit()
             if source != "s2":
                 print(f"    [Lens] {eccn} / '{kw}' → {new_lens} 件")
-            _sleep(0.5)
+            _sleep(7.0)  # Lens Scholar API: 10 req/min 制限対策
+
+        # OpenAlex（APIキー不要、10 req/sec）
+        if source in ("openalex", "all"):
+            papers_oa = openalex_search(kw, limit=limit, year_from=year_from)
+            new_oa = 0
+            for p in papers_oa:
+                upsert_oa_paper(conn, p, eccn, kw)
+                new_oa += 1
+            conn.commit()
+            print(f"    [OA]   {eccn} / '{kw}' → {new_oa} 件")
+            _sleep(0.15)  # OpenAlex: polite pool では ~10 req/sec OK
 
         total_new += 1  # keyword processed
 
@@ -395,15 +505,24 @@ def main() -> None:
 
     parser.add_argument("--limit", type=int, default=100,
                         help="キーワードあたり最大取得件数 (default: 100)")
-    parser.add_argument("--source", choices=["s2", "lens", "both"], default="both",
-                        help="データソース (default: both)")
+    parser.add_argument(
+        "--source",
+        choices=["s2", "lens", "both", "openalex", "all"],
+        default="both",
+        help="データソース: s2/lens/both/openalex/all (default: both)",
+    )
     parser.add_argument("--recent-days", type=int, default=None,
                         help="指定日数以内に出版された論文のみ取得")
     args = parser.parse_args()
 
     # API Keys
     s2_key = _get_api_key("SEMANTIC_SCHOLAR_API_KEY")
-    lens_key = _get_api_key("LENS_ORG_API_KEY")
+    # Lens.org: LENS_ORG_API_KEY / Scholarly_Works_API / LENS_PATENT_API_KEY のいずれかを使用
+    lens_key = (
+        _get_api_key("LENS_ORG_API_KEY")
+        or _get_api_key("Scholarly_Works_API")
+        or _get_api_key("LENS_PATENT_API_KEY")
+    )
 
     if s2_key:
         print(f"Semantic Scholar API Key: 設定済み")
@@ -411,7 +530,7 @@ def main() -> None:
         print("Semantic Scholar API Key: 未設定 (レート制限: ~1 req/sec)")
 
     if lens_key:
-        print(f"Lens.org API Key: 設定済み")
+        print("Lens.org API Key: 設定済み")
     else:
         print("Lens.org API Key: 未設定 (Lens収集はスキップ)")
 

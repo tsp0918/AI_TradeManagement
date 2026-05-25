@@ -38,7 +38,7 @@ STAGES = [
     {"key": "item_registered",  "label": "品目登録",       "icon": "📦"},
     {"key": "hs_classified",    "label": "HS分類",         "icon": "🏷️"},
     {"key": "version_managed",  "label": "バージョン管理", "icon": "🔄"},
-    {"key": "validated",        "label": "AI該非判定",     "icon": "🔐"},
+    {"key": "validated",        "label": "AI取引審査",     "icon": "🔐"},
     {"key": "screened",         "label": "スクリーニング", "icon": "🛡️"},
     {"key": "supply_chain_ok",  "label": "サプライチェーン", "icon": "🔗"},
     {"key": "license_ready",    "label": "輸出許可",       "icon": "📋"},
@@ -116,7 +116,7 @@ async def get_pipeline(
             "alert": open_events or 0,
         }
 
-        # Stage 4: AI該非判定（ai_validation HTTP）
+        # Stage 4: AI取引審査（ai_validation HTTP）
         txns = await _fetch_validation_transactions(item.name, item.eccn)
         stages["validated"] = {
             "done": len(txns) > 0,
@@ -317,11 +317,11 @@ async def get_open_actions(db: AsyncSession = Depends(get_db)):
                         "priority": "medium",
                         "type": "validation_pending",
                         "impact_level": "LOW",
-                        "title": "AI該非判定 未完了",
+                        "title": "AI取引審査 未完了",
                         "item_name": tx.get("title", "—"),
                         "tx_id": tx.get("id"),
                         "case_no": tx.get("case_no"),
-                        "actions_needed": ["AI該非判定を完了させる"],
+                        "actions_needed": ["AI取引審査を完了させる"],
                         "status": tx.get("status"),
                         "created_at": None,
                     })

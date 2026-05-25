@@ -121,7 +121,7 @@
 
   <div class="sidebar-title">機能一覧</div>
   <a href="#feat-core">platform-core（基盤）</a>
-  <a href="#feat-validation">AI該非判定</a>
+  <a href="#feat-validation">AI取引審査</a>
   <a href="#feat-classification">品目管理</a>
   <a href="#feat-rnd">R&D リスク評価</a>
   <a href="#feat-patent">特許検索</a>
@@ -152,7 +152,7 @@
     <thead><tr><th>モジュール</th><th>役割</th><th>ポート / URL</th></tr></thead>
     <tbody>
       <tr><td>platform-core（ポータル）</td><td>共通基盤・ダッシュボード・ERP機能群</td><td>:8000 / app.tsp-aitrademanagement.com</td></tr>
-      <tr><td>ai_validation</td><td>AI 該非判定・2リスト照合</td><td>:8011</td></tr>
+      <tr><td>ai_validation</td><td>AI取引審査・2リスト照合</td><td>:8011</td></tr>
       <tr><td>ai_classification</td><td>品目管理・HS分類・国別規制</td><td>:8002</td></tr>
       <tr><td>rnd_assessment</td><td>R&Dリスク評価・みなし輸出・人物管理</td><td>:8003</td></tr>
       <tr><td>patent_search</td><td>特許検索・技術インテリジェンス</td><td>:8004</td></tr>
@@ -172,7 +172,7 @@
     <div class="flow-node hl">R&D 起案</div><div class="flow-arrow">→</div>
     <div class="flow-node">品目登録</div><div class="flow-arrow">→</div>
     <div class="flow-node">HS 判定</div><div class="flow-arrow">→</div>
-    <div class="flow-node">AI 該非判定</div><div class="flow-arrow">→</div>
+    <div class="flow-node">AI取引審査</div><div class="flow-arrow">→</div>
     <div class="flow-node">制裁照合</div><div class="flow-arrow">→</div>
     <div class="flow-node">取引審査</div><div class="flow-arrow">→</div>
     <div class="flow-node hl2">輸出許可申請</div>
@@ -196,7 +196,7 @@
   <div class="flow" style="margin-bottom:16px;">
     <div class="flow-node hl">品目登録</div><div class="flow-arrow">→</div>
     <div class="flow-node">HS 判定</div><div class="flow-arrow">→</div>
-    <div class="flow-node">AI 該非判定</div><div class="flow-arrow">→</div>
+    <div class="flow-node">AI取引審査</div><div class="flow-arrow">→</div>
     <div class="flow-node">制裁照合</div><div class="flow-arrow">→</div>
     <div class="flow-node hl2">審査完了</div>
   </div>
@@ -240,14 +240,14 @@
     <div class="step">
       <div class="step-num">4</div>
       <div class="step-body">
-        <div class="step-title">AI 該非判定を実行する <span class="badge badge-module">ai_validation</span></div>
+        <div class="step-title">AI取引審査を実行する <span class="badge badge-module">ai_validation</span></div>
         <div class="step-detail">
-          <strong>「業務フロー → AI 該非判定 → 新規審査」</strong> で取引を作成。
+          <strong>「業務フロー → AI取引審査 → 新規審査」</strong> で取引を作成。
           品名・ECCN・仕向地・需要者・用途を入力して審査開始。
           FAISS Layer A/B（外為法・EAR・ITAR・EU 等 2,999 ベクトル）による 2 リスト照合、
           EAR Country Chart リスク評価、ライセンス例外チェックが自動実行される。<br>
           判定結果: <span class="badge badge-safe">CLEAR</span> / <span class="badge badge-warn">REVIEW</span> / <span class="badge badge-critical">REQUIRES_PERMIT</span><br>
-          <span class="step-nav">🗂 業務フロー → AI 該非判定 → 新規審査</span>
+          <span class="step-nav">🗂 業務フロー → AI取引審査 → 新規審査</span>
         </div>
       </div>
     </div>
@@ -272,7 +272,7 @@
   <div class="uc-header">
     <div class="uc-num">Use Case 02</div>
     <div class="uc-title">新規 R&D プロジェクトを起案し、リスク評価後に品目登録する</div>
-    <div class="uc-desc">R&D チームリーダーが新技術のプロジェクトを起案し、AI がリスクスコアリング・開示戦略・セキュリティポスチャを分析。その後、輸出管理担当者が品目登録・AI 該非判定へ連携するエンドツーエンドのフロー。</div>
+    <div class="uc-desc">R&D チームリーダーが新技術のプロジェクトを起案し、AI がリスクスコアリング・開示戦略・セキュリティポスチャを分析。その後、輸出管理担当者が品目登録・AI取引審査へ連携するエンドツーエンドのフロー。</div>
     <span class="uc-persona">👤 R&D チームリーダー</span>
     <span class="uc-persona">👤 輸出管理担当者</span>
   </div>
@@ -282,7 +282,7 @@
     <div class="flow-node">AI リスク評価</div><div class="flow-arrow">→</div>
     <div class="flow-node">知財審査</div><div class="flow-arrow">→</div>
     <div class="flow-node">品目登録</div><div class="flow-arrow">→</div>
-    <div class="flow-node hl2">AI 該非判定</div>
+    <div class="flow-node hl2">AI取引審査</div>
   </div>
 
   <div class="steps">
@@ -528,7 +528,7 @@
   <div class="uc-header">
     <div class="uc-num">Use Case 06</div>
     <div class="uc-title">REQUIRES_PERMIT 判定後に許可申請ドラフトを自動生成する</div>
-    <div class="uc-desc">AI 該非判定で許可申請が必要と判定された取引に対し、申請書ドラフトを自動生成し、許可証の価値消費・期限管理まで行うフロー。</div>
+    <div class="uc-desc">AI取引審査で許可申請が必要と判定された取引に対し、申請書ドラフトを自動生成し、許可証の価値消費・期限管理まで行うフロー。</div>
     <span class="uc-persona">👤 輸出管理担当者</span>
   </div>
 
@@ -541,7 +541,7 @@
           <span class="badge badge-critical">REQUIRES_PERMIT</span> と判定された取引の詳細ページ下部にある
           <strong>「輸出許可申請ドラフト生成」</strong> ボタンをクリック。
           取引情報から申請書の基本項目が自動入力される。<br>
-          <span class="step-nav">🗂 業務フロー → AI 該非判定 → 取引詳細 → 輸出許可申請ドラフト生成</span>
+          <span class="step-nav">🗂 業務フロー → AI取引審査 → 取引詳細 → 輸出許可申請ドラフト生成</span>
         </div>
       </div>
     </div>
@@ -627,7 +627,7 @@
       </div>
     </div>
   </div>
-  <div class="tip">De Minimis 閾値は仕向地によって異なります（一般的な規制対象国: 25%、テロ支援国: 10%）。仕向地の EAR Country Chart 区分は AI 該非判定モジュールで確認できます。</div>
+  <div class="tip">De Minimis 閾値は仕向地によって異なります（一般的な規制対象国: 25%、テロ支援国: 10%）。仕向地の EAR Country Chart 区分は AI取引審査モジュールで確認できます。</div>
 </section>
 
 <!-- UC8 -->
@@ -744,7 +744,7 @@
   <div class="uc-header">
     <div class="uc-num">Use Case 10</div>
     <div class="uc-title">品目の仕様変更後に影響評価と AI 再判定を実行する</div>
-    <div class="uc-desc">製品の性能・仕様が変更された際に、品目バージョンを更新し、旧バージョンとの差分を確認し、AI 該非判定を再実行するフロー。</div>
+    <div class="uc-desc">製品の性能・仕様が変更された際に、品目バージョンを更新し、旧バージョンとの差分を確認し、AI取引審査を再実行するフロー。</div>
     <span class="uc-persona">👤 輸出管理担当者</span>
   </div>
 
@@ -835,13 +835,13 @@
 <section id="feat-validation" class="module-section">
   <div class="module-header">
     <span class="module-icon">⚖️</span>
-    <span class="module-name">AI 該非判定（ai_validation）</span>
+    <span class="module-name">AI取引審査（ai_validation）</span>
     <span class="module-port">:8011</span>
   </div>
   <table>
     <thead><tr><th>機能</th><th>説明</th><th>画面パス</th></tr></thead>
     <tbody>
-      <tr><td>新規取引審査</td><td>品名・ECCN・仕向地・需要者・用途を入力してパイプライン実行</td><td>業務フロー → AI 該非判定 → 新規審査</td></tr>
+      <tr><td>新規取引審査</td><td>品名・ECCN・仕向地・需要者・用途を入力してパイプライン実行</td><td>業務フロー → AI取引審査 → 新規審査</td></tr>
       <tr><td>FAISS 2リスト照合</td><td>Layer A/B（外為法・EAR・ITAR・EU・Wassenaar 2,999vec）との意味的照合</td><td>取引詳細 → 照合テーブル</td></tr>
       <tr><td>EAR Country Chart 評価</td><td>仕向地の EAR Country Chart 区分・適用規制理由コード・リスクプロファイル</td><td>取引詳細 → 仕向地リスクプロファイル</td></tr>
       <tr><td>ライセンス例外チェック</td><td>EAR Section 740 ライセンス例外（ENC・TSR・ENC 等）の適用可否判定</td><td>取引詳細 → ライセンス例外</td></tr>
@@ -887,7 +887,7 @@
       <tr><td>AI リスクスコアリング</td><td>4次元（技術/用途/需要者/法規制）×15+ルールで 0〜100 点評価</td><td>R&D プロジェクト詳細</td></tr>
       <tr><td>開示戦略分類</td><td>特許公開 / 営業秘密 / ハイブリッド / 保留を自動推奨（日本語根拠付き）</td><td>R&D 詳細 → Explainability</td></tr>
       <tr><td>セキュリティポスチャ分類</td><td>低リスク / 管理対象 / 高感度 / 制限 / 要エスカレーションを自動分類</td><td>R&D 詳細 → Explainability</td></tr>
-      <tr><td>ワークフロー進捗管理</td><td>①プロファイル→②リスク評価→③AI該非判定→④知財審査→⑤品目登録の 5 ステップ進捗表示</td><td>R&D プロジェクト詳細（進捗バー）</td></tr>
+      <tr><td>ワークフロー進捗管理</td><td>①プロファイル→②リスク評価→③AI取引審査→④知財審査→⑤品目登録の 5 ステップ進捗表示</td><td>R&D プロジェクト詳細（進捗バー）</td></tr>
       <tr><td>知財審査（IP Review）</td><td>審査結果・エビデンスファイルの管理</td><td>R&D 詳細 → 知財審査</td></tr>
       <tr><td>人物管理・スクリーニング</td><td>外国籍研究者の制裁リスト照合・管理</td><td>業務フロー → R&D リスク評価 → 人物管理</td></tr>
       <tr><td>技術インテリジェンス</td><td>学術論文（Semantic Scholar / Lens.org）+ Layer D 類似度検索</td><td>R&D リスク評価 → 技術インテリジェンス</td></tr>
@@ -1012,7 +1012,7 @@
   <h3>判定結果の見方</h3>
 
   <div class="faq-item">
-    <div class="faq-q">AI 該非判定の CLEAR / REVIEW / REQUIRES_PERMIT はどういう意味ですか？</div>
+    <div class="faq-q">AI取引審査の CLEAR / REVIEW / REQUIRES_PERMIT はどういう意味ですか？</div>
     <div class="faq-a"><strong>CLEAR</strong>: 規制リストに明確な一致なし。輸出許可不要と判断できる可能性が高い（最終判断は担当者が行ってください）。<strong>REVIEW</strong>: 部分一致または要注意フラグあり。担当者による追加確認が必要。<strong>REQUIRES_PERMIT</strong>: 許可申請が必要と判定。UC6 の手順に従い輸出許可申請ドラフトを作成してください。</div>
   </div>
 
@@ -1038,7 +1038,7 @@
 
   <div class="faq-item">
     <div class="faq-q">De Minimis が 25% を超えた場合、何をすればいいですか？</div>
-    <div class="faq-a">一般的な規制対象国向けの場合、米国原産成分が 25% を超える外国製品には EAR が適用されます（Foreign-Produced Direct Product Rule）。AI 該非判定で当該製品を改めて審査し、REQUIRES_PERMIT と判定された場合は輸出許可申請が必要です。テロ支援国（KP・IR・SY等）向けは 10% が閾値になります。</div>
+    <div class="faq-a">一般的な規制対象国向けの場合、米国原産成分が 25% を超える外国製品には EAR が適用されます（Foreign-Produced Direct Product Rule）。AI取引審査で当該製品を改めて審査し、REQUIRES_PERMIT と判定された場合は輸出許可申請が必要です。テロ支援国（KP・IR・SY等）向けは 10% が閾値になります。</div>
   </div>
 </section>
 
@@ -1093,7 +1093,7 @@
 
   <div class="faq-item">
     <div class="faq-q">許可証なしで輸出できる「ライセンス例外」はどれが使えますか？</div>
-    <div class="faq-a">主な EAR ライセンス例外: <strong>ENC</strong>（暗号品目）、<strong>TSR</strong>（技術・ソフトウェア再輸出）、<strong>TMP</strong>（一時輸出）、<strong>RPL</strong>（修理・返却）等があります。AI 該非判定モジュールが自動的に適用可能な例外を評価します。例外の適用には要件（仕向地・品目・エンドユーザー条件）を満たす必要があります。詳細は DAP チャットで確認してください。</div>
+    <div class="faq-a">主な EAR ライセンス例外: <strong>ENC</strong>（暗号品目）、<strong>TSR</strong>（技術・ソフトウェア再輸出）、<strong>TMP</strong>（一時輸出）、<strong>RPL</strong>（修理・返却）等があります。AI取引審査モジュールが自動的に適用可能な例外を評価します。例外の適用には要件（仕向地・品目・エンドユーザー条件）を満たす必要があります。詳細は DAP チャットで確認してください。</div>
   </div>
 
   <div class="faq-item">

@@ -91,7 +91,10 @@ class Product(Base):
 
     # 品目管理フラグ
     source        = Column(String(20), default="AI_TM", nullable=False)  # "AI_TM" | "ERP" | "RND"
-    item_type     = Column(String(20), nullable=True)                    # "FINISHED_GOODS" | "BOM_COMPONENT"
+    # 品目種別: FINISHED_GOODS=完成品 / BOM_COMPONENT=BOM構成品 /
+    #           PURCHASED_PART=購入品（輸入） / RAW_MATERIAL=原材料 /
+    #           INTERNAL_TRANSFER=グループ内移管品 / SOFTWARE=ソフトウェア・技術
+    item_type     = Column(String(30), nullable=True)
     is_unconfirmed = Column(Boolean, default=False, nullable=False)      # True = ERP 受信・未確認
 
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
@@ -171,3 +174,4 @@ class BomHistory(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     product = relationship("Product", backref="bom_history")
+

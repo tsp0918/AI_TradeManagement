@@ -37,8 +37,16 @@
           <div class="select">
             <select name="item_type">
               <option value="">— 未設定 —</option>
-              <option value="FINISHED_GOODS">完成品 (Finished Goods)</option>
-              <option value="BOM_COMPONENT">BOM構成品</option>
+              <optgroup label="輸出品">
+                <option value="FINISHED_GOODS">📦 完成品</option>
+                <option value="BOM_COMPONENT">🔩 BOM構成品</option>
+                <option value="SOFTWARE">💻 ソフトウェア・技術</option>
+              </optgroup>
+              <optgroup label="輸入品">
+                <option value="PURCHASED_PART">🛒 購入品（外部調達・輸入）</option>
+                <option value="RAW_MATERIAL">⚗️ 原材料</option>
+                <option value="INTERNAL_TRANSFER">🏭 グループ内移管品</option>
+              </optgroup>
             </select>
           </div>
         </div>

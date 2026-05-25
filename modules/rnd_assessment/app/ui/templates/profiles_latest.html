@@ -54,7 +54,7 @@
     {% for step_num, step_label, step_done in [
       ("1", "プロファイル入力", true),
       ("2", "内部リスク評価", step2_done),
-      ("3", "AI該非判定", step3_done),
+      ("3", "AI取引審査", step3_done),
       ("4", "知財審査", step4_done),
       ("5", "品目登録", step5_done),
     ] %}
@@ -402,9 +402,9 @@
   {% endif %}
 </div>
 
-<!-- ── AI 該非判定 ──────────────────── -->
+<!-- ── AI取引審査 ──────────────────── -->
 <div class="card mt-6">
-  <div class="card-title">🔐 AI該非判定</div>
+  <div class="card-title">🔐 AI取引審査</div>
 
   {% if profile.ai_validation_transaction_id %}
     {# ── 判定済みバナー ── #}
@@ -584,16 +584,16 @@
     <div style="background:#f8fafc; border:1.5px dashed var(--border); border-radius:12px;
                 padding:20px; text-align:center; margin-bottom:14px;">
       <div style="font-size:1.8rem; margin-bottom:8px; opacity:.5;">🔐</div>
-      <p style="font-weight:600; color:var(--text-h); margin-bottom:4px;">AI該非判定が未実行です</p>
+      <p style="font-weight:600; color:var(--text-h); margin-bottom:4px;">AI取引審査が未実行です</p>
       <p style="font-size:.82rem; color:var(--muted); margin-bottom:16px;">
-        このバージョンの用途情報を AI該非判定モジュールに送って規制リスクを照合します。<br>
+        このバージョンの用途情報を AI取引審査モジュールに送って規制リスクを照合します。<br>
         <span style="font-size:.76rem;">※ ai_validation モジュール（ポート 8011）が起動している必要があります</span>
       </p>
       <form method="post"
             action="/ui/cases/{{ case.case_id }}/profiles/{{ profile.profile_id }}/run-ai-validation">
         <button type="submit" class="btn"
                 style="background:var(--primary); color:#fff; border:none; padding:10px 24px; font-size:.9rem;">
-          🔐 AI該非判定を実行
+          🔐 AI取引審査を実行
         </button>
       </form>
     </div>
@@ -713,7 +713,7 @@
 
   {% elif profile.ai_validation_transaction_id %}
     <p style="font-size:.84rem; color:var(--text-h); margin:0 0 6px;">
-      AI該非判定（RND）が完了しています。品目管理モジュールへ一括登録できます。
+      AI取引審査（RND）が完了しています。品目管理モジュールへ一括登録できます。
     </p>
     <p style="font-size:.78rem; color:var(--muted); margin:0 0 12px;">
       品目コードは <code>RND-{{ case.case_id[:8] }}</code> で自動生成されます（登録後に変更可）。
@@ -727,12 +727,12 @@
     </form>
     <p style="font-size:.76rem; color:var(--muted); margin-top:6px;">
       ※ ai_classification モジュール（ポート 8002）が起動している必要があります。
-      登録完了後、自動で外部AI該非判定（UI審査）が発火します。
+      登録完了後、自動で外部AI取引審査（UI審査）が発火します。
     </p>
 
   {% else %}
     <p style="font-size:.84rem; color:var(--muted); margin:0;">
-      先に「AI該非判定を実行」してから品目管理へ登録できます。
+      先に「AI取引審査を実行」してから品目管理へ登録できます。
     </p>
   {% endif %}
 </div>

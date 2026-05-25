@@ -171,7 +171,6 @@ def build(dry_run: bool = False, min_citations: int = 0) -> None:
             normalize_embeddings=True,
             show_progress_bar=False,
             batch_size=_ENCODE_BATCH,
-            num_workers=0,
         )
         all_emb.append(np.asarray(emb, dtype="float32"))
         done = min(start + _ENCODE_BATCH, total)

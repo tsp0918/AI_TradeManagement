@@ -1,7 +1,15 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-08 更新（グローバル多拠点管理 Phase 2〜4 完了）
+# 2026-05-25 更新（モジュール間連携強化・BOMグラフ操作性向上）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
+> 2026-05-25（2回目）追加: ①BOMグラフノードパネルに ECCN同期・AI判定依頼ボタン追加（ワンクリックで sync-eccn / request-eccn、グラフリアルタイム更新）②サプライヤーポータル招待メール自動送信（smtplib STARTTLS、SMTP_HOST等env var設定で有効化）③R&D→AI判定フロー修正（form POST→JSON API統一、end_user_name counterparty_name引き継ぎ、FAISS自動起動）④取引先情報 GET /api/transactions/{id} に counterparty_name 追加⑤transaction_detail.html BOMコンテキストカード強化（JS動的取得: HSコード/ECCN/EARリスク/BOM構成品テーブル/BOMグラフリンク）⑥R&Dコンテキストカード追加（rnd_assessment起案時）⑦item_version再判定: item_code→SCノード逆引きでsupply_chain_node_id自動リンク。
+> 2026-05-25（1回目）追加: URL整合性修正・データ一元化完了。①全モジュールのハードコードlocalhost URLを環境変数化（item_version.py/export_license.py/import_profiles.html/transaction_detail.html）②BOM→AI判定リンクのURLパス修正（/transactions/{id}→/ui/transactions/{id}）③transaction_detail.html BOMコンテキストカード追加（ai_classification起案時にspec_text key-valueグリッド・バックリンク表示）④ヒットなし時 FAISS 候補チップ表示（catchall_recommended の場合）⑤supply_chain_node_id を Transaction に自動リンク（portal_submit / request-eccn 双方）⑥FAISS + 2リスト自動実行（fire-and-forget）。
+> 2026-05-24（5回目）追加: サプライヤーポータル → AI 2リスト該非判定 → BOM 自動更新フロー完全実装。Alembic m1n2o3p4q5r6（ECCN判定4フィールド）・supplier_portal.py AI判定自動トリガー・sync-eccn FAISS照合ロジック・bom_graph.html 判定ステータスバッジ（⏳/🤖/✅/❌）・Graphviz DOT スタイル可視化（cytoscape-dagre）。デモ: EUV-PR-001 BOM の EUV-RM-002（PAG） サプライヤー申告 1C010.a → FAISS Layer A 1C010 候補一致確認 → eccn_judgment_status=ai_completed → ECCN=1C010.a 自動書込。
+> 2026-05-24（4回目）追加: Phase IV-2 輸出入統合ダッシュボード（GET /dashboard/import-export + GET /api/dashboard/import-export）。SQLite品目集計 + PostgreSQL ImportProfile/SupplyChainNode 集計・仕入先国バーチャート・品目種別バーチャート・BOMチェーン クイックビュー（Cytoscape.js）・要対応アクションリスト（high/medium/low）。ドライランデモ実行：全8モジュール稼働確認・BOM同期4品目・インパクト分析・スクリーニング/HS判定連動テスト完了。
+> 2026-05-24（3回目）追加: Phase I-2 BOM統合（bom_json→plat_supply_chain_node 自動同期・SC同期ボタン）・Phase III-1 輸入品ECCN付番フロー（ai_validation連携・判定ステータス追跡）・Phase III-2 BOM上流輸入品影響分析（GET /api/supply-chain/impact/{code} 逆引き）・Phase III-3 US EAR再輸出許可申請自動トリガー（export_license連携）・Phase IV-1 BOMチェーン可視化（Cytoscape.js /bom/graph ページ）。
+> 2026-05-24（2回目）追加: 輸入品管理基盤。item_type 6種確立（PURCHASED_PART/RAW_MATERIAL/INTERNAL_TRANSFER/SOFTWARE追加）・輸入品 Lookup 3タブ追加・plat_import_profile テーブル新設（Alembic: i7j8k9l0m1n2）・ImportProfile CRUD + 輸入規制チェック（化審法/REACH/CITES/EAR）+ fta_origin 自動照合。
+> 2026-05-24（1回目）追加: キャッチオール自動評価（AI run 後 LOW 判定で自動 CatchallAssessment 生成）+ 制裁リスト無料3ソース（OFAC SDN CSV/UN SC/EU Consolidated）自動同期 + pending_actions にキャッチオール未判定アクション（Step 2.5）追加。
+> 2026-05-08（3回目）追加: Phase 6 設計レビュー — platform-core から業務ドメイン機能を分離。counterparty→screening / item_version+supply_chain+supplier→ai_classification 統合（Phase 6A 高優先）、export_license / fta_origin 新モジュール抽出（Phase 6B 中優先）、trade_gate 新モジュール抽出（Phase 6C 低優先）。branch: refactor/module-separation。
 > 2026-05-08（2回目）追加: Phase 2 R&Dアクセス制御（tech_sensitivity/みなし輸出自動検知）・DAP-B ワークフローモード（chat-widget.js UCセレクタ・進捗バー・自動ナビ）・Phase 3 グローバル品目マスター（local_eccn/license_required・国数バッジ）・Phase 4 トランザクション多テナント化（org_id/ダッシュボード拠点フィルタートグル）。
 > 2026-05-08（1回目）追加: Phase 1 多拠点基盤（plat_tenant拡張・拠点スイッチャー・X-Organization-Idインターセプト）・DAP-A ワークフロー伴走（DapWorkflowSession・6 UC定義）・DAP-C 知識ベース更新（UC別ナビゲーションガイド）。
 > 2026-05-07（4回目）追加: R&Dリスク管理モジュール UI/スコアリング刷新。Layer 1: ポート修正・推奨対応日本語化 / Layer 2: Explainability 構造化カード / Layer 3: 5ステップ進捗バー / Layer 4: スコアリングエンジン15+ルール・regulatory_risk独立化・全理由日本語化。
@@ -19,14 +27,17 @@
 
 | モジュール | ポート | DB | WAL | 安定性 | 備考 |
 |-----------|--------|-----|-----|--------|------|
-| platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 4レイヤー（A/B/C/D）・知識グラフ・規制スケジューラー |
-| ai_validation | 8011 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent |
-| ai_classification | 8002 | SQLite | ✅ | ✅ | HS Classifier Webhook連携・ECCN付加・品目管理 |
+| platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 4レイヤー（A/B/C/D）・知識グラフ・規制スケジューラー（業務ロジック分離済） |
+| ai_validation | 8011 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent・AI run 後キャッチオール自動評価 |
+| ai_classification | 8002 | SQLite+PG | ✅ | ✅ | 品目管理・6種 item_type・輸入品プロファイル・BOM→SC自動同期・BOMグラフ可視化（cytoscape-dagre）・輸入品影響分析・ECCN付番フロー・US EAR再輸出申請トリガー・**サプライヤー→AI取引審査→BOM自動更新** |
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
 | patent_search | 8004 | SQLite | ✅ | ✅ | BigQuery連携・J-PlatPatフォールバック |
-| screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS） |
+| screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS/UN/EU）・与信管理・ERP JSON一括インポート・無料3ソース自動同期 |
 | hs_classifier | 8006 | — | — | ✅ | Layer C FAISS（5,476vec）・同期/非同期両対応 |
 | dap | 8010 | SQLite | ✅ | ✅ | 先輩担当者モード・ペルソナ追跡・ガイドバナー・全モジュール埋込済 |
+| export_license | 8012 | PostgreSQL | — | ✅ | EAR BIS-748P / 外為法様式第1 ドラフト生成・申請ライフサイクル（Phase 6B-1） |
+| trade_gate | 8013 | PostgreSQL | — | ✅ | ERP 取引伝票受付・AI 該非・スクリーニング連携・出荷 GO/NOGO（Phase 6C-1） |
+| fta_origin | 8014 | PostgreSQL | — | ✅ | EPA/FTA 特恵税率照会・原産性ルール管理（Phase 6B-2） |
 
 **WAL対応状況**: DAP・patent_search とも WAL適用済み確認済。
 
@@ -39,14 +50,48 @@
 | コンポーネント | ファイル | 状態 |
 |-------------|---------|------|
 | 知識グラフ（788ノード） | ontology/seed/control_nodes.json | ✅ 完成 |
+| **輸出管理オントロジー（Phase O-1）** | **data/ontology/*** | **✅ 2026-05-10 新規構築** |
+| ECCN 階層 JSON（637 ECCN・カテゴリ/PG/統制理由/CR） | data/ontology/eccn_hierarchy.json | ✅ 完成 |
+| 外為法↔ECCN 対比表（16項目・ECCN逆引き付き） | data/ontology/fefta_eccn_xref.json | ✅ 完成 |
+| IPC-ECCN 双方向（174 IPC prefix / 637 ECCN） | data/ontology/ipc_eccn_bidir.json | ✅ 完成 |
+| HS-ECCN Confidence score（1,469件・exact/high/medium） | data/ontology/hs_eccn_scored.json | ✅ 完成 |
+| 統合オントロジーグラフ API | data/ontology/ontology_graph.json | ✅ 完成 |
+| /api/ontology/ エンドポイント（stats/lookup/expand/fefta/categories） | platform-core/routers/ontology.py | ✅ 完成 |
+| **Country Control Matrix（Phase O-3-1）** | **data/ontology/country_control_matrix.json** | **✅ 2026-05-10 新規構築** |
+| 65ヶ国 × カントリーグループ/外為法ゾーン分類 | country_control_matrix.json | ✅ A:38 B:8 D:1:14 E:1:5 |
+| 45 ECCN prefix × 4 country_group → verdict サマリー | country_control_matrix.json | ✅ NLR/EXCEPTION/LICENSE_REQUIRED/PROHIBITED |
+| /api/ontology/license-check（ECCN×仕向国→ライセンス判定） | platform-core/routers/ontology.py | ✅ verdict+rationale+推奨アクション |
+| /api/ontology/countries（国一覧・グループ/ゾーンフィルタ） | platform-core/routers/ontology.py | ✅ 完成 |
+| **NetworkX 多ホップ推論グラフ（Phase O-3-2）** | **data/ontology/nx_graph.gpickle** | **✅ 2026-05-10 新規構築** |
+| 2,512ノード × 6,318エッジ（ECCN/HS/IPC/FEFTA/FTERM/CAT/PG） | nx_graph.gpickle | ✅ 7種エッジ |
+| /api/ontology/path（最短パス: HS:854231→FEFTA:7 等） | platform-core/routers/ontology.py | ✅ 有向/無向フォールバック |
+| /api/ontology/neighbors（深さ1〜4の多ホップ近傍探索） | platform-core/routers/ontology.py | ✅ エッジ種別フィルタ対応 |
+| /api/ontology/graph/stats（グラフ統計）| platform-core/routers/ontology.py | ✅ 完成 |
+| **F-term→ECCN マッピング拡充（Phase O-3-3）** | **data/staging/fterm_eccn_mapping.json** | **✅ 130→200件（2026-05-10）** |
+| 全カテゴリ0-9 カバー（核/化学/製造設備/センサー/航法/海上/宇宙/AI/量子/先進材料） | fterm_eccn_mapping.json | ✅ 70 ECCN × 200 F-term |
 | HanteiAgent | agent/hantei_agent.py | ✅ 完成 |
 | AgentTools（FAISS呼出・キャッチオール詳細） | agent/tools.py | ✅ 完成 |
 | キャッチオールエンジン | ontology/rules/catchall_engine.py | ✅ 完成 |
-| FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ 2,999vec（2026-04-29再ビルド・USML/EU/Wassenaar追加・5項/8項追加・ECCN embed_text修正）|
-| FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ 1,595vec |
+| FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ 2,184vec（2026-05-10再ビルド・entity_list除外・eccn_tech 20件追加）|
+| FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ **10,783vec**（JP 6,144 + US/EP 4,639・639 ECCN タイプ・CPC コード対応・2026-05-12）|
 | FAISS Layer C（HSコード） | services/faiss_e5_service.py | ✅ 5,476vec |
-| FAISS Layer D（学術論文） | services/faiss_e5_service.py | ✅ collect_academic_papers.py + build_layer_d.py で構築 |
+| FAISS Layer D（学術論文） | services/faiss_e5_service.py | ✅ **5,765vec**（S2: 508 + OpenAlex: 5,257・**25/25 ECCN 全カバー**・2026-05-12）|
 | asyncio 規制動向スケジューラー | main.py (_regulatory_scheduler) | ✅ 24h周期 |
+| **DAP 多層 RAG（Phase O-2）** | **modules/dap/app/routers/chat.py** | **✅ 2026-05-10 拡張** |
+| _rag_multilayer（Layer A + Ontology + Country Control + Layer B + Layer D 並列） | chat.py | ✅ ECCN/HS/IPC + 仕向国を自動抽出・5レイヤー並列検索 |
+| _rag_country_control（ECCN × 仕向国 → ライセンス要否 RAG注入） | chat.py | ✅ 2026-05-10 新規追加 |
+| 説明チェーン（HS→ECCN→外為法→Layer B/D エビデンス） | /api/ontology/lookup | ✅ system prompt に注入 |
+| **NeuroSymbolic 該非判定エージェント UX 再設計（Phase O-3-1 付帯）** | **chat.py** | **✅ 2026-05-10 完了** |
+| 自然言語抽出レイヤー（_extract_attr_value / Haiku）→ 属性正規化 | chat.py | ✅ 日本語・英語・混在 回答に対応 |
+| 文脈適応チョイスボタン（end_use_type / end_user_type / 仕向国 別） | chat.py | ✅ 用途別に最適ボタン生成 |
+| 判定結果自然言語フォーマット（_format_judge_result） | chat.py | ✅ FEFTA/ECCN ID → 日本語説明 |
+| 国名→ISO コード辞書（_COUNTRY_NAME_TO_ISO・25ヶ国語対応） | chat.py | ✅ 「中国」「China」→ CN 自動変換 |
+| **DAP 7層 RAG（Phase O-4）** | **chat.py** | **✅ 2026-05-10 完了** |
+| _rag_fterm（F-term JPO分類 → ECCN 近傍探索・特許分類コンテキスト注入） | chat.py | ✅ 特許F-term検出 → ontology/neighbors 経由 |
+| _rag_graph_context（オントロジーグラフ接続関係 → FEFTA/IPC/HS 多ホップ） | chat.py | ✅ ECCN → depth=1 neighbors → 外為法別表注入 |
+| **オントロジーエクスプローラー UI（Phase O-4）** | **templates/ontology_explorer.html** | **✅ 2026-05-10 完了** |
+| 4タブ UI（コード検索 / パス探索 / ライセンス判定 / 近傍探索） | ontology_explorer.html | ✅ ダークテーマ・既存スタイル踏襲 |
+| /ui/ontology ルート + ポータルナビ「専門ツール」セクション登録 | ui.py | ✅ _KNOWN_MODULES + GET /ui/ontology |
 
 ### 2-2. キャッチオール規制エンジン
 
@@ -224,7 +269,7 @@ search.py (GET /status):
 
 | タスク | 内容 | 状態 |
 |--------|------|------|
-| P3-1 | Layer A 再ビルド（最新） | ✅ 2,999vec（law:1014, entity_list:835, eccn:637, parameter:406, tsutatsu:54, usml_itar:21, eu_dual_use:10, wassenaar_ml:22）2026-04-29 |
+| P3-1 | Layer A 再ビルド（最新） | ✅ 2,184vec（law:1014, eccn:637, parameter:406, tsutatsu:54, eccn_tech:20, usml_itar:21, eu_dual_use:10, wassenaar_ml:22）2026-05-10。entity_list 835件除外済み |
 | P3-2 | CISTEC対照表照合・HS→ECCNマッピング精度向上 | ✅ 90エントリ拡充・chapterフォールバック追加 |
 | P3-3 | 特許出願人制裁リスト一括照合 | ✅ patent_search × screening 連携 |
 | P3-4 | 月次制裁リスト自動同期 | ✅ OFAC SDN / BIS Entity List 月次スケジューラー |
@@ -544,8 +589,8 @@ Ph.D — patent_search 双方向リンク
 
 | データ | 優先度 | 現状 | 次のアクション |
 |--------|--------|------|-------------|
-| 外為法（FEFTA）省令 | ★★★★★ | ✅ 191/191 ノード充填済・Layer A 2,999vec 再ビルド完了（5項/8項追加・ECCN embed_text修正）| — |
-| ECCN/EAR Part774 | ★★★★☆ | ✅ 84/84 requirement_text 充填済 | 追加パラメータ精査（低優先） |
+| 外為法（FEFTA）省令 | ★★★★★ | ✅ 191/191 ノード充填済・Layer A 2,184vec（entity_list除外・eccn_tech追加・2026-05-10）| — |
+| ECCN/EAR Part774 | ★★★★☆ | ✅ 84/84 requirement_text 充填済・eccn_tech 25 ECCN の技術用語辞書追加 | Semantic Scholar API Key で論文収集拡充 |
 | 制裁リスト | ★★★★★ | ✅ OFAC/BIS 公式ソース・月次自動同期（P3-4完了） | — |
 | HS コード対照表 | ★★★★☆ | ✅ v2: 1,577件・ECCN付加90エントリ・NACCS 9桁 11,368件 | — |
 | 特許（J-PlatPat） | ★★★★☆ | ✅ 64/67件 IPC→ECCN/FEFTA 996エッジ・フォールバック対応 | 実特許データ大量取得（長期） |
@@ -563,7 +608,8 @@ Ph.D — patent_search 双方向リンク
 | HS コード（hs） | 281 | ✅ v2マッピング 1,577件・ECCN付加・Layer C 3,001件対応 | **◎ 高品質** |
 | 特許（patent） | 67 | ✅ 64/67 に 996 IPC→ECCN/FEFTA エッジ追加済 | **○ 中品質** |
 
-**DAP RAG**: platform-core GET /api/faiss/search/layer-a → DAP _rag_layer_a() 連携済
+**DAP RAG**: platform-core GET /api/faiss/search/layer-a → DAP _rag_layer_a() 連携済  
+**Layer B/D HTTP API**: GET /api/faiss/search/layer-b・/api/faiss/search/layer-d 追加済（2026-05-10）
 
 ---
 
@@ -571,7 +617,9 @@ Ph.D — patent_search 双方向リンク
 
 | 問題 | 影響 | 優先度 |
 |------|------|--------|
-| （技術的負債なし） | — | — |
+| platform-core 業務ドメインルーター — Phase 6A〜6C で全7本をプロキシスタブ化済み ✅ | — | 解消済み |
+| 各モジュールの pg_session.py が個別実装 | 接続パラメータ変更時に全モジュール修正が必要 | 低（env var 統一で対応済み） |
+| ハードコードURL → 全モジュール環境変数化 ✅（2026-05-24 修正） | — | 解消済み（item_version.py / export_license.py / transaction_detail.html / import_profiles.html）|
 
 ---
 
@@ -590,6 +638,9 @@ curl -s http://localhost:8004/health  # patent_search
 curl -s http://localhost:8005/health  # screening
 curl -s http://localhost:8006/health  # hs_classifier
 curl -s http://localhost:8010/health  # dap
+curl -s http://localhost:8012/health  # export_license
+curl -s http://localhost:8013/health  # trade_gate
+curl -s http://localhost:8014/health  # fta_origin
 
 # FAISS インデックス状態確認
 curl -s http://localhost:8011/admin/faiss/status  # Layer A/B/C
@@ -611,9 +662,10 @@ lsof | grep ".db$" | grep -v ".venv"
 | ブランチ | 状態 | 用途 |
 |---------|------|------|
 | main | 安定 | リリースブランチ |
-| branch_neurosymbolic | 作業中 | NeuroSymbolic基盤・全機能実装（本ブランチ） |
+| branch_neurosymbolic | マージ済み | NeuroSymbolic基盤・全機能実装 |
+| refactor/module-separation | **作業中** | Phase 6: platform-core からの業務ドメイン分離 |
 
-**次のアクション**: `branch_neurosymbolic` → main へのマージ検討
+**現在の作業ブランチ**: `refactor/module-separation`
 
 ---
 
@@ -664,7 +716,7 @@ lsof | grep ".db$" | grep -v ".venv"
 
 | 優先度 | タスク | 内容 | 状態 |
 |--------|--------|------|------|
-| D1-1 | Layer D 学術論文インデックス再構築 | collect_academic_papers.py 全ECCN実行（API Key取得後） | ⏳ API Key待ち |
+| D1-1 | Layer D 学術論文インデックス再構築 | 501論文・14ECCN（S2無料枠収集済み）。eccn_tech_terms.json を 20→25 ECCN に拡張済み | ✅ 完了（2026-05-10）|
 | D1-2 | 制裁リスト全量収録 | OFAC SDN全量 + EU統合制裁 + UK OFSI + BIS UVL/MEU/DPL | ✅ 完了（7ソース対応） |
 | D1-3 | BIS 3リスト完全収録 | Entity List全量 + Unverified List + MEU List | ✅ 完了（D1-2に統合） |
 | D1-4 | Fターム → 外為法/ECCNマッピング | 130テーマコード × 47 ECCN、patent_search 照合API追加 | ✅ 完了 |
@@ -698,7 +750,7 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | グローバル規制レジーム UI | /ui/regime-check 画面（ITAR/EU/MTCR/NSG/AG/Wassenaar 一括照合） |
 | ✅ | Fターム検索統合 | patent_search 検索結果にF-term規制照合パネル + キーワード候補提案 |
 | ✅ | Screening → 与信管理 自動連携 | 取引先登録時に screening API を BackgroundTasks で自動呼出し |
-| ✅ | Layer A インデックス品質改善 | ECCN embed_text修正・5項(CB製造装置)/8項(コンピュータ)追加・USML/EU/Wassenaar収録 → 2,999vec |
+| ✅ | Layer A インデックス品質改善 | ECCN embed_text修正・5項/8項追加・USML/EU/Wassenaar収録。entity_list除外・eccn_tech追加 → 2,184vec（2026-05-10） |
 | ✅ | サプライヤーポータル ファイルアップロード | enctype="multipart/form-data" + uploads/supplier/{id}/ 保存 + ダウンロード API |
 | ✅ | 輸出許可申請拡張 | EL-{TYPE}-{YEAR}-{SEQ:04d} 自動採番・POST /use-value 価値控除・期限アラートスケジューラー |
 | ✅ | D2-4 EPA/FTA 特恵税率 DB | 日本締結10協定・代表HS 8コード税率・/ui/fta-check・ポータルナビ追加 |
@@ -711,12 +763,73 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | Phase 3 グローバル品目マスター | ProductCountryProfile に local_eccn/license_required 追加。品目一覧 国数バッジ・モーダルフォーム |
 | ✅ | Phase 4 トランザクション多テナント化 | Transaction/ExportLicense に org_id 追加（Alembic）。ダッシュボード 自拠点/全拠点トグル |
 | ✅ | Phase 5 グローバル規制・FTA 拡張 | FtaAgreement: origin_country 追加。RegulatoryChange: relevant_org_ids・拠点別フィルタリング |
-| ★★★☆☆ | サプライヤーポータル メール送信 | メール自動送信（招待URL通知）— SMTP設定後に実装可能 |
+| ✅ | BOMグラフ ECCN sync-eccnボタン | ノードクリックパネルに同期・AI判定依頼ボタン追加。cytoscape リアルタイム更新（2026-05-25） |
+| ✅ | サプライヤーポータル メール送信 | smtplib STARTTLS 招待メール自動送信・SMTP env var ゲート（2026-05-25） |
+| ★★★☆☆ | キャッチオール Red Flag 詳細入力 UI 改善 | RF1〜RF7 項目別詳細質問フロー・自動評価結果オーバーライド入力 |
+| ★★★☆☆ | R&D→取引審査 counterparty 引き継ぎ UI | R&D 登録済み end_user を取引フェーズ取引先として編集可能な形でプリポップ |
+| ★★★☆☆ | AI取引審査 モジュール名称変更 | ai_validation → AI取引審査（UI表示名変更・ナビラベル統一。Neurosymbolic 該非判定は DAP 経由で呼び出す形に整理） |
 | ★★★☆☆ | FTA 税率データ拡充 | 現在は代表HSコードのみ。実務向けに品目単位の全量収録 |
-| ★★★☆☆ | Layer D データ収集実行 | API Key 取得後に collect_academic_papers.py を全 ECCN で実行 |
+| ✅ | Layer D データ収集・構築 | OpenAlex API 追加・25/25 ECCN 完全カバー → 5,765vec（S2: 508 + OpenAlex: 5,257）（2026-05-12）|
+| ✅ | Layer A 品質改善 | entity_list 835件除外・eccn_tech 20件追加・2,184vec（2026-05-10） |
+| ✅ | Layer B ECCN タグ付与 | build_layer_b_enhanced.py でIPC→ECCN マッピングから ECCN タグ付与・Layer B HTTP API 追加 |
+| ★★★☆☆ | Layer D 拡充（Semantic Scholar API Key） | API Key 取得後に collect_academic_papers.py を全 25 ECCN で実行（現在 14/25 ECCN・508論文。残り11 ECCN は無料枠でヒットなし）|
+| ✅ | JP 特許 Layer B 追加（Phase 1+2+3） | Phase 1+2: JP 4,549件（50 IPC コード）。Phase 3: US/EP 4,639件（CPC コード対応）→ 合計 10,783vec / 639 ECCN（2026-05-12）|
 | ★★☆☆☆ | D2-5 JP/EP特許 定期収集 | patent_search → ai_validation 連携 + 定期収集スケジューラー |
+| ✅ | スクリーニング精度修正（2026-05-16） | Step0 SQL ILIKE + エイリアス検索追加。サフィックス除去後スコアリング。ZTE/SMIC等の短名・頭字語ヒット。Sony等の偽陽性除去 |
+| ✅ | ERP JSON一括インポート（2026-05-16） | POST /api/counterparties/import-batch（最大500件・同期スクリーニング・upsert・flagged_list即時返却） |
+| ✅ | is_hit バグ修正（2026-05-16） | counterparty.py: `"hit"` → `in ("match", "possible_match")` / `list_type` → `list_source` |
+| ★★★☆☆ | 制裁リスト全量同期 | OFAC SDN URL変更対応済。Trade.gov API キー取得で BIS EL 完全収録（現在 watchlist 15件のみ）|
 
 ---
 
-*更新: 2026-05-08（Phase 2〜5 完了: R&Dアクセス制御・DAP-B・品目マスター・多テナント化・FTA原産国・拠点別規制アラート）*
+## 14. Phase 6: プラットフォーム設計最適化（branch: refactor/module-separation）
+
+### 設計原則
+
+```
+platform-core の責務 = インフラ・接着剤
+  ✓ 認証/SSO・組織/テナント管理
+  ✓ モジュール登録・リバースプロキシ
+  ✓ FAISS 共有サービス・監査ログ
+  ✓ 規制インテリジェンス（横断的）
+  ✓ コンプライアンス集約ダッシュボード
+  ✗ 業務ドメインロジック（→ 各モジュールへ）
+```
+
+### Phase 6A — 高優先度（業務機能を既存モジュールへ統合）
+
+| # | 移動元（platform-core） | 移動先 | DB移行 | 状態 |
+|---|----------------------|--------|--------|------|
+| 6A-1 | `routers/counterparty.py` (453行) | `screening` モジュール (8005) | PostgreSQL → PostgreSQL (共有) | ✅ 完了 |
+| 6A-2 | `routers/supply_chain.py` (493行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ✅ 完了 |
+| 6A-3 | `routers/supplier_attestation.py` (371行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ✅ 完了 |
+| 6A-4 | `routers/supplier_portal.py` (335行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ✅ 完了 |
+| 6A-5 | `routers/item_version.py` (714行) | `ai_classification` モジュール (8002) | PostgreSQL async → SQLite sync | ✅ 完了 |
+
+**合計削減行数**: 約 2,366 行 / platform-core から除去
+
+### Phase 6B — 中優先度（新独立モジュールとして抽出）
+
+| # | 抽出元（platform-core） | 新モジュール | ポート | 状態 |
+|---|----------------------|------------|--------|------|
+| 6B-1 | `routers/export_license.py` (762行) | `export_license` | 8012 | ⬜ 未着手 |
+| 6B-2 | `routers/fta.py` (397行) | `fta_origin` | 8014 | ⬜ 未着手 |
+
+### Phase 6C — 低優先度（ERP連携成熟後に抽出）
+
+| # | 抽出元（platform-core） | 新モジュール | ポート | 状態 |
+|---|----------------------|------------|--------|------|
+| 6C-1 | `routers/transaction_review.py` (560行) | `trade_gate` | 8013 | ⬜ ERP連携が安定後 |
+
+### 完了後の platform-core 残存ルーター（インフラのみ）
+
+```
+proxy.py / internal.py / modules.py / users.py / tenants.py
+organizations.py / projects.py / regulatory.py / metrics.py
+compliance_lookup.py / faiss_search.py / ui.py / auth/
+```
+
+---
+
+*更新: 2026-05-12（Layer B Phase 3 + Layer D OpenAlex 完了: B→10,783vec/639ECCN、D→5,765vec/25ECCN全カバー）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*

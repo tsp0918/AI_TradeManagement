@@ -1,0 +1,398 @@
+"""
+fetch_patents_lens.py
+──────────────────────────────────────────────────────────────────────────────
+Lens.org Patent Search API から特許データを取得し、
+Layer B 統合用 JSON（data/staging/lens_patents_raw.json）に保存するスクリプト。
+
+Lens.org は JP / US / EP / CN / AU 等の多国特許を統一 API で提供。
+IPC コード検索・キーワード検索・出願人検索が可能。
+
+API ドキュメント: https://docs.api.lens.org/patent.html
+API トークン取得: https://www.lens.org/lens/user/subscriptions
+
+環境変数（.env）:
+  LENS_PATENT_API_KEY   Lens.org Patent API の Bearer トークン
+  Scholarly_Works_API   (兼用可) Lens.org の Bearer トークン
+
+使い方:
+  python scripts/fetch_patents_lens.py [--limit 200] [--country JP,US,EP] [--dry-run]
+
+出力:
+  data/staging/lens_patents_raw.json   → merge_lens_patents_to_layer_b.py で Layer B に統合
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import os
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+import httpx
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
+
+_ROOT    = Path(__file__).resolve().parents[1]
+_STAGING = _ROOT / "data" / "staging"
+_OUT     = _STAGING / "lens_patents_raw.json"
+_OUT_US_EP = _STAGING / "lens_patents_us_ep_raw.json"
+
+_LENS_PATENT_API = "https://api.lens.org/patent/search"
+_LENS_SCHOLARLY_API = "https://api.lens.org/scholarly/search"
+_TIMEOUT = 30.0
+_DEFAULT_LIMIT = 100  # per IPC code
+
+# 輸出管理関連 IPC コード（ECCN との対応が高い上位コード）
+# Phase 1: 初回取得済み（20コード）
+_TARGET_IPC_CODES_PHASE1 = [
+    "H01L",   # 半導体デバイス (3A001/3B001/3C001)
+    "H04L",   # デジタル通信 (5A001/5A002)
+    "H04K",   # 秘密通信・ジャミング (5A001)
+    "G01S",   # 位置・速度検出（ソナー/レーダー）(6A001/6A002)
+    "G01J",   # 光測定・赤外線 (6A002)
+    "G01C",   # 測定・航法 (7A001/7A002)
+    "G21C",   # 原子炉 (0A001/0C001)
+    "G21F",   # 放射線防護 (0A001)
+    "C06B",   # 爆発物・推進剤 (1C111)
+    "D01F",   # 化学繊維（炭素繊維）(1C010)
+    "B23B",   # 旋盤 (2B001)
+    "B24B",   # 研削 (2B001)
+    "B64C",   # 航空機 (9A610/9E001)
+    "B64G",   # 宇宙機 (9A004)
+    "F02K",   # ジェット推進 (9A001)
+    "H03F",   # 増幅器（マイクロ波/GaN）(3A001)
+    "H01Q",   # アンテナ (5A001)
+    "C23C",   # 金属被覆（半導体製造）(3B001)
+    "G06F",   # デジタル計算 (4A003)
+    "C01G",   # 核物質 (0C001)
+]
+
+# Phase 2: 拡張取得（30コード）— 未カバー/低カバレッジの重要 ECCN 対応
+_TARGET_IPC_CODES_PHASE2 = [
+    # ── Cat 0: 核・放射線 ──────────────────────────────────────────────────
+    "B04B",   # 遠心分離機（ウラン濃縮/同位体分離）(0B001/2B350)
+    "G21B",   # 核融合炉・プラズマ装置 (0E001)
+    "G21G",   # 放射性同位体変換・製造 (0C001/0C002)
+    "G21K",   # 放射線検出・利用（粒子加速器含む）(6A002/0B001)
+    "H05H",   # プラズマ・粒子加速器 (0B001/6A005)
+    # ── Cat 1: 特殊材料・化学・生物 ───────────────────────────────────────
+    "C30B",   # 単結晶育成（半導体・光学結晶）(1C003/3C001)
+    "H01F",   # 磁石・超伝導コイル (1C003/3A001)
+    "C07D",   # 複素環化合物/化学兵器前駆体 (1C350)
+    "C07K",   # ペプチド・タンパク質（毒素含む）(1C351)
+    "C12N",   # 微生物・遺伝子工学（生物剤）(1C351/1C352)
+    "C12M",   # バイオリアクター・細胞培養装置 (2B352)
+    "C08J",   # 高分子加工・複合材成形 (1A002/1C010)
+    "A62B",   # 呼吸保護・CBRN 防護装備 (1A004)
+    # ── Cat 2: 製造設備 ────────────────────────────────────────────────────
+    "B04C",   # サイクロン分離（化学製造設備）(2B350)
+    "H01J",   # 電子管・電子ビーム装置（半導体製造）(3B001/6A005)
+    # ── Cat 3: 電子機器 ────────────────────────────────────────────────────
+    "H01S",   # レーザー装置（固体/半導体/ガス）(6A005/3A001)
+    "G11C",   # 半導体メモリ・読み取り専用メモリ (3A001)
+    "H02M",   # 電力変換器・インバータ・電源 (3A001補完/高エネルギー)
+    # ── Cat 5: 通信・情報セキュリティ ─────────────────────────────────────
+    "H03L",   # 周波数制御・クロック (5A001/7A001)
+    "G08C",   # 遠隔制御・信号伝送システム (7D003)
+    # ── Cat 6: センサー・レーザー ──────────────────────────────────────────
+    "G02F",   # 電気光学・音響光学デバイス (6A002/6A005)
+    "H04R",   # 音響機器・ソナー・水中音響 (6A001)
+    "G10K",   # 水中音響・超音波発生・振動制御 (6A001)
+    "B06B",   # 超音波発生装置・変換器 (6A001)
+    # ── Cat 7: 航法・誘導 ─────────────────────────────────────────────────
+    "G04F",   # 精密時間計測・原子時計 (7A001/7A002)
+    # ── Cat 8: 海上機器 ───────────────────────────────────────────────────
+    "B63H",   # 船舶推進・動力システム (8A001/8A002)
+    "B63G",   # 水中ビークル・機雷対策装置 (8A002)
+    "B63C",   # 潜水機器・水中作業 (8A002)
+    # ── Cat 9: 宇宙・推進 ─────────────────────────────────────────────────
+    "B64U",   # 無人機（ドローン・UAV）(9A012)
+    "F03H",   # イオン推進・宇宙推進 (9A004)
+]
+
+# Phase 3: US + EP 全カバレッジ（Phase 1 + Phase 2 の全 50 コード）
+_TARGET_IPC_CODES_PHASE3 = _TARGET_IPC_CODES_PHASE1 + _TARGET_IPC_CODES_PHASE2
+
+# デフォルト: Phase 2 のみ（Phase 1 は取得済み）
+_TARGET_IPC_CODES = _TARGET_IPC_CODES_PHASE2
+
+
+def _get_api_key() -> str:
+    """環境変数から Lens.org API キーを取得する。"""
+    key = (
+        os.environ.get("LENS_PATENT_API_KEY") or
+        os.environ.get("LENS_ORG_API_KEY") or
+        os.environ.get("Scholarly_Works_API") or
+        ""
+    )
+    return key
+
+
+def _search_patents(
+    token: str,
+    ipc_prefix: str,
+    country_codes: list[str],
+    limit: int,
+    offset: int = 0,
+) -> dict:
+    """Lens.org Patent Search API で IPC コードで特許を検索する。"""
+    # IPC コード前方一致: query_string を全文検索として使用（field指定なし）
+    must_clauses: list[dict] = [
+        {"query_string": {"query": f"{ipc_prefix}*"}},
+    ]
+
+    # kind フィルター: 管轄によって kind コードが異なる
+    #   JP: "A"（出願公開）  US: "A1"/"A2"（出願公開）/"B1"/"B2"（登録）
+    #   EP: "A1"/"A2"（出願公開）  WO: "A1"（PCT公開）
+    is_jp_only = country_codes == ["JP"]
+    if is_jp_only:
+        must_clauses.append({"term": {"kind": "A"}})
+    else:
+        must_clauses.append({"terms": {"kind": ["A", "A1", "A2", "B1", "B2"]}})
+
+    # 国コードフィルター
+    filter_clauses: list[dict] = [
+        {"range": {"date_published": {"gte": "2015-01-01"}}},
+    ]
+    if country_codes:
+        filter_clauses.append({"terms": {"jurisdiction": country_codes}})
+
+    query: dict = {"bool": {"must": must_clauses, "filter": filter_clauses}}
+
+    payload = {
+        "query": query,
+        "size": min(limit, 100),
+        "from": offset,
+        "include": [
+            "lens_id",
+            "jurisdiction",
+            "doc_number",
+            "kind",
+            "date_published",
+            "abstract",
+            "biblio",
+        ],
+        "sort": [{"date_published": "desc"}],
+    }
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    resp = httpx.post(
+        _LENS_PATENT_API,
+        json=payload,
+        headers=headers,
+        timeout=_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def _normalize_patent(raw: dict, ipc_prefix: str) -> dict | None:
+    """Lens.org レスポンスを Layer B 統合形式に正規化する。"""
+    pub_no = raw.get("doc_number") or raw.get("lens_id", "")
+    if not pub_no:
+        return None
+
+    jurisdiction = raw.get("jurisdiction", "")
+    biblio = raw.get("biblio", {})
+
+    # タイトルを取得 biblio.invention_title: [{"text": "...", "lang": "ja"}]
+    title_list = biblio.get("invention_title", [])
+    if isinstance(title_list, list) and title_list:
+        title = next(
+            (t.get("text", "") for t in title_list if t.get("lang", "").lower() in ("ja", "en")),
+            title_list[0].get("text", "")
+        )
+    else:
+        title = ""
+
+    # アブストラクト abstract: [{"text": "...", "lang": "ja"}]（top-level）
+    abstract_list = raw.get("abstract", [])
+    if isinstance(abstract_list, list) and abstract_list:
+        abstract = next(
+            (a.get("text", "") for a in abstract_list if a.get("lang", "").lower() in ("ja", "en")),
+            abstract_list[0].get("text", "")
+        )
+    else:
+        abstract = ""
+
+    # IPC コード biblio.classifications_ipcr.classifications[].symbol
+    ipcr = biblio.get("classifications_ipcr", {}).get("classifications", [])
+    ipc_codes = ",".join(c.get("symbol", "") for c in ipcr if c.get("symbol"))
+
+    # CPC コード biblio.classifications_cpc.classifications[].symbol（EP/US特許に付与）
+    cpcr = biblio.get("classifications_cpc", {}).get("classifications", [])
+    cpc_codes = ",".join(c.get("symbol", "") for c in cpcr if c.get("symbol"))
+
+    filing_date = raw.get("date_published", "")
+
+    return {
+        "source_type":        "patent",
+        "source_name":        "lens_org",
+        "publication_number": pub_no,
+        "country_code":       jurisdiction,
+        "ipc_codes":          ipc_codes[:200],
+        "cpc_codes":          cpc_codes[:400],
+        "title":              title[:300],
+        "abstract":           abstract[:600],
+        "filing_date":        str(filing_date),
+        "fefta_items":        [],
+        "has_fefta_mapping":  False,
+        "_ipc_prefix_searched": ipc_prefix,
+    }
+
+
+def fetch(
+    ipc_list: list[str],
+    country_codes: list[str],
+    limit_per_ipc: int,
+    dry_run: bool,
+    output_path: Path | None = None,
+) -> None:
+    token = _get_api_key()
+    if not token:
+        logger.error(
+            "Lens.org API キーが未設定です。\n"
+            "  1. https://www.lens.org/lens/user/subscriptions でトークンを取得\n"
+            "  2. .env に LENS_PATENT_API_KEY=<token> を設定してください"
+        )
+        return
+
+    logger.info("Lens.org Patent API で特許取得開始")
+    logger.info("対象国: %s", country_codes or "全国")
+    logger.info("対象 IPC: %d コード", len(ipc_list))
+
+    if dry_run:
+        # API 接続テスト (1件だけ)
+        try:
+            result = _search_patents(token, ipc_list[0], country_codes, limit=1)
+            total = result.get("total", 0) if isinstance(result.get("total"), int) else result.get("total", {}).get("value", 0)
+            logger.info("[dry-run] IPC=%s → API 応答 OK (total=%d)", ipc_list[0], total)
+        except httpx.HTTPStatusError as e:
+            logger.error("API エラー HTTP %d: %s", e.response.status_code, e.response.text[:200])
+        return
+
+    all_patents: list[dict] = []
+    seen_pub_nos: set[str] = set()
+
+    for idx, ipc in enumerate(ipc_list, 1):
+        logger.info("[%d/%d] IPC=%s (limit=%d)", idx, len(ipc_list), ipc, limit_per_ipc)
+        try:
+            result = _search_patents(token, ipc, country_codes, limit=limit_per_ipc)
+            hits = result.get("data", [])
+            total = result.get("total", 0) if isinstance(result.get("total"), int) else result.get("total", {}).get("value", 0)
+            logger.info("  total=%d, fetched=%d", total, len(hits))
+
+            for raw in hits:
+                normalized = _normalize_patent(raw, ipc)
+                if normalized and normalized["publication_number"] not in seen_pub_nos:
+                    seen_pub_nos.add(normalized["publication_number"])
+                    all_patents.append(normalized)
+
+            time.sleep(6.5)  # Lens.org: 10 req/min → 6秒インターバル
+        except httpx.HTTPStatusError as e:
+            logger.warning("  IPC=%s: HTTP %d %s", ipc, e.response.status_code, e.response.text[:100])
+        except Exception as e:
+            logger.warning("  IPC=%s: %s", ipc, e)
+
+    logger.info("取得完了: %d件（重複除去後）", len(all_patents))
+
+    # IPC別・国別集計
+    ipc_counts: dict[str, int] = {}
+    country_counts: dict[str, int] = {}
+    for p in all_patents:
+        pfx = p.get("_ipc_prefix_searched", "?")
+        ipc_counts[pfx] = ipc_counts.get(pfx, 0) + 1
+        cc = p.get("country_code", "?")
+        country_counts[cc] = country_counts.get(cc, 0) + 1
+
+    logger.info("IPC別: %s", sorted(ipc_counts.items(), key=lambda x: -x[1])[:10])
+    logger.info("国別: %s", sorted(country_counts.items(), key=lambda x: -x[1])[:10])
+
+    _STAGING.mkdir(parents=True, exist_ok=True)
+    out = {
+        "total": len(all_patents),
+        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "source": "lens_org",
+        "ipc_list": ipc_list,
+        "country_codes": country_codes,
+        "ipc_counts": ipc_counts,
+        "country_counts": country_counts,
+        "patents": all_patents,
+    }
+    dest = output_path or _OUT
+    dest.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info("保存: %s (%d件)", dest, len(all_patents))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Lens.org Patent API から特許を取得して Layer B 統合用 JSON に保存"
+    )
+    parser.add_argument(
+        "--limit", type=int, default=_DEFAULT_LIMIT,
+        help=f"IPC コードあたり最大取得件数 (default: {_DEFAULT_LIMIT})"
+    )
+    parser.add_argument(
+        "--country", type=str, default="",
+        help="国コードをカンマ区切りで指定 (例: JP,US,EP)。未指定時は --phase に従う"
+    )
+    parser.add_argument(
+        "--ipc", type=str, default="",
+        help="IPC コードをカンマ区切りで指定 (未指定時は --phase に従う)"
+    )
+    parser.add_argument(
+        "--phase", type=int, default=2, choices=[1, 2, 3],
+        help=(
+            "取得フェーズ: 1=JP Phase1(20コード), 2=JP Phase2(30コード, default), "
+            "3=US+EP 全50コード → lens_patents_us_ep_raw.json"
+        ),
+    )
+    parser.add_argument(
+        "--output", type=str, default="",
+        help="出力ファイルパス (未指定時は phase に従い自動決定)"
+    )
+    parser.add_argument("--dry-run", action="store_true", help="接続テストのみ実行")
+    args = parser.parse_args()
+
+    # IPC リスト解決
+    if args.ipc:
+        ipc_list = [x.strip() for x in args.ipc.split(",") if x.strip()]
+    elif args.phase == 1:
+        ipc_list = _TARGET_IPC_CODES_PHASE1
+    elif args.phase == 3:
+        ipc_list = _TARGET_IPC_CODES_PHASE3
+    else:
+        ipc_list = _TARGET_IPC_CODES_PHASE2
+
+    # 国コード解決
+    if args.country:
+        country_codes = [x.strip() for x in args.country.split(",") if x.strip()]
+    elif args.phase == 3:
+        country_codes = ["US", "EP"]
+    else:
+        country_codes = ["JP"]
+
+    # 出力ファイル解決
+    if args.output:
+        output_path = Path(args.output)
+    elif args.phase == 3:
+        output_path = _OUT_US_EP
+    else:
+        output_path = _OUT
+
+    fetch(
+        ipc_list=ipc_list,
+        country_codes=country_codes,
+        limit_per_ipc=args.limit,
+        dry_run=args.dry_run,
+        output_path=output_path,
+    )

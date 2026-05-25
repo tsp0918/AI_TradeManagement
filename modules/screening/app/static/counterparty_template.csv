@@ -1,0 +1,4 @@
+name,country_code,aliases,registration_number,address,roles,is_end_user,is_consignee,end_use_note
+Huawei Technologies Co. Ltd.,CN,Huawei;HW Technologies,,Bantian Longgang Shenzhen China,customer,0,0,
+Samsung Electronics Co. Ltd.,KR,Samsung,,Samsung Digital City Suwon Korea,vendor,0,0,
+Example Corp.,US,,,123 Main St USA,customer;distributor,1,0,半導体製造用途

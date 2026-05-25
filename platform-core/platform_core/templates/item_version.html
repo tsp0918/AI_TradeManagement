@@ -208,7 +208,8 @@
         <div class="filter-bar">
           <input type="text" id="itemSearch" placeholder="品目名で検索..." oninput="loadItems()" style="width:240px;">
           <button class="btn btn-ghost" onclick="loadItems()">🔄 更新</button>
-          <button class="btn btn-primary" onclick="openErpSyncModal()" style="margin-left:auto;">🔗 ERP へ品目同期</button>
+          <button class="btn btn-ghost" onclick="openErpPullModal()" style="margin-left:auto;">📥 ERP から品目審査</button>
+          <button class="btn btn-primary" onclick="openErpSyncModal()">🔗 ERP へ品目同期</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -746,10 +747,164 @@ async function doErpSync() {
   }
 }
 
+// ── ERP プル型品目審査 ─────────────────────────────────────────────────────
+function openErpPullModal() {
+  document.getElementById('erpPullSingleResult').innerHTML = '';
+  document.getElementById('erpPullBatchResult').innerHTML = '';
+  document.getElementById('erpPullItemCode').value = '';
+  document.getElementById('erpPullOverlay').classList.add('open');
+  switchPullTab('single');
+}
+
+function switchPullTab(tab) {
+  document.getElementById('erpPullTabSingle').style.display = tab === 'single' ? '' : 'none';
+  document.getElementById('erpPullTabBatch').style.display  = tab === 'batch'  ? '' : 'none';
+  document.querySelectorAll('.pull-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+}
+
+async function doPullSingle() {
+  const code = document.getElementById('erpPullItemCode').value.trim();
+  if (!code) { alert('ERP 品目コードを入力してください'); return; }
+  const btn = document.getElementById('btnPullSingle');
+  const out = document.getElementById('erpPullSingleResult');
+  btn.disabled = true; btn.textContent = '審査中…';
+  out.innerHTML = '<p style="color:var(--muted)">ERP から取得中…</p>';
+  try {
+    const r = await fetch('/api/erp/pull/item-review', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ erp_item_code: code, reason: 'manual_review' }),
+    });
+    const d = await r.json();
+    const jColor = { APPLICABLE: 'var(--red)', NOT_APPLICABLE: 'var(--green)', PENDING: 'var(--yellow)' }[d.judgment] || 'var(--muted)';
+    const syncBadge = d.synced ? '<span style="color:var(--green)">✓ 同期済</span>' : '<span style="color:var(--yellow)">△ 同期失敗</span>';
+    const erpBadge = d.erp_reachable ? '' : '<span style="color:var(--red);margin-left:8px;">⚠ ERP 未接続</span>';
+    out.innerHTML = `
+      <div style="background:var(--surface2);border-radius:8px;padding:14px;margin-top:12px;">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+          <span style="font-weight:600;font-size:1rem;">${escHtml(code)}</span>
+          <span style="color:${jColor};font-weight:700;font-size:1.05rem;">${d.judgment}</span>
+          ${d.eccn ? `<span style="background:var(--blue)22;color:var(--blue);padding:2px 8px;border-radius:4px;font-size:.82rem;">ECCN: ${d.eccn}</span>` : ''}
+          ${syncBadge}${erpBadge}
+        </div>
+        ${d.rationale ? `<p style="color:var(--muted);font-size:.85rem;">${escHtml(d.rationale)}</p>` : ''}
+        ${d.item_data ? `<details style="margin-top:10px;"><summary style="cursor:pointer;color:var(--muted);font-size:.82rem;">ERP 取得データ</summary><pre style="font-size:.78rem;color:var(--muted);margin-top:6px;white-space:pre-wrap;">${escHtml(JSON.stringify(d.item_data, null, 2))}</pre></details>` : ''}
+      </div>`;
+    loadItems();
+  } catch(e) {
+    out.innerHTML = `<p style="color:var(--red)">エラー: ${e.message}</p>`;
+  } finally {
+    btn.disabled = false; btn.textContent = '審査実行';
+  }
+}
+
+async function doPullBatch() {
+  const limitEl = document.getElementById('erpPullBatchLimit');
+  const limit = parseInt(limitEl.value) || 100;
+  const btn = document.getElementById('btnPullBatch');
+  const out = document.getElementById('erpPullBatchResult');
+  btn.disabled = true; btn.textContent = '審査中…';
+  out.innerHTML = '<p style="color:var(--muted)">ERP から全対象品目を取得中…</p>';
+  try {
+    const r = await fetch('/api/erp/pull/items-batch-review', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ limit, reason: 'batch_periodic_review' }),
+    });
+    const d = await r.json();
+    const erpBadge = d.erp_reachable ? '' : '<p style="color:var(--yellow);margin-bottom:8px;">⚠ ERP に接続できませんでした（サンプルデータなし）</p>';
+    out.innerHTML = `${erpBadge}
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin:12px 0;">
+        <div style="background:var(--surface2);border-radius:8px;padding:12px 20px;text-align:center;">
+          <div style="font-size:1.5rem;font-weight:700;">${d.reviewed}</div><div style="color:var(--muted);font-size:.82rem;">審査件数</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:12px 20px;text-align:center;">
+          <div style="font-size:1.5rem;font-weight:700;color:var(--red);">${d.applicable}</div><div style="color:var(--muted);font-size:.82rem;">該当（要許可）</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:12px 20px;text-align:center;">
+          <div style="font-size:1.5rem;font-weight:700;color:var(--green);">${d.not_applicable}</div><div style="color:var(--muted);font-size:.82rem;">非該当</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:12px 20px;text-align:center;">
+          <div style="font-size:1.5rem;font-weight:700;color:var(--yellow);">${d.pending}</div><div style="color:var(--muted);font-size:.82rem;">審査待ち</div>
+        </div>
+      </div>
+      ${d.reviewed > 0 ? `
+      <div class="table-wrap" style="max-height:220px;overflow-y:auto;">
+        <table><thead><tr><th>品目コード</th><th>判定</th><th>ECCN</th><th>同期</th></tr></thead><tbody>
+        ${d.results.map(x => {
+          const jc = {APPLICABLE:'var(--red)',NOT_APPLICABLE:'var(--green)',PENDING:'var(--yellow)'}[x.judgment]||'var(--muted)';
+          return `<tr>
+            <td style="font-family:monospace;">${escHtml(x.erp_item_code)}</td>
+            <td style="color:${jc};font-weight:600;">${x.judgment}</td>
+            <td>${x.eccn||'—'}</td>
+            <td>${x.synced ? '✓' : '△'}</td>
+          </tr>`;
+        }).join('')}
+        </tbody></table>
+      </div>` : ''}`;
+    loadItems();
+  } catch(e) {
+    out.innerHTML = `<p style="color:var(--red)">エラー: ${e.message}</p>`;
+  } finally {
+    btn.disabled = false; btn.textContent = '一括審査実行';
+  }
+}
+
 // ── init ──────────────────────────────────────────────────────────────
 loadStats();
 loadEvents();
 </script>
+
+<!-- ── ERP プル型品目審査モーダル ── -->
+<div class="overlay" id="erpPullOverlay">
+  <div class="modal" style="width:700px;">
+    <h3>📥 ERP から品目取得・再審査</h3>
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:14px;">
+      ERP の最新品目マスターを取得し、FAISS Layer A で AI取引審査を実施します。<br>
+      判定結果は品目マスター (plat_item) と品目管理 DB に自動反映されます。
+    </p>
+    <!-- タブ -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px;">
+      <button class="pull-tab-btn btn btn-ghost active" data-tab="single"
+        onclick="switchPullTab('single')"
+        style="border-radius:6px 6px 0 0;border-bottom:2px solid var(--blue);margin-bottom:-1px;">単品審査</button>
+      <button class="pull-tab-btn btn btn-ghost" data-tab="batch"
+        onclick="switchPullTab('batch')"
+        style="border-radius:6px 6px 0 0;border-bottom:2px solid transparent;margin-bottom:-1px;">一括審査</button>
+    </div>
+    <!-- 単品 -->
+    <div id="erpPullTabSingle">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="erpPullItemCode" type="text" placeholder="ERP 品目コード（例: MAT-12345）"
+          style="flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border);
+                 background:var(--surface2);color:var(--text);font-size:.9rem;"
+          onkeydown="if(event.key==='Enter') doPullSingle()">
+        <button class="btn btn-primary" id="btnPullSingle" onclick="doPullSingle()">審査実行</button>
+      </div>
+      <div id="erpPullSingleResult"></div>
+    </div>
+    <!-- 一括 -->
+    <div id="erpPullTabBatch" style="display:none;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+        <label style="color:var(--muted);font-size:.88rem;">取得上限:</label>
+        <select id="erpPullBatchLimit"
+          style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">
+          <option value="50">50件</option>
+          <option value="100" selected>100件</option>
+          <option value="200">200件</option>
+          <option value="500">500件</option>
+        </select>
+        <button class="btn btn-primary" id="btnPullBatch" onclick="doPullBatch()" style="margin-left:auto;">一括審査実行</button>
+      </div>
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:8px;">
+        ERP の <code>GET /api/materials?export_review=true</code> から対象品目を一括取得し、<br>
+        全件を FAISS Layer A で判定して品目マスターに反映します。
+      </p>
+      <div id="erpPullBatchResult"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('erpPullOverlay')">閉じる</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── ERP 品目同期モーダル ── -->
 <div class="overlay" id="erpSyncOverlay">

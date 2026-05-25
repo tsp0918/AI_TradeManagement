@@ -63,7 +63,7 @@ _MODULE_MAP: dict[str, str] = {
 _WORKFLOW_STAGES: dict[str, str] = {
     "8003": "R&D審査",
     "8002": "品目管理",
-    "8011": "AI該非判定",
+    "8011": "AI取引審査",
     "8005": "スクリーニング",
     "8006": "HSコード判定",
     "8004": "特許調査",
@@ -120,12 +120,12 @@ _DEFAULT_CHOICES: dict[str, list[dict]] = {
     ],
     "8002": [
         {"label": "用途概要の書き方",  "message": "用途概要の入力例を教えてください"},
-        {"label": "AI判定を依頼",     "message": "AI該非判定を依頼するにはどうすればいいですか"},
+        {"label": "AI判定を依頼",     "message": "AI取引審査を依頼するにはどうすればいいですか"},
         {"label": "HS コードを確認",  "message": "HSコード判定の依頼方法を教えてください"},
     ],
     "8003": [
         {"label": "入力項目を確認",    "message": "入力必須項目を教えてください"},
-        {"label": "AI判定を実行",     "message": "AI該非判定を実行するにはどうすればいいですか"},
+        {"label": "AI判定を実行",     "message": "AI取引審査を実行するにはどうすればいいですか"},
         {"label": "審査フローを確認",  "message": "R&Dリスク管理の審査フローを教えてください"},
     ],
     "8004": [
@@ -159,25 +159,30 @@ class ChatConfigUpdate(BaseModel):
     prompt_supplement: str = ""
 
 
-# ── RAG: FAISS Layer A クエリ ──────────────────────────────────────────────────
+# ── RAG: 多層 FAISS + オントロジー クエリ ─────────────────────────────────────
 
 _RAG_TRIGGER_TERMS = frozenset([
     "ECCN", "外為法", "輸出令", "別表", "規制", "該非", "キャッチオール",
     "リスト規制", "EAR", "BIS", "みなし輸出", "技術的パラメータ", "数値閾値",
     "控制", "Wassenaar", "デュアルユース", "許可要件", "条件", "仕様",
+    "HS", "IPC", "特許", "技術", "核", "半導体", "暗号", "センサー",
 ])
+
+# ECCN / HS / IPC / F-term コードを検出する正規表現
+import re as _re
+_ECCN_PATTERN  = _re.compile(r'\b([0-9][A-E]\d{3}(?:\.\w+)*)\b', _re.IGNORECASE)
+_HS_PATTERN    = _re.compile(r'\b(\d{4}[\.\s]?\d{2})\b')
+_IPC_PATTERN   = _re.compile(r'\b([A-H]\d{2}[A-Z])\b')
+_FTERM_PATTERN = _re.compile(r'\b(\d[A-Z]\d{3})\b')   # 5F048, 3B001 等
 
 _RAG_MIN_SCORE = 0.60
 _RAG_TOP_K = 4
+_RAG_PATENT_TOP_K = 3
+_RAG_PAPER_TOP_K = 2
 
 
 async def _rag_layer_a(message: str) -> str:
-    """
-    メッセージに規制関連ワードが含まれる場合、platform-core の FAISS Layer A を検索し、
-    関連規制テキストのスニペットを返す。
-
-    返値は system prompt に注入する文字列（空の場合はスキップ）。
-    """
+    """Layer A（規制テキスト）RAG。規制関連語を含む場合に検索して返す。"""
     if not any(t in message for t in _RAG_TRIGGER_TERMS):
         return ""
 
@@ -192,9 +197,6 @@ async def _rag_layer_a(message: str) -> str:
         return ""
 
     hits = data.get("hits", [])
-    if not hits:
-        return ""
-
     lines = []
     for h in hits:
         if h.get("score", 0) < _RAG_MIN_SCORE:
@@ -206,8 +208,305 @@ async def _rag_layer_a(message: str) -> str:
 
     if not lines:
         return ""
+    return "【規制条文DB】\n" + "\n".join(lines[:3])
 
-    return "【関連規制データベース参照】\n" + "\n".join(lines[:3])
+
+async def _rag_ontology(message: str) -> str:
+    """
+    メッセージから ECCN / HS / IPC コードを抽出してオントロジーを検索し、
+    説明チェーン（分類根拠・外為法対応・エビデンス数）を返す。
+    """
+    # コード抽出
+    eccns = _ECCN_PATTERN.findall(message)
+    hs_codes = _HS_PATTERN.findall(message)
+    ipc_codes = _IPC_PATTERN.findall(message)
+
+    queries = []
+    for e in eccns[:2]:
+        queries.append(e.upper())
+    for h in hs_codes[:1]:
+        queries.append(h.replace(".", "").replace(" ", ""))
+    for i in ipc_codes[:1]:
+        queries.append(i.upper())
+
+    if not queries:
+        return ""
+
+    lines = []
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for q in queries:
+            try:
+                resp = await client.get(
+                    f"{_PLATFORM_URL}/api/ontology/lookup",
+                    params={"q": q, "top_k": 2},
+                )
+                if resp.status_code != 200:
+                    continue
+                d = resp.json()
+                chain = d.get("explanation_chain", [])
+                if chain:
+                    lines.append(f"[{q}]")
+                    lines.extend(f"  {c}" for c in chain[:5])
+            except Exception:
+                continue
+
+    if not lines:
+        return ""
+    return "【オントロジー分類根拠】\n" + "\n".join(lines)
+
+
+async def _rag_layer_b(message: str, eccns: list[str] | None = None) -> str:
+    """
+    Layer B（特許）RAG。ECCN タグまたはメッセージ内容で関連特許を検索。
+    技術的根拠・先行技術として提示する。
+    """
+    if not any(t in message for t in _RAG_TRIGGER_TERMS):
+        return ""
+
+    url = f"{_PLATFORM_URL}/api/faiss/search/layer-b"
+    q = message[:200]
+    if eccns:
+        q = f"{' '.join(eccns[:2])} {q}"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, params={"q": q, "top_k": _RAG_PATENT_TOP_K})
+        if resp.status_code != 200:
+            return ""
+        data = resp.json()
+    except Exception:
+        return ""
+
+    hits = data.get("hits", [])
+    lines = []
+    for h in hits:
+        if h.get("score", 0) < _RAG_MIN_SCORE:
+            continue
+        pub_no = h.get("publication_number", "")
+        title  = h.get("title", "")[:60]
+        eccn_tags = h.get("eccn_tags", [])[:2]
+        tag_str = f" [{','.join(eccn_tags)}]" if eccn_tags else ""
+        lines.append(f"・{pub_no}{tag_str}: {title}")
+
+    if not lines:
+        return ""
+    return "【関連特許DB（技術根拠）】\n" + "\n".join(lines)
+
+
+async def _rag_layer_d(message: str, eccns: list[str] | None = None) -> str:
+    """
+    Layer D（学術論文）RAG。技術動向・最新研究を根拠として提示する。
+    """
+    if not any(t in message for t in _RAG_TRIGGER_TERMS):
+        return ""
+
+    url = f"{_PLATFORM_URL}/api/faiss/search/layer-d"
+    q = message[:200]
+    eccn_filter = ",".join(eccns[:2]) if eccns else None
+    params: dict = {"q": q, "top_k": _RAG_PAPER_TOP_K}
+    if eccn_filter:
+        params["eccn"] = eccn_filter
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, params=params)
+        if resp.status_code != 200:
+            return ""
+        data = resp.json()
+    except Exception:
+        return ""
+
+    hits = data.get("hits", [])
+    lines = []
+    for h in hits:
+        if h.get("score", 0) < _RAG_MIN_SCORE:
+            continue
+        title = h.get("title", "")[:60]
+        year  = h.get("year", "")
+        cites = h.get("citation_count", 0)
+        lines.append(f"・{title}（{year}年, 引用{cites}回）")
+
+    if not lines:
+        return ""
+    return "【関連学術論文DB（技術動向）】\n" + "\n".join(lines)
+
+
+async def _rag_fterm(message: str, eccns: list[str]) -> str:
+    """
+    F-term コード検出 + F-term → ECCN 逆引きコンテキスト注入。
+    - メッセージ中の F-term コード（5F048, G21C 等）を検出
+    - 検出 ECCN に対応する F-term（特許分類）を提示
+    """
+    fterms_in_msg = [f.upper() for f in _FTERM_PATTERN.findall(message)]
+    ipc_in_msg = [i.upper() for i in _IPC_PATTERN.findall(message)]
+
+    # F-term がメッセージにあれば → それに対応する ECCN を取得
+    lines = []
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for ft in fterms_in_msg[:2]:
+            try:
+                resp = await client.get(
+                    f"{_PLATFORM_URL}/api/ontology/neighbors",
+                    params={"node": f"FTERM:{ft}", "depth": 1, "edge_types": "fterm_to_eccn"},
+                )
+                if resp.status_code != 200:
+                    continue
+                data = resp.json()
+                eccn_nbrs = [n for n in data.get("neighbors", []) if n["node_type"] == "ECCN"]
+                if eccn_nbrs:
+                    eccn_str = " / ".join(
+                        f"{n['label']}（{n.get('label_ja', n.get('label_en', ''))[:30]}）"
+                        for n in eccn_nbrs[:3]
+                    )
+                    lines.append(f"・F-term {ft} → 関連ECCN: {eccn_str}")
+            except Exception:
+                continue
+
+        # 検出 ECCN に紐づく F-term を提示（特許分類の参考情報）
+        for eccn in eccns[:2]:
+            try:
+                resp = await client.get(
+                    f"{_PLATFORM_URL}/api/ontology/neighbors",
+                    params={"node": f"ECCN:{eccn}", "depth": 1, "edge_types": "fterm_to_eccn"},
+                )
+                if resp.status_code != 200:
+                    continue
+                data = resp.json()
+                ft_nbrs = [n for n in data.get("neighbors", []) if n["node_type"] == "FTERM"]
+                if ft_nbrs:
+                    ft_str = " / ".join(n["label"] for n in ft_nbrs[:6])
+                    lines.append(f"・ECCN {eccn} 関連F-term（特許分類）: {ft_str}")
+            except Exception:
+                continue
+
+    if not lines:
+        return ""
+    return "【特許F-term分類（JPO）】\n" + "\n".join(lines)
+
+
+async def _rag_graph_context(message: str, eccns: list[str]) -> str:
+    """
+    NetworkX グラフ近傍: 検出 ECCN に接続する HS・IPC・FEFTA ノードをまとめて提示。
+    _rag_ontology の補完として、グラフ的な接続関係を簡潔に示す。
+    """
+    if not eccns:
+        return ""
+
+    lines = []
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for eccn in eccns[:2]:
+            try:
+                resp = await client.get(
+                    f"{_PLATFORM_URL}/api/ontology/neighbors",
+                    params={"node": f"ECCN:{eccn}", "depth": 1},
+                )
+                if resp.status_code != 200:
+                    continue
+                data = resp.json()
+                nbrs = data.get("neighbors", [])
+
+                fefta = [n for n in nbrs if n["node_type"] == "FEFTA"]
+                hs    = [n for n in nbrs if n["node_type"] == "HS"]
+                ipc   = [n for n in nbrs if n["node_type"] == "IPC"]
+
+                parts = []
+                if fefta:
+                    fefta_str = " / ".join(
+                        f"第{n['label']}項({n.get('label_ja','')[:6]})" for n in fefta[:4]
+                    )
+                    parts.append(f"外為法別表: {fefta_str}")
+                if ipc:
+                    ipc_str = " / ".join(n["label"] for n in ipc[:4])
+                    parts.append(f"IPC: {ipc_str}")
+                if hs:
+                    parts.append(f"関連HSコード: {len(hs)}件")
+                if parts:
+                    lines.append(f"・ECCN {eccn}: " + " | ".join(parts))
+            except Exception:
+                continue
+
+    if not lines:
+        return ""
+    return "【オントロジーグラフ接続関係】\n" + "\n".join(lines)
+
+
+async def _rag_country_control(message: str, eccns: list[str]) -> str:
+    """
+    メッセージから仕向国を検出し、ECCN × 仕向国のライセンス要否をRAGコンテキストに注入する。
+    """
+    if not eccns:
+        return ""
+
+    # 国名検出（簡易）
+    msg_lower = message.lower()
+    detected_country = None
+    for name, iso in _COUNTRY_NAME_TO_ISO.items():
+        if name.lower() in msg_lower:
+            detected_country = iso
+            break
+    # ISO コード直接検出
+    if not detected_country:
+        import re as _re
+        m = _re.search(r'\b(CN|US|JP|KR|TW|RU|KP|IR|SY|IN|DE|FR|GB|AU)\b', message.upper())
+        if m:
+            detected_country = m.group(1)
+
+    if not detected_country:
+        return ""
+
+    lines = []
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for eccn in eccns[:2]:
+            try:
+                resp = await client.get(
+                    f"{_PLATFORM_URL}/api/ontology/license-check",
+                    params={"eccn": eccn, "country": detected_country},
+                )
+                if resp.status_code != 200:
+                    continue
+                d = resp.json()
+                verdict = d.get("verdict", "")
+                verdict_label = d.get("verdict_label", "")
+                country_name = d.get("country_name_ja", detected_country)
+                cg = d.get("country_group", "")
+                fefta = d.get("fefta_zone", "")
+                lines.append(
+                    f"・ECCN {eccn} × {country_name}({detected_country}): "
+                    f"{verdict_label} [Group {cg} / {fefta}]"
+                )
+            except Exception:
+                continue
+
+    if not lines:
+        return ""
+    return "【Country Control ライセンス要否】\n" + "\n".join(lines)
+
+
+async def _rag_multilayer(message: str) -> str:
+    """
+    多層 RAG（7レイヤー）:
+      Layer A（規制） + オントロジー分類 + Country Control + F-term分類 +
+      グラフ接続関係 + Layer B（特許） + Layer D（論文）を並列に検索し統合。
+    """
+    import asyncio
+    eccns_found = [e.upper() for e in _ECCN_PATTERN.findall(message)]
+
+    layer_a_task    = asyncio.create_task(_rag_layer_a(message))
+    ontology_task   = asyncio.create_task(_rag_ontology(message))
+    country_task    = asyncio.create_task(_rag_country_control(message, eccns_found))
+    fterm_task      = asyncio.create_task(_rag_fterm(message, eccns_found))
+    graph_task      = asyncio.create_task(_rag_graph_context(message, eccns_found))
+    layer_b_task    = asyncio.create_task(_rag_layer_b(message, eccns_found))
+    layer_d_task    = asyncio.create_task(_rag_layer_d(message, eccns_found))
+
+    results = await asyncio.gather(
+        layer_a_task, ontology_task, country_task, fterm_task,
+        graph_task, layer_b_task, layer_d_task,
+        return_exceptions=True,
+    )
+
+    blocks = [r for r in results if isinstance(r, str) and r.strip()]
+    if not blocks:
+        return ""
+    return "\n\n".join(blocks)
 
 
 # ── User Persona Tracking ─────────────────────────────────────────────────────
@@ -542,7 +841,7 @@ def _build_intake_system_prompt(intake: dict) -> str:
 【action_plan の構成（完了時）】
 実行予定のシステムアクションをリストで提示し、ユーザーの確認を求める。例:
   「では以下を実行します。よろしいですか？
-   1. AI該非判定に案件を新規作成（品目・用途・取引先を自動入力）
+   1. AI取引審査に案件を新規作成（品目・用途・取引先を自動入力）
    2. 取引先スクリーニングを実行（OFAC/BIS/METI照合）
    3. AI判定パイプラインを起動（外為法マトリクス照合）」
 
@@ -786,9 +1085,13 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 
     task_block = f"\n【進行中のタスク】\n{current_task}" if current_task else ""
 
-    # RAG context from Layer A FAISS (injected by chat() when regulation terms detected)
+    # RAG context from multilayer FAISS + ontology (injected by chat() when regulation terms detected)
     rag_block = ctx.get("_rag_context", "")
-    rag_section = f"\n\n{rag_block}" if rag_block else ""
+    rag_section = (
+        f"\n\n【規制・技術知識ベース（参照情報）】\n"
+        f"以下は関連する規制条文・分類根拠・特許・論文の要約です。回答の根拠として活用してください:\n"
+        f"{rag_block}"
+    ) if rag_block else ""
 
     return f"""あなたは輸出管理コンプライアンス業務の AI アシスタントです。
 ユーザーが今この画面で何をしようとしているかを理解し、業務フローの文脈に沿って行動まで完結させてください。
@@ -803,10 +1106,10 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 
 2. 品目管理（{_PORTAL_MODULE_URLS['ai_classification']}）
    輸出品目の登録・分類・AI判定依頼
-   フロー: 品目登録（品目コード・名称・仕様）→ 用途概要入力 → HSコード判定（8006連携）→ AI該非判定を依頼
+   フロー: 品目登録（品目コード・名称・仕様）→ 用途概要入力 → HSコード判定（8006連携）→ AI取引審査を依頼
    注意: 用途概要が不十分だと AI 判定の精度が落ちる。工程/装置/性能/最終使用地の4要素を含めること
 
-3. AI 該非判定（{_PORTAL_MODULE_URLS['ai_validation']}）
+3. AI取引審査（{_PORTAL_MODULE_URLS['ai_validation']}）
    外為法マトリクス照合・案件審査
    フロー: 案件作成 → スクリーニング実行（screening連携）→ AI判定実行 → 結果確認 → CSV/PDF出力
    結果の読み方: intersection=要注意(黄)、core_only=直接リストヒット(青)、expanded_only=低リスク(灰)
@@ -916,7 +1219,7 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 【行動指針】
 - ユーザーの発言から「最終的にやりたいこと」を推測し、そのゴールへの最短経路を案内する
 - 現在のページにない機能が必要な場合は、必ず actions に {{"type": "navigate_to", "url": "<ポータルURL>"}} を含める。reply にURLを書くだけでは不十分（ユーザーが手動で移動できない）
-- navigate_to の url は必ず http://localhost:8000/proxy/<モジュールキー>/ 形式のポータルURL を使う。http://localhost:80XX などの直接ポートURLは絶対に使わない
+- navigate_to の url は必ず {_PLATFORM_URL}/proxy/<モジュールキー>/ 形式のポータルURL を使う。http://localhost:80XX などの直接ポートURLは絶対に使わない
 - choices は「今すぐ次にやること」を反映させる。汎用的な質問より、ユーザーのタスクの次ステップを優先する
 - interactive_elements に該当するボタン/リンクがあれば必ず actions に含める
 - 規制に関する質問には上記インテリジェンス情報を活用して参考情報を提供する
@@ -941,44 +1244,46 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 例4: R&D画面、ユーザー「品目管理に登録したい」、プロファイルにAI判定結果あり
   reply: AI審査が完了していれば「品目管理へ登録」ボタンでワンクリック登録できます。登録後は品目管理モジュールで品目の詳細を確認できます。
   actions: [{{"type": "highlight", "target": "品目管理へ登録"}}]
-  choices: [{{"label": "品目管理に移動", "message": "品目管理（8002）でやること一覧を教えてください"}}, {{"label": "登録後の流れ", "message": "品目管理登録後にAI該非判定を依頼するにはどうしますか"}}]
+  choices: [{{"label": "品目管理に移動", "message": "品目管理（8002）でやること一覧を教えてください"}}, {{"label": "登録後の流れ", "message": "品目管理登録後にAI取引審査を依頼するにはどうしますか"}}]
 
 例5: DAP画面、ユーザー「スクリーニングしたい」、interactive_elements に該当なし
   reply: スクリーニングはスクリーニングモジュールで実行できます。移動しますか？
-  actions: [{{"type": "navigate_to", "url": "http://localhost:8000/proxy/screening/"}}]
+  actions: [{{"type": "navigate_to", "url": "{_PLATFORM_URL}/proxy/screening/"}}]
   choices: [{{"label": "移動する", "message": "スクリーニングモジュールに移動してください"}}, {{"label": "スクリーニングとは", "message": "スクリーニングの手順を教えてください"}}]
 
 例6: DAP画面、ユーザー「AI分類画面に行きたい」
   reply: AI分類モジュールに移動します。
-  actions: [{{"type": "navigate_to", "url": "http://localhost:8000/proxy/ai_classification/"}}]
+  actions: [{{"type": "navigate_to", "url": "{_PLATFORM_URL}/proxy/ai_classification/"}}]
   choices: [{{"label": "AI分類の手順", "message": "AI分類の手順を教えてください"}}, {{"label": "戻り方", "message": "DAPに戻るにはどうしますか"}}]
 
 【NeuroSymbolic 該非判定エージェント（重要機能）】
-- ユーザーが「該非判定エージェント」「NeuroSymbolicエージェント」「対話形式の判定」「AI質問形式で判定」などと言った場合は、
-  actions に {{"type": "start_agent", "target": "", "initial_query": "<品目の説明>", "transaction_id": <番号またはnull>}} を含める
-- initial_query には品目名・仕様・用途などユーザーが述べた情報をそのまま渡す
+- ユーザーが以下のような意図を示した場合、actions に {{"type": "start_agent", ...}} を含める:
+  「該非判定したい」「規制対象か確認したい」「輸出できるか確認したい」「外為法に引っかかるか」
+  「NeuroSymbolicエージェント」「対話形式で判定」「AI質問形式で判定」など
+- initial_query にはユーザーが述べた品目・仕様・取引に関する情報をそのまま渡す（日本語可）
 - transaction_id はコンテキストから判断できる場合のみ数値で設定（不明な場合は省略）
-- start_agent を含む場合、reply はエージェント起動の説明（「NeuroSymbolicエージェントを起動します。対話形式で外為法・EAR該非判定を行います」など）にする
-- エージェントが起動すると、以降の返答は直接エージェントから来る（Claude を通さない）
+- start_agent を含む場合の reply は「これから〇〇について確認していきます」という自然な誘導文にする
+- エージェントが起動すると、以降の返答はシステムが生成し、ユーザーは自由に日本語・英語で回答できる
+- ユーザーが明示的な専門用語（"civilian"等）を知らなくても構わない。システムが自動的に解釈する
 
 【ユースケース別ナビゲーションガイド — 業務完結まで伴走する】
 
 ユーザーが「〇〇したい」「〇〇のやり方を教えて」と言ったとき、以下の対応するUCとステップを案内する。
 navigate_to と highlight を組み合わせ、次にすべき操作を1ステップずつ誘導すること。
 
-UC1: 新規品目の輸出審査（品目登録 → HS判定 → 制裁照合 → AI該非判定）
+UC1: 新規品目の輸出審査（品目登録 → HS判定 → 制裁照合 → AI取引審査）
   Step1: 「業務フロー → 品目管理 → 新規登録」で品目名・型番・仕様を入力
-    navigate_to: http://localhost:8000/proxy/ai_classification/products
+    navigate_to: {_PLATFORM_URL}/proxy/ai_classification/products
   Step2: 品目詳細の「HSコード判定」ボタンで AI が上位5候補を提示 → 選択して「反映」
     highlight: HSコード判定
   Step3: 「業務フロー → 取引先スクリーニング → 一括照合」で取引先名を制裁照合
-    navigate_to: http://localhost:8000/proxy/screening/ui/batch
-  Step4: 「業務フロー → AI該非判定 → 新規審査」で取引を作成し判定実行
-    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions/new
+    navigate_to: {_PLATFORM_URL}/proxy/screening/ui/batch
+  Step4: 「業務フロー → AI取引審査 → 新規審査」で取引を作成し判定実行
+    navigate_to: {_PLATFORM_URL}/proxy/ai_validation/ui/transactions/new
 
 UC2: R&D起案→品目登録（プロジェクト起案 → AIリスク評価 → 知財審査 → 品目登録）
   Step1: 「業務フロー → R&Dリスク評価 → 新規プロジェクト」でプロジェクト作成
-    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/cases/new
+    navigate_to: {_PLATFORM_URL}/proxy/rnd_assessment/ui/cases/new
   Step2: 3テンプレート（使用用途・需要者・開示）を入力してスコアリング確認
     highlight: プロファイル入力
   Step3: Explainabilityで開示戦略・セキュリティポスチャを確認（80点以上は即エスカレーション）
@@ -989,69 +1294,69 @@ UC2: R&D起案→品目登録（プロジェクト起案 → AIリスク評価 �
 
 UC3: 海外品目マスター管理・国別規制プロファイル（品目確認 → 国別設定 → FTA確認 → レジーム照合）
   Step1: 「品目管理」で対象品目のHS/ECCN・仕様を確認
-    navigate_to: http://localhost:8000/proxy/ai_classification/products
+    navigate_to: {_PLATFORM_URL}/proxy/ai_classification/products
   Step2: 品目詳細の「国別タブ」で仕向地国ごとにローカルECCN・輸出許可要否を設定
     highlight: 国別規制プロファイル
   Step3: 「EPA/FTA特恵税率チェック」でHSコード×仕向地で最優遇税率を照会
-    navigate_to: http://localhost:8000/ui/fta-check
-  Step4: グローバル規制レジーム照合（ITAR/USML・EU Dual-Use・Wassenaar・NSG）をAI該非判定から確認
-    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions
+    navigate_to: {_PLATFORM_URL}/ui/fta-check
+  Step4: グローバル規制レジーム照合（ITAR/USML・EU Dual-Use・Wassenaar・NSG）をAI取引審査から確認
+    navigate_to: {_PLATFORM_URL}/proxy/ai_validation/ui/transactions
   Step5: サプライヤーポータルで原産地証明・De Minimis比率を確認
-    navigate_to: http://localhost:8000/ui/supply-chain
+    navigate_to: {_PLATFORM_URL}/ui/supply-chain
 
 UC7: BOM管理・De Minimis算出（申告作成 → BOMツリー → De Minimis算出 → FDPR判定）
   Step1: 「サプライチェーン管理」でサプライヤー申告を作成してポータルURLをサプライヤーへ送付
-    navigate_to: http://localhost:8000/ui/supply-chain
+    navigate_to: {_PLATFORM_URL}/ui/supply-chain
   Step2: 提出書類受領後にBOMツリーで品目ごとの原産国・価値比率を確認
     highlight: BOMツリー
   Step3: De Minimis比率を確認（一般規制対象国: 25%超でEAR適用、テロ支援国: 10%閾値）
     highlight: De Minimis
-  Step4: FDPR（外国直接製品ルール）フラグをAI該非判定案件のサプライチェーンリンクに保存
-    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions
+  Step4: FDPR（外国直接製品ルール）フラグをAI取引審査案件のサプライチェーンリンクに保存
+    navigate_to: {_PLATFORM_URL}/proxy/ai_validation/ui/transactions
 
 UC8: 出荷ライセンス管理（許可証確認 → 条件一致確認 → 価値控除 → 証跡保存）
   Step1: 「輸出許可申請」で該当ライセンスの残存許可額・有効期限を確認
-    navigate_to: http://localhost:8000/ui/export-license
+    navigate_to: {_PLATFORM_URL}/ui/export-license
   Step2: 出荷品目・仕向地・需要者・用途が許可証条件と一致しているか4要素確認
     highlight: 条件確認
   Step3: 出荷のたびに「価値控除」フォームで出荷額を入力し残存許可額を更新
     highlight: 価値控除
   Step4: インボイス・B/L番号を案件詳細に添付して証跡保存（外為法7年・EAR5年保存）
-    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions
+    navigate_to: {_PLATFORM_URL}/proxy/ai_validation/ui/transactions
   Step5: 残存許可額20%以下・期限30日以内のアラートをダッシュボードで確認して再申請判断
-    navigate_to: http://localhost:8000/dashboard
+    navigate_to: {_PLATFORM_URL}/dashboard
 
 UC4: 取引先デューデリジェンス（制裁照合 → 与信スコア → 進捗記録）
   Step1: 「業務フロー → 取引先スクリーニング → 一括照合」で7ソース照合
-    navigate_to: http://localhost:8000/proxy/screening/ui/batch
+    navigate_to: {_PLATFORM_URL}/proxy/screening/ui/batch
   Step2: 「専門ツール → 与信管理」で財務・統合スコアを確認
-    navigate_to: http://localhost:8000/ui/counterparty
+    navigate_to: {_PLATFORM_URL}/ui/counterparty
   Step3: 「受注後ERP → コンプライアンス進捗」に結果を記録
-    navigate_to: http://localhost:8000/ui/compliance-lookup
+    navigate_to: {_PLATFORM_URL}/ui/compliance-lookup
 
 UC5: みなし輸出審査（人物スクリーニング → 申請 → 経済安保チェック → 台帳記録）
   Step1: 「R&Dリスク評価 → 人物管理」で外国籍研究者を登録・スクリーニング
-    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/personnel
+    navigate_to: {_PLATFORM_URL}/proxy/rnd_assessment/ui/personnel
   Step2: 「業務フロー → 役務取引管理 → みなし輸出申請」で申請を作成
-    navigate_to: http://localhost:8000/proxy/ai_validation/ui/services
+    navigate_to: {_PLATFORM_URL}/proxy/ai_validation/ui/services
   Step3: 「専門ツール → 経済安保法チェック」でICP自己診断8要素を確認
-    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/icp-diagnosis
+    navigate_to: {_PLATFORM_URL}/proxy/rnd_assessment/ui/icp-diagnosis
 
 UC6: 輸出許可申請（REQUIRES_PERMIT取引 → ドラフト生成 → 価値消費管理）
-  Step1: AI該非判定で REQUIRES_PERMIT と判定された取引詳細の「輸出許可申請ドラフト生成」ボタン
+  Step1: AI取引審査で REQUIRES_PERMIT と判定された取引詳細の「輸出許可申請ドラフト生成」ボタン
     highlight: 輸出許可申請ドラフト生成
   Step2: 「受注後ERP → 輸出許可申請」で申請を管理（申請番号自動採番）
-    navigate_to: http://localhost:8000/ui/export-license
+    navigate_to: {_PLATFORM_URL}/ui/export-license
   Step3: 出荷のたびに「価値控除」フォームで残存許可額を更新
     highlight: 価値控除
 
 UC9: 技術インテリジェンス調査（特許検索 → 制裁照合 → 学術論文 → R&Dリンク）
   Step1: 「専門ツール → 特許検索」でキーワード・CPC分類で検索
-    navigate_to: http://localhost:8000/proxy/patent_search/
+    navigate_to: {_PLATFORM_URL}/proxy/patent_search/
   Step2: 検索結果の発明者・出願人に「制裁照合」ボタンで照合
     highlight: 制裁照合
   Step3: 「R&Dリスク評価 → 技術インテリジェンス」で学術論文類似度を確認
-    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/academic-intel
+    navigate_to: {_PLATFORM_URL}/proxy/rnd_assessment/ui/academic-intel
 
 【よくある質問と回答（DAP即答ガイド）】
 
@@ -1071,7 +1376,7 @@ Q: ECCN番号の調べ方は？
 A: まず品目管理のHSコード判定でHSコードを特定し、HS→ECCNマッピングから候補を取得してください。それでも不明な場合は米国メーカーへのCCATS申請または経済産業省への相談が必要です。
 
 Q: De Minimis 25%超えはどうすれば？
-A: 一般的な規制対象国向けは25%超でEARが外国製品にも適用されます（FDPルール）。AI該非判定で再審査し、REQUIRES_PERMITなら輸出許可申請（UC6）が必要です。テロ支援国（KP/IR/SY等）は10%が閾値です。
+A: 一般的な規制対象国向けは25%超でEARが外国製品にも適用されます（FDPルール）。AI取引審査で再審査し、REQUIRES_PERMITなら輸出許可申請（UC6）が必要です。テロ支援国（KP/IR/SY等）は10%が閾値です。
 
 Q: 審査記録の保存期間は？
 A: 外為法では7年間（施行令）、米国EARでは5年間（15 CFR §762）の記録保持が必要です。本プラットフォームの審査結果はすべてデータベースに保存されています。
@@ -1095,12 +1400,14 @@ Q: BOM管理でサプライヤーから情報が取れない場合は？
 A: サプライヤーポータルのURL発行機能（UC7 Step1）でサプライヤーに申告書提出を依頼できます。提出期限を設定して催促することも重要です。情報が取得できない場合は「最悪ケース仮定」（全て規制対象と仮定）でDe Minimisを計算し、リスクが高ければ代替部品の調達を検討してください。
 
 【NeuroSymbolic 該非判定エージェント（重要機能）】
-- ユーザーが「該非判定エージェント」「NeuroSymbolicエージェント」「対話形式の判定」「AI質問形式で判定」などと言った場合は、
-  actions に {{"type": "start_agent", "target": "", "initial_query": "<品目の説明>", "transaction_id": <番号またはnull>}} を含める
-- initial_query には品目名・仕様・用途などユーザーが述べた情報をそのまま渡す
+- ユーザーが以下のような意図を示した場合、actions に {{"type": "start_agent", ...}} を含める:
+  「該非判定したい」「規制対象か確認したい」「輸出できるか確認したい」「外為法に引っかかるか」
+  「NeuroSymbolicエージェント」「対話形式で判定」「AI質問形式で判定」など
+- initial_query にはユーザーが述べた品目・仕様・取引に関する情報をそのまま渡す（日本語可）
 - transaction_id はコンテキストから判断できる場合のみ数値で設定（不明な場合は省略）
-- start_agent を含む場合、reply はエージェント起動の説明（「NeuroSymbolicエージェントを起動します。対話形式で外為法・EAR該非判定を行います」など）にする
-- エージェントが起動すると、以降の返答は直接エージェントから来る（Claude を通さない）
+- start_agent を含む場合の reply は「これから〇〇について確認していきます」という自然な誘導文にする
+- エージェントが起動すると、以降の返答はシステムが生成し、ユーザーは自由に日本語・英語で回答できる
+- ユーザーが明示的な専門用語（"civilian"等）を知らなくても構わない。システムが自動的に解釈する
 
 【ルール】
 - reply: マークダウン禁止（**や# など使わない）。100字以内の口語体日本語。
@@ -1147,30 +1454,212 @@ async def _start_agent_session(initial_query: str, transaction_id: Optional[int]
         return resp.json()
 
 
-def _format_agent_turn(agent_resp: dict) -> tuple[str, list[dict]]:
+# 国名 → ISO 2文字コード 簡易辞書
+_COUNTRY_NAME_TO_ISO: dict[str, str] = {
+    "日本": "JP", "japan": "JP", "アメリカ": "US", "米国": "US", "アメリカ合衆国": "US",
+    "united states": "US", "usa": "US", "us": "US", "中国": "CN", "china": "CN",
+    "韓国": "KR", "south korea": "KR", "korea": "KR", "台湾": "TW", "taiwan": "TW",
+    "ドイツ": "DE", "germany": "DE", "フランス": "FR", "france": "FR",
+    "イギリス": "GB", "英国": "GB", "uk": "GB", "united kingdom": "GB",
+    "ロシア": "RU", "russia": "RU", "北朝鮮": "KP", "north korea": "KP",
+    "イラン": "IR", "iran": "IR", "シリア": "SY", "syria": "SY",
+    "インド": "IN", "india": "IN", "シンガポール": "SG", "singapore": "SG",
+    "タイ": "TH", "thailand": "TH", "インドネシア": "ID", "indonesia": "ID",
+    "マレーシア": "MY", "malaysia": "MY", "ベトナム": "VN", "vietnam": "VN",
+    "オーストラリア": "AU", "australia": "AU", "カナダ": "CA", "canada": "CA",
+    "UAE": "AE", "アラブ首長国連邦": "AE", "サウジアラビア": "SA", "saudi arabia": "SA",
+    "パキスタン": "PK", "pakistan": "PK", "ベラルーシ": "BY", "belarus": "BY",
+}
+
+
+async def _extract_attr_value(
+    user_message: str,
+    missing_attr: dict,
+    client: "anthropic.Anthropic",
+) -> str:
     """
-    agent API レスポンスをチャット用 reply + choices に変換する。
+    ユーザーの自然言語回答から属性値を抽出し、エージェントAPIが受け取れる形式に正規化する。
+    抽出失敗時は "unknown" を返す。
+    """
+    attr_key = missing_attr.get("attr_key", "")
+    label = missing_attr.get("label", "")
+    unit = missing_attr.get("unit", "")
+    example = missing_attr.get("example", "")
+
+    # 国名コード変換（ローカル辞書で先に試みる）
+    if attr_key == "destination_country":
+        msg_lower = user_message.strip().lower()
+        # 2文字大文字コードが直接入力された場合
+        import re as _re
+        iso_match = _re.search(r'\b([A-Z]{2})\b', user_message.upper())
+        for key, iso in _COUNTRY_NAME_TO_ISO.items():
+            if key.lower() in msg_lower:
+                return iso
+        if iso_match:
+            return iso_match.group(1)
+
+    # 数値属性: 単純なパース
+    if unit:
+        import re as _re
+        nums = _re.findall(r'[\d]+\.?[\d]*', user_message.replace(",", ""))
+        if nums:
+            return nums[0]
+
+    # LLM による抽出（Haiku - 低コスト）
+    # 属性ごとの有効値ヒント
+    _valid_hints: dict[str, str] = {
+        "end_use_type": "civilian(民生用), military(軍事用), weapons(武器), dual_use_military(デュアルユース), research(研究), government(政府), unknown(不明)",
+        "end_user_type": "commercial(民間企業), military_org(軍事組織), government(政府機関), research_inst(研究機関), individual(個人), unknown(不明)",
+        "substance_type": "cw_precursor(化学兵器前駆体), bw_agent(生物剤), cw_agent(化学剤), industrial_chemical(産業用化学品), pharmaceutical(医薬品)",
+    }
+    valid_hint = _valid_hints.get(attr_key, "")
+
+    extraction_prompt = f"""以下のユーザー回答から「{label}」の値を抽出してください。
+
+属性キー: {attr_key}
+{f'有効な値: {valid_hint}' if valid_hint else ''}
+{f'単位: {unit}' if unit else ''}
+{f'例: {example}' if example else ''}
+
+ユーザー回答:
+{user_message}
+
+【指示】
+- 上記の有効な値のいずれかに最もよく対応するものを1つだけ返してください
+- 数値の場合は数字のみ（単位なし）を返してください
+- 判断できない場合は "unknown" を返してください
+- 理由や説明は不要です。値のみを返してください"""
+
+    try:
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=50,
+            messages=[{"role": "user", "content": extraction_prompt}],
+        )
+        extracted = resp.content[0].text.strip().split("\n")[0].strip()
+        # 空や長すぎる場合はフォールバック
+        if not extracted or len(extracted) > 50:
+            return "unknown"
+        return extracted
+    except Exception:
+        return user_message.strip()  # 抽出失敗時はそのまま渡す
+
+
+def _format_agent_turn(agent_resp: dict, initial_query: str = "") -> tuple[str, list[dict]]:
+    """
+    agent API レスポンスをチャット用 reply + choices に自然な形式で変換する。
     戻り値: (reply, choices)
     """
     if agent_resp.get("is_ready_for_judgment"):
         reply = (
-            "必要な情報が揃いました。最終判定を実行します。"
-            f"（絞り込み候補: {agent_resp.get('candidates_count', 0)}件）"
+            "確認に必要な情報が揃いました。\n\n"
+            "収集した情報をもとに該非判定を実行します。"
+            "「判定を実行」ボタンを押すか、追加で確認したいことがあればお知らせください。"
         )
         choices = [
-            {"label": "判定を実行",     "message": "__hantei_execute_judge__"},
-            {"label": "エージェント終了", "message": "__hantei_cancel__"},
+            {"label": "判定を実行",       "message": "__hantei_execute_judge__"},
+            {"label": "判定前に確認したい", "message": "判定前にもう少し詳しく教えてください"},
+            {"label": "やり直す",          "message": "__hantei_cancel__"},
         ]
     else:
-        question = agent_resp.get("question", "次の質問を確認中...")
-        count = agent_resp.get("candidates_count", "?")
-        reply = f"{question}（候補 {count}件）"
-        choices = [
-            {"label": "わからない",     "message": "よくわかりません。一般的な回答を教えてください"},
-            {"label": "該当なし",       "message": "該当しません"},
-            {"label": "エージェント終了", "message": "__hantei_cancel__"},
-        ]
+        question = agent_resp.get("question", "")
+        missing_attr = agent_resp.get("missing_attr") or {}
+        label = missing_attr.get("label", "")
+
+        if not question:
+            question = "もう少し詳しく教えていただけますか？"
+
+        reply = question
+
+        # コンテキストに応じた選択肢
+        attr_key = missing_attr.get("attr_key", "")
+        if attr_key == "end_use_type":
+            choices = [
+                {"label": "民生・商業用途",  "message": "民間の商業目的での使用です"},
+                {"label": "研究・開発用途",  "message": "研究開発目的での使用です"},
+                {"label": "用途が不明",      "message": "具体的な用途はまだ決まっていません"},
+                {"label": "やめる",          "message": "__hantei_cancel__"},
+            ]
+        elif attr_key == "end_user_type":
+            choices = [
+                {"label": "民間企業",    "message": "民間企業が最終需要者です"},
+                {"label": "研究機関",    "message": "大学・研究機関が最終需要者です"},
+                {"label": "政府・官公庁", "message": "政府機関が最終需要者です"},
+                {"label": "不明",        "message": "最終需要者はまだ確定していません"},
+                {"label": "やめる",      "message": "__hantei_cancel__"},
+            ]
+        elif attr_key == "destination_country":
+            choices = [
+                {"label": "日本国内",      "message": "日本国内向けです"},
+                {"label": "米国",          "message": "アメリカ合衆国向けです"},
+                {"label": "EU域内",        "message": "EU加盟国向けです"},
+                {"label": "中国",          "message": "中国向けです"},
+                {"label": "仕向地不明",    "message": "仕向地はまだ決まっていません"},
+                {"label": "やめる",        "message": "__hantei_cancel__"},
+            ]
+        else:
+            choices = [
+                {"label": "わからない・確認中", "message": "この点についてはまだ確認できていません"},
+                {"label": "やめる",            "message": "__hantei_cancel__"},
+            ]
     return reply, choices
+
+
+def _format_judge_result(judge_data: dict) -> tuple[str, list[dict]]:
+    """判定結果を自然言語でフォーマットする。戻り値: (reply, choices)"""
+    status = judge_data.get("overall_status", "pending")
+    summary = judge_data.get("summary", "")
+    controlled = judge_data.get("controlled_items", [])
+    excluded = judge_data.get("excluded_items", [])
+    reasons = judge_data.get("reasons", [])
+
+    # ステータスラベル
+    status_labels = {
+        "CLEAR":          "✅ 規制対象外（該当なし）",
+        "REVIEW":         "⚠️ 要確認（一部項目について追加調査が必要）",
+        "REQUIRES_PERMIT": "🔴 許可申請必要",
+        "CONTROLLED":     "🔴 規制品目に該当",
+        "pending":        "⏳ 判定保留中",
+    }
+    status_label = status_labels.get(status, f"判定結果: {status}")
+
+    lines = [f"**該非判定が完了しました。**", "", f"**総合判定: {status_label}**", ""]
+
+    if controlled:
+        # FEFTA/ECCN IDを読みやすく変換
+        controlled_readable = []
+        for item in controlled:
+            if item.startswith("FEFTA::"):
+                parts = item.split("::")
+                item_no = parts[1] if len(parts) > 1 else item
+                controlled_readable.append(f"外為法 輸出令別表第1 第{item_no}項")
+            elif item.startswith("ECCN::"):
+                eccn = item.replace("ECCN::", "")
+                controlled_readable.append(f"EAR ECCN {eccn}")
+            else:
+                controlled_readable.append(item)
+        lines.append(f"**規制対象項目:** {' / '.join(controlled_readable)}")
+        lines.append("")
+
+    if excluded:
+        lines.append(f"該当なし（除外）: {len(excluded)}件")
+        lines.append("")
+
+    if summary:
+        lines.append(summary)
+        lines.append("")
+
+    if status in ("REQUIRES_PERMIT", "CONTROLLED"):
+        lines.append("輸出許可証の申請または担当部門への確認が必要です。")
+    elif status == "REVIEW":
+        lines.append("一部項目について追加情報の収集または専門家への確認をお勧めします。")
+
+    choices = [
+        {"label": "判定結果の詳細を確認",   "message": "判定結果の詳細と根拠を詳しく説明してください"},
+        {"label": "許可申請の手続きを確認", "message": "輸出許可申請はどのように進めればよいですか"},
+        {"label": "別の品目を判定する",     "message": "新しい品目で該非判定エージェントを起動したい"},
+    ]
+    return "\n".join(lines), choices
 
 
 @router.post("/api/chat", response_model=ChatResponse)
@@ -1212,10 +1701,11 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
         # キャンセル
         if message == "__hantei_cancel__":
             session_data["hantei_agent_session_id"] = None
+            session_data.pop("hantei_missing_attr", None)
             if req.session_id:
                 _save_session(req.session_id, session_data)
             return ChatResponse(
-                reply="NeuroSymbolic 該非判定エージェントを終了しました。",
+                reply="該非判定を終了しました。いつでも再開できます。何か他にお手伝いできることがあればお気軽にどうぞ。",
                 actions=[],
                 choices=[
                     {"label": "新規判定",     "message": "新しい品目で該非判定エージェントを起動したい"},
@@ -1227,24 +1717,28 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
             if message == "__hantei_execute_judge__":
                 judge_data = await _call_agent_judge(agent_session_id)
                 session_data["hantei_agent_session_id"] = None
+                session_data.pop("hantei_missing_attr", None)
                 if req.session_id:
                     _save_session(req.session_id, session_data)
-                status = judge_data.get("overall_status", "pending")
-                summary = judge_data.get("summary", "")
-                controlled = ", ".join(judge_data.get("controlled_items", [])) or "なし"
-                reply = (
-                    f"判定完了。総合ステータス: {status}。"
-                    f"規制対象項番: {controlled}。"
-                    f"{summary[:100] if summary else ''}"
-                )
-                choices = [
-                    {"label": "判定詳細を確認", "message": "判定結果の詳細を教えてください"},
-                    {"label": "新規判定",       "message": "新しい品目で該非判定エージェントを起動したい"},
-                ]
+                reply, choices = _format_judge_result(judge_data)
                 return ChatResponse(reply=reply, actions=[], choices=choices)
 
-            # 通常回答転送
-            agent_resp = await _call_agent_answer(agent_session_id, message)
+            # 自然言語 → 属性値 抽出（前回のmissing_attrを使用）
+            missing_attr = session_data.get("hantei_missing_attr") or {}
+            if missing_attr and missing_attr.get("attr_key"):
+                normalized = await _extract_attr_value(message, missing_attr, client)
+            else:
+                normalized = message
+
+            # 正規化した値をエージェントAPIに送信
+            agent_resp = await _call_agent_answer(agent_session_id, normalized)
+
+            # 次回の抽出のために missing_attr を保存
+            if agent_resp.get("missing_attr"):
+                session_data["hantei_missing_attr"] = agent_resp["missing_attr"]
+            else:
+                session_data.pop("hantei_missing_attr", None)
+
             reply, choices = _format_agent_turn(agent_resp)
 
             if req.session_id:
@@ -1257,12 +1751,12 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
             return ChatResponse(reply=reply, actions=[], choices=choices)
 
         except httpx.HTTPError as e:
-            # エージェント API エラー: エージェントモードを解除して通常モードへ
             session_data["hantei_agent_session_id"] = None
+            session_data.pop("hantei_missing_attr", None)
             if req.session_id:
                 _save_session(req.session_id, session_data)
             return ChatResponse(
-                reply=f"エージェント接続エラーが発生しました。通常モードに戻ります。（{e}）",
+                reply="一時的に接続できませんでした。もう一度お試しいただくか、しばらく経ってから再開してください。",
                 actions=[],
                 choices=[
                     {"label": "再起動",         "message": "該非判定エージェントをもう一度起動したい"},
@@ -1454,8 +1948,8 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     ctx["_persona_str"]    = _persona_context_str(persona, session_data)
     ctx["_workflow_alerts"] = workflow_alert_str
 
-    # RAG: Layer A 検索（規制関連質問のみ）
-    rag_context = await _rag_layer_a(req.message)
+    # RAG: 多層検索（Layer A 規制条文 + オントロジー + Layer B 特許 + Layer D 論文）
+    rag_context = await _rag_multilayer(req.message)
     if rag_context:
         ctx["_rag_context"] = rag_context
 
@@ -1615,22 +2109,22 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
             new_agent_session_id = agent_start["session_id"]
             session_data["hantei_agent_session_id"] = new_agent_session_id
 
-            # エージェントの最初の質問を reply に差し込む
+            # 最初の missing_attr を保存（次の回答抽出に使用）
+            if agent_start.get("missing_attr"):
+                session_data["hantei_missing_attr"] = agent_start["missing_attr"]
+
+            # エージェントの最初の質問を自然な形で提示
             first_q = agent_start.get("question", "")
-            count = agent_start.get("candidates_count", "?")
             if first_q:
                 reply_text = (
-                    f"NeuroSymbolic 該非判定エージェントを起動しました。"
-                    f"（候補 {count}件で絞り込み開始）\n\n{first_q}"
+                    "該非判定を開始します。いくつか確認させてください。\n\n"
+                    f"{first_q}\n\n"
+                    "日本語でも英語でも、自由に回答していただいて構いません。"
                 )
             result_actions = [a for a in result_actions if a.get("type") != "start_agent"]
-            result_choices = [
-                {"label": "わからない",     "message": "よくわかりません。一般的な回答を教えてください"},
-                {"label": "該当なし",       "message": "該当しません"},
-                {"label": "エージェント終了", "message": "__hantei_cancel__"},
-            ]
+            _, result_choices = _format_agent_turn(agent_start)
         except httpx.HTTPError:
-            reply_text += "（エージェント起動に失敗しました。後でもう一度お試しください）"
+            reply_text += "\n\n（判定エージェントの起動に失敗しました。しばらく経ってから再度お試しください）"
 
     # セッションに保存
     if req.session_id:
@@ -1920,7 +2414,7 @@ _COACHING_TEMPLATES: dict[str, dict] = {
         "name": "プラットフォーム — 全体ナビゲーション",
         "prompt_supplement": (
             "プラットフォームのトップ画面では全体フローの案内が主目的です:\n"
-            "1. 標準ワークフロー: R&D審査(8003) → 品目管理(8002) → AI該非判定(8011) → スクリーニング(8005)\n"
+            "1. 標準ワークフロー: R&D審査(8003) → 品目管理(8002) → AI取引審査(8011) → スクリーニング(8005)\n"
             "2. 新規案件は R&D リスク管理から始めることを推奨してください\n"
             "3. NeuroSymbolic 該非判定エージェントは AI 該非判定モジュール(8011)の取引詳細から起動できます\n"
             "4. 各モジュールが連携してデータを共有していることを説明してください\n"

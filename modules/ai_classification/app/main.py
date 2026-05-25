@@ -13,6 +13,12 @@ from .routers.hs_local import router as hs_local_router
 from .routers.tariff_fetch import router as tariff_fetch_router
 from .routers.trade_stats import router as trade_stats_router
 from .routers.reexport_control import router as reexport_router
+from .routers.supply_chain import router as supply_chain_router
+from .routers.supplier_attestation import router as supplier_attestation_router
+from .routers.supplier_portal import router as supplier_portal_router
+from .routers.item_version import router as item_version_router
+from .routers.import_profile import router as import_profile_router
+from .routers.dashboard_import_export import router as dashboard_ie_router
 from .database import engine
 
 
@@ -98,6 +104,12 @@ def create_app() -> FastAPI:
     app.include_router(tariff_fetch_router)
     app.include_router(trade_stats_router)
     app.include_router(reexport_router)
+    app.include_router(supply_chain_router)
+    app.include_router(supplier_attestation_router)
+    app.include_router(supplier_portal_router)
+    app.include_router(item_version_router)
+    app.include_router(import_profile_router)
+    app.include_router(dashboard_ie_router)
 
     return app
 
