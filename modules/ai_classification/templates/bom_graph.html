@@ -340,18 +340,96 @@ async function loadGraph() {
       manual:               '手動入力',
     };
 
-    /* ノードクリック → 詳細パネル */
-    cy.on('tap', 'node', function(e) {
-      const d  = e.target.data();
-      const n  = d.node || {};
-      const r  = d.risk;
+    /* ── ECCN 操作関数 ── */
+    let _activeNodeId = null;
+
+    async function requestEccn(nodeId) {
+      const btn = document.getElementById('btn-request-eccn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ 依頼中…'; }
+      try {
+        const r = await fetch(`/api/supply-chain/nodes/${nodeId}/request-eccn`, { method: 'POST' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || 'エラー');
+        alert(`✅ AI 判定を依頼しました\n案件番号: ${d.tx_case_no || d.tx_id}`);
+        await refreshNodeInGraph(nodeId);
+      } catch(e) {
+        alert('❌ ' + e.message);
+        if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 判定を依頼'; }
+      }
+    }
+
+    async function syncEccn(nodeId) {
+      const btn = document.getElementById('btn-sync-eccn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ 同期中…'; }
+      try {
+        const r = await fetch(`/api/supply-chain/nodes/${nodeId}/sync-eccn`, { method: 'POST' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || 'エラー');
+        const eccnMsg = d.node?.eccn ? `\nECCN: ${d.node.eccn}` : '';
+        alert(`✅ ECCN 同期完了\nステータス: ${d.node?.eccn_judgment_status || '—'}${eccnMsg}`);
+        await refreshNodeInGraph(nodeId);
+      } catch(e) {
+        alert('❌ ' + e.message);
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 ECCN 同期'; }
+      }
+    }
+
+    async function refreshNodeInGraph(nodeId) {
+      try {
+        const r = await fetch(`/api/supply-chain/nodes/${nodeId}`);
+        if (!r.ok) return;
+        const updated = await r.json();
+        const cyNode = cy.getElementById(nodeId);
+        if (!cyNode.length) return;
+        // Cytoscape データ更新
+        const risk = updated.is_us_origin
+          ? (updated.eccn && updated.eccn !== 'EAR99' ? 'high' : 'medium')
+          : 'safe';
+        cyNode.data('risk', risk);
+        cyNode.data('jstatus', updated.eccn_judgment_status || '');
+        cyNode.data('node', updated);
+        // パネルを再描画（ノードを再タップ扱い）
+        showNodeDetail(cyNode.data());
+        // リスクサマリーも更新
+        updateRiskBar();
+      } catch(e) { /* silent */ }
+    }
+
+    function updateRiskBar() {
+      const nodes = cy.nodes();
+      let high = 0, med = 0, safe = 0, pend = 0, aiOk = 0, conf = 0;
+      nodes.forEach(n => {
+        const r = n.data('risk');
+        if (r === 'high') high++;
+        else if (r === 'medium') med++;
+        else safe++;
+        const js = n.data('jstatus');
+        if (js === 'pending') pend++;
+        else if (js === 'ai_completed') aiOk++;
+        else if (js === 'confirmed') conf++;
+      });
+      document.getElementById('rs-high').textContent  = `🔴 HIGH ${high}`;
+      document.getElementById('rs-med').textContent   = `🟡 MEDIUM ${med}`;
+      document.getElementById('rs-safe').textContent  = `🟢 SAFE ${safe}`;
+      const jEl = document.getElementById('rs-judgment');
+      if (pend + aiOk + conf > 0) {
+        jEl.style.display = '';
+        jEl.textContent = `｜ AI判定: ⏳${pend} 🤖${aiOk} ✅${conf}`;
+      }
+    }
+
+    function showNodeDetail(d) {
+      const n   = d.node || {};
+      const r   = d.risk;
       const col = RISK_STYLE[r]?.bg || '#555';
       const js  = n.eccn_judgment_status;
       const jsi = js ? JSTATUS_LABEL[js] : null;
       const ev  = n.judgment_evidence || {};
       const txId = ev.tx_id || n.eccn_validation_tx_id;
+      const nodeId = d.id;
       const _AI_VALIDATION_PUBLIC_URL = 'https://validation.tsp-aitrademanagement.com';
 
+      // 判定ステータスバッジ
       const judgmentHtml = jsi ? `
         <div style="margin-top:8px; padding:6px 10px; border-radius:6px;
              background:${jsi.bg}; color:${jsi.col}; font-size:.75rem; font-weight:700;">
@@ -366,6 +444,37 @@ async function loadGraph() {
         </div>` : ''}
       ` : '';
 
+      // アクションボタン
+      const canSync    = txId && js === 'ai_completed';
+      const canRequest = !txId && n.is_us_origin;
+      const actionHtml = `
+        <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border);
+             display:flex; flex-direction:column; gap:6px;">
+          ${canSync ? `
+          <button id="btn-sync-eccn"
+            onclick="syncEccn('${nodeId}')"
+            style="width:100%; padding:5px 0; font-size:.76rem; font-weight:700;
+                   background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe;
+                   border-radius:5px; cursor:pointer;">
+            🔄 ECCN 同期
+          </button>` : ''}
+          ${canRequest ? `
+          <button id="btn-request-eccn"
+            onclick="requestEccn('${nodeId}')"
+            style="width:100%; padding:5px 0; font-size:.76rem; font-weight:700;
+                   background:#ede9fe; color:#5b21b6; border:1px solid #ddd6fe;
+                   border-radius:5px; cursor:pointer;">
+            🤖 AI 判定を依頼
+          </button>` : ''}
+          ${n.product_code ? `
+          <a href="/api/supply-chain/impact/${encodeURIComponent(n.product_code)}?us_origin_only=true"
+             target="_blank"
+             style="display:block; text-align:center; padding:4px 0; font-size:.74rem;
+                    color:#6366f1; text-decoration:none;">
+            🔍 この品目を使う完成品を検索 →
+          </a>` : ''}
+        </div>`;
+
       document.getElementById('nd-content').innerHTML = `
         <div style="font-size:.82rem;">
           <div style="font-weight:800; font-size:.9rem; margin-bottom:4px;">${n.product_code || d.id.slice(0,8)}</div>
@@ -379,14 +488,16 @@ async function loadGraph() {
           ${n.eccn      ? `<div style="margin-top:4px;"><strong>ECCN:</strong> ${n.eccn}</div>` : ''}
           ${n.hs_code   ? `<div style="margin-top:4px;"><strong>HS:</strong> ${n.hs_code}</div>` : ''}
           ${n.unit_value_usd ? `<div style="margin-top:4px;"><strong>単価:</strong> USD ${n.unit_value_usd.toLocaleString()}</div>` : ''}
-          ${n.product_code ? `
-          <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border);">
-            <a href="/api/supply-chain/impact/${encodeURIComponent(n.product_code)}?us_origin_only=true"
-               target="_blank" style="font-size:.76rem;">🔍 この構成品を使う完成品を検索 →</a>
-          </div>` : ''}
+          ${actionHtml}
         </div>
       `;
       document.getElementById('node-detail').style.display = 'block';
+    }
+
+    /* ノードクリック → 詳細パネル */
+    cy.on('tap', 'node', function(e) {
+      _activeNodeId = e.target.data('id') || e.target.id();
+      showNodeDetail(e.target.data());
     });
 
     /* 背景クリックで詳細パネルを閉じる */
