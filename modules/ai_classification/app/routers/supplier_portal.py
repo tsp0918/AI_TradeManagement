@@ -7,8 +7,13 @@ import logging
 import os
 import pathlib
 import secrets
+import smtplib
+import ssl
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -23,6 +28,14 @@ from platform_core.models.supplier_attestation import SupplierAttestation
 from platform_core.models.supplier_portal_token import SupplierPortalToken
 
 logger = logging.getLogger(__name__)
+
+# ── SMTP 設定（未設定時はメール送信をスキップ） ──────────────────────
+_SMTP_HOST     = os.environ.get("SMTP_HOST", "")
+_SMTP_PORT     = int(os.environ.get("SMTP_PORT", "587"))
+_SMTP_USER     = os.environ.get("SMTP_USER", "")
+_SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+_SMTP_FROM     = os.environ.get("SMTP_FROM", _SMTP_USER)
+
 _AI_VALIDATION_URL = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
 # ユーザー向けリンクに使う公開URL（ブラウザから開ける必要がある）
 _AI_VALIDATION_PUBLIC_URL = os.environ.get(
@@ -93,6 +106,74 @@ async def _resolve_token(token_str: str, db: AsyncSession) -> SupplierPortalToke
     return t
 
 
+# ── メール送信 ────────────────────────────────────────────────────
+
+def _send_supplier_invitation_bg(
+    to_email: str,
+    supplier_name: str,
+    node_name: str,
+    portal_url: str,
+    note_for_supplier: str | None,
+    expires_days: int,
+) -> None:
+    """サプライヤー招待メールをバックグラウンド送信（SMTP 未設定時はスキップ）。"""
+    if not (_SMTP_HOST and _SMTP_USER and _SMTP_PASSWORD and to_email):
+        return
+    note_block = (
+        f'<div style="background:#fef9c3; border:1px solid #fde68a; border-radius:6px; '
+        f'padding:12px; margin:12px 0;"><strong>ご担当者様へのメッセージ:</strong><br>'
+        f'{note_for_supplier}</div>'
+    ) if note_for_supplier else ""
+    html = f"""
+<html><body style="font-family:sans-serif; color:#1e293b; margin:0; padding:0;">
+<div style="max-width:560px; margin:0 auto; padding:28px 24px;">
+  <div style="border-bottom:3px solid #0369a1; padding-bottom:12px; margin-bottom:20px;">
+    <h2 style="margin:0; color:#0369a1; font-size:1.15rem;">サプライヤー情報提供のお願い</h2>
+  </div>
+  <p style="margin:0 0 12px;">{supplier_name} 様</p>
+  <p style="margin:0 0 12px;">
+    お世話になっております。貿易コンプライアンス管理の一環として、
+    下記品目に関するサプライヤー情報（ECCN・原産国等）のご提供をお願い申し上げます。
+  </p>
+  <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px;
+              padding:14px 18px; margin:16px 0;">
+    <span style="font-size:.8rem; color:#0369a1; font-weight:700;">対象品目</span><br>
+    <span style="font-size:1rem; font-weight:800; color:#0c4a6e;">{node_name}</span>
+  </div>
+  {note_block}
+  <p style="margin:16px 0 8px;">下記リンクよりご回答ください（有効期限: {expires_days}日）:</p>
+  <div style="text-align:center; margin:20px 0;">
+    <a href="{portal_url}"
+       style="display:inline-block; padding:13px 32px; background:#0369a1; color:#fff;
+              border-radius:7px; text-decoration:none; font-weight:700; font-size:.95rem;
+              letter-spacing:.02em;">
+      情報提供フォームを開く →
+    </a>
+  </div>
+  <hr style="border:none; border-top:1px solid #e2e8f0; margin:20px 0;">
+  <p style="font-size:.78rem; color:#94a3b8; margin:0;">
+    ※ このリンクは{expires_days}日間有効です。<br>
+    ※ ご不明点は担当者までお問い合わせください。
+  </p>
+</div>
+</body></html>
+"""
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"【サプライヤー情報提供依頼】{node_name}"
+    msg["From"]    = _SMTP_FROM
+    msg["To"]      = to_email
+    msg.attach(MIMEText(html, "html", "utf-8"))
+    try:
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP(_SMTP_HOST, _SMTP_PORT, timeout=15) as srv:
+            srv.starttls(context=ctx)
+            srv.login(_SMTP_USER, _SMTP_PASSWORD)
+            srv.sendmail(_SMTP_FROM, [to_email], msg.as_string())
+        logger.info("サプライヤー招待メール送信完了: %s", to_email)
+    except Exception as exc:
+        logger.warning("サプライヤー招待メール送信失敗: %s", exc)
+
+
 # ── 管理 API ─────────────────────────────────────────────────────
 
 @router.get("/api/supplier-portal/tokens")
@@ -139,7 +220,26 @@ async def create_token(body: TokenCreate, db: AsyncSession = Depends(get_pg_db))
     db.add(t)
     await db.commit()
     await db.refresh(t)
-    return _serialize_token(t)
+
+    # 招待メール送信（supplier_email が設定されていれば非同期で送信）
+    if body.supplier_email:
+        portal_url = f"{_BASE_URL}/supplier-portal/{t.token}"
+        threading.Thread(
+            target=_send_supplier_invitation_bg,
+            args=(
+                body.supplier_email,
+                body.supplier_name,
+                node.name,
+                portal_url,
+                body.note_for_supplier,
+                body.expires_days,
+            ),
+            daemon=True,
+        ).start()
+
+    result = _serialize_token(t)
+    result["email_queued"] = bool(body.supplier_email and _SMTP_HOST)
+    return result
 
 
 @router.get("/api/supplier-portal/tokens/{token_id}")
