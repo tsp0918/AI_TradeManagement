@@ -1,8 +1,9 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-24 更新（URL整合性修正・データ一元化完了）
+# 2026-05-25 更新（モジュール間連携強化・BOMグラフ操作性向上）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
-> 2026-05-24（6回目）追加: URL整合性修正・データ一元化完了。①全モジュールのハードコードlocalhost URLを環境変数化（item_version.py/export_license.py/import_profiles.html/transaction_detail.html）②BOM→AI判定リンクのURLパス修正（/transactions/{id}→/ui/transactions/{id}）③transaction_detail.html BOMコンテキストカード追加（ai_classification起案時にspec_text key-valueグリッド・バックリンク表示）④ヒットなし時 FAISS 候補チップ表示（catchall_recommended の場合）⑤supply_chain_node_id を Transaction に自動リンク（portal_submit / request-eccn 双方）⑥FAISS + 2リスト自動実行（fire-and-forget）。
+> 2026-05-25（2回目）追加: ①BOMグラフノードパネルに ECCN同期・AI判定依頼ボタン追加（ワンクリックで sync-eccn / request-eccn、グラフリアルタイム更新）②サプライヤーポータル招待メール自動送信（smtplib STARTTLS、SMTP_HOST等env var設定で有効化）③R&D→AI判定フロー修正（form POST→JSON API統一、end_user_name counterparty_name引き継ぎ、FAISS自動起動）④取引先情報 GET /api/transactions/{id} に counterparty_name 追加⑤transaction_detail.html BOMコンテキストカード強化（JS動的取得: HSコード/ECCN/EARリスク/BOM構成品テーブル/BOMグラフリンク）⑥R&Dコンテキストカード追加（rnd_assessment起案時）⑦item_version再判定: item_code→SCノード逆引きでsupply_chain_node_id自動リンク。
+> 2026-05-25（1回目）追加: URL整合性修正・データ一元化完了。①全モジュールのハードコードlocalhost URLを環境変数化（item_version.py/export_license.py/import_profiles.html/transaction_detail.html）②BOM→AI判定リンクのURLパス修正（/transactions/{id}→/ui/transactions/{id}）③transaction_detail.html BOMコンテキストカード追加（ai_classification起案時にspec_text key-valueグリッド・バックリンク表示）④ヒットなし時 FAISS 候補チップ表示（catchall_recommended の場合）⑤supply_chain_node_id を Transaction に自動リンク（portal_submit / request-eccn 双方）⑥FAISS + 2リスト自動実行（fire-and-forget）。
 > 2026-05-24（5回目）追加: サプライヤーポータル → AI 2リスト該非判定 → BOM 自動更新フロー完全実装。Alembic m1n2o3p4q5r6（ECCN判定4フィールド）・supplier_portal.py AI判定自動トリガー・sync-eccn FAISS照合ロジック・bom_graph.html 判定ステータスバッジ（⏳/🤖/✅/❌）・Graphviz DOT スタイル可視化（cytoscape-dagre）。デモ: EUV-PR-001 BOM の EUV-RM-002（PAG） サプライヤー申告 1C010.a → FAISS Layer A 1C010 候補一致確認 → eccn_judgment_status=ai_completed → ECCN=1C010.a 自動書込。
 > 2026-05-24（4回目）追加: Phase IV-2 輸出入統合ダッシュボード（GET /dashboard/import-export + GET /api/dashboard/import-export）。SQLite品目集計 + PostgreSQL ImportProfile/SupplyChainNode 集計・仕入先国バーチャート・品目種別バーチャート・BOMチェーン クイックビュー（Cytoscape.js）・要対応アクションリスト（high/medium/low）。ドライランデモ実行：全8モジュール稼働確認・BOM同期4品目・インパクト分析・スクリーニング/HS判定連動テスト完了。
 > 2026-05-24（3回目）追加: Phase I-2 BOM統合（bom_json→plat_supply_chain_node 自動同期・SC同期ボタン）・Phase III-1 輸入品ECCN付番フロー（ai_validation連携・判定ステータス追跡）・Phase III-2 BOM上流輸入品影響分析（GET /api/supply-chain/impact/{code} 逆引き）・Phase III-3 US EAR再輸出許可申請自動トリガー（export_license連携）・Phase IV-1 BOMチェーン可視化（Cytoscape.js /bom/graph ページ）。
@@ -28,7 +29,7 @@
 |-----------|--------|-----|-----|--------|------|
 | platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 4レイヤー（A/B/C/D）・知識グラフ・規制スケジューラー（業務ロジック分離済） |
 | ai_validation | 8011 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent・AI run 後キャッチオール自動評価 |
-| ai_classification | 8002 | SQLite+PG | ✅ | ✅ | 品目管理・6種 item_type・輸入品プロファイル・BOM→SC自動同期・BOMグラフ可視化（cytoscape-dagre）・輸入品影響分析・ECCN付番フロー・US EAR再輸出申請トリガー・**サプライヤー→AI該非判定→BOM自動更新** |
+| ai_classification | 8002 | SQLite+PG | ✅ | ✅ | 品目管理・6種 item_type・輸入品プロファイル・BOM→SC自動同期・BOMグラフ可視化（cytoscape-dagre）・輸入品影響分析・ECCN付番フロー・US EAR再輸出申請トリガー・**サプライヤー→AI取引審査→BOM自動更新** |
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
 | patent_search | 8004 | SQLite | ✅ | ✅ | BigQuery連携・J-PlatPatフォールバック |
 | screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS/UN/EU）・与信管理・ERP JSON一括インポート・無料3ソース自動同期 |
@@ -762,7 +763,11 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | Phase 3 グローバル品目マスター | ProductCountryProfile に local_eccn/license_required 追加。品目一覧 国数バッジ・モーダルフォーム |
 | ✅ | Phase 4 トランザクション多テナント化 | Transaction/ExportLicense に org_id 追加（Alembic）。ダッシュボード 自拠点/全拠点トグル |
 | ✅ | Phase 5 グローバル規制・FTA 拡張 | FtaAgreement: origin_country 追加。RegulatoryChange: relevant_org_ids・拠点別フィルタリング |
-| ★★★☆☆ | サプライヤーポータル メール送信 | メール自動送信（招待URL通知）— SMTP設定後に実装可能 |
+| ✅ | BOMグラフ ECCN sync-eccnボタン | ノードクリックパネルに同期・AI判定依頼ボタン追加。cytoscape リアルタイム更新（2026-05-25） |
+| ✅ | サプライヤーポータル メール送信 | smtplib STARTTLS 招待メール自動送信・SMTP env var ゲート（2026-05-25） |
+| ★★★☆☆ | キャッチオール Red Flag 詳細入力 UI 改善 | RF1〜RF7 項目別詳細質問フロー・自動評価結果オーバーライド入力 |
+| ★★★☆☆ | R&D→取引審査 counterparty 引き継ぎ UI | R&D 登録済み end_user を取引フェーズ取引先として編集可能な形でプリポップ |
+| ★★★☆☆ | AI取引審査 モジュール名称変更 | ai_validation → AI取引審査（UI表示名変更・ナビラベル統一。Neurosymbolic 該非判定は DAP 経由で呼び出す形に整理） |
 | ★★★☆☆ | FTA 税率データ拡充 | 現在は代表HSコードのみ。実務向けに品目単位の全量収録 |
 | ✅ | Layer D データ収集・構築 | OpenAlex API 追加・25/25 ECCN 完全カバー → 5,765vec（S2: 508 + OpenAlex: 5,257）（2026-05-12）|
 | ✅ | Layer A 品質改善 | entity_list 835件除外・eccn_tech 20件追加・2,184vec（2026-05-10） |

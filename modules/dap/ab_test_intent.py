@@ -43,7 +43,7 @@ TEST_CASES = [
         "input": "取引一覧ページに移動したい",
         "expected_intent": "NAVIGATE_UI",
         "expected_simple": True,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/dashboard"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/dashboard"},
     },
     {
         "input": "品目管理に戻りたい",
@@ -61,7 +61,7 @@ TEST_CASES = [
         "input": "スクリーニングのページはどこですか",
         "expected_intent": "NAVIGATE_UI",
         "expected_simple": True,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/1"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/1"},
     },
     {
         "input": "前のページに戻る方法を教えてください",
@@ -75,7 +75,7 @@ TEST_CASES = [
         "input": "この画面の操作方法を教えてください",
         "expected_intent": "EXPLAIN_UI",
         "expected_simple": True,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/new"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/new"},
     },
     {
         "input": "保存ボタンはどこにありますか",
@@ -99,7 +99,7 @@ TEST_CASES = [
         "input": "次に何をすればいいですか",
         "expected_intent": "EXPLAIN_UI",
         "expected_simple": True,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/1"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/1"},
     },
 
     # ── SAVE_TRANSACTION (シンプル) ────────────────────────────────────────
@@ -107,13 +107,13 @@ TEST_CASES = [
         "input": "この取引を保存してください",
         "expected_intent": "SAVE_TRANSACTION",
         "expected_simple": True,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/new"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/new"},
     },
     {
         "input": "案件を登録したい",
         "expected_intent": "SAVE_TRANSACTION",
         "expected_simple": True,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/new"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/new"},
     },
     {
         "input": "入力した内容を保存する方法を教えて",
@@ -133,7 +133,7 @@ TEST_CASES = [
         "input": "ECCNコードを確認したい",
         "expected_intent": "CLASSIFY_ITEM",
         "expected_simple": False,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/1"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/1"},
     },
     {
         "input": "この半導体はリスト規制に該当しますか",
@@ -153,25 +153,25 @@ TEST_CASES = [
         "input": "輸出許可が必要かどうか調べてほしい",
         "expected_intent": "CHECK_COMPLIANCE",
         "expected_simple": False,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/1"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/1"},
     },
     {
         "input": "中国向けの輸出でキャッチオール規制は適用されますか",
         "expected_intent": "CHECK_COMPLIANCE",
         "expected_simple": False,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/1"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/1"},
     },
     {
         "input": "半導体製造装置をシンガポール法人経由で輸出する場合のリスクを教えてください",
         "expected_intent": "CHECK_COMPLIANCE",
         "expected_simple": False,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/2"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/2"},
     },
     {
         "input": "この取引に輸出許可申請は必要ですか",
         "expected_intent": "CHECK_COMPLIANCE",
         "expected_simple": False,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/1"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/1"},
     },
 
     # ── EXPLAIN_REGULATION (複雑・Sonnet 必須) ────────────────────────────
@@ -179,7 +179,7 @@ TEST_CASES = [
         "input": "外為法第25条の内容を教えて",
         "expected_intent": "EXPLAIN_REGULATION",
         "expected_simple": False,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/dashboard"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/dashboard"},
     },
     {
         "input": "みなし輸出とはどういう意味ですか",
@@ -197,7 +197,7 @@ TEST_CASES = [
         "input": "キャッチオール規制の判定手順を詳しく教えてください",
         "expected_intent": "EXPLAIN_REGULATION",
         "expected_simple": False,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/dashboard"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/dashboard"},
     },
 
     # ── SEARCH_ECCN (複雑・Sonnet 必須) ───────────────────────────────────
@@ -205,7 +205,7 @@ TEST_CASES = [
         "input": "3E001に該当するかどうか確認したい",
         "expected_intent": "SEARCH_ECCN",
         "expected_simple": False,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/1"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/1"},
     },
     {
         "input": "このECCNコードの意味を教えてください",
@@ -219,7 +219,7 @@ TEST_CASES = [
         "input": "AI判定を実行したい",
         "expected_intent": "CLASSIFY_ITEM",
         "expected_simple": False,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/1"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/1"},
     },
     {
         "input": "スクリーニングを実行するにはどうすればいいですか",
@@ -231,13 +231,13 @@ TEST_CASES = [
         "input": "対話形式の該非判定エージェントを起動してください",
         "expected_intent": "AGENT_START",
         "expected_simple": False,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/1"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/1"},
     },
     {
         "input": "ロシア向け案件のリスクはどのくらいですか",
         "expected_intent": "CHECK_COMPLIANCE",
         "expected_simple": False,
-        "context": {"module_name": "AI該非判定", "page_path": "/ui/transactions/3"},
+        "context": {"module_name": "AI取引審査", "page_path": "/ui/transactions/3"},
     },
 ]
 

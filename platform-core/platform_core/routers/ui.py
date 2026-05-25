@@ -106,7 +106,7 @@ _KNOWN_MODULES: list[dict] = [
     },
     {
         "key":               "ai_validation",
-        "name":              "AI該非判定",
+        "name":              "AI取引審査",
         "description":       "外為法に基づく輸出管理の該非判定を AI で支援する",
         "base_url":          "http://localhost:8011",
         "iframe_url":        "/proxy/ai_validation/",
@@ -428,7 +428,8 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
 @router.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
 async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
     """案件ダッシュボード — ai_validation から直近案件を取得して表示。"""
-    ai_validation_url = "http://localhost:8011"
+    ai_validation_url = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+    validation_public_url = os.environ.get("MODULE_AI_VALIDATION_PUBLIC_URL", "https://validation.tsp-aitrademanagement.com")
     transactions: list[dict] = []
     error: str | None = None
 
@@ -453,7 +454,7 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
         else:
             error = f"ai_validation API エラー (HTTP {resp.status_code})"
     except Exception as exc:
-        error = "AI該非判定モジュールに接続できません。起動しているか確認してください。"
+        error = "AI取引審査モジュールに接続できません。起動しているか確認してください。"
 
     # ── NeuroSymbolic エージェントセッション統計 ──
     agent_stats: dict = {"active": 0, "ready": 0, "judged": 0, "abandoned": 0, "total": 0}
@@ -513,7 +514,8 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
         request, "dashboard.html",
         {"transactions": transactions, "error": error,
          "agent_stats": agent_stats, "reg_alerts": reg_alerts,
-         "all_orgs": all_orgs, "x_org_id": x_org_id},
+         "all_orgs": all_orgs, "x_org_id": x_org_id,
+         "validation_public_url": validation_public_url},
     )
 
 

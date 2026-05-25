@@ -88,14 +88,14 @@
     </div>
   </div>
 
-  <!-- AI 該非判定ステータス -->
+  <!-- AI取引審査ステータス -->
   <div class="ai-card">
-    <h2>🤖 AI 該非判定（2リスト自動審査）</h2>
+    <h2>🤖 AI取引審査（2リスト自動審査）</h2>
 
     {% if tx_id %}
       <span class="status-badge status-pending pulse">⏳ 判定処理中</span>
       <div class="ai-detail">
-        <p>申告内容をもとに AI 該非判定（外為法・EAR 2リスト）を自動起動しました。</p>
+        <p>申告内容をもとに AI取引審査（外為法・EAR 2リスト）を自動起動しました。</p>
         <p style="margin-top:6px;">
           <strong>案件番号:</strong> {{ tx_case_no or tx_id }}<br>
           担当者が判定結果を確認後、ECCN をシステムに登録します。

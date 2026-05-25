@@ -29,7 +29,7 @@
   <!-- ─── Sidebar ─────────────────────────────────────────────── -->
   <nav>
 
-    <!-- ① 業務フロー：R&D起案 → 品目登録 → 該非判定 → 審査 -->
+    <!-- ① 業務フロー：R&D起案 → 品目登録 → 取引審査 → 審査 -->
     <span class="nav-section-label">業務フロー</span>
     {% for m in modules if m.nav_section == "flow" %}
     <div class="module-card{% if loop.first %} active{% endif %}" id="card-{{ m.key }}">

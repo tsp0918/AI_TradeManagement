@@ -241,7 +241,7 @@ async def _preload_faiss_model() -> None:
 
 MODULE = ModuleInfo(
     key="ai_validation",
-    name="AI該非判定",
+    name="AI取引審査",
     base_url=os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011"),
     description="外為法に基づく輸出管理の該非判定を AI で支援する",
     capabilities=["export_control", "matrix_run", "transaction_create"],

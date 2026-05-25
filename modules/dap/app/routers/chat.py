@@ -63,7 +63,7 @@ _MODULE_MAP: dict[str, str] = {
 _WORKFLOW_STAGES: dict[str, str] = {
     "8003": "R&D審査",
     "8002": "品目管理",
-    "8011": "AI該非判定",
+    "8011": "AI取引審査",
     "8005": "スクリーニング",
     "8006": "HSコード判定",
     "8004": "特許調査",
@@ -120,12 +120,12 @@ _DEFAULT_CHOICES: dict[str, list[dict]] = {
     ],
     "8002": [
         {"label": "用途概要の書き方",  "message": "用途概要の入力例を教えてください"},
-        {"label": "AI判定を依頼",     "message": "AI該非判定を依頼するにはどうすればいいですか"},
+        {"label": "AI判定を依頼",     "message": "AI取引審査を依頼するにはどうすればいいですか"},
         {"label": "HS コードを確認",  "message": "HSコード判定の依頼方法を教えてください"},
     ],
     "8003": [
         {"label": "入力項目を確認",    "message": "入力必須項目を教えてください"},
-        {"label": "AI判定を実行",     "message": "AI該非判定を実行するにはどうすればいいですか"},
+        {"label": "AI判定を実行",     "message": "AI取引審査を実行するにはどうすればいいですか"},
         {"label": "審査フローを確認",  "message": "R&Dリスク管理の審査フローを教えてください"},
     ],
     "8004": [
@@ -841,7 +841,7 @@ def _build_intake_system_prompt(intake: dict) -> str:
 【action_plan の構成（完了時）】
 実行予定のシステムアクションをリストで提示し、ユーザーの確認を求める。例:
   「では以下を実行します。よろしいですか？
-   1. AI該非判定に案件を新規作成（品目・用途・取引先を自動入力）
+   1. AI取引審査に案件を新規作成（品目・用途・取引先を自動入力）
    2. 取引先スクリーニングを実行（OFAC/BIS/METI照合）
    3. AI判定パイプラインを起動（外為法マトリクス照合）」
 
@@ -1106,10 +1106,10 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 
 2. 品目管理（{_PORTAL_MODULE_URLS['ai_classification']}）
    輸出品目の登録・分類・AI判定依頼
-   フロー: 品目登録（品目コード・名称・仕様）→ 用途概要入力 → HSコード判定（8006連携）→ AI該非判定を依頼
+   フロー: 品目登録（品目コード・名称・仕様）→ 用途概要入力 → HSコード判定（8006連携）→ AI取引審査を依頼
    注意: 用途概要が不十分だと AI 判定の精度が落ちる。工程/装置/性能/最終使用地の4要素を含めること
 
-3. AI 該非判定（{_PORTAL_MODULE_URLS['ai_validation']}）
+3. AI取引審査（{_PORTAL_MODULE_URLS['ai_validation']}）
    外為法マトリクス照合・案件審査
    フロー: 案件作成 → スクリーニング実行（screening連携）→ AI判定実行 → 結果確認 → CSV/PDF出力
    結果の読み方: intersection=要注意(黄)、core_only=直接リストヒット(青)、expanded_only=低リスク(灰)
@@ -1219,7 +1219,7 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 【行動指針】
 - ユーザーの発言から「最終的にやりたいこと」を推測し、そのゴールへの最短経路を案内する
 - 現在のページにない機能が必要な場合は、必ず actions に {{"type": "navigate_to", "url": "<ポータルURL>"}} を含める。reply にURLを書くだけでは不十分（ユーザーが手動で移動できない）
-- navigate_to の url は必ず http://localhost:8000/proxy/<モジュールキー>/ 形式のポータルURL を使う。http://localhost:80XX などの直接ポートURLは絶対に使わない
+- navigate_to の url は必ず {_PLATFORM_URL}/proxy/<モジュールキー>/ 形式のポータルURL を使う。http://localhost:80XX などの直接ポートURLは絶対に使わない
 - choices は「今すぐ次にやること」を反映させる。汎用的な質問より、ユーザーのタスクの次ステップを優先する
 - interactive_elements に該当するボタン/リンクがあれば必ず actions に含める
 - 規制に関する質問には上記インテリジェンス情報を活用して参考情報を提供する
@@ -1244,16 +1244,16 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 例4: R&D画面、ユーザー「品目管理に登録したい」、プロファイルにAI判定結果あり
   reply: AI審査が完了していれば「品目管理へ登録」ボタンでワンクリック登録できます。登録後は品目管理モジュールで品目の詳細を確認できます。
   actions: [{{"type": "highlight", "target": "品目管理へ登録"}}]
-  choices: [{{"label": "品目管理に移動", "message": "品目管理（8002）でやること一覧を教えてください"}}, {{"label": "登録後の流れ", "message": "品目管理登録後にAI該非判定を依頼するにはどうしますか"}}]
+  choices: [{{"label": "品目管理に移動", "message": "品目管理（8002）でやること一覧を教えてください"}}, {{"label": "登録後の流れ", "message": "品目管理登録後にAI取引審査を依頼するにはどうしますか"}}]
 
 例5: DAP画面、ユーザー「スクリーニングしたい」、interactive_elements に該当なし
   reply: スクリーニングはスクリーニングモジュールで実行できます。移動しますか？
-  actions: [{{"type": "navigate_to", "url": "http://localhost:8000/proxy/screening/"}}]
+  actions: [{{"type": "navigate_to", "url": "{_PLATFORM_URL}/proxy/screening/"}}]
   choices: [{{"label": "移動する", "message": "スクリーニングモジュールに移動してください"}}, {{"label": "スクリーニングとは", "message": "スクリーニングの手順を教えてください"}}]
 
 例6: DAP画面、ユーザー「AI分類画面に行きたい」
   reply: AI分類モジュールに移動します。
-  actions: [{{"type": "navigate_to", "url": "http://localhost:8000/proxy/ai_classification/"}}]
+  actions: [{{"type": "navigate_to", "url": "{_PLATFORM_URL}/proxy/ai_classification/"}}]
   choices: [{{"label": "AI分類の手順", "message": "AI分類の手順を教えてください"}}, {{"label": "戻り方", "message": "DAPに戻るにはどうしますか"}}]
 
 【NeuroSymbolic 該非判定エージェント（重要機能）】
@@ -1271,19 +1271,19 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 ユーザーが「〇〇したい」「〇〇のやり方を教えて」と言ったとき、以下の対応するUCとステップを案内する。
 navigate_to と highlight を組み合わせ、次にすべき操作を1ステップずつ誘導すること。
 
-UC1: 新規品目の輸出審査（品目登録 → HS判定 → 制裁照合 → AI該非判定）
+UC1: 新規品目の輸出審査（品目登録 → HS判定 → 制裁照合 → AI取引審査）
   Step1: 「業務フロー → 品目管理 → 新規登録」で品目名・型番・仕様を入力
-    navigate_to: http://localhost:8000/proxy/ai_classification/products
+    navigate_to: {_PLATFORM_URL}/proxy/ai_classification/products
   Step2: 品目詳細の「HSコード判定」ボタンで AI が上位5候補を提示 → 選択して「反映」
     highlight: HSコード判定
   Step3: 「業務フロー → 取引先スクリーニング → 一括照合」で取引先名を制裁照合
-    navigate_to: http://localhost:8000/proxy/screening/ui/batch
-  Step4: 「業務フロー → AI該非判定 → 新規審査」で取引を作成し判定実行
-    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions/new
+    navigate_to: {_PLATFORM_URL}/proxy/screening/ui/batch
+  Step4: 「業務フロー → AI取引審査 → 新規審査」で取引を作成し判定実行
+    navigate_to: {_PLATFORM_URL}/proxy/ai_validation/ui/transactions/new
 
 UC2: R&D起案→品目登録（プロジェクト起案 → AIリスク評価 → 知財審査 → 品目登録）
   Step1: 「業務フロー → R&Dリスク評価 → 新規プロジェクト」でプロジェクト作成
-    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/cases/new
+    navigate_to: {_PLATFORM_URL}/proxy/rnd_assessment/ui/cases/new
   Step2: 3テンプレート（使用用途・需要者・開示）を入力してスコアリング確認
     highlight: プロファイル入力
   Step3: Explainabilityで開示戦略・セキュリティポスチャを確認（80点以上は即エスカレーション）
@@ -1294,69 +1294,69 @@ UC2: R&D起案→品目登録（プロジェクト起案 → AIリスク評価 �
 
 UC3: 海外品目マスター管理・国別規制プロファイル（品目確認 → 国別設定 → FTA確認 → レジーム照合）
   Step1: 「品目管理」で対象品目のHS/ECCN・仕様を確認
-    navigate_to: http://localhost:8000/proxy/ai_classification/products
+    navigate_to: {_PLATFORM_URL}/proxy/ai_classification/products
   Step2: 品目詳細の「国別タブ」で仕向地国ごとにローカルECCN・輸出許可要否を設定
     highlight: 国別規制プロファイル
   Step3: 「EPA/FTA特恵税率チェック」でHSコード×仕向地で最優遇税率を照会
-    navigate_to: http://localhost:8000/ui/fta-check
-  Step4: グローバル規制レジーム照合（ITAR/USML・EU Dual-Use・Wassenaar・NSG）をAI該非判定から確認
-    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions
+    navigate_to: {_PLATFORM_URL}/ui/fta-check
+  Step4: グローバル規制レジーム照合（ITAR/USML・EU Dual-Use・Wassenaar・NSG）をAI取引審査から確認
+    navigate_to: {_PLATFORM_URL}/proxy/ai_validation/ui/transactions
   Step5: サプライヤーポータルで原産地証明・De Minimis比率を確認
-    navigate_to: http://localhost:8000/ui/supply-chain
+    navigate_to: {_PLATFORM_URL}/ui/supply-chain
 
 UC7: BOM管理・De Minimis算出（申告作成 → BOMツリー → De Minimis算出 → FDPR判定）
   Step1: 「サプライチェーン管理」でサプライヤー申告を作成してポータルURLをサプライヤーへ送付
-    navigate_to: http://localhost:8000/ui/supply-chain
+    navigate_to: {_PLATFORM_URL}/ui/supply-chain
   Step2: 提出書類受領後にBOMツリーで品目ごとの原産国・価値比率を確認
     highlight: BOMツリー
   Step3: De Minimis比率を確認（一般規制対象国: 25%超でEAR適用、テロ支援国: 10%閾値）
     highlight: De Minimis
-  Step4: FDPR（外国直接製品ルール）フラグをAI該非判定案件のサプライチェーンリンクに保存
-    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions
+  Step4: FDPR（外国直接製品ルール）フラグをAI取引審査案件のサプライチェーンリンクに保存
+    navigate_to: {_PLATFORM_URL}/proxy/ai_validation/ui/transactions
 
 UC8: 出荷ライセンス管理（許可証確認 → 条件一致確認 → 価値控除 → 証跡保存）
   Step1: 「輸出許可申請」で該当ライセンスの残存許可額・有効期限を確認
-    navigate_to: http://localhost:8000/ui/export-license
+    navigate_to: {_PLATFORM_URL}/ui/export-license
   Step2: 出荷品目・仕向地・需要者・用途が許可証条件と一致しているか4要素確認
     highlight: 条件確認
   Step3: 出荷のたびに「価値控除」フォームで出荷額を入力し残存許可額を更新
     highlight: 価値控除
   Step4: インボイス・B/L番号を案件詳細に添付して証跡保存（外為法7年・EAR5年保存）
-    navigate_to: http://localhost:8000/proxy/ai_validation/ui/transactions
+    navigate_to: {_PLATFORM_URL}/proxy/ai_validation/ui/transactions
   Step5: 残存許可額20%以下・期限30日以内のアラートをダッシュボードで確認して再申請判断
-    navigate_to: http://localhost:8000/dashboard
+    navigate_to: {_PLATFORM_URL}/dashboard
 
 UC4: 取引先デューデリジェンス（制裁照合 → 与信スコア → 進捗記録）
   Step1: 「業務フロー → 取引先スクリーニング → 一括照合」で7ソース照合
-    navigate_to: http://localhost:8000/proxy/screening/ui/batch
+    navigate_to: {_PLATFORM_URL}/proxy/screening/ui/batch
   Step2: 「専門ツール → 与信管理」で財務・統合スコアを確認
-    navigate_to: http://localhost:8000/ui/counterparty
+    navigate_to: {_PLATFORM_URL}/ui/counterparty
   Step3: 「受注後ERP → コンプライアンス進捗」に結果を記録
-    navigate_to: http://localhost:8000/ui/compliance-lookup
+    navigate_to: {_PLATFORM_URL}/ui/compliance-lookup
 
 UC5: みなし輸出審査（人物スクリーニング → 申請 → 経済安保チェック → 台帳記録）
   Step1: 「R&Dリスク評価 → 人物管理」で外国籍研究者を登録・スクリーニング
-    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/personnel
+    navigate_to: {_PLATFORM_URL}/proxy/rnd_assessment/ui/personnel
   Step2: 「業務フロー → 役務取引管理 → みなし輸出申請」で申請を作成
-    navigate_to: http://localhost:8000/proxy/ai_validation/ui/services
+    navigate_to: {_PLATFORM_URL}/proxy/ai_validation/ui/services
   Step3: 「専門ツール → 経済安保法チェック」でICP自己診断8要素を確認
-    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/icp-diagnosis
+    navigate_to: {_PLATFORM_URL}/proxy/rnd_assessment/ui/icp-diagnosis
 
 UC6: 輸出許可申請（REQUIRES_PERMIT取引 → ドラフト生成 → 価値消費管理）
-  Step1: AI該非判定で REQUIRES_PERMIT と判定された取引詳細の「輸出許可申請ドラフト生成」ボタン
+  Step1: AI取引審査で REQUIRES_PERMIT と判定された取引詳細の「輸出許可申請ドラフト生成」ボタン
     highlight: 輸出許可申請ドラフト生成
   Step2: 「受注後ERP → 輸出許可申請」で申請を管理（申請番号自動採番）
-    navigate_to: http://localhost:8000/ui/export-license
+    navigate_to: {_PLATFORM_URL}/ui/export-license
   Step3: 出荷のたびに「価値控除」フォームで残存許可額を更新
     highlight: 価値控除
 
 UC9: 技術インテリジェンス調査（特許検索 → 制裁照合 → 学術論文 → R&Dリンク）
   Step1: 「専門ツール → 特許検索」でキーワード・CPC分類で検索
-    navigate_to: http://localhost:8000/proxy/patent_search/
+    navigate_to: {_PLATFORM_URL}/proxy/patent_search/
   Step2: 検索結果の発明者・出願人に「制裁照合」ボタンで照合
     highlight: 制裁照合
   Step3: 「R&Dリスク評価 → 技術インテリジェンス」で学術論文類似度を確認
-    navigate_to: http://localhost:8000/proxy/rnd_assessment/ui/academic-intel
+    navigate_to: {_PLATFORM_URL}/proxy/rnd_assessment/ui/academic-intel
 
 【よくある質問と回答（DAP即答ガイド）】
 
@@ -1376,7 +1376,7 @@ Q: ECCN番号の調べ方は？
 A: まず品目管理のHSコード判定でHSコードを特定し、HS→ECCNマッピングから候補を取得してください。それでも不明な場合は米国メーカーへのCCATS申請または経済産業省への相談が必要です。
 
 Q: De Minimis 25%超えはどうすれば？
-A: 一般的な規制対象国向けは25%超でEARが外国製品にも適用されます（FDPルール）。AI該非判定で再審査し、REQUIRES_PERMITなら輸出許可申請（UC6）が必要です。テロ支援国（KP/IR/SY等）は10%が閾値です。
+A: 一般的な規制対象国向けは25%超でEARが外国製品にも適用されます（FDPルール）。AI取引審査で再審査し、REQUIRES_PERMITなら輸出許可申請（UC6）が必要です。テロ支援国（KP/IR/SY等）は10%が閾値です。
 
 Q: 審査記録の保存期間は？
 A: 外為法では7年間（施行令）、米国EARでは5年間（15 CFR §762）の記録保持が必要です。本プラットフォームの審査結果はすべてデータベースに保存されています。
@@ -2414,7 +2414,7 @@ _COACHING_TEMPLATES: dict[str, dict] = {
         "name": "プラットフォーム — 全体ナビゲーション",
         "prompt_supplement": (
             "プラットフォームのトップ画面では全体フローの案内が主目的です:\n"
-            "1. 標準ワークフロー: R&D審査(8003) → 品目管理(8002) → AI該非判定(8011) → スクリーニング(8005)\n"
+            "1. 標準ワークフロー: R&D審査(8003) → 品目管理(8002) → AI取引審査(8011) → スクリーニング(8005)\n"
             "2. 新規案件は R&D リスク管理から始めることを推奨してください\n"
             "3. NeuroSymbolic 該非判定エージェントは AI 該非判定モジュール(8011)の取引詳細から起動できます\n"
             "4. 各モジュールが連携してデータを共有していることを説明してください\n"

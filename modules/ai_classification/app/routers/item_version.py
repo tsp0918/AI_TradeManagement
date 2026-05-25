@@ -40,7 +40,7 @@ _CHANGE_IMPACT: dict[str, str] = {
 
 _CHANGE_ACTIONS: dict[str, list[dict]] = {
     "eccn_change": [
-        {"type": "re_validate", "label": "AI該非判定を再実行", "priority": "urgent"},
+        {"type": "re_validate", "label": "AI取引審査を再実行", "priority": "urgent"},
         {"type": "update_license_drafts", "label": "輸出許可申請ドラフトを更新", "priority": "high"},
     ],
     "coo_change": [
@@ -48,11 +48,11 @@ _CHANGE_ACTIONS: dict[str, list[dict]] = {
         {"type": "re_attest", "label": "原産性証明を再取得", "priority": "medium"},
     ],
     "composition_change": [
-        {"type": "re_validate", "label": "AI該非判定を再実行（組成変更）", "priority": "urgent"},
+        {"type": "re_validate", "label": "AI取引審査を再実行（組成変更）", "priority": "urgent"},
         {"type": "sds_review", "label": "SDS/GHS 情報を再確認", "priority": "high"},
     ],
     "process_change": [
-        {"type": "re_validate", "label": "AI該非判定を再確認（工程変更）", "priority": "high"},
+        {"type": "re_validate", "label": "AI取引審査を再確認（工程変更）", "priority": "high"},
         {"type": "process_review", "label": "製造工程別 ECCN 該当性を確認", "priority": "medium"},
     ],
     "supplier_change": [

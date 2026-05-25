@@ -385,7 +385,7 @@
 <div style="background:#fffbeb; border:1.5px solid #fde68a; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
   <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
     <span style="font-size:12px; font-weight:700; color:#92400e;">⚠ 規制動向アラート — 未確認 {{ reg_alerts|length }} 件</span>
-    <a href="http://localhost:8000/api/regulatory/changes" target="_blank"
+    <a href="/api/regulatory/changes" target="_blank"
        style="font-size:10.5px; color:#1d4ed8; font-weight:600;">一覧 →</a>
   </div>
   {% for rc in reg_alerts %}
@@ -404,7 +404,7 @@
   </div>
   {% endfor %}
   <div style="margin-top:8px; font-size:10px; color:#9C8A78;">
-    既読にするには <a href="http://localhost:8000/api/regulatory/changes" target="_blank" style="color:#1d4ed8;">規制動向API</a> より dismiss を実行してください。
+    既読にするには <a href="/api/regulatory/changes" target="_blank" style="color:#1d4ed8;">規制動向API</a> より dismiss を実行してください。
   </div>
 </div>
 {% endif %}
@@ -418,7 +418,7 @@
 {% if not transactions and not error %}
 <div class="empty-state">
   <div class="icon">📋</div>
-  <p>案件がありません。AI該非判定モジュールから新規案件を作成してください。</p>
+  <p>案件がありません。AI取引審査モジュールから新規案件を作成してください。</p>
 </div>
 {% endif %}
 
@@ -524,21 +524,21 @@
     {% endfor %}
 
     {% if tx.has_ai_run %}
-    <a href="{{ 'http://localhost:8011/ui/transactions/' ~ tx.id ~ '/export/csv' }}"
+    <a href="{{ validation_public_url }}/ui/transactions/{{ tx.id }}/export/csv"
        class="action-btn p-info" target="_blank">↓ CSV</a>
-    <a href="{{ 'http://localhost:8011/ui/transactions/' ~ tx.id ~ '/export/pdf' }}"
+    <a href="{{ validation_public_url }}/ui/transactions/{{ tx.id }}/export/pdf"
        class="action-btn p-info" target="_blank">↓ PDF</a>
     {% endif %}
 
     <button class="open-btn"
-            onclick="openInPortal('http://localhost:8011/ui/transactions/{{ tx.id }}')">
+            onclick="openInPortal('{{ validation_public_url }}/ui/transactions/{{ tx.id }}')">
       詳細を開く →
     </button>
   </div>
   {% else %}
   <div class="action-row">
     <button class="open-btn"
-            onclick="openInPortal('http://localhost:8011/ui/transactions/{{ tx.id }}')">
+            onclick="openInPortal('{{ validation_public_url }}/ui/transactions/{{ tx.id }}')">
       詳細を開く →
     </button>
   </div>

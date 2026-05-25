@@ -27,9 +27,12 @@ router = APIRouter(prefix="/api/transactions", tags=["api-transactions"])
 
 import os as _os
 _logger = logging.getLogger(__name__)
-# ai_validation 自身のベース URL（ダッシュボードのアクション URL 生成用）
-_BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+# ブラウザからのアクション URL → public URL（Cloudflare Tunnel 経由）
+_BASE = _os.environ.get("MODULE_AI_VALIDATION_PUBLIC_URL", "https://validation.tsp-aitrademanagement.com")
+# サーバー間通信（スクリーニング照合 POST）用内部 URL
 _SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
+# スクリーニング結果確認リンク（ブラウザ向け）
+_SCREENING_PUBLIC = _os.environ.get("MODULE_SCREENING_PUBLIC_URL", "https://screening.tsp-aitrademanagement.com")
 
 
 def _screen_counterparty_bg(transaction_id: int, counterparty_name: str) -> None:
@@ -103,7 +106,7 @@ def _pending_actions(
                 "step":     1,
                 "key":      "screening_review",
                 "label":    "スクリーニング結果を確認",
-                "url":      f"{_SCREENING_BASE}/ui/results",
+                "url":      f"{_SCREENING_PUBLIC}/ui/results",
                 "method":   "GET",
                 "priority": "danger",
             })

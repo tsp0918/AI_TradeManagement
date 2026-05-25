@@ -8,7 +8,7 @@ module_sdk.base
 
     MODULE = ModuleInfo(
         key="ai_validation",
-        name="AI該非判定",
+        name="AI取引審査",
         base_url="http://localhost:8011",
         capabilities=["export_control", "matrix_run"],
         data_contracts={
