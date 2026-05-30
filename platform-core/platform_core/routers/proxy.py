@@ -166,6 +166,7 @@ async def proxy_module(
         except Exception:
             text = upstream.content.decode("utf-8", errors="replace")
         rewritten = _rewrite_urls(text, proxy_prefix)
+        resp_headers["cache-control"] = "no-store"
         return Response(
             content=rewritten,
             status_code=status_code,
