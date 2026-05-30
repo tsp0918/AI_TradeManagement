@@ -1593,5 +1593,223 @@
         ]
       }
     ]
+  },
+  {
+    "id": "DEMO3",
+    "title": "【デモ】サプライチェーン・調達リスク管理",
+    "persona": "調達コンプライアンス担当",
+    "description": "米国EAR管理品を含む製品のBOM登録→サプライチェーン可視化→De Minimis計算→サプライヤー証明管理の一連フロー（EAR §734.4対応）",
+    "steps": [
+      {
+        "title": "シナリオ概要",
+        "detail": "調達部品のサプライチェーンリスク管理フローを体験します",
+        "guidance_steps": [
+          {
+            "type": "pause",
+            "button_label": "デモを開始 →",
+            "message": "【デモ開始】シナリオ: 米国製レーザーダイオード（ECCN 6A005.a.2）を含む製品LS-500のBOM登録から、EAR §734.4 De Minimisルール計算・サプライヤー証明管理までの一連フローです。準備ができたらボタンを押してください。"
+          },
+          {
+            "type": "explain",
+            "message": "調達リスクの核心: 米国EAR管理品の価値比率が「一般国25%」「E:1グループ（CN/RU/IR/SY/KP/CU）10%」を超えると、製品全体がEARの管轄下に入り、第三国への再輸出に米国政府の輸出許可証が必要になります。AIが自動計算します。"
+          },
+          {
+            "type": "explain",
+            "message": "今日のデモの流れ: ①米国調達部品を品目マスタに登録 → ②サプライチェーン管理画面でBOMツリー確認 → ③De Minimis計算（仕向地: 中国CN）→ ④サプライヤー証明管理・招待URL発行"
+          },
+          {
+            "type": "pause",
+            "button_label": "BOM構成品登録へ進む →",
+            "message": "それでは米国調達部品の登録から始めましょう。"
+          }
+        ]
+      },
+      {
+        "title": "BOM構成品登録（米国調達部品）",
+        "detail": "品目マスタに米国原産EAR管理品（ECCN 6A005）を登録する",
+        "guidance_steps": [
+          {
+            "type": "navigate",
+            "url": "{PLATFORM_URL}/proxy/ai_classification/products/new",
+            "message": "品目管理の新規登録フォームを開きます"
+          },
+          {
+            "type": "explain",
+            "message": "LS-500の中核部品「米国産レーザーダイオードモジュール」を品目マスタに登録します。原産地(COO)をUSに設定することで後続のDe Minimis計算に自動反映されます。"
+          },
+          {
+            "type": "highlight",
+            "target": "品目コード",
+            "tooltip": "品目コードを入力します（英数字・ハイフン推奨）",
+            "message": "① 「品目コード」フィールドにサンプルデータを入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "品目コード",
+            "value": "US-LASER-DM650",
+            "message": "品目コードを入力します"
+          },
+          {
+            "type": "highlight",
+            "target": "品目名",
+            "tooltip": "部品の正式名称を入力します",
+            "message": "② 「品目名」を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "品目名",
+            "value": "Laser Diode Module 650nm (US Origin)",
+            "message": "品目名を入力します"
+          },
+          {
+            "type": "highlight",
+            "target": "用途概要",
+            "tooltip": "ECCN・原産地・用途・単価を含めることでDe Minimis計算の精度が向上します",
+            "message": "③ 「用途概要」を入力します（ECCN・原産地・単価を記載）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "用途概要",
+            "value": "米国原産レーザーダイオードモジュール。ECCN: 6A005.a.2。原産地: US。LS-500の中核光学デバイス。半導体ウェハー検査用650nm精密発光素子。単価: USD 850/pcs",
+            "message": "用途概要を入力します（ECCN・原産地・単価を含む）"
+          },
+          {
+            "type": "explain",
+            "message": "【ポイント】品目種別は「購入品（外部調達・輸入）」を選択します。種別設定により、AIがコスト積算・BOM構造・De Minimis計算を自動で切り替えます。"
+          },
+          {
+            "type": "highlight",
+            "target": "登録",
+            "tooltip": "入力内容を確認したら「登録」ボタンで品目を保存します",
+            "message": "④ 「登録」ボタンで品目マスタに保存します"
+          },
+          {
+            "type": "pause",
+            "button_label": "品目登録完了 → サプライチェーン管理へ",
+            "message": "品目の登録が完了しました。次はサプライチェーン管理画面でBOMツリーを確認します。"
+          }
+        ]
+      },
+      {
+        "title": "サプライチェーン管理・BOMツリー確認",
+        "detail": "調達・BOM管理ダッシュボードでBOM構造と米国管理品の状況を把握する",
+        "guidance_steps": [
+          {
+            "type": "navigate",
+            "url": "{PLATFORM_URL}/ui/supply-chain",
+            "message": "調達・BOM管理ダッシュボードを開きます"
+          },
+          {
+            "type": "explain",
+            "message": "調達・BOM管理ダッシュボードです。左上の統計バー「US管理品ノード数（赤数字）」がリスク状況を一目で示します。赤い数字が多い場合は優先的にDe Minimis計算が必要です。"
+          },
+          {
+            "type": "highlight",
+            "target": "品名部品番号検索",
+            "tooltip": "品名・部品番号でノードを検索して絞り込みます",
+            "message": "⑤ 検索フィールドで「LS-500」を検索してノードを絞り込みます"
+          },
+          {
+            "type": "fill_demo",
+            "target": "品名部品番号検索",
+            "value": "LS-500",
+            "message": "「LS-500」で検索します"
+          },
+          {
+            "type": "highlight",
+            "target": "BOMツリータブ",
+            "tooltip": "LS-500を選択してBOMツリーを展開します",
+            "message": "⑥ 「🌳 BOM ツリー」タブでBOM階層構造を確認します"
+          },
+          {
+            "type": "explain",
+            "message": "【BOMツリーの見方】ノードの色がリスクを示します: 🔴赤（HIGH）= US EAR規制品（ECCN ≠ EAR99）、🟠オレンジ（MED）= US原産・EAR99/未設定、🟢緑 = 一般構成品。LS-500のツリーにはHIGHノード（US-LASER-DM650）が含まれています。"
+          },
+          {
+            "type": "pause",
+            "button_label": "BOMツリー確認完了 → De Minimis計算へ",
+            "message": "BOMツリーの構造と米国管理品ノードを確認しました。次はDe Minimisルールの計算を行います。"
+          }
+        ]
+      },
+      {
+        "title": "De Minimis計算（EAR §734.4）",
+        "detail": "仕向地国コードを入力して米国管理品の価値比率を自動計算する",
+        "guidance_steps": [
+          {
+            "type": "highlight",
+            "target": "De Minimisタブ",
+            "tooltip": "De Minimisルール計算タブに切り替えます",
+            "message": "⑦ 「📐 De Minimis」タブをクリックします"
+          },
+          {
+            "type": "explain",
+            "message": "EAR §734.4 De Minimis ルール: 製品に含まれる米国EAR管理品の価値比率が閾値を超えると製品全体がEARの管轄下に入ります。一般国: 25%、E:1グループ（CN/RU/IR/SY/KP/CU）: 10%。"
+          },
+          {
+            "type": "highlight",
+            "target": "仕向地国コード",
+            "tooltip": "ISO 3166-1 alpha-2コードを入力します（例: CN, TW, KR）",
+            "message": "⑧ 仕向地国コードを入力します（今回は中国向け: CN）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "仕向地国コード",
+            "value": "CN",
+            "message": "中国（CN）を入力します"
+          },
+          {
+            "type": "highlight",
+            "target": "De Minimis計算実行",
+            "tooltip": "BOM全体を再帰的にスキャンしてUS管理品比率を計算します",
+            "message": "⑨ 「計算実行」ボタンでDe Minimis計算を起動します"
+          },
+          {
+            "type": "explain",
+            "message": "【デモ計算結果イメージ】US-LASER-DM650（ECCN 6A005.a.2）の価値比率: 35.2%。仕向地CN（E:1グループ）の閾値10%を大幅超過。→ De Minimisルール適用不可。LS-500のCN向け輸出にはEAR §742.4に基づく米国政府の輸出許可証が必要です。"
+          },
+          {
+            "type": "pause",
+            "button_label": "De Minimis確認完了 → サプライヤー証明管理へ",
+            "message": "De Minimis計算結果を確認しました。次はサプライヤーへの証明依頼フローを見ます。"
+          }
+        ]
+      },
+      {
+        "title": "サプライヤー証明管理とリスクレポート",
+        "detail": "ECCN申告収集・招待URL発行・サプライチェーンリスクサマリーを確認する",
+        "guidance_steps": [
+          {
+            "type": "highlight",
+            "target": "証明管理タブ",
+            "tooltip": "サプライヤーからの申告・証明書を管理します",
+            "message": "⑩ 「📋 証明管理」タブでサプライヤーからのECCN申告を管理します"
+          },
+          {
+            "type": "explain",
+            "message": "証明管理では各サプライヤーからECCN・原産国・USコンテンツ比率の申告を収集します。証明書のステータス「未申告 → 申告済 → AI検証 → 承認/却下」でトレーサビリティを確保します。"
+          },
+          {
+            "type": "highlight",
+            "target": "招待URL発行",
+            "tooltip": "サプライヤーに専用URLを発行してECCN情報を直接入力してもらいます",
+            "message": "⑪ 「🔗 招待URL発行」でサプライヤーポータルへのリンクを発行します"
+          },
+          {
+            "type": "explain",
+            "message": "【サプライヤーポータル】発行URLからサプライヤーが自社のECCN・原産国・USコンテンツ%を直接入力できます。入力後AIが内容を自動検証し、疑義がある場合はフラグを立てます。担当者のメール往復が大幅に削減されます。"
+          },
+          {
+            "type": "explain",
+            "message": "【サプライチェーンリスクサマリー（デモ）】HIGH（US EAR規制品）: 1件、MED（US原産・EAR99/未判定）: 2件、SAFE（非US・EAR99確定）: 5件。HIGHノードをクリックするとAI取引審査モジュールと連携して該非判定トランザクションを自動起票できます。"
+          },
+          {
+            "type": "pause",
+            "button_label": "デモ完了 ✓",
+            "message": "以上がBOM登録→サプライチェーン可視化→De Minimis計算→サプライヤー証明管理の一連デモです。ご質問があればお気軽にどうぞ。"
+          }
+        ]
+      }
+    ]
   }
 ]

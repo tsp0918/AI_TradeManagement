@@ -145,7 +145,7 @@
         </div>
         <div class="card-body">
           <div class="toolbar">
-            <input id="searchInput" type="text" placeholder="品名・部品番号で検索..." oninput="debounce()">
+            <input id="searchInput" type="text" placeholder="品名・部品番号で検索..." oninput="debounce()" data-dap-field="品名部品番号検索">
             <select id="filterType" onchange="loadNodes()">
               <option value="">種別（全）</option>
               <option value="product">製品</option>
@@ -180,9 +180,9 @@
     <div>
       <div class="card">
         <div class="tabs">
-          <div class="tab active" id="tabBom" onclick="switchTab('bom')">🌳 BOM ツリー</div>
-          <div class="tab" id="tabDm" onclick="switchTab('dm')">📐 De Minimis</div>
-          <div class="tab" id="tabAttest" onclick="switchTab('attest')">📋 証明管理</div>
+          <div class="tab active" id="tabBom" onclick="switchTab('bom')" data-dap-field="BOMツリータブ">🌳 BOM ツリー</div>
+          <div class="tab" id="tabDm" onclick="switchTab('dm')" data-dap-field="De Minimisタブ">📐 De Minimis</div>
+          <div class="tab" id="tabAttest" onclick="switchTab('attest')" data-dap-field="証明管理タブ">📋 証明管理</div>
         </div>
 
         <!-- BOM ツリー -->
@@ -218,9 +218,9 @@
           <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
             <div class="form-group" style="flex:1;min-width:120px;">
               <label>仕向地国コード（ISO 2文字）</label>
-              <input id="dmCountry" type="text" placeholder="例: CN, US, KP" maxlength="3">
-            </div>
-            <button class="btn btn-deminimis btn-sm" onclick="runDeMinimis()" style="margin-bottom:1px;">計算実行</button>
+              <input id="dmCountry" type="text" placeholder="例: CN, US, KP" maxlength="3" data-dap-field="仕向地国コード">
+</div>
+            <button class="btn btn-deminimis btn-sm" onclick="runDeMinimis()" style="margin-bottom:1px;" data-dap-field="De Minimis計算実行">計算実行</button>
           </div>
           <div id="dmResult"></div>
           <!-- 証明カバレッジ -->
@@ -233,7 +233,7 @@
             <p id="attestNodeLabel" style="font-size:.82rem;color:#888;">ツリーを表示すると証明を管理できます</p>
             <div style="display:flex;gap:6px;">
               <button class="btn btn-primary btn-sm" onclick="openAttestModal()" id="btnAddAttest" disabled>＋ 申告登録</button>
-              <button class="btn btn-sm" style="background:#0e9f6e;color:#fff;" onclick="openPortalTokenModal()" id="btnPortalToken" disabled>🔗 招待URL発行</button>
+              <button class="btn btn-sm" style="background:#0e9f6e;color:#fff;" onclick="openPortalTokenModal()" id="btnPortalToken" disabled data-dap-field="招待URL発行">🔗 招待URL発行</button>
             </div>
           </div>
           <div id="attestList"><p class="empty">未選択</p></div>
