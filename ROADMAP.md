@@ -778,6 +778,7 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | スクリーニング精度修正（2026-05-16） | Step0 SQL ILIKE + エイリアス検索追加。サフィックス除去後スコアリング。ZTE/SMIC等の短名・頭字語ヒット。Sony等の偽陽性除去 |
 | ✅ | ERP JSON一括インポート（2026-05-16） | POST /api/counterparties/import-batch（最大500件・同期スクリーニング・upsert・flagged_list即時返却） |
 | ✅ | is_hit バグ修正（2026-05-16） | counterparty.py: `"hit"` → `in ("match", "possible_match")` / `list_type` → `list_source` |
+| ✅ | **DAP Phase 1-4: 先輩担当者モード完全強化（2026-05-30）** | UC定義外部化(9UC)・fill_field_from_context・4段階フィールドマッチ・デモモード（DEMO1/DEMO2・typewriterFill・pause/fill_demo）|
 | ★★★☆☆ | 制裁リスト全量同期 | OFAC SDN URL変更対応済。Trade.gov API キー取得で BIS EL 完全収録（現在 watchlist 15件のみ）|
 
 ---
