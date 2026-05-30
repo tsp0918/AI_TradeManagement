@@ -1,4 +1,4 @@
-// cache-bust: 1780153386
+// cache-bust: 1780154032
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -1397,6 +1397,19 @@
             }
           }
           await sleep(900);
+          break;
+        case 'api_call':
+          // バックグラウンドAPI呼び出し（デモデータシードなど）
+          try {
+            if (step.message) appendGuidanceMsg('⚙️ ' + step.message);
+            var apiUrl = _rewriteLocalUrl(step.url || '');
+            await fetch(apiUrl, {
+              method: (step.method || 'POST').toUpperCase(),
+              headers: { 'Content-Type': 'application/json' },
+              body: step.body ? JSON.stringify(step.body) : undefined
+            });
+            await sleep(300);
+          } catch(e) {}
           break;
         case 'pause':
           // プレゼンターコントロール: ボタンを押すまで停止（autoMs=0 → 無制限待機）

@@ -1704,6 +1704,13 @@
         "highlight": null,
         "guidance_steps": [
           {
+            "type": "api_call",
+            "url": "{PLATFORM_URL}/api/demo/seed-demo3",
+            "method": "POST",
+            "body": {},
+            "message": "デモデータを準備しています…"
+          },
+          {
             "type": "navigate",
             "url": "{PLATFORM_URL}/ui/supply-chain",
             "message": "調達・BOM管理ダッシュボードを開きます"
