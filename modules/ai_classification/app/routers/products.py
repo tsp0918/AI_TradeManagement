@@ -752,15 +752,23 @@ def create_product(
     item_type: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    product = Product(
-        code=code,
-        name=name,
-        description=description or None,
-        item_type=item_type or None,
-        source="AI_TM",
-        is_unconfirmed=False,
-    )
-    db.add(product)
+    product = db.query(Product).filter(Product.code == code).first()
+    if product:
+        product.name = name
+        if description:
+            product.description = description
+        if item_type:
+            product.item_type = item_type
+    else:
+        product = Product(
+            code=code,
+            name=name,
+            description=description or None,
+            item_type=item_type or None,
+            source="AI_TM",
+            is_unconfirmed=False,
+        )
+        db.add(product)
     db.commit()
     db.refresh(product)
     return RedirectResponse(url="/products", status_code=303)
