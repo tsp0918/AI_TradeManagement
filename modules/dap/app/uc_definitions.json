@@ -538,79 +538,96 @@
     "id": "DEMO1",
     "title": "【デモ】輸出審査ワンストップフロー",
     "persona": "デモプレゼンター / セールスエンジニア",
-    "description": "レーザー変位センサーの台湾向け輸出を例に、品目登録からAI取引審査まで一連フローを8分でご覧いただきます",
+    "description": "レーザー変位センサーの台湾向け輸出を例に、品目登録からAI取引審査まで一連フローを8分でご覧いただきます。各フォームにサンプルデータを自動入力します。",
     "steps": [
       {
         "num": 1,
         "title": "システム概要",
-        "detail": "AI取引管理プラットフォームの全体像を確認する",
+        "detail": "デモシナリオの説明と全体フローの把握",
         "navigate_to": null,
         "highlight": null,
         "guidance_steps": [
-          { "type": "pause", "button_label": "デモを開始 →", "message": "【デモ開始】シナリオ: レーザー変位センサー Model LS-500（波長650nm）の台湾TSMC向け輸出審査です。進めてよろしければボタンを押してください。" },
+          { "type": "pause", "button_label": "デモを開始 →", "message": "【デモ開始】シナリオ: レーザー変位センサー Model LS-500（波長650nm）の台湾TSMC向け輸出審査です。準備ができたらボタンを押してください。" },
           { "type": "explain", "message": "このプラットフォームは外為法・EAR（米国輸出管理規則）対応のAIコンプライアンスSaaSです。従来30分〜数時間かかる審査フローを、AIが伴走することで大幅に短縮できます。" },
-          { "type": "explain", "message": "今日のデモの流れ: ①品目登録（2分）→ ②HSコードAI判定（30秒）→ ③制裁照合（1分）→ ④AI取引審査（2分）→ ⑤証跡保存（30秒）。合計6分で審査完結を目指します。" },
+          { "type": "explain", "message": "今日のデモの流れ: ①品目登録（品目コード・品目名・用途概要）→ ②HSコードAI判定 → ③スクリーニング（制裁照合）→ ④AI取引審査（全フィールド入力）→ ⑤判定結果・証跡保存。各フォームにサンプルデータを自動入力します。変更したい場合は直接編集してから「次へ」を押してください。" },
           { "type": "pause", "button_label": "品目登録へ進む →", "message": "それでは品目登録から始めましょう。" }
         ]
       },
       {
         "num": 2,
         "title": "品目登録",
-        "detail": "品目名・型番・用途概要を入力して品目を登録する",
+        "detail": "品目コード・品目名・用途概要を入力して品目を登録する",
         "navigate_to": "{PLATFORM_URL}/proxy/ai_classification/products/new",
         "highlight": null,
         "guidance_steps": [
           { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_classification/products/new", "message": "品目管理の新規登録フォームを開きます" },
-          { "type": "pause", "button_label": "フォームを確認 →", "message": "品目登録フォームが開きました。品目コード・品目名・説明（用途概要）の3つが主な入力項目です。" },
+          { "type": "explain", "message": "品目登録フォームが開きました。品目コード・品目名・用途概要の3つを順番に入力します。サンプルデータを自動入力しますので、必要に応じて修正してください。" },
+          { "type": "highlight", "target": "品目コード", "tooltip": "品目の識別コード。型番をそのまま使うことが多いです", "message": "① 「品目コード」フィールドにサンプルデータを入力します" },
+          { "type": "fill_demo", "target": "品目コード", "value": "LS-500", "message": "品目コードを入力します（型番そのまま）" },
+          { "type": "highlight", "target": "品目名", "tooltip": "規制照合の対象となる正式な品目名称", "message": "② 「品目名」を入力します" },
           { "type": "fill_demo", "target": "品目名", "value": "レーザー変位センサー Model LS-500", "message": "品目名を入力します" },
-          { "type": "fill_demo", "target": "用途概要", "value": "半導体製造ラインの表面検査工程で使用するレーザー変位センサー（波長650nm、分解能0.1μm）。最終使用地は台湾TSMC Fab15B。ウェハ表面の平坦度・段差測定に使用。", "message": "用途概要を入力します。工程・装置・性能・最終使用地の4要素を含めることがAI判定精度の鍵です" },
-          { "type": "explain", "message": "【差別化ポイント】用途概要は判定精度の要です。「工程/装置/性能/最終使用地」の4要素を含めることで、AIが規制対象の技術パラメータを正確に識別します。この情報は後続の審査フェーズに自動引き継ぎされます。" },
-          { "type": "pause", "button_label": "HSコード判定へ →", "message": "品目情報の入力が完了しました。次はHSコードのAI判定です。" }
+          { "type": "highlight", "target": "用途概要", "tooltip": "工程・装置・性能・最終使用地の4要素が判定精度の鍵", "message": "③ 「用途概要」を入力します（最重要項目）" },
+          { "type": "fill_demo", "target": "用途概要", "value": "半導体製造ラインの表面検査工程で使用するレーザー変位センサー（波長650nm、分解能0.1μm）。最終使用地: 台湾TSMC Fab15B。ウェハ表面の平坦度・段差測定に使用。軍事転用なし。", "message": "用途概要を入力します（工程/装置/性能/最終使用地の4要素を含む）" },
+          { "type": "explain", "message": "【差別化ポイント】用途概要の4要素「工程/装置/性能/最終使用地」がAI判定精度の決め手です。この情報が後続の審査フェーズに自動引き継ぎされます。内容を確認・修正してから「次へ」を押してください。" },
+          { "type": "pause", "button_label": "確認完了 → HSコード判定へ", "message": "入力内容の確認・修正が完了したら次のステップへ進みます。" }
         ]
       },
       {
         "num": 3,
         "title": "HSコード AI判定",
         "detail": "品目詳細のHSコード判定ボタンでAIが上位5候補を提示する",
-        "navigate_to": null,
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_classification/products",
         "highlight": "HSコード判定",
         "guidance_steps": [
-          { "type": "highlight", "target": "HSコード判定", "tooltip": "品目保存後、このボタンでAIがHSコードを判定します", "message": "品目詳細ページの「HSコード判定」ボタンをご確認ください" },
-          { "type": "explain", "message": "AIは品目名と用途概要から9,133件のHSコードDBをベクトル検索し、上位5候補を類似度スコア付きで提示します。担当者は候補から選択するだけでOKです。" },
-          { "type": "explain", "message": "【デモ結果イメージ】LS-500の場合: 第1候補 9031.80.900（類似度0.94）= 計測機器・検査機器。ECCNは自動マッピングで3A002候補が提示されます。従来の手動調査が数十秒に短縮されます。" },
-          { "type": "pause", "button_label": "制裁照合へ進む →", "message": "HSコード判定の仕組みをご確認いただきました。次は制裁照合に進みます。" }
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_classification/products", "message": "品目管理の一覧を開きます" },
+          { "type": "explain", "message": "登録した品目の詳細画面で「HSコード判定」ボタンを押すと、AIが品目名と用途概要から9,133件のHSコードDBをベクトル検索し、上位5候補を類似度スコア付きで提示します。担当者は候補から選択するだけでOKです。" },
+          { "type": "explain", "message": "【デモ結果イメージ】LS-500の場合: 第1候補 9031.80.900（類似度0.94）= 計測機器・検査機器。ECCNは自動マッピングで3A002候補が提示されます。従来の手動調査が数分から数十秒に短縮されます。" },
+          { "type": "pause", "button_label": "スクリーニング（制裁照合）へ →", "message": "HSコード判定の仕組みをご確認いただきました。次は制裁照合に進みます。" }
         ]
       },
       {
         "num": 4,
-        "title": "制裁照合（スクリーニング）",
-        "detail": "取引先名TSMCを7ソースの制裁リストで一括照合する",
-        "navigate_to": "{PLATFORM_URL}/proxy/screening/ui/batch",
-        "highlight": "一括照合",
+        "title": "スクリーニング（制裁照合）",
+        "detail": "取引先名TSMCをOFAC/BIS等7ソースの制裁リストで照合する",
+        "navigate_to": "{PLATFORM_URL}/proxy/screening/ui/screen",
+        "highlight": "実行",
         "guidance_steps": [
-          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/screening/ui/batch", "message": "スクリーニング（制裁照合）を開きます" },
-          { "type": "pause", "button_label": "画面を確認 →", "message": "取引先名を入力して7つの制裁リストを一括照合できます。OFAC SDN・BIS Entity List・国連安保理等が対象です。" },
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/screening/ui/screen", "message": "スクリーニング（制裁照合）を開きます" },
+          { "type": "explain", "message": "スクリーニング画面です。企業名を入力して7つの制裁リストを一括照合できます。OFAC SDN・BIS Entity List・国連安保理等が対象です。" },
+          { "type": "highlight", "target": "照合対象", "tooltip": "照合したい企業名または氏名を入力します", "message": "① 「企業名 / 氏名」フィールドに取引先名を入力します" },
           { "type": "fill_demo", "target": "照合対象", "value": "Taiwan Semiconductor Manufacturing Co., Ltd.", "message": "取引先名を入力します" },
-          { "type": "highlight", "target": "一括照合", "tooltip": "このボタンで7ソースを同時照合します（10〜30秒）", "message": "「一括照合」ボタンで照合を実行します" },
+          { "type": "highlight", "target": "照合国", "tooltip": "国コードを入力すると照合精度が上がります（例: TW, CN, RU）", "message": "② 「国コード」で絞り込み精度を上げます" },
+          { "type": "fill_demo", "target": "照合国", "value": "TW", "message": "台湾（TW）を入力します" },
+          { "type": "highlight", "target": "実行", "tooltip": "クリックするとOFAC・BIS・国連等7ソースを同時照合します（10〜30秒）", "message": "③ 「🔍 実行」ボタンで照合を実行します。内容を確認してから「次へ」を押してください。" },
           { "type": "explain", "message": "【デモ結果】TSMCはOFAC SDN・BIS Entity Listいずれにも未掲載（no_match）。スクリーニングはクリアです。BIS 50%ルール: SDN指定企業が50%以上保有する子会社も自動チェックされます。" },
-          { "type": "pause", "button_label": "AI取引審査へ進む →", "message": "スクリーニングをご確認いただきました。次はAI取引審査フォームに進みます。" }
+          { "type": "pause", "button_label": "確認完了 → AI取引審査へ", "message": "スクリーニングをご確認いただきました。次はAI取引審査フォームに進みます。" }
         ]
       },
       {
         "num": 5,
         "title": "AI取引審査フォーム入力",
-        "detail": "案件情報を入力してAI判定パイプラインを起動する",
+        "detail": "品名・品番・用途説明・取引先名・仕向国・最終需要者名・申告用途の7項目を入力する",
         "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new",
         "highlight": "AI判定実行",
         "guidance_steps": [
           { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new", "message": "AI取引審査の新規案件フォームを開きます" },
-          { "type": "pause", "button_label": "フォームを確認 →", "message": "AI取引審査フォームです。取引先名・仕向国・最終需要者名・申告用途を入力してAI判定を実行します。" },
-          { "type": "fill_demo", "target": "取引先名", "value": "Taiwan Semiconductor Manufacturing Co., Ltd.", "message": "取引先名を入力します（スクリーニングと同じ表記）" },
-          { "type": "fill_demo", "target": "仕向国", "value": "TW", "message": "仕向国を入力します" },
+          { "type": "explain", "message": "AI取引審査フォームです。品名・品番・用途説明（製品情報）と取引先名・仕向国・最終需要者名・申告用途（取引情報）の7項目を入力します。サンプルデータを順番に自動入力します。" },
+          { "type": "highlight", "target": "品名", "tooltip": "審査対象品目の正式名称（規制照合に使用）", "message": "① 「品名」を入力します" },
+          { "type": "fill_demo", "target": "品名", "value": "レーザー変位センサー Model LS-500", "message": "品名を入力します" },
+          { "type": "highlight", "target": "品番", "tooltip": "型番・品目コード（品目管理と一致させると追跡が容易）", "message": "② 「品番」を入力します" },
+          { "type": "fill_demo", "target": "品番", "value": "LS-500", "message": "品番を入力します" },
+          { "type": "highlight", "target": "用途説明", "tooltip": "AI判定の照合テキストに使用されます。品目管理の用途概要と一致させてください", "message": "③ 「用途・説明」を入力します（AI判定の核となる項目）" },
+          { "type": "fill_demo", "target": "用途説明", "value": "半導体製造ラインの表面検査工程で使用するレーザー変位センサー（波長650nm、分解能0.1μm）。最終使用地: 台湾TSMC Fab15B。ウェハ表面の平坦度・段差測定に使用。軍事転用なし。", "message": "用途・説明を入力します（品目管理の用途概要と一致）" },
+          { "type": "highlight", "target": "取引先名", "tooltip": "スクリーニングで照合した取引先と同じ表記を使用します", "message": "④ 「取引先名」を入力します（スクリーニングと同じ表記）" },
+          { "type": "fill_demo", "target": "取引先名", "value": "Taiwan Semiconductor Manufacturing Co., Ltd.", "message": "取引先名を入力します" },
+          { "type": "highlight", "target": "仕向国", "tooltip": "ISO alpha-2コード（例: TW, CN, KR）で入力します", "message": "⑤ 「仕向国」を入力します（ISO alpha-2コード）" },
+          { "type": "fill_demo", "target": "仕向国", "value": "TW", "message": "仕向国: 台湾（TW）を入力します" },
+          { "type": "highlight", "target": "最終需要者名", "tooltip": "実際に品目を使用する部署・工場・チームを記入します", "message": "⑥ 「最終需要者名」を入力します（実際の使用部署）" },
           { "type": "fill_demo", "target": "最終需要者名", "value": "TSMC Fab15B Division", "message": "最終需要者名を入力します" },
-          { "type": "fill_demo", "target": "申告用途", "value": "半導体製造ラインの表面検査工程で使用するレーザー変位センサー（波長650nm、分解能0.1μm）。ウェハ表面の平坦度・段差測定に使用。", "message": "申告用途を入力します（品目管理の用途概要と一致）" },
-          { "type": "explain", "message": "【差別化ポイント】入力した用途概要から、AIが外為法別表第1・EAR CCL・Wassenaar MLの3体系を同時照合します。従来の手動チェックリスト作業が大幅に削減されます。" },
-          { "type": "pause", "button_label": "AI判定を実行 →", "message": "全項目入力が完了しました。「AI判定実行」ボタンで判定パイプラインを起動します。" },
+          { "type": "highlight", "target": "申告用途", "tooltip": "最終用途の詳細を記載します。用途・説明と整合性を保ってください", "message": "⑦ 「最終用途（申告用途）」を入力します" },
+          { "type": "fill_demo", "target": "申告用途", "value": "半導体製造工程（ウェハ表面検査）での変位測定。光計測装置として使用。第三国への転送なし。", "message": "申告用途を入力します" },
+          { "type": "explain", "message": "【差別化ポイント】入力した用途概要から、AIが外為法別表第1・EAR CCL・Wassenaar MLの3体系を同時照合します。従来の手動チェックリスト作業が大幅に削減されます。内容を確認・修正してから「次へ」を押してください。" },
+          { "type": "pause", "button_label": "確認完了 → AI判定を実行", "message": "全7項目の入力が完了しました。フォームの「AI判定実行」ボタンで判定パイプラインを起動してください。" },
           { "type": "highlight", "target": "AI判定実行", "tooltip": "クリックするとAIが外為法・EAR・Wassenaarを同時照合します（30〜60秒）", "message": "「AI判定実行」ボタンをご確認ください" }
         ]
       },
@@ -633,7 +650,7 @@
     "id": "DEMO2",
     "title": "【デモ】キャッチオール規制リスク検知",
     "persona": "デモプレゼンター / セールスエンジニア",
-    "description": "中国向け輸出でキャッチオール規制リスクを自動検知するシナリオです。リスク国向け案件の判定フローを3分でご覧いただきます",
+    "description": "中国向け輸出でキャッチオール規制リスクを自動検知するシナリオです。リスク国向け案件の判定フローを3分でご覧いただきます。各フォームにサンプルデータを自動入力します。",
     "steps": [
       {
         "num": 1,
@@ -655,11 +672,23 @@
         "highlight": "AI判定実行",
         "guidance_steps": [
           { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new", "message": "AI取引審査の新規案件フォームを開きます" },
+          { "type": "explain", "message": "AI取引審査フォームです。品名・品番・用途説明と取引先情報を入力します。サンプルデータを自動入力しますので、必要に応じて修正してください。" },
+          { "type": "highlight", "target": "品名", "tooltip": "審査対象品目の正式名称", "message": "① 「品名」を入力します" },
+          { "type": "fill_demo", "target": "品名", "value": "高精度レーザーダイオード Module LD-200", "message": "品名を入力します" },
+          { "type": "highlight", "target": "品番", "tooltip": "型番・品目コード", "message": "② 「品番」を入力します" },
+          { "type": "fill_demo", "target": "品番", "value": "LD-200", "message": "品番を入力します" },
+          { "type": "highlight", "target": "用途説明", "tooltip": "AI判定の照合テキストに使用されます（意図的に詳細を少なくした例）", "message": "③ 「用途・説明」を入力します（意図的に詳細を省略した例）" },
+          { "type": "fill_demo", "target": "用途説明", "value": "光通信モジュールとして使用", "message": "用途説明を入力します（意図的に詳細が少ない例）" },
+          { "type": "highlight", "target": "取引先名", "tooltip": "BIS Entity List掲載企業との取引は特別な許可が必要になる場合があります", "message": "④ 「取引先名」を入力します（注: Entity List掲載企業）" },
           { "type": "fill_demo", "target": "取引先名", "value": "Huawei Technologies Co., Ltd.", "message": "取引先名を入力します" },
+          { "type": "highlight", "target": "仕向国", "tooltip": "中国（CN）はEAR Country Group D:1の要注意国です", "message": "⑤ 「仕向国」を入力します（D:1要注意国）" },
           { "type": "fill_demo", "target": "仕向国", "value": "CN", "message": "仕向国: 中国（CN）を入力します" },
+          { "type": "highlight", "target": "最終需要者名", "tooltip": "最終使用者を明示することが重要です", "message": "⑥ 「最終需要者名」を入力します" },
+          { "type": "fill_demo", "target": "最終需要者名", "value": "Huawei HiSilicon Semiconductor Division", "message": "最終需要者名を入力します" },
+          { "type": "highlight", "target": "申告用途", "tooltip": "最終用途の詳細（意図的に曖昧にした例）", "message": "⑦ 「申告用途」を入力します（意図的に曖昧な記述の例）" },
           { "type": "fill_demo", "target": "申告用途", "value": "商業用ネットワーク機器の光通信モジュールとして使用", "message": "申告用途を入力します（意図的に詳細を少なくした例）" },
-          { "type": "explain", "message": "【注目点】取引先が中国企業 + 用途が「光通信モジュール」= デュアルユースリスクあり。AIはこのパターンを自動検知してキャッチオールフラグを立てます。さらにHuaweiはBIS Entity Listに掲載されています。" },
-          { "type": "pause", "button_label": "AI判定を実行 →", "message": "「AI判定実行」ボタンで判定を起動します。" },
+          { "type": "explain", "message": "【注目点】①仕向国CN（EAR D:1）②HuaweiはBIS Entity List掲載③用途「光通信モジュール」はデュアルユース判定④申告用途が不十分 — この4つのRed Flagが組み合わさるとAIが自動的にREQUIRES_PERMITを判定します。内容を確認してから「次へ」を押してください。" },
+          { "type": "pause", "button_label": "確認完了 → AI判定を実行", "message": "フォームの「AI判定実行」ボタンで判定を起動します。" },
           { "type": "highlight", "target": "AI判定実行", "tooltip": "クリックするとリスク検知アルゴリズムが起動します", "message": "「AI判定実行」ボタンをご確認ください" }
         ]
       },
@@ -670,7 +699,7 @@
         "navigate_to": null,
         "highlight": "輸出許可申請ドラフト生成",
         "guidance_steps": [
-          { "type": "explain", "message": "【デモ判定結果】REQUIRES_PERMIT（輸出許可申請必要）。検知されたリスク: ①仕向国CNはEAR Country Group D:1（要注意）②HuaweiはBIS Entity Listに掲載③用途「光通信モジュール」はデュアルユース判定④Red Flag: 用途の詳細が不十分" },
+          { "type": "explain", "message": "【デモ判定結果】REQUIRES_PERMIT（輸出許可申請必要）。検知されたリスク: ①仕向国CNはEAR Country Group D:1（要注意）②HuaweiはBIS Entity Listに掲載③用途「光通信モジュール」はデュアルユース判定④Red Flag: 申告用途の詳細が不十分" },
           { "type": "explain", "message": "【差別化ポイント】AIはこれら複数のリスク要因を横断的に分析し、REQUIRES_PERMITを自動判定します。担当者は判定根拠を見ながら次の行動（輸出許可申請 or 案件見直し）を素早く判断できます。" },
           { "type": "highlight", "target": "輸出許可申請ドラフト生成", "tooltip": "REQUIRES_PERMIT案件は、このボタンで経産省向け申請書ドラフトを自動生成できます", "message": "「輸出許可申請ドラフト生成」で申請書の骨子を自動作成できます" },
           { "type": "pause", "button_label": "デモ完了 ✓", "message": "以上がキャッチオール規制リスク検知デモです。AIが複数リスク要因を自動分析し、REQUIRES_PERMITを判定する仕組みをご確認いただきました。" }
