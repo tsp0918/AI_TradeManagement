@@ -1,4 +1,4 @@
-// cache-bust: 1780150975
+// cache-bust: 1780151497
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -1287,7 +1287,6 @@
       switch (step.type) {
         case 'navigate':
           if (step.url) {
-            savePendingGuidance(steps, i + 1);
             appendGuidanceMsg('📍 ' + (step.message || '次のページに移動します'));
             await sleep(1200);
             var _isDemoNav = _wfState && _wfState.uc_id && _wfState.uc_id.startsWith('DEMO');
@@ -1295,8 +1294,29 @@
               appendGuidanceMsg('移動先でも続きをご案内しますので、慌てなくて大丈夫です 👍');
               await waitForUserAck('ページを開く →', 30000);
             }
+            var _portalFrame = document.getElementById('module-frame');
+            if (_portalFrame && typeof window.__dap_portal_navigate__ === 'function') {
+              // ポータル iframe モード: iframe load を待って同一コンテキストで続行
+              await new Promise(function (resolve) {
+                var _loadDone = false;
+                function _onLoad() {
+                  if (_loadDone) return;
+                  _loadDone = true;
+                  _portalFrame.removeEventListener('load', _onLoad);
+                  resolve();
+                }
+                _portalFrame.addEventListener('load', _onLoad);
+                _portalNavigate(step.url);
+                setTimeout(function () { _onLoad(); }, 8000); // タイムアウト保険
+              });
+              await sleep(800); // DOM 安定待ち
+              appendGuidanceMsg('✅ ページに移動しました。続けてご案内します。');
+              await sleep(600);
+              break; // ループを continue（return しない）
+            }
+            // スタンドアロンモード: フルページ遷移（セッションに保存して再開）
+            savePendingGuidance(steps, i + 1);
             guidanceRunning = false;
-            // _dap_from パラメータを URL に追加してクロスオリジン遷移後も復元できるようにする
             var _navUrl = step.url;
             try {
               _navUrl += (_navUrl.indexOf('?') >= 0 ? '&' : '?') + '_dap_from=' + (i + 1);
