@@ -91,11 +91,39 @@
   }
   function findFieldElement(label) {
     if (!label) return null;
-    return Array.from(document.querySelectorAll('input[type=text],input[type=email],input[type=number],textarea,select'))
-      .find(function (el) {
-        return [el.placeholder, el.name, el.id, el.getAttribute('aria-label')]
-          .some(function (v) { return v && v.includes(label); });
-      }) || null;
+    const INPUTS = 'input[type=text],input[type=email],input[type=number],input:not([type]),textarea,select';
+
+    // 1. data-dap-field 属性（明示的マーキング — 最優先）
+    const byAttr = document.querySelector('[data-dap-field="' + label + '"]');
+    if (byAttr) return byAttr;
+
+    // 2. label[for] → input[id] の紐付け
+    const allLabels = Array.from(document.querySelectorAll('label'));
+    for (const lbl of allLabels) {
+      if (lbl.textContent.trim().includes(label)) {
+        const forId = lbl.getAttribute('for');
+        if (forId) {
+          const el = document.getElementById(forId);
+          if (el && el.matches(INPUTS)) return el;
+        }
+        // label が直接 input を包んでいる場合
+        const nested = lbl.querySelector(INPUTS);
+        if (nested) return nested;
+      }
+    }
+
+    // 3. placeholder / name / id / aria-label の部分一致
+    const byAttrMatch = Array.from(document.querySelectorAll(INPUTS)).find(function (el) {
+      return [el.placeholder, el.name, el.id, el.getAttribute('aria-label')]
+        .some(function (v) { return v && v.includes(label); });
+    });
+    if (byAttrMatch) return byAttrMatch;
+
+    // 4. テキストノードが隣接する input（旧フォールバック）
+    return Array.from(document.querySelectorAll(INPUTS)).find(function (el) {
+      const prev = el.previousElementSibling;
+      return prev && prev.textContent && prev.textContent.includes(label);
+    }) || null;
   }
 
   // ── API 呼び出し ──────────────────────────────────────────────────
@@ -561,6 +589,7 @@
     .dap-uc-item:hover { background: rgba(0,212,255,0.06); }
     .dap-uc-item-title { font-size: 12px; font-weight: 600; color: #D0D8EC; }
     .dap-uc-item-persona { font-size: 10px; color: #5A6478; margin-top: 2px; }
+    .dap-uc-item-desc { font-size: 10px; color: #7A8498; margin-top: 3px; line-height: 1.4; }
     .dap-uc-item-steps { font-size: 10px; color: rgba(0,212,255,0.5); margin-top: 2px; }
   `;
   document.head.appendChild(style);
@@ -719,6 +748,25 @@
     wfFill.style.width = pct + '%';
   }
 
+  // guidance_steps が含まれる場合は executeGuidanceSteps で詳細案内を実行する。
+  // 含まれない場合は旧来の navigate_to / highlight フォールバックを使う。
+  function _runStepGuidance(guidance, delayMs) {
+    if (!guidance) return;
+    setTimeout(function () {
+      if (guidance.guidance_steps && guidance.guidance_steps.length > 0) {
+        executeGuidanceSteps(guidance.guidance_steps, 0);
+      } else {
+        // 後方互換フォールバック
+        appendGuidanceMsg('👉 ' + guidance.title + ': ' + guidance.detail);
+        if (guidance.navigate_to) {
+          waitForUserAck('画面を開く →', 20000).then(function () { _portalNavigate(guidance.navigate_to); });
+        } else if (guidance.highlight) {
+          setTimeout(function () { highlightElementWithTooltip(guidance.highlight, guidance.detail, 8000); }, 600);
+        }
+      }
+    }, delayMs || 400);
+  }
+
   async function _startWorkflow(ucId) {
     ucPanel.classList.remove('is-visible');
     const data = await apiPost('/api/workflow/start', { session_id: SESSION_ID, uc_id: ucId });
@@ -731,15 +779,7 @@
     };
     _updateWfBar();
     appendMsg('bot', '📋 ' + data.message);
-    // navigate_to があれば自動移動
-    if (data.next_guidance && data.next_guidance.navigate_to) {
-      setTimeout(function () {
-        appendGuidanceMsg('👉 ' + data.next_guidance.title + ': ' + data.next_guidance.detail);
-        if (data.next_guidance.highlight) {
-          setTimeout(function () { highlightElementWithTooltip(data.next_guidance.highlight, data.next_guidance.detail, 8000); }, 600);
-        }
-      }, 400);
-    }
+    _runStepGuidance(data.next_guidance, 400);
   }
 
   async function _advanceWorkflow() {
@@ -760,14 +800,8 @@
     appendMsg('bot', '✅ ステップ完了。次: ' + (data.message || ''));
     if (data.next_guidance) {
       const g = data.next_guidance;
-      setTimeout(function () {
-        appendGuidanceMsg('👉 Step ' + g.step_num + ': ' + g.title + ' — ' + g.detail);
-        if (g.navigate_to) {
-          setTimeout(function () { waitForUserAck('画面を開く →', 20000).then(function () { _portalNavigate(g.navigate_to); }); }, 400);
-        } else if (g.highlight) {
-          setTimeout(function () { highlightElementWithTooltip(g.highlight, g.detail, 8000); }, 600);
-        }
-      }, 300);
+      appendGuidanceMsg('👉 Step ' + g.step_num + ': ' + g.title + ' — ' + g.detail);
+      _runStepGuidance(g, 300);
     }
   }
 
@@ -798,6 +832,7 @@
         item.className = 'dap-uc-item';
         item.innerHTML = '<div class="dap-uc-item-title">' + uc.uc_id + ': ' + uc.title + '</div>'
           + '<div class="dap-uc-item-persona">' + uc.persona + '</div>'
+          + (uc.description ? '<div class="dap-uc-item-desc">' + uc.description + '</div>' : '')
           + '<div class="dap-uc-item-steps">' + uc.total_steps + ' ステップ</div>';
         item.addEventListener('click', function () { _startWorkflow(uc.uc_id); });
         ucListEl.appendChild(item);
@@ -1163,6 +1198,35 @@
           appendGuidanceMsg('⏳ ' + step.message);
           if (step.target) highlightElementWithTooltip(step.target, step.tooltip, 10000);  // ハイライト延長
           await sleep(4000);  // 操作待ち時間（1500ms → 4000ms）
+          break;
+        case 'fill_field_from_context':
+          // クロスモジュール引き継ぎ: セッションの transfer_context から値を取得してフィールドに入力
+          try {
+            const ctxResp = await fetch(DAP_BASE + '/api/chat/transfer-context?session_id=' + encodeURIComponent(SESSION_ID));
+            const ctx = ctxResp.ok ? await ctxResp.json() : {};
+            const val = ctx[step.context_key];
+            if (val) {
+              const fieldEl = findFieldElement(step.target);
+              if (fieldEl) {
+                fieldEl.value = val;
+                fieldEl.dispatchEvent(new Event('input', { bubbles: true }));
+                fieldEl.dispatchEvent(new Event('change', { bubbles: true }));
+                fieldEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                fieldEl.focus();
+                appendGuidanceMsg('✅ ' + step.target + ' に「' + val + '」を入力しました（前の手続きから引き継ぎ）');
+              } else {
+                appendGuidanceMsg('📝 ' + step.target + ' に「' + val + '」を入力してください（前の手続きから引き継ぎ）');
+                if (step.target) showFillHintNear(step.target, val, null);
+              }
+            } else {
+              // 引き継ぎデータがない場合は通常の fill_hint にフォールバック
+              appendGuidanceMsg('📝 ' + (step.message || step.target + ' を入力してください'));
+              if (step.target && step.hint) showFillHintNear(step.target, step.hint, step.example);
+            }
+          } catch (e) {
+            appendGuidanceMsg('📝 ' + (step.message || step.target + ' を入力してください'));
+          }
+          await sleep(2500);
           break;
       }
     }

@@ -1,0 +1,537 @@
+[
+  {
+    "id": "UC1",
+    "title": "新規品目の輸出審査",
+    "persona": "輸出管理担当者",
+    "description": "品目登録から制裁照合・AI取引審査まで一連の輸出審査フローを実行します",
+    "steps": [
+      {
+        "num": 1,
+        "title": "品目登録",
+        "detail": "品目名・型番・仕様を入力して品目を登録する",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_classification/products",
+        "highlight": "新規登録",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_classification/products", "message": "品目管理を開きます" },
+          { "type": "highlight", "target": "新規登録", "tooltip": "ここをクリックして品目登録フォームを開いてください", "message": "「新規登録」ボタンをクリックしてください" },
+          { "type": "fill_hint", "target": "品目名", "hint": "製品の正式名称と型番を入力します", "example": "例: レーザー発振器 Model LX-300", "message": "品目名と型番を入力してください" },
+          { "type": "fill_hint", "target": "用途概要", "hint": "工程 / 装置 / 性能 / 最終使用地 の4要素を含めると AI 判定精度が上がります", "example": "例: 半導体製造ラインの露光工程で使用するレーザー発振器（波長193nm、精度±0.1μm）。最終使用地は台湾のファウンドリ工場", "message": "用途概要は AI 判定の精度を決める最重要項目です。工程・装置・性能・最終使用地の4要素を含めてください" }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "HSコード判定",
+        "detail": "品目詳細の「HSコード判定」ボタンで上位5候補から選択して反映する",
+        "navigate_to": null,
+        "highlight": "HSコード判定",
+        "guidance_steps": [
+          { "type": "highlight", "target": "HSコード判定", "tooltip": "品目を保存後、このボタンをクリックして HS コードを AI 判定します", "message": "品目を保存したら「HSコード判定」ボタンをクリックしてください" },
+          { "type": "explain", "message": "上位5候補が類似度スコア付きで表示されます。最もスコアが高い候補を選択してください。複数の候補で迷う場合は、より詳細な説明がついている方を選ぶのが原則です" },
+          { "type": "watch", "target": "HSコード", "tooltip": "HS コードが確定したら次ステップの制裁照合に進めます", "message": "HS コードを選択・保存したら「次へ」を押してください" }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "制裁照合",
+        "detail": "取引先名を7ソース（OFAC/BIS-EL等）と照合する",
+        "navigate_to": "{PLATFORM_URL}/proxy/screening/ui/batch",
+        "highlight": "一括照合",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/screening/ui/batch", "message": "スクリーニング（制裁照合）を開きます" },
+          { "type": "explain", "message": "取引先の法人名・個人名を入力して7つの制裁リスト（OFAC・BIS Entity List・国連安保理等）と一括照合します。社名の表記揺れ（株式会社 vs KK）に注意してください" },
+          { "type": "fill_hint", "target": "照合対象", "hint": "取引先の正式法人名を入力します。英語表記・日本語表記の両方を試すと精度が上がります", "example": "例: Acme Semiconductor Taiwan Ltd.", "message": "取引先名を入力してください" },
+          { "type": "highlight", "target": "一括照合", "tooltip": "入力した取引先名で制裁リストを照合実行します", "message": "「一括照合」ボタンで照合を実行してください" },
+          { "type": "watch", "target": "照合結果", "tooltip": "ヒット（完全一致/類似）がある場合は輸出管理責任者に報告して案件を保留にしてください", "message": "照合結果を確認してください。ヒットがある場合は案件を保留にして責任者に報告してください" }
+        ]
+      },
+      {
+        "num": 4,
+        "title": "AI取引審査",
+        "detail": "ECCN・仕向地・需要者・用途を入力して審査を開始する",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new",
+        "highlight": "新規審査",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new", "message": "AI取引審査の新規案件フォームを開きます" },
+          { "type": "fill_field_from_context", "target": "取引先名", "context_key": "end_user", "hint": "スクリーニングで照合した法人名と同じ表記で入力してください", "example": "例: Acme Semiconductor Taiwan Ltd.", "message": "取引先名を入力してください（スクリーニングと同じ表記で）" },
+          { "type": "fill_field_from_context", "target": "仕向国", "context_key": "destination_country", "hint": "中継地ではなく最終的な物品の届け先の国を選択します", "example": "例: TW（台湾）", "message": "仕向国を選択してください（中継地ではなく最終目的地）" },
+          { "type": "fill_field_from_context", "target": "申告用途", "context_key": "declared_usage", "hint": "品目管理に入力した用途概要と一致させてください（工程/装置/性能/最終使用地）", "example": "例: 半導体製造ラインの露光工程で使用するレーザー発振器", "message": "申告用途を入力してください。品目管理の用途概要と一致させることが重要です" },
+          { "type": "highlight", "target": "AI判定実行", "tooltip": "全項目入力後にこのボタンで AI 判定を起動します。30〜60秒かかります", "message": "全項目の入力が完了したら「AI判定実行」ボタンをクリックしてください" }
+        ]
+      },
+      {
+        "num": 5,
+        "title": "結果確認・証跡保存",
+        "detail": "判定結果を確認し、REQUIRES_PERMITの場合はUC6へ進む",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          { "type": "explain", "message": "判定結果の読み方: intersection（🟡 黄）= 外為法・EAR 両リストに登場 → 要注意。core_only（🔵 青）= 外為法リストに直接ヒット。expanded_only（⚪ 灰）= 周辺語のみ → 低リスク" },
+          { "type": "explain", "message": "REQUIRES_PERMIT と判定された場合は UC6「輸出許可申請」に進んでください。NLR・EXCEPTION の場合は証跡を保存して案件をクローズできます" },
+          { "type": "highlight", "target": "PDF出力", "tooltip": "外為法の規定により7年間の証跡保存が義務付けられています", "message": "「PDF出力」または「CSV出力」で判定証跡を保存してください（外為法7年保存義務）" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "UC2",
+    "title": "R&D起案から品目登録まで",
+    "persona": "R&Dチームリーダー / 輸出管理担当者",
+    "description": "研究開発案件のリスク評価から品目管理連携・AI取引審査へのフルフローを実行します",
+    "steps": [
+      {
+        "num": 1,
+        "title": "プロジェクト起案",
+        "detail": "R&Dプロジェクトを新規作成し基本情報を入力する",
+        "navigate_to": "{PLATFORM_URL}/proxy/rnd_assessment/ui/cases/new",
+        "highlight": "新規プロジェクト",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/rnd_assessment/ui/cases/new", "message": "R&Dリスク管理を開きます" },
+          { "type": "highlight", "target": "新規プロジェクト", "tooltip": "ここをクリックして新しいR&D案件を作成します", "message": "「新規プロジェクト」をクリックしてください" },
+          { "type": "fill_hint", "target": "プロジェクト名", "hint": "社内管理用のプロジェクト名です。後から変更できます", "example": "例: 次世代センサーモジュール開発 2026", "message": "プロジェクト名を入力してください" },
+          { "type": "fill_hint", "target": "用途要件", "hint": "工程 / 装置 / 性能 / 最終使用地 の4要素で記述します。後のAI取引審査でそのまま使います", "example": "例: 自動車向けLiDARセンサーの試作・評価（最終使用地: 日本国内）", "message": "用途要件を入力してください。この情報は後続の輸出審査でそのまま使います" },
+          { "type": "fill_hint", "target": "需要者要件", "hint": "技術を受け取る相手の法人名・所在地・第三者提供の有無を記述します", "example": "例: 自社開発（日本国内）、第三者提供なし", "message": "需要者要件を入力してください" }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "AIリスク評価確認",
+        "detail": "3テンプレート入力後にリスクスコアと開示戦略を確認する",
+        "navigate_to": null,
+        "highlight": "プロファイル入力",
+        "guidance_steps": [
+          { "type": "highlight", "target": "プロファイル入力", "tooltip": "用途要件・需要者要件・競合分析の3テンプレートを入力します", "message": "「プロファイル入力」タブをクリックしてください" },
+          { "type": "explain", "message": "3つのテンプレート（用途要件・需要者要件・競合分析）を入力すると AI がリスクスコアと開示戦略を自動算出します。スコアが高い場合は輸出管理部門への事前相談を推奨します" },
+          { "type": "watch", "target": "リスクスコア", "tooltip": "スコア70以上は要注意。輸出管理責任者へのエスカレーションを検討してください", "message": "リスクスコアを確認してください。高スコアの場合は責任者に相談してから次のステップへ進んでください" }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "知財審査完了",
+        "detail": "審査結果・エビデンスをアップロードして知財審査を完了する",
+        "navigate_to": null,
+        "highlight": "知財審査",
+        "guidance_steps": [
+          { "type": "highlight", "target": "知財審査", "tooltip": "特許出願状況・秘密保持義務・営業秘密の観点で審査します", "message": "「知財審査」タブをクリックしてください" },
+          { "type": "explain", "message": "特許出願済みの技術は公開情報のため輸出管理対象外になる場合があります。出願中・未出願の技術は慎重に取り扱ってください" },
+          { "type": "fill_hint", "target": "審査コメント", "hint": "知財部門のレビュー結果・承認者・承認日を記載します", "example": "例: 知財部レビュー済み。特許出願中（出願番号: 2026-XXXXX）。第三者開示不可", "message": "知財審査のコメントと承認情報を入力してください" }
+        ]
+      },
+      {
+        "num": 4,
+        "title": "品目管理へ登録",
+        "detail": "「品目管理への登録」ボタンで品目管理に連携する",
+        "navigate_to": null,
+        "highlight": "品目管理への登録",
+        "guidance_steps": [
+          { "type": "highlight", "target": "品目管理への登録", "tooltip": "このボタンで R&D 案件の品目情報が品目管理モジュールに自動転送されます", "message": "「品目管理への登録」ボタンをクリックしてください" },
+          { "type": "explain", "message": "R&D 案件の品目名・仕様・用途概要が品目管理に自動コピーされます。転送後は品目管理でHS コード判定を実行してください" }
+        ]
+      },
+      {
+        "num": 5,
+        "title": "AI取引審査へ",
+        "detail": "品目管理でHSコード判定後、AI取引審査に進む",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new",
+        "highlight": null,
+        "guidance_steps": [
+          { "type": "explain", "message": "品目管理で HS コード判定が完了したら AI取引審査に進みます。R&D 案件で入力した取引先・仕向国・用途を自動引き継ぎします" },
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new", "message": "AI取引審査の新規案件フォームを開きます" },
+          { "type": "fill_field_from_context", "target": "取引先名", "context_key": "end_user", "hint": "R&D 案件の需要者要件から引き継いだ取引先名です。必要に応じて修正してください", "message": "R&D案件の取引先を引き継ぎます" },
+          { "type": "fill_field_from_context", "target": "申告用途", "context_key": "declared_usage", "hint": "R&D 案件の用途要件から引き継いだ申告用途です。AI取引審査と一致させてください", "message": "R&D案件の用途要件を引き継ぎます" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "UC3",
+    "title": "海外品目マスター管理・国別規制プロファイル",
+    "persona": "輸出管理担当者 / グローバル調達担当者",
+    "description": "輸出品目の国別規制確認・FTA特恵税率照会・グローバル規制レジーム照合を実行します",
+    "steps": [
+      {
+        "num": 1,
+        "title": "品目マスター確認",
+        "detail": "品目管理で対象品目を開き、HS/ECCN・仕様を確認する",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_classification/products",
+        "highlight": "品目一覧",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_classification/products", "message": "品目管理を開きます" },
+          { "type": "highlight", "target": "品目一覧", "tooltip": "登録済みの全品目が一覧表示されます", "message": "対象品目を検索して開いてください" },
+          { "type": "explain", "message": "品目詳細で HS コード・ECCN・仕様が正確に登録されていることを確認してください。これらの情報が国別規制プロファイルの設定精度に影響します" }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "国別規制プロファイル設定",
+        "detail": "品目詳細の「国別タブ」で仕向地国ごとにローカルECCN・輸出許可要否を設定する",
+        "navigate_to": null,
+        "highlight": "国別規制プロファイル",
+        "guidance_steps": [
+          { "type": "highlight", "target": "国別規制プロファイル", "tooltip": "仕向地ごとに異なる規制要件（ローカルECCN・輸出許可要否・証明書要件）を設定します", "message": "「国別規制プロファイル」タブをクリックしてください" },
+          { "type": "fill_hint", "target": "仕向地国", "hint": "規制要件を設定したい国を選択します。中国・ロシア・韓国・台湾は特に要確認", "example": "例: CN（中国）", "message": "仕向地国を選択してください" },
+          { "type": "fill_hint", "target": "ローカルECCN", "hint": "EU Dual-Use Regulation・各国の自国リストに基づくコードを入力します", "example": "例: EU規制: 3A001.a.1", "message": "仕向地のローカル規制コードがある場合は入力してください" }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "FTA特恵税率確認",
+        "detail": "仕向地国と品目のHSコードで適用可能なFTA協定と最優遇税率を確認する",
+        "navigate_to": "{PLATFORM_URL}/ui/fta-check",
+        "highlight": "照会",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/ui/fta-check", "message": "FTA特恵税率照会を開きます" },
+          { "type": "explain", "message": "品目の HS コードと仕向地国を入力すると、適用可能な FTA 協定（日 ASEAN・日 EU・日 UK 等）と特恵税率が表示されます。適用には原産地証明書の取得が必要な場合があります" },
+          { "type": "highlight", "target": "照会", "tooltip": "HS コードと仕向地国を入力してこのボタンで照会します", "message": "「照会」ボタンをクリックしてください" }
+        ]
+      },
+      {
+        "num": 4,
+        "title": "グローバル規制レジーム照合",
+        "detail": "品目のECCNでITAR/USML・EU Dual-Use・Wassenaar・NSGへの該当性を確認する",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions",
+        "highlight": "グローバル規制照合",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions", "message": "AI取引審査を開きます" },
+          { "type": "highlight", "target": "グローバル規制照合", "tooltip": "ECCN を基に ITAR/USML・EU Dual-Use・Wassenaar・NSG への該当性を自動照合します", "message": "「グローバル規制照合」をクリックしてください" },
+          { "type": "explain", "message": "ITAR（国際武器取引規則）に該当する品目は DoS ライセンスが必要です。EAR 対象品目は BIS ライセンスが必要な場合があります。Wassenaar 該当品目は多国間での輸出規制があります" }
+        ]
+      },
+      {
+        "num": 5,
+        "title": "国別サプライヤー申告確認",
+        "detail": "主要サプライヤーのサプライヤーポータルで原産地証明・De Minimis比率を確認する",
+        "navigate_to": "{PLATFORM_URL}/ui/supply-chain",
+        "highlight": "サプライヤー申告",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/ui/supply-chain", "message": "サプライチェーン管理を開きます" },
+          { "type": "highlight", "target": "サプライヤー申告", "tooltip": "サプライヤーへのアンケート送付と原産地申告の管理ができます", "message": "「サプライヤー申告」をクリックしてください" },
+          { "type": "explain", "message": "De Minimis ルール: 米国原産品・技術の価値比率が25%以下（テロ支援国向けは10%以下）であれば EAR の適用外となる場合があります。比率が閾値を超える場合は EAR 対象として扱ってください" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "UC4",
+    "title": "取引先デューデリジェンス",
+    "persona": "輸出管理担当者",
+    "description": "取引先の制裁照合・与信確認・コンプライアンス記録を実行します",
+    "steps": [
+      {
+        "num": 1,
+        "title": "制裁リスト照合",
+        "detail": "取引先名を7ソース制裁リストで一括照合する",
+        "navigate_to": "{PLATFORM_URL}/proxy/screening/ui/batch",
+        "highlight": "一括照合",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/screening/ui/batch", "message": "スクリーニング（制裁照合）を開きます" },
+          { "type": "explain", "message": "照合先リスト: OFAC（SDN・CSL）、BIS Entity List・Denied Persons List・Unverified List、国連安保理・EUリスト。7ソースを同時照合します" },
+          { "type": "fill_hint", "target": "照合対象", "hint": "法人名は英語・日本語の両方で試してください。役員名・個人名も同様です", "example": "例: Acme Technologies / アクメテクノロジーズ株式会社", "message": "取引先名を入力してください（英語・日本語両方推奨）" },
+          { "type": "highlight", "target": "一括照合", "tooltip": "クリックすると7ソース同時照合が始まります（10〜30秒かかります）", "message": "「一括照合」ボタンで照合を実行してください" }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "与信スコア確認",
+        "detail": "財務スコアと制裁統合スコアを確認する",
+        "navigate_to": "{PLATFORM_URL}/ui/counterparty",
+        "highlight": null,
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/ui/counterparty", "message": "取引先管理を開きます" },
+          { "type": "explain", "message": "統合スコアは制裁リスクスコア（0-100）と財務健全性スコアの組み合わせです。スコア70以上は高リスクとして扱い、輸出管理責任者への報告を推奨します" },
+          { "type": "watch", "target": "統合スコア", "tooltip": "スコアが70以上の場合は取引を慎重に検討してください", "message": "統合スコアを確認してください" }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "コンプライアンス記録",
+        "detail": "DD結果をコンプライアンス進捗パイプラインに記録する",
+        "navigate_to": "{PLATFORM_URL}/ui/compliance-lookup",
+        "highlight": null,
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/ui/compliance-lookup", "message": "コンプライアンス管理を開きます" },
+          { "type": "fill_hint", "target": "DD結果", "hint": "照合結果・与信スコア・判断理由・担当者・実施日を記録します", "example": "例: 照合結果：ヒットなし。与信スコア82（低リスク）。担当: 山田太郎 2026-05-30", "message": "デューデリジェンス結果を記録してください（外為法7年保存義務）" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "UC5",
+    "title": "みなし輸出審査",
+    "persona": "輸出管理担当者 / 人事",
+    "description": "外国籍研究者・技術者への技術提供に関するみなし輸出審査を実行します",
+    "steps": [
+      {
+        "num": 1,
+        "title": "人物スクリーニング",
+        "detail": "外国籍研究者を人物管理に登録して制裁照合を実行する",
+        "navigate_to": "{PLATFORM_URL}/proxy/rnd_assessment/ui/personnel",
+        "highlight": "人物管理",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/rnd_assessment/ui/personnel", "message": "R&Dリスク管理の人物管理を開きます" },
+          { "type": "highlight", "target": "人物管理", "tooltip": "外国籍研究者・技術者を登録して制裁リスト照合を実行します", "message": "「人物管理」をクリックしてください" },
+          { "type": "fill_hint", "target": "氏名（英語）", "hint": "パスポート記載の英語氏名を入力します。制裁照合に使用します", "example": "例: Zhang Wei", "message": "氏名（英語表記）を入力してください" },
+          { "type": "fill_hint", "target": "国籍", "hint": "みなし輸出規制の対象国（中国・ロシア・北朝鮮・イランなど）は特に慎重に確認してください", "example": "例: CN（中国）", "message": "国籍を入力してください" },
+          { "type": "explain", "message": "みなし輸出の適用要件: ①外国籍 ②規制技術へのアクセス ③日本に長期滞在（おおむね1年超）。3つを満たす場合は輸出許可が必要な場合があります" }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "みなし輸出申請作成",
+        "detail": "対象者・提供技術・アクセス期間を入力して申請を作成する",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/services",
+        "highlight": "みなし輸出申請",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_validation/ui/services", "message": "AI取引審査のサービス管理を開きます" },
+          { "type": "highlight", "target": "みなし輸出申請", "tooltip": "みなし輸出の申請フォームを開きます", "message": "「みなし輸出申請」をクリックしてください" },
+          { "type": "fill_hint", "target": "提供技術", "hint": "アクセスを許可する具体的な技術・情報の内容を記述します", "example": "例: CMOS センサー設計データ（論理設計段階まで）", "message": "提供する技術・情報の内容を具体的に記述してください" },
+          { "type": "fill_hint", "target": "アクセス期間", "hint": "技術アクセスを認める期間を設定します。期間終了後は再申請が必要です", "example": "例: 2026-06-01 〜 2026-12-31", "message": "アクセスを許可する期間を設定してください" }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "経済安保法チェック",
+        "detail": "特許非公開リスクとICP自己診断8要素を確認する",
+        "navigate_to": "{PLATFORM_URL}/proxy/rnd_assessment/ui/icp-diagnosis",
+        "highlight": null,
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/rnd_assessment/ui/icp-diagnosis", "message": "ICP（Internal Compliance Program）自己診断を開きます" },
+          { "type": "explain", "message": "ICP 8要素: ①経営トップのコミットメント ②組織体制 ③規制情報の取得・伝達 ④教育・訓練 ⑤取引審査 ⑥安全保障貿易管理記録 ⑦自己監査 ⑧違反時対応。全要素の充足状況を確認してください" },
+          { "type": "explain", "message": "経済安全保障推進法（2022年）の特許非公開制度: 安全保障上重要な発明は公開前審査が必要です。該当技術は特許出願前に主務大臣に届出が必要になる場合があります" }
+        ]
+      },
+      {
+        "num": 4,
+        "title": "台帳記録",
+        "detail": "承認後にみなし輸出台帳に記録する（7年保存義務）",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/services",
+        "highlight": "みなし輸出台帳",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_validation/ui/services", "message": "AI取引審査のサービス管理を開きます" },
+          { "type": "highlight", "target": "みなし輸出台帳", "tooltip": "承認されたみなし輸出案件を台帳に登録します（外為法7年保存義務）", "message": "「みなし輸出台帳」をクリックして台帳に記録してください" },
+          { "type": "fill_hint", "target": "承認番号", "hint": "輸出管理責任者の承認番号・承認日を記録します", "example": "例: DAE-2026-0530-001", "message": "承認番号を入力してください" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "UC6",
+    "title": "輸出許可申請ドラフト生成",
+    "persona": "輸出管理担当者",
+    "description": "REQUIRES_PERMIT判定後の輸出許可申請書ドラフト生成・許可証登録・価値消費管理を実行します",
+    "steps": [
+      {
+        "num": 1,
+        "title": "ドラフト生成",
+        "detail": "REQUIRES_PERMIT取引の詳細ページで「輸出許可申請ドラフト生成」をクリックする",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions",
+        "highlight": "輸出許可申請ドラフト生成",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions", "message": "AI取引審査の案件一覧を開きます" },
+          { "type": "explain", "message": "REQUIRES_PERMIT と判定された案件を開いてください。判定結果ページから「輸出許可申請ドラフト生成」ボタンで申請書の骨子が自動生成されます" },
+          { "type": "highlight", "target": "輸出許可申請ドラフト生成", "tooltip": "クリックすると案件情報をもとに申請書ドラフトが生成されます。内容は必ず担当者が確認・修正してください", "message": "「輸出許可申請ドラフト生成」をクリックしてください" },
+          { "type": "explain", "message": "生成されたドラフトは経産省の輸出許可申請書フォーマット（乙様式）に準拠しています。品目仕様・仕向地・需要者・用途が正確に記載されているか確認してください" }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "許可証登録",
+        "detail": "許可証番号・有効期限・許可総額を登録する",
+        "navigate_to": "{PLATFORM_URL}/ui/export-license",
+        "highlight": "新規申請",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/ui/export-license", "message": "輸出許可申請管理を開きます" },
+          { "type": "highlight", "target": "新規申請", "tooltip": "経産省から許可証が交付されたら、許可証番号・有効期限・許可総額をここで登録します", "message": "「新規申請」をクリックして許可証情報を登録してください" },
+          { "type": "fill_hint", "target": "許可証番号", "hint": "経産省が発行した許可証の番号を正確に入力します", "example": "例: 経輸第2026-001号", "message": "許可証番号を入力してください" },
+          { "type": "fill_hint", "target": "許可総額", "hint": "許可された輸出総額（USD・円）を入力します。出荷のたびに残高が減算されます", "example": "例: USD 500,000", "message": "許可総額を入力してください" }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "価値消費管理",
+        "detail": "出荷のたびに「価値控除」フォームで残存許可額を更新する",
+        "navigate_to": null,
+        "highlight": "価値控除",
+        "guidance_steps": [
+          { "type": "highlight", "target": "価値控除", "tooltip": "出荷のたびにこのボタンから出荷額を入力して残存許可額を更新してください", "message": "「価値控除」をクリックしてください" },
+          { "type": "explain", "message": "残存許可額が20%以下になるとアラートが発生します。期限30日前にも警告が出ます。許可総額・期限に余裕を持って再申請の手続きを開始してください" },
+          { "type": "fill_hint", "target": "出荷額", "hint": "今回の出荷に対応する許可申請上の価値（インボイス額）を入力します", "example": "例: USD 50,000（Invoice #INV-2026-0530）", "message": "今回の出荷額を入力してください" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "UC7",
+    "title": "BOM管理・De Minimis算出",
+    "persona": "輸出管理担当者 / 調達担当者",
+    "description": "BOMツリーによる原産地・価値比率の把握とFDPR判定を実行します",
+    "steps": [
+      {
+        "num": 1,
+        "title": "サプライヤー申告作成",
+        "detail": "「サプライチェーン管理」でサプライヤー申告を作成し、ポータルURLをサプライヤーへ送付する",
+        "navigate_to": "{PLATFORM_URL}/ui/supply-chain",
+        "highlight": "新規申告",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/ui/supply-chain", "message": "サプライチェーン管理を開きます" },
+          { "type": "highlight", "target": "新規申告", "tooltip": "サプライヤー向けのアンケートを作成してポータルURLを生成します", "message": "「新規申告」をクリックしてください" },
+          { "type": "explain", "message": "生成されたポータルURLをサプライヤーにメール送付してください。サプライヤーはアカウント不要でアンケートに回答でき、回答後にシステムに自動取り込まれます" },
+          { "type": "fill_hint", "target": "品目コード", "hint": "申告対象の品目コードを入力します。BOM に含まれる品目を全て対象にしてください", "example": "例: ITEM-2026-001", "message": "申告対象の品目コードを入力してください" }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "BOMツリー確認",
+        "detail": "提出書類を受領後、BOMツリーで品目ごとの原産国・価値比率を確認する",
+        "navigate_to": null,
+        "highlight": "BOMツリー",
+        "guidance_steps": [
+          { "type": "highlight", "target": "BOMツリー", "tooltip": "品目の部品構成と各部品の原産国・価値比率がツリー表示されます", "message": "「BOMツリー」をクリックして原産国・価値比率を確認してください" },
+          { "type": "explain", "message": "米国原産品（US EAR 対象品目）の価値比率が高い場合、製品全体が EAR の適用対象になります。各部品の ECCN と価値比率を確認してください" }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "De Minimis比率算出",
+        "detail": "米国技術比率を確認する（一般: 25%超でEAR適用、テロ支援国向け: 10%閾値）",
+        "navigate_to": null,
+        "highlight": "De Minimis",
+        "guidance_steps": [
+          { "type": "highlight", "target": "De Minimis", "tooltip": "BOMデータから米国技術比率を自動算出します", "message": "「De Minimis」をクリックして米国技術比率を確認してください" },
+          { "type": "explain", "message": "判断基準: 米国技術比率 25%超 → EAR 対象（一般仕向地）。10%超 → EAR 対象（テロ支援国：キューバ・イラン・北朝鮮・シリア・ロシア向け）。閾値以下 → EAR 適用外（De Minimis 適用）" }
+        ]
+      },
+      {
+        "num": 4,
+        "title": "FDPR判定",
+        "detail": "外国直接製品ルール（FDPR）: 米国技術で製造した外国製品への適用を確認する",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions",
+        "highlight": "FDPR判定",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions", "message": "AI取引審査を開きます" },
+          { "type": "highlight", "target": "FDPR判定", "tooltip": "FDPR（外国直接製品ルール）への該当性を自動判定します", "message": "「FDPR判定」をクリックしてください" },
+          { "type": "explain", "message": "FDPR は米国外で製造された製品でも、米国の技術・ソフトウェアを使って製造された場合に EAR が適用されるルールです。2022年以降、半導体・スパコン分野で適用範囲が大幅に拡大しています" }
+        ]
+      },
+      {
+        "num": 5,
+        "title": "AI取引審査連携",
+        "detail": "De Minimis比率・FDPRフラグをAI取引審査案件のサプライチェーンリンクに保存する",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions",
+        "highlight": "サプライチェーン連携",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions", "message": "AI取引審査の案件一覧を開きます" },
+          { "type": "highlight", "target": "サプライチェーン連携", "tooltip": "De Minimis比率・FDPRフラグを案件に紐付けて保存します", "message": "「サプライチェーン連携」をクリックして BOM 情報を案件に保存してください" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "UC8",
+    "title": "出荷ライセンス管理",
+    "persona": "輸出管理担当者 / 出荷担当者",
+    "description": "出荷前の許可証確認から価値控除・証跡保存まで出荷ごとのルーティン管理を実行します",
+    "steps": [
+      {
+        "num": 1,
+        "title": "許可証残高確認",
+        "detail": "「輸出許可申請」で該当ライセンスの残存許可額・有効期限を確認する",
+        "navigate_to": "{PLATFORM_URL}/ui/export-license",
+        "highlight": "輸出許可申請",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/ui/export-license", "message": "輸出許可申請管理を開きます" },
+          { "type": "highlight", "target": "輸出許可申請", "tooltip": "登録済みの許可証一覧です。対象の許可証を開いてください", "message": "該当する許可証を開いてください" },
+          { "type": "explain", "message": "確認ポイント: ①残存許可額が今回の出荷額を上回っているか ②有効期限が出荷予定日を超えているか ③許可条件（仕向地・需要者・用途）が今回の出荷と一致しているか" }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "出荷条件一致確認",
+        "detail": "出荷品目・仕向地・需要者・用途が許可証条件と一致しているか確認する（4要素必須）",
+        "navigate_to": null,
+        "highlight": "条件確認",
+        "guidance_steps": [
+          { "type": "highlight", "target": "条件確認", "tooltip": "許可証の条件と実際の出荷内容が一致していることを確認します", "message": "「条件確認」をクリックして許可証条件と出荷内容を照合してください" },
+          { "type": "explain", "message": "4要素チェック: ①品目（型番・仕様が許可証記載と一致するか）②仕向地（中継地でなく最終目的地）③需要者（許可証記載の法人名と一致するか）④用途（許可証記載の用途と同一か）" }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "価値控除実行",
+        "detail": "出荷のたびに「価値控除」フォームで出荷額を入力し残存許可額を更新する",
+        "navigate_to": null,
+        "highlight": "価値控除",
+        "guidance_steps": [
+          { "type": "highlight", "target": "価値控除", "tooltip": "出荷額を入力すると残存許可額が自動更新されます", "message": "「価値控除」をクリックして出荷額を入力してください" },
+          { "type": "fill_hint", "target": "出荷額", "hint": "インボイス記載の今回出荷分の金額を入力します（外貨の場合はUSDまたは円換算）", "example": "例: USD 50,000", "message": "今回の出荷額を入力してください" }
+        ]
+      },
+      {
+        "num": 4,
+        "title": "出荷証跡保存",
+        "detail": "インボイス・パッキングリスト・B/L番号を案件詳細に添付して証跡を保存する（外為法7年保存）",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions",
+        "highlight": "証跡保存",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions", "message": "AI取引審査の案件一覧を開きます" },
+          { "type": "highlight", "target": "証跡保存", "tooltip": "インボイス・B/L・パッキングリストを添付保存します（外為法7年保存義務）", "message": "「証跡保存」をクリックして出荷書類を添付してください" },
+          { "type": "fill_hint", "target": "B/L番号", "hint": "船荷証券の番号を入力します。航空輸送の場合はAWB番号を入力してください", "example": "例: COSU123456789（船荷証券）/ 123-12345678（AWB）", "message": "B/L番号またはAWB番号を入力してください" }
+        ]
+      },
+      {
+        "num": 5,
+        "title": "許可証アラート確認",
+        "detail": "残存許可額20%以下・期限30日以内のアラートをダッシュボードで確認し、必要に応じて再申請する",
+        "navigate_to": "{PLATFORM_URL}/dashboard",
+        "highlight": "ライセンスアラート",
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/dashboard", "message": "ダッシュボードを開きます" },
+          { "type": "highlight", "target": "ライセンスアラート", "tooltip": "残存許可額20%以下・有効期限30日以内の許可証にアラートが表示されます", "message": "「ライセンスアラート」を確認してください" },
+          { "type": "explain", "message": "再申請のタイミング: 許可証の有効期限は通常3ヶ月〜1年です。期限切れ前に余裕を持って（最低30日前）再申請を開始してください。輸出が止まると取引先との契約に影響します" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "UC9",
+    "title": "技術インテリジェンス調査",
+    "persona": "R&Dチームリーダー / 知財担当者",
+    "description": "特許検索・制裁照合・学術論文の技術インテリジェンスで競合技術と規制リスクを把握します",
+    "steps": [
+      {
+        "num": 1,
+        "title": "特許検索",
+        "detail": "キーワード・CPC分類・出願人で特許を検索する",
+        "navigate_to": "{PLATFORM_URL}/proxy/patent_search/",
+        "highlight": null,
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/patent_search/", "message": "特許検索を開きます" },
+          { "type": "explain", "message": "検索方法: ①キーワード検索（技術説明を自然言語で入力）②CPC分類（例: H01L 21/027）③出願人名。BigQuery から US/EP/JP 約4,600件の特許を横断検索できます" },
+          { "type": "fill_hint", "target": "検索キーワード", "hint": "技術の核心概念を英語で入力すると精度が上がります。特許文書は英語が主流です", "example": "例: EUV lithography mask inspection semiconductor", "message": "検索キーワードを入力してください（英語推奨）" }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "制裁照合",
+        "detail": "発明者・出願人を制裁リストで照合する",
+        "navigate_to": null,
+        "highlight": "制裁照合",
+        "guidance_steps": [
+          { "type": "highlight", "target": "制裁照合", "tooltip": "特許の発明者・出願人名を制裁リストと自動照合します", "message": "「制裁照合」をクリックしてください" },
+          { "type": "explain", "message": "制裁対象の研究者・機関からの技術移転は EAR・外為法の規制対象となる場合があります。協業・ライセンス契約を検討する場合は必ず照合してください" }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "学術論文確認",
+        "detail": "技術インテリジェンスで関連論文の類似度を確認する",
+        "navigate_to": "{PLATFORM_URL}/proxy/rnd_assessment/ui/academic-intel",
+        "highlight": null,
+        "guidance_steps": [
+          { "type": "navigate", "url": "{PLATFORM_URL}/proxy/rnd_assessment/ui/academic-intel", "message": "技術インテリジェンス（学術論文検索）を開きます" },
+          { "type": "explain", "message": "OpenAlex・Semantic Scholar から約2,184件の論文を FAISS 検索します。ECCN タグ付きのため、対象技術の規制カテゴリを事前把握できます" },
+          { "type": "fill_hint", "target": "検索キーワード", "hint": "論文タイトル・アブストラクトを想定したキーワードで検索します", "example": "例: quantum computing error correction superconducting qubit", "message": "技術キーワードを入力してください" }
+        ]
+      }
+    ]
+  }
+]

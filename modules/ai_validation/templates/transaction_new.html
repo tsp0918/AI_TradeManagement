@@ -80,6 +80,7 @@
         <div class="form-row">
           <label class="label-sm">取引先企業名（スクリーニング用・任意）</label>
           <input class="input" type="text" name="counterparty_name"
+                 data-dap-field="取引先名"
                  placeholder="例: Beijing Tech Co., Ltd.">
           <div class="hint">入力すると取引詳細画面から制裁リストスクリーニングを実行できます。</div>
         </div>
@@ -94,6 +95,7 @@
         <div class="form-row">
           <label class="label-sm">仕向国（ISO alpha-2 コード）</label>
           <input class="input" type="text" name="destination_country" maxlength="2"
+                 data-dap-field="仕向国"
                  placeholder="例: CN / US / KR" style="width:120px;">
           <div class="hint">仕向国 ISO 2文字コード。キャッチオール判定に使用されます。</div>
         </div>
@@ -101,12 +103,14 @@
         <div class="form-row">
           <label class="label-sm">最終需要者名</label>
           <input class="input" type="text" name="end_user_name"
+                 data-dap-field="最終需要者名"
                  placeholder="例: Shenzhen Research Institute">
         </div>
 
         <div class="form-row">
           <label class="label-sm">最終用途</label>
           <textarea class="textarea" name="end_use_description" rows="2"
+                    data-dap-field="申告用途"
             placeholder="例: 自動車向け試験装置の部品として使用。工業用途。WMD・軍事用途への使用なし。"></textarea>
         </div>
 

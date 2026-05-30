@@ -1789,12 +1789,29 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
                 reply += f" {icon}{r['label']}({r['detail']})"
             if err_steps:
                 reply += f" エラー{len(err_steps)}件あり。"
-            # ヒアリングモード終了
+            # ヒアリングモード終了 + transfer_context にキー情報を保存（クロスモジュール引き継ぎ用）
             intake_state["awaiting_confirm"] = False
             intake_state["completed"] = True
             intake_state["exec_results"] = exec_results
             if req.session_id:
                 session_data["intake_state"] = intake_state
+                # 後続モジュール（AI取引審査・品目管理等）のフォーム自動入力に使うデータを蓄積
+                tc = dict(session_data.get("transfer_context") or {})
+                if intake_state.get("product_name"):
+                    tc["product_name"] = intake_state["product_name"]
+                if intake_state.get("product_description"):
+                    tc["product_description"] = intake_state["product_description"]
+                if intake_state.get("declared_usage"):
+                    tc["declared_usage"] = intake_state["declared_usage"]
+                if intake_state.get("destination_country"):
+                    tc["destination_country"] = intake_state["destination_country"]
+                if intake_state.get("end_user"):
+                    tc["end_user"] = intake_state["end_user"]
+                if intake_state.get("known_eccn"):
+                    tc["known_eccn"] = intake_state["known_eccn"]
+                if intake_state.get("created_transaction_id"):
+                    tc["last_transaction_id"] = intake_state["created_transaction_id"]
+                session_data["transfer_context"] = tc
                 _save_session(req.session_id, session_data)
             tx_id = intake_state.get("created_transaction_id")
             choices = [
@@ -2164,6 +2181,30 @@ async def clear_session(session_id: str) -> dict:
     """セッション履歴を削除（会話クリア時に呼ばれる）"""
     _SESSION_STORE.pop(session_id, None)
     return {"ok": True}
+
+
+@router.get("/api/chat/transfer-context")
+async def get_transfer_context(session_id: str) -> dict:
+    """クロスモジュール引き継ぎデータを返す。
+
+    ワークフローの fill_field_from_context ステップが呼び出す。
+    """
+    data = _get_session(session_id)
+    return data.get("transfer_context") or {}
+
+
+@router.post("/api/chat/transfer-context")
+async def update_transfer_context(session_id: str, updates: dict) -> dict:
+    """クロスモジュール引き継ぎデータを更新する。
+
+    各モジュールで確定した情報（RND end_user、品目ECCN等）をDAPセッションに蓄積する。
+    """
+    data = _get_session(session_id)
+    tc = dict(data.get("transfer_context") or {})
+    tc.update(updates)
+    data["transfer_context"] = tc
+    _save_session(session_id, data)
+    return {"ok": True, "transfer_context": tc}
 
 
 @router.post("/api/chat/greet", response_model=ChatResponse)
