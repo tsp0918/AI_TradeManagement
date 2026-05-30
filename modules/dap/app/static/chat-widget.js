@@ -1,4 +1,4 @@
-// cache-bust: 1748563200
+// cache-bust: 1748566800
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -227,6 +227,20 @@
       sessionStorage.removeItem('dap_pending_guidance');
       return JSON.parse(raw);
     } catch (e) { return null; }
+  }
+
+  // ── ワークフロー状態 sessionStorage 永続化（ページ遷移後も復元）──
+  function _saveWfState() {
+    try {
+      if (_wfState) sessionStorage.setItem('dap_wf_state', JSON.stringify(_wfState));
+      else sessionStorage.removeItem('dap_wf_state');
+    } catch(e) {}
+  }
+  function _restoreWfState() {
+    try {
+      var raw = sessionStorage.getItem('dap_wf_state');
+      return raw ? JSON.parse(raw) : null;
+    } catch(e) { return null; }
   }
 
   // ── CSS ───────────────────────────────────────────────────────────
@@ -765,6 +779,7 @@
   function _updateWfBar() {
     if (!_wfState) {
       wfBar.classList.remove('is-visible', 'demo-mode');
+      _saveWfState();
       return;
     }
     wfBar.classList.add('is-visible');
@@ -777,6 +792,7 @@
     wfStepInfo.textContent = _wfState.current_step + '/' + _wfState.total_steps;
     var pct = _wfState.total_steps > 0 ? (_wfState.current_step - 1) / _wfState.total_steps * 100 : 0;
     wfFill.style.width = pct + '%';
+    _saveWfState();
   }
 
   // guidance_steps が含まれる場合は executeGuidanceSteps で詳細案内を実行する。
@@ -1233,11 +1249,12 @@
             // 残りのステップを保存してからナビゲート
             savePendingGuidance(steps, i + 1);
             appendGuidanceMsg('📍 ' + (step.message || '次のページに移動します'));
-            await sleep(1800);  // メッセージを読む時間
+            await sleep(1800);
             appendGuidanceMsg('移動先でも続きをご案内しますので、慌てなくて大丈夫です 👍');
-            await waitForUserAck('ページを開く →', 30000);  // ユーザーが準備できたら
+            await waitForUserAck('ページを開く →', 30000);
+            guidanceRunning = false;  // ページ遷移前に必ず解放
             _portalNavigate(step.url);
-            return;  // ページ遷移するのでここで終わり
+            return;
           }
           break;
         case 'highlight':
@@ -1314,6 +1331,12 @@
       }
     }
     guidanceRunning = false;
+    // デモモード: guidance_steps 完了後に自動で次ステップへ進める
+    if (_wfState && _wfState.uc_id && _wfState.uc_id.startsWith('DEMO')) {
+      setTimeout(function () {
+        if (_wfState) _advanceWorkflow();
+      }, 800);
+    }
   }
 
   function sleep(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
@@ -1463,6 +1486,13 @@
   // ── ページロード時の初期化 ─────────────────────────────────────────
   // Step 1: ページ訪問イベント記録
   trackEvent('page_view', { port: window.location.port, page_path: window.location.pathname });
+
+  // Step 1b: ワークフロー状態の復元（ページ遷移後）
+  var _restoredWfState = _restoreWfState();
+  if (_restoredWfState) {
+    _wfState = _restoredWfState;
+    _updateWfBar();
+  }
 
   // Step 2: クロスページ guidance ペンディングチェック
   const pendingGuidance = loadPendingGuidance();
