@@ -1,4 +1,4 @@
-// cache-bust: 1780151497
+// cache-bust: 1780153386
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -1190,8 +1190,9 @@
   function _portalNavigate(url) {
     url = _rewriteLocalUrl(url);
     if (!url) return;
-    // ポータル公開 API が存在する場合はiframe切り替え
-    if (typeof window.__dap_portal_navigate__ === 'function') {
+    var _frame = document.getElementById('module-frame');
+    // ポータル上（iframe あり）の場合はフルページ遷移せず iframe 内で処理
+    if (_frame && typeof window.__dap_portal_navigate__ === 'function') {
       try {
         var parsed = new URL(url, window.location.href);
         var port   = parsed.port;
@@ -1209,6 +1210,12 @@
             subPath = subPath.slice(proxyPrefix.length) || '/';
           }
           window.__dap_portal_navigate__(moduleKey, subPath);
+          return;
+        }
+        // 同一オリジンの /ui/* など platform-core 直提供ページ: iframe に直接ロード
+        // （フルページ遷移するとポータルから離れ DAP ウィジェットが消える）
+        if (parsed.origin === window.location.origin) {
+          _frame.src = parsed.pathname + parsed.search + parsed.hash;
           return;
         }
       } catch (e) { /* URL解析失敗 → フォールバック */ }
