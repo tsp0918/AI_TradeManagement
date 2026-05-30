@@ -5,10 +5,11 @@ platform-core の /api/supply-chain/* は全リクエストを ai_classification
 """
 
 import os
+import io
 
 import httpx
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 router = APIRouter(tags=["supply-chain-proxy"])
 
@@ -69,64 +70,71 @@ async def supply_chain_impact(request: Request, path: str):
     return await _proxy(request, f"impact/{path}")
 
 
+@router.get("/ui/product-by-code/{code}")
+async def redirect_product_by_code(code: str):
+    """品目コードで品目編集ページにリダイレクト（デモ・UC用）。"""
+    async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+        r = await client.get(f"{_AI_CLASSIFICATION_URL}/api/products/by-code/{code}")
+        if r.status_code != 200:
+            return Response(
+                content=f"品目コード '{code}' が品目管理に見つかりません。先に品目を登録してください。",
+                status_code=404,
+                media_type="text/plain; charset=utf-8",
+            )
+        product_id = r.json()["id"]
+    return RedirectResponse(url=f"/proxy/ai_classification/products/{product_id}/edit", status_code=302)
+
+
 @router.post("/api/demo/seed-demo3")
 async def seed_demo3():
-    """DEMO3用デモデータ: LS-500 親ノード + US-LASER-DM650 子ノード + BOMエッジを作成する。
-    既に存在する場合はスキップして既存IDを返す。
+    """DEMO3用デモデータ: ai_classification に両製品＋BOM CSVを登録し SC同期まで実行する。
+    冪等 — 既存データがある場合はスキップ。
     """
     base = _AI_CLASSIFICATION_URL
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        # LS-500 存在確認 (by-product-code は {"node": {...} or null, "children": [...]} を返す)
-        r = await client.get(f"{base}/api/supply-chain/by-product-code/LS-500")
-        bpc = r.json() if r.status_code == 200 else {}
-        ls500_node = bpc.get("node") if isinstance(bpc, dict) else None
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
+        # ① US-LASER-DM650 を ai_classification に upsert（構成品）
+        r1 = await client.post(f"{base}/products/erp-sync", json={
+            "code": "US-LASER-DM650",
+            "name": "Laser Diode Module 650nm (US Origin)",
+            "eccn": "6A005.a.2",
+            "country_of_origin": "US",
+            "item_type": "PURCHASED_PART",
+            "std_price": 850.0,
+            "description": "米国原産レーザーダイオードモジュール650nm。EAR管理品 ECCN 6A005.a.2"
+        })
+        laser_product_id = r1.json().get("id") if r1.status_code == 200 else None
 
-        if ls500_node:
-            parent_id = ls500_node["id"]
-        else:
-            resp = await client.post(f"{base}/api/supply-chain/nodes", json={
-                "name": "レーザー変位センサー Model LS-500",
-                "part_number": "LS-500",
-                "product_code": "LS-500",
-                "node_type": "product",
-                "country_of_origin": "JP",
-                "is_us_origin": False,
-                "eccn": "3A002",
-                "unit_value_usd": 2400.0,
-                "description": "半導体ウェハー表面検査用レーザー変位センサー"
-            })
-            parent_id = resp.json().get("id")
+        # ② LS-500 を ai_classification に upsert（完成品）
+        r2 = await client.post(f"{base}/products/erp-sync", json={
+            "code": "LS-500",
+            "name": "レーザー変位センサー Model LS-500",
+            "eccn": "3A002",
+            "country_of_origin": "JP",
+            "item_type": "FINISHED_GOODS",
+            "std_price": 2400.0,
+            "description": "半導体ウェハー表面検査用レーザー変位センサー（650nm、分解能0.1μm）"
+        })
+        ls500_product_id = r2.json().get("id") if r2.status_code == 200 else None
 
-        # US-LASER-DM650 存在確認
-        r2 = await client.get(f"{base}/api/supply-chain/by-product-code/US-LASER-DM650")
-        bpc2 = r2.json() if r2.status_code == 200 else {}
-        child_node = bpc2.get("node") if isinstance(bpc2, dict) else None
+        bom_synced = False
+        if ls500_product_id and laser_product_id:
+            # ③ LS-500 の BOM CSV をアップロード（US-LASER-DM650 を構成品として登録）
+            # BOM CSV upload は自動的に SC同期（bom_sync）を実行する
+            bom_csv = (
+                "component_code,component_name,ratio,kind,coo,unit_value\n"
+                "US-LASER-DM650,Laser Diode Module 650nm (US Origin),0.354,material,US,850.0\n"
+            )
+            upload_resp = await client.post(
+                f"{base}/products/{ls500_product_id}/bom",
+                files={"file": ("bom_ls500.csv", bom_csv.encode("utf-8"), "text/csv")},
+            )
+            # 303 redirect = success
+            bom_synced = upload_resp.status_code in (200, 303)
 
-        if child_node:
-            child_id = child_node["id"]
-        else:
-            resp2 = await client.post(f"{base}/api/supply-chain/nodes", json={
-                "name": "Laser Diode Module 650nm (US Origin)",
-                "part_number": "US-LASER-DM650",
-                "product_code": "US-LASER-DM650",
-                "node_type": "component",
-                "country_of_origin": "US",
-                "is_us_origin": True,
-                "eccn": "6A005.a.2",
-                "unit_value_usd": 850.0,
-                "us_controlled_value_usd": 850.0,
-                "description": "米国原産レーザーダイオードモジュール650nm ECCN:6A005.a.2"
-            })
-            child_id = resp2.json().get("id")
-
-        # BOMエッジ作成（409 重複は無視）
-        if parent_id and child_id:
-            await client.post(f"{base}/api/supply-chain/edges", json={
-                "parent_node_id": str(parent_id),
-                "child_node_id": str(child_id),
-                "quantity": 1.0,
-                "unit": "each"
-            })
-
-    return JSONResponse({"status": "ok", "parent_id": parent_id, "child_id": child_id})
+    return JSONResponse({
+        "status": "ok",
+        "ls500_product_id": ls500_product_id,
+        "laser_product_id": laser_product_id,
+        "bom_synced": bom_synced,
+    })

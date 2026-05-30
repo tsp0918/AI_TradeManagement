@@ -1647,7 +1647,7 @@
           },
           {
             "type": "explain",
-            "message": "今日のデモの流れ: ①米国調達部品を品目マスタに登録 → ②サプライチェーン管理画面でBOMツリー確認 → ③De Minimis計算（仕向地: 中国CN）→ ④サプライヤー証明管理・招待URL発行"
+            "message": "今日のデモの流れ: ①米国調達部品を品目マスタに登録 → ②親品目LS-500にBOM CSVをアップロード・SC同期 → ③サプライチェーン管理でBOMツリー確認 → ④De Minimis計算（仕向地: 中国CN）→ ⑤サプライヤー証明管理・招待URL発行"
           },
           {
             "type": "pause",
@@ -1663,6 +1663,13 @@
         "navigate_to": null,
         "highlight": null,
         "guidance_steps": [
+          {
+            "type": "api_call",
+            "url": "{PLATFORM_URL}/api/demo/seed-demo3",
+            "method": "POST",
+            "body": {},
+            "message": "デモデータ（LS-500・US-LASER-DM650・BOM）を準備しています…"
+          },
           {
             "type": "navigate",
             "url": "{PLATFORM_URL}/proxy/ai_classification/products/new",
@@ -1720,25 +1727,71 @@
           },
           {
             "type": "pause",
-            "button_label": "品目登録完了 → サプライチェーン管理へ",
-            "message": "品目の登録が完了しました。次はサプライチェーン管理画面でBOMツリーを確認します。"
+            "button_label": "品目登録確認完了 → LS-500にBOM登録へ",
+            "message": "構成品（US-LASER-DM650）の品目マスタ登録を確認しました。次は親品目LS-500のBOM CSVアップロードとサプライチェーン同期を行います。"
           }
         ]
       },
       {
         "num": 3,
+        "title": "親品目BOM登録・サプライチェーン同期（LS-500）",
+        "detail": "LS-500の編集ページでBOM CSVをアップロードし、サプライチェーン管理DBに同期する",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "navigate",
+            "url": "{PLATFORM_URL}/ui/product-by-code/LS-500",
+            "message": "LS-500の品目編集ページを開きます"
+          },
+          {
+            "type": "explain",
+            "message": "【BOMマスターの場所】品目管理（ai_classification）の品目編集ページがBOMデータのマスター登録場所です。ここに登録したBOMがサプライチェーン管理のコンプライアンスBOMグラフに同期されます。"
+          },
+          {
+            "type": "highlight",
+            "target": "BOM CSVアップロード",
+            "tooltip": "BOM構成をCSV形式（component_code, coo, ratio, kind, unit_value列）でアップロードします",
+            "message": "⑤ 「BOM CSV アップロード」リンクをクリックしてBOM構成を登録します"
+          },
+          {
+            "type": "explain",
+            "message": "【BOM CSVフォーマット】ヘッダ: component_code, component_name, ratio, kind, coo, unit_value。今回のデモデータ: US-LASER-DM650, Laser Diode Module 650nm, 0.354, material, US, 850.0。kindがmaterialの行のみSC同期対象となります。"
+          },
+          {
+            "type": "highlight",
+            "target": "SC同期",
+            "tooltip": "品目管理のBOMデータをサプライチェーン管理（PostgreSQL）のノード・エッジに書き込みます",
+            "message": "⑥ 「🔄 SC同期」ボタンで品目管理のBOMをサプライチェーン管理DBに同期します"
+          },
+          {
+            "type": "explain",
+            "message": "【SC同期の仕組み】SC同期ボタンを押すと: ①LS-500ノード（親）を upsert → ②US-LASER-DM650ノード（子）をupsert（ECCNも引継ぎ）→ ③BOMエッジ（quantity=0.354）を登録。これによりサプライチェーン管理でDe Minimis計算が可能になります。"
+          },
+          {
+            "type": "highlight",
+            "target": "BOMグラフ",
+            "tooltip": "品目管理内でBOMチェーンをグラフ表示で確認できます",
+            "message": "⑦ 「📊 グラフ」ボタンで品目管理内のBOMチェーン可視化を確認できます"
+          },
+          {
+            "type": "explain",
+            "message": "【BOMグラフ】品目管理のBOMグラフは「SC同期済」の状態を確認するためのビューです。US原産ノードは赤ハイライトで表示され、De Minimis計算が必要な構成品を一目で識別できます。"
+          },
+          {
+            "type": "pause",
+            "button_label": "BOM同期完了 → サプライチェーン管理でツリー確認へ",
+            "message": "BOM CSVのアップロードとSC同期が完了しました。次はサプライチェーン管理ダッシュボードでBOMツリーを確認します。"
+          }
+        ]
+      },
+      {
+        "num": 4,
         "title": "サプライチェーン管理・BOMツリー確認",
         "detail": "調達・BOM管理ダッシュボードでBOM構造と米国管理品の状況を把握する",
         "navigate_to": null,
         "highlight": null,
         "guidance_steps": [
-          {
-            "type": "api_call",
-            "url": "{PLATFORM_URL}/api/demo/seed-demo3",
-            "method": "POST",
-            "body": {},
-            "message": "デモデータを準備しています…"
-          },
           {
             "type": "navigate",
             "url": "{PLATFORM_URL}/ui/supply-chain",
@@ -1752,7 +1805,7 @@
             "type": "highlight",
             "target": "品名部品番号検索",
             "tooltip": "品名・部品番号でノードを検索して絞り込みます",
-            "message": "⑤ 検索フィールドで「LS-500」を検索してノードを絞り込みます"
+            "message": "⑧ 検索フィールドで「LS-500」を検索してノードを絞り込みます"
           },
           {
             "type": "fill_demo",
@@ -1768,7 +1821,7 @@
             "type": "highlight",
             "target": "ツリー表示",
             "tooltip": "LS-500行の「ツリー」ボタンで右パネルにBOM階層ツリーが展開されます",
-            "message": "⑥ LS-500行の「ツリー」ボタンをクリックしてBOM階層ツリーを展開します"
+            "message": "⑨ LS-500行の「ツリー」ボタンをクリックしてBOM階層ツリーを展開します"
           },
           {
             "type": "explain",
@@ -1782,7 +1835,7 @@
         ]
       },
       {
-        "num": 4,
+        "num": 5,
         "title": "De Minimis計算（EAR §734.4）",
         "detail": "仕向地国コードを入力して米国管理品の価値比率を自動計算する",
         "navigate_to": null,
@@ -1792,7 +1845,7 @@
             "type": "highlight",
             "target": "De Minimisタブ",
             "tooltip": "De Minimisルール計算タブに切り替えます",
-            "message": "⑦ 「📐 De Minimis」タブをクリックします"
+            "message": "⑩ 「📐 De Minimis」タブをクリックします"
           },
           {
             "type": "explain",
@@ -1802,7 +1855,7 @@
             "type": "highlight",
             "target": "仕向地国コード",
             "tooltip": "ISO 3166-1 alpha-2コードを入力します（例: CN, TW, KR）",
-            "message": "⑧ 仕向地国コードを入力します（今回は中国向け: CN）"
+            "message": "⑪ 仕向地国コードを入力します（今回は中国向け: CN）"
           },
           {
             "type": "fill_demo",
@@ -1814,7 +1867,7 @@
             "type": "highlight",
             "target": "De Minimis計算実行",
             "tooltip": "BOM全体を再帰的にスキャンしてUS管理品比率を計算します",
-            "message": "⑨ 「計算実行」ボタンでDe Minimis計算を起動します"
+            "message": "⑫ 「計算実行」ボタンでDe Minimis計算を起動します"
           },
           {
             "type": "explain",
@@ -1828,7 +1881,7 @@
         ]
       },
       {
-        "num": 5,
+        "num": 6,
         "title": "サプライヤー証明管理とリスクレポート",
         "detail": "ECCN申告収集・招待URL発行・サプライチェーンリスクサマリーを確認する",
         "navigate_to": null,
@@ -1838,7 +1891,7 @@
             "type": "highlight",
             "target": "証明管理タブ",
             "tooltip": "サプライヤーからの申告・証明書を管理します",
-            "message": "⑩ 「📋 証明管理」タブでサプライヤーからのECCN申告を管理します"
+            "message": "⑬ 「📋 証明管理」タブでサプライヤーからのECCN申告を管理します"
           },
           {
             "type": "explain",
@@ -1848,7 +1901,7 @@
             "type": "highlight",
             "target": "招待URL発行",
             "tooltip": "サプライヤーに専用URLを発行してECCN情報を直接入力してもらいます",
-            "message": "⑪ 「🔗 招待URL発行」でサプライヤーポータルへのリンクを発行します"
+            "message": "⑭ 「🔗 招待URL発行」でサプライヤーポータルへのリンクを発行します"
           },
           {
             "type": "explain",

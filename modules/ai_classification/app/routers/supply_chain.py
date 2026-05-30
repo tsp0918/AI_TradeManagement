@@ -554,7 +554,7 @@ def sync_from_bom(product_id: int):
             raise HTTPException(status_code=404, detail="Product not found")
         pg = get_pg_db_sync()
         try:
-            result = _sync_bom(product, pg)
+            result = _sync_bom(product, pg, sqlite_db=sqlite_db)
         finally:
             pg.close()
         return {"product_id": product_id, "product_code": product.code, **result}

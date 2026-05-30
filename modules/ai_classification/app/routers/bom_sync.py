@@ -80,9 +80,11 @@ def _upsert_node(
     return node
 
 
-def sync_bom_to_supply_chain(product: "Product", pg: Session) -> dict:
+def sync_bom_to_supply_chain(product: "Product", pg: Session, sqlite_db: Session | None = None) -> dict:
     """
     product.bom_json の内容を plat_supply_chain_node/edge に同期する。
+
+    sqlite_db を渡すと、構成品のECCN・HSコードをai_classification品目マスタから自動引き継ぎする。
 
     Returns:
         dict: { "parent_node_id": str, "synced_components": int, "skipped": int }
@@ -127,14 +129,24 @@ def sync_bom_to_supply_chain(product: "Product", pg: Session) -> dict:
             skipped += 1
             continue
 
+        # 構成品のECCN/HSコードをai_classification品目マスタから引き継ぐ
+        comp_eccn: str | None = None
+        comp_hs: str | None = None
+        if sqlite_db is not None:
+            from ..models import Product as _ProductModel
+            comp_product = sqlite_db.query(_ProductModel).filter(_ProductModel.code == comp_code).first()
+            if comp_product:
+                comp_eccn = comp_product.eccn
+                comp_hs = comp_product.hs_code
+
         child_node = _upsert_node(
             pg=pg,
             product_code=comp_code,
             name=item.get("component_name") or comp_code,
             node_type="component",
             country_of_origin=item.get("coo"),
-            hs_code=None,
-            eccn=None,
+            hs_code=comp_hs,
+            eccn=comp_eccn,
             unit_value_usd=item.get("unit_value"),
             tenant_id=tenant_id,
         )

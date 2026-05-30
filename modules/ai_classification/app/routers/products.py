@@ -565,6 +565,15 @@ def quadrant_map_page(request: Request):
     return templates.TemplateResponse(request, "quadrant_map.html", {})
 
 
+@router.get("/api/products/by-code/{code}")
+def get_product_by_code(code: str, db: Session = Depends(get_db)):
+    """品目コードで品目を検索してIDを返す（プラットフォーム連携・デモ用）。"""
+    product = db.query(Product).filter(Product.code == code).first()
+    if not product:
+        raise HTTPException(status_code=404, detail=f"Product not found: {code}")
+    return {"id": product.id, "code": product.code, "name": product.name}
+
+
 @router.get("/api/products/quadrant-data")
 def quadrant_data(db: Session = Depends(get_db)):
     """Chart.js 用の全品目スコアデータを返す。"""
@@ -1255,12 +1264,12 @@ def bom_upload(
 
     db.commit()
 
-    # BOM を plat_supply_chain_node/edge に同期
+    # BOM を plat_supply_chain_node/edge に同期（sqlite_db を渡してECCNを品目マスタから引き継ぎ）
     try:
         pg = get_pg_db_sync()
         try:
             db.refresh(product)
-            sync_bom_to_supply_chain(product, pg)
+            sync_bom_to_supply_chain(product, pg, sqlite_db=db)
         finally:
             pg.close()
     except Exception as e:
