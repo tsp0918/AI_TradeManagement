@@ -1601,8 +1601,11 @@
     "description": "米国EAR管理品を含む製品のBOM登録→サプライチェーン可視化→De Minimis計算→サプライヤー証明管理の一連フロー（EAR §734.4対応）",
     "steps": [
       {
+        "num": 1,
         "title": "シナリオ概要",
         "detail": "調達部品のサプライチェーンリスク管理フローを体験します",
+        "navigate_to": null,
+        "highlight": null,
         "guidance_steps": [
           {
             "type": "pause",
@@ -1625,8 +1628,11 @@
         ]
       },
       {
+        "num": 2,
         "title": "BOM構成品登録（米国調達部品）",
         "detail": "品目マスタに米国原産EAR管理品（ECCN 6A005）を登録する",
+        "navigate_to": null,
+        "highlight": null,
         "guidance_steps": [
           {
             "type": "navigate",
@@ -1691,8 +1697,11 @@
         ]
       },
       {
+        "num": 3,
         "title": "サプライチェーン管理・BOMツリー確認",
         "detail": "調達・BOM管理ダッシュボードでBOM構造と米国管理品の状況を把握する",
+        "navigate_to": null,
+        "highlight": null,
         "guidance_steps": [
           {
             "type": "navigate",
@@ -1733,8 +1742,11 @@
         ]
       },
       {
+        "num": 4,
         "title": "De Minimis計算（EAR §734.4）",
         "detail": "仕向地国コードを入力して米国管理品の価値比率を自動計算する",
+        "navigate_to": null,
+        "highlight": null,
         "guidance_steps": [
           {
             "type": "highlight",
@@ -1776,8 +1788,11 @@
         ]
       },
       {
+        "num": 5,
         "title": "サプライヤー証明管理とリスクレポート",
         "detail": "ECCN申告収集・招待URL発行・サプライチェーンリスクサマリーを確認する",
+        "navigate_to": null,
+        "highlight": null,
         "guidance_steps": [
           {
             "type": "highlight",
