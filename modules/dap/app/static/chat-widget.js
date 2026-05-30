@@ -1,4 +1,4 @@
-// cache-bust: 1748574000
+// cache-bust: 1780150975
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -88,9 +88,30 @@
   }
 
   // ── 要素検索 ──────────────────────────────────────────────────────
+  // ── iframe 対応ヘルパー ───────────────────────────────────────────
+  // ポータル表示時は <iframe id="module-frame"> 内の document を返す
+  function getModuleDoc() {
+    try {
+      var frame = document.getElementById('module-frame');
+      return (frame && frame.contentDocument) ? frame.contentDocument : document;
+    } catch(e) { return document; }
+  }
+  // iframe 要素の親フレーム内オフセット（座標補正用）
+  function getIframeOffset() {
+    try {
+      var frame = document.getElementById('module-frame');
+      if (frame && frame.contentDocument) {
+        var r = frame.getBoundingClientRect();
+        return { top: r.top, left: r.left };
+      }
+    } catch(e) {}
+    return { top: 0, left: 0 };
+  }
+
   function findInteractiveElement(label) {
     if (!label) return null;
-    return Array.from(document.querySelectorAll('a[href],button,[role="button"]'))
+    var doc = getModuleDoc();
+    return Array.from(doc.querySelectorAll('a[href],button,[role="button"]'))
       .find(function (el) {
         const t = (el.innerText || '').trim().replace(/\s+/g, ' ');
         return t === label || t.includes(label) || (label.includes(t) && t.length > 2);
@@ -98,19 +119,20 @@
   }
   function findFieldElement(label) {
     if (!label) return null;
+    var doc = getModuleDoc();
     const INPUTS = 'input[type=text],input[type=email],input[type=number],input:not([type]),textarea,select';
 
     // 1. data-dap-field 属性（明示的マーキング — 最優先）
-    const byAttr = document.querySelector('[data-dap-field="' + label + '"]');
+    const byAttr = doc.querySelector('[data-dap-field="' + label + '"]');
     if (byAttr) return byAttr;
 
     // 2. label[for] → input[id] の紐付け
-    const allLabels = Array.from(document.querySelectorAll('label'));
+    const allLabels = Array.from(doc.querySelectorAll('label'));
     for (const lbl of allLabels) {
       if (lbl.textContent.trim().includes(label)) {
         const forId = lbl.getAttribute('for');
         if (forId) {
-          const el = document.getElementById(forId);
+          const el = doc.getElementById(forId);
           if (el && el.matches(INPUTS)) return el;
         }
         // label が直接 input を包んでいる場合
@@ -120,14 +142,14 @@
     }
 
     // 3. placeholder / name / id / aria-label の部分一致
-    const byAttrMatch = Array.from(document.querySelectorAll(INPUTS)).find(function (el) {
+    const byAttrMatch = Array.from(doc.querySelectorAll(INPUTS)).find(function (el) {
       return [el.placeholder, el.name, el.id, el.getAttribute('aria-label')]
         .some(function (v) { return v && v.includes(label); });
     });
     if (byAttrMatch) return byAttrMatch;
 
     // 4. テキストノードが隣接する input（旧フォールバック）
-    return Array.from(document.querySelectorAll(INPUTS)).find(function (el) {
+    return Array.from(doc.querySelectorAll(INPUTS)).find(function (el) {
       const prev = el.previousElementSibling;
       return prev && prev.textContent && prev.textContent.includes(label);
     }) || null;
@@ -1030,7 +1052,7 @@
    * @returns {Promise} dismiss ボタン押下 or タイムアウトで resolve
    */
   function highlightElementWithTooltip(target, tooltipText, durationMs) {
-    const el = findInteractiveElement(target);
+    const el = findInteractiveElement(target) || findFieldElement(target);
     if (!el) return Promise.resolve();
 
     return new Promise(function (resolve) {
@@ -1040,9 +1062,10 @@
       setTimeout(function () {
         var dur = durationMs || 7000;
         var rect = el.getBoundingClientRect();
+        var ifrOff = getIframeOffset();
         var pad = 12;
-        var rx = rect.left - pad;
-        var ry = rect.top - pad;
+        var rx = rect.left - pad + ifrOff.left;
+        var ry = rect.top - pad + ifrOff.top;
         var rw = rect.width + pad * 2;
         var rh = rect.height + pad * 2;
         var borderR = 10;
