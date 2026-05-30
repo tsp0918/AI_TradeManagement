@@ -1,4 +1,4 @@
-// cache-bust: 1748566800
+// cache-bust: 1748570400
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -1246,14 +1246,21 @@
       switch (step.type) {
         case 'navigate':
           if (step.url) {
-            // 残りのステップを保存してからナビゲート
             savePendingGuidance(steps, i + 1);
             appendGuidanceMsg('📍 ' + (step.message || '次のページに移動します'));
-            await sleep(1800);
-            appendGuidanceMsg('移動先でも続きをご案内しますので、慌てなくて大丈夫です 👍');
-            await waitForUserAck('ページを開く →', 30000);
-            guidanceRunning = false;  // ページ遷移前に必ず解放
-            _portalNavigate(step.url);
+            await sleep(1200);
+            var _isDemoNav = _wfState && _wfState.uc_id && _wfState.uc_id.startsWith('DEMO');
+            if (!_isDemoNav) {
+              appendGuidanceMsg('移動先でも続きをご案内しますので、慌てなくて大丈夫です 👍');
+              await waitForUserAck('ページを開く →', 30000);
+            }
+            guidanceRunning = false;
+            // _dap_from パラメータを URL に追加してクロスオリジン遷移後も復元できるようにする
+            var _navUrl = step.url;
+            try {
+              _navUrl += (_navUrl.indexOf('?') >= 0 ? '&' : '?') + '_dap_from=' + (i + 1);
+            } catch(e) {}
+            _portalNavigate(_navUrl);
             return;
           }
           break;
@@ -1488,27 +1495,59 @@
   trackEvent('page_view', { port: window.location.port, page_path: window.location.pathname });
 
   // Step 1b: ワークフロー状態の復元（ページ遷移後）
-  var _restoredWfState = _restoreWfState();
-  if (_restoredWfState) {
-    _wfState = _restoredWfState;
-    _updateWfBar();
+  // _dap_from URL パラメータがあればクロスオリジン遷移（サーバーから再取得）
+  // なければ sessionStorage から復元（同一オリジン遷移）
+  var _urlSearchParams = new URLSearchParams(window.location.search);
+  var _dapFromParam = _urlSearchParams.get('_dap_from');
+  var _crossOriginResume = _dapFromParam !== null;
+  var _crossOriginFromIdx = _crossOriginResume ? parseInt(_dapFromParam, 10) : -1;
+  if (_crossOriginResume) {
+    // URL をクリーンにする
+    try { history.replaceState({}, '', window.location.pathname + window.location.hash); } catch(e) {}
+  } else {
+    // 同一オリジン: sessionStorage から復元
+    var _restoredWfState = _restoreWfState();
+    if (_restoredWfState) { _wfState = _restoredWfState; _updateWfBar(); }
   }
 
   // Step 2: クロスページ guidance ペンディングチェック
-  const pendingGuidance = loadPendingGuidance();
-  if (pendingGuidance && pendingGuidance.steps) {
-    // ページが落ち着いてから（2.5秒後）チャットを開く
+  var pendingGuidance = null;
+  if (_crossOriginResume && _crossOriginFromIdx >= 0) {
+    // クロスオリジン遷移後: サーバーからセッション状態を取得して再開
     setTimeout(function () {
-      openPanel();
-      appendMsg('bot', '👔 新しいページに移動しました。まずページの内容をざっと確認してみてください。');
-      // 1.5秒後に「続ける」ボタンを表示 — ユーザーが準備できたら案内を再開
+      fetch(DAP_BASE + '/api/workflow/status?session_id=' + encodeURIComponent(SESSION_ID))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.uc_id) return;
+          _wfState = { uc_id: d.uc_id, uc_title: d.uc_title, current_step: d.current_step, total_steps: d.total_steps, guidance: d.next_guidance };
+          _updateWfBar();
+          var gs = d.next_guidance && d.next_guidance.guidance_steps;
+          if (!gs || _crossOriginFromIdx >= gs.length) return;
+          openPanel();
+          appendMsg('bot', '👔 新しいページに移動しました。まずページの内容をざっと確認してみてください。');
+          setTimeout(function () {
+            appendMsg('bot', '準備ができたら下のボタンを押してください。焦らなくて大丈夫です！');
+            waitForUserAck('続ける →', 60000).then(function () {
+              executeGuidanceSteps(gs, _crossOriginFromIdx);
+            });
+          }, 1500);
+        })
+        .catch(function () {});
+    }, 2000);
+  } else {
+    pendingGuidance = loadPendingGuidance();
+    if (pendingGuidance && pendingGuidance.steps) {
       setTimeout(function () {
-        appendMsg('bot', '準備ができたら下のボタンを押してください。焦らなくて大丈夫です！');
-        waitForUserAck('続ける →', 60000).then(function () {
-          executeGuidanceSteps(pendingGuidance.steps, pendingGuidance.from || 0);
-        });
-      }, 1500);
-    }, 2500);
+        openPanel();
+        appendMsg('bot', '👔 新しいページに移動しました。まずページの内容をざっと確認してみてください。');
+        setTimeout(function () {
+          appendMsg('bot', '準備ができたら下のボタンを押してください。焦らなくて大丈夫です！');
+          waitForUserAck('続ける →', 60000).then(function () {
+            executeGuidanceSteps(pendingGuidance.steps, pendingGuidance.from || 0);
+          });
+        }, 1500);
+      }, 2500);
+    }
   }
 
   // Step 3: 既存セッション確認 + greet
