@@ -50,7 +50,7 @@ router = APIRouter(tags=["chat"])
 
 # ── モジュール名マッピング（port → 表示名）────────────────────────────
 _MODULE_MAP: dict[str, str] = {
-    "8011": "AI 該非判定（ai_validation）",
+    "8011": "AI取引審査（ai_validation）",
     "8002": "品目管理（ai_classification）",
     "8003": "R&D リスク管理（rnd_assessment）",
     "8004": "特許検索（patent_search）",
@@ -755,6 +755,26 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
         pass  # platform-core 未起動時は無視
 
     return {"stage": stage, "gap_modules": gap_modules, "proactive_alerts": alerts}
+
+
+# ── デモモード: トリガーキーワード ──────────────────────────────────────────────
+_DEMO_TRIGGERS = [
+    "デモ", "demo", "Demo", "DEMO",
+    "デモを", "デモ見", "デモしたい", "デモ実行", "デモ開始",
+    "デモンストレーション", "プレゼンデモ", "紹介してほしい",
+]
+_DEMO2_TRIGGERS = [
+    "キャッチオール", "catchall", "リスク検知デモ", "デモ2", "demo2",
+]
+
+def _is_demo_trigger(message: str) -> tuple[bool, str]:
+    """デモモードトリガーか判定し、(True/False, uc_id) を返す。"""
+    msg_lower = message.lower()
+    if any(kw.lower() in msg_lower for kw in _DEMO2_TRIGGERS):
+        return True, "DEMO2"
+    if any(kw.lower() in msg_lower for kw in _DEMO_TRIGGERS):
+        return True, "DEMO1"
+    return False, ""
 
 
 # ── ヒアリングモード: トリガーキーワード ──────────────────────────────────────
@@ -1764,6 +1784,23 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
                 ],
             )
     # ── エージェントモードここまで ───────────────────────────────────────────
+
+    # ── デモモード: キーワード検知 → start_workflow アクションを即返却 ──────────
+    is_demo, demo_uc_id = _is_demo_trigger(req.message)
+    if is_demo:
+        demo_titles = {
+            "DEMO1": "輸出審査ワンストップフロー",
+            "DEMO2": "キャッチオール規制リスク検知",
+        }
+        demo_title = demo_titles.get(demo_uc_id, "デモ")
+        return ChatResponse(
+            reply=f"「{demo_title}」のデモを開始します。チャット内のボタンを押すと次のステップに進みます。",
+            actions=[{"type": "start_workflow", "uc_id": demo_uc_id, "target": ""}],
+            choices=[
+                {"label": "もう一方のデモ",  "message": "DEMO2" if demo_uc_id == "DEMO1" else "デモ1を見せてほしい"},
+                {"label": "通常モードに戻る", "message": "通常の使い方を教えてください"},
+            ],
+        )
 
     # ── ヒアリングモード ──────────────────────────────────────────────────────
     intake_state: Optional[dict] = session_data.get("intake_state")

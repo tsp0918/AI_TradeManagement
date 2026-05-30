@@ -1,4 +1,4 @@
-// cache-bust: 1746777600
+// cache-bust: 1748563200
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -591,6 +591,29 @@
     .dap-uc-item-persona { font-size: 10px; color: #5A6478; margin-top: 2px; }
     .dap-uc-item-desc { font-size: 10px; color: #7A8498; margin-top: 3px; line-height: 1.4; }
     .dap-uc-item-steps { font-size: 10px; color: rgba(0,212,255,0.5); margin-top: 2px; }
+    .dap-uc-item-demo { background: linear-gradient(90deg, rgba(0,212,255,0.04), transparent); }
+    .dap-uc-item-demo .dap-uc-item-title { color: #00D4FF; }
+
+    /* ── デモモードインジケーター ── */
+    #dap-workflow-bar.demo-mode {
+      background: linear-gradient(135deg, rgba(0,16,32,0.98), rgba(0,8,20,0.99));
+      border-bottom-color: rgba(0,212,255,0.18);
+    }
+    #dap-workflow-bar.demo-mode .dap-wf-label::before { content: '🎬 '; }
+    #dap-workflow-bar.demo-mode .dap-wf-progress-fill {
+      background: linear-gradient(90deg, #00D4FF 0%, #00FF88 100%);
+    }
+
+    /* ── タイプライターフィル アニメーション ── */
+    @keyframes dap-fill-glow {
+      0%   { box-shadow: 0 0 0 0 rgba(0,212,255,0.7); }
+      50%  { box-shadow: 0 0 0 5px rgba(0,212,255,0.15); }
+      100% { box-shadow: 0 0 0 0 rgba(0,212,255,0); }
+    }
+    .dap-fill-typing {
+      border-color: rgba(0,212,255,0.85) !important;
+      animation: dap-fill-glow 0.7s ease-out infinite !important;
+    }
   `;
   document.head.appendChild(style);
 
@@ -740,8 +763,16 @@
   var ucListEl   = panel.querySelector('#dap-uc-list');
 
   function _updateWfBar() {
-    if (!_wfState) { wfBar.classList.remove('is-visible'); return; }
+    if (!_wfState) {
+      wfBar.classList.remove('is-visible', 'demo-mode');
+      return;
+    }
     wfBar.classList.add('is-visible');
+    if (_wfState.uc_id && _wfState.uc_id.startsWith('DEMO')) {
+      wfBar.classList.add('demo-mode');
+    } else {
+      wfBar.classList.remove('demo-mode');
+    }
     wfTitle.textContent = _wfState.uc_title;
     wfStepInfo.textContent = _wfState.current_step + '/' + _wfState.total_steps;
     var pct = _wfState.total_steps > 0 ? (_wfState.current_step - 1) / _wfState.total_steps * 100 : 0;
@@ -828,9 +859,10 @@
     _loadUcList().then(function (list) {
       ucListEl.innerHTML = '';
       list.forEach(function (uc) {
+        const isDemo = uc.uc_id && uc.uc_id.startsWith('DEMO');
         const item = document.createElement('div');
-        item.className = 'dap-uc-item';
-        item.innerHTML = '<div class="dap-uc-item-title">' + uc.uc_id + ': ' + uc.title + '</div>'
+        item.className = 'dap-uc-item' + (isDemo ? ' dap-uc-item-demo' : '');
+        item.innerHTML = '<div class="dap-uc-item-title">' + (isDemo ? '🎬 ' : '') + uc.uc_id + ': ' + uc.title + '</div>'
           + '<div class="dap-uc-item-persona">' + uc.persona + '</div>'
           + (uc.description ? '<div class="dap-uc-item-desc">' + uc.description + '</div>' : '')
           + '<div class="dap-uc-item-steps">' + uc.total_steps + ' ステップ</div>';
@@ -1151,7 +1183,38 @@
             setTimeout(function () { _portalNavigate(action.url); }, 800);
           }
           break;
+        case 'start_workflow':
+          if (action.uc_id) {
+            setTimeout(function () { _startWorkflow(action.uc_id); }, 200);
+          }
+          break;
       }
+    });
+  }
+
+  // ── タイプライターフィル（デモモード用）────────────────────────────
+  function typewriterFill(el, text, speedMs) {
+    return new Promise(function (resolve) {
+      if (!el) { resolve(); return; }
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus();
+      el.value = '';
+      el.classList.add('dap-fill-typing');
+      var i = 0;
+      var sp = speedMs || 55;
+      function typeNext() {
+        if (i >= text.length) {
+          el.classList.remove('dap-fill-typing');
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          resolve();
+          return;
+        }
+        el.value += text[i++];
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        setTimeout(typeNext, sp);
+      }
+      setTimeout(typeNext, 250);
     });
   }
 
@@ -1227,6 +1290,26 @@
             appendGuidanceMsg('📝 ' + (step.message || step.target + ' を入力してください'));
           }
           await sleep(2500);
+          break;
+        case 'fill_demo':
+          // デモモード専用: タイプライターアニメーションでフィールドに値を入力
+          appendGuidanceMsg('⌨️ ' + (step.message || (step.target + ' にデモデータを入力します')));
+          await sleep(600);
+          {
+            const demoEl = findFieldElement(step.target);
+            if (demoEl && step.value) {
+              await typewriterFill(demoEl, step.value, 45);
+              appendGuidanceMsg('✅ 「' + step.target + '」に入力しました');
+            } else {
+              appendGuidanceMsg('⚠ フィールド「' + (step.target || '?') + '」が見つかりません。手動で入力してください。');
+            }
+          }
+          await sleep(900);
+          break;
+        case 'pause':
+          // プレゼンターコントロール: ボタンを押すまで停止（autoMs=0 → 無制限待機）
+          if (step.message) appendGuidanceMsg('⏸ ' + step.message);
+          await waitForUserAck(step.button_label || '次へ →', 0);
           break;
       }
     }
