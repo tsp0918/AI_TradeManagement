@@ -767,14 +767,14 @@
     "id": "UC7",
     "title": "BOM管理・De Minimis算出",
     "persona": "輸出管理担当者 / 調達担当者",
-    "description": "BOMツリーによる原産地・価値比率の把握とFDPR判定を実行します",
+    "description": "サプライチェーンノードグラフでBOMを構築し、米国EAR管理品の価値比率（De Minimis §734.4）とサプライヤー証明を管理します",
     "steps": [
       {
         "num": 1,
-        "title": "サプライヤー申告作成",
-        "detail": "「サプライチェーン管理」でサプライヤー申告を作成し、ポータルURLをサプライヤーへ送付する",
+        "title": "サプライチェーンノード登録",
+        "detail": "品目管理の製品コードに紐付けてサプライチェーンノードを作成し、BOMエッジで親子関係を構築する",
         "navigate_to": "{PLATFORM_URL}/ui/supply-chain",
-        "highlight": "新規申告",
+        "highlight": "ノード追加",
         "guidance_steps": [
           {
             "type": "navigate",
@@ -782,90 +782,115 @@
             "message": "サプライチェーン管理を開きます"
           },
           {
-            "type": "highlight",
-            "target": "新規申告",
-            "tooltip": "サプライヤー向けのアンケートを作成してポータルURLを生成します",
-            "message": "「新規申告」をクリックしてください"
+            "type": "explain",
+            "message": "【BOMマスターの2層構造】①品目管理（ai_classification）= 設計・型番・スペックの製品カタログ。②サプライチェーン管理 = ECCN・原産地・単価を持つコンプライアンスBOMグラフ（ノード＋エッジ）。De Minimis計算・ECCN審査はすべて②のグラフデータを使います。product_codeフィールドで①②を紐付けます。"
           },
           {
-            "type": "explain",
-            "message": "生成されたポータルURLをサプライヤーにメール送付してください。サプライヤーはアカウント不要でアンケートに回答でき、回答後にシステムに自動取り込まれます"
+            "type": "highlight",
+            "target": "ノード追加",
+            "tooltip": "品目管理の製品コードに対応するサプライチェーンノードを登録します",
+            "message": "「＋ ノード追加」で対象製品をコンプライアンスBOMグラフに登録します"
           },
           {
             "type": "fill_hint",
             "target": "品目コード",
-            "hint": "申告対象の品目コードを入力します。BOM に含まれる品目を全て対象にしてください",
-            "example": "例: ITEM-2026-001",
-            "message": "申告対象の品目コードを入力してください"
+            "hint": "品目管理のコードと一致させます（product_code）。この紐付けで品目情報との整合性を確保します",
+            "example": "例: LS-500（親製品）, US-LASER-DM650（米国製調達部品）",
+            "message": "品目コードを入力してください（品目管理の製品コードと一致させること）"
+          },
+          {
+            "type": "explain",
+            "message": "ノード登録後、右パネルの「BOMエッジ追加」で子ノード（構成部品）との接続を設定します。各ノードに【単価（unit_value_usd）・原産国（country_of_origin）・ECCN・US原産フラグ（is_us_origin）】を設定することで、De Minimis計算の精度が確保されます。"
           }
         ]
       },
       {
         "num": 2,
         "title": "BOMツリー確認",
-        "detail": "提出書類を受領後、BOMツリーで品目ごとの原産国・価値比率を確認する",
+        "detail": "製品ノードを検索して「ツリー」ボタンでBOM構成を展開し、米国管理品ノードの状況を可視化する",
         "navigate_to": null,
-        "highlight": "BOMツリー",
+        "highlight": "ツリー表示",
         "guidance_steps": [
           {
+            "type": "fill_hint",
+            "target": "品名部品番号検索",
+            "hint": "product_codeまたは品名で検索して対象製品を絞り込みます",
+            "example": "例: LS-500",
+            "message": "対象製品を検索フィールドで絞り込んでください"
+          },
+          {
             "type": "highlight",
-            "target": "BOMツリー",
-            "tooltip": "品目の部品構成と各部品の原産国・価値比率がツリー表示されます",
-            "message": "「BOMツリー」をクリックして原産国・価値比率を確認してください"
+            "target": "ツリー表示",
+            "tooltip": "行の「ツリー」ボタンで右パネルにBOM階層ツリーが展開されます",
+            "message": "対象製品行の「ツリー」ボタンをクリックしてBOM構成を展開してください"
           },
           {
             "type": "explain",
-            "message": "米国原産品（US EAR 対象品目）の価値比率が高い場合、製品全体が EAR の適用対象になります。各部品の ECCN と価値比率を確認してください"
+            "message": "ノードの色がリスクを示します: 🔴赤（HIGH）= US EAR規制品（ECCN ≠ EAR99）→ De Minimis計算が必須。🟠オレンジ（MED）= US原産・EAR99/未判定 → 確認推奨。🟢緑 = 非US一般構成品。赤ノードの単価・ECCN・is_us_originが正確であることを確認してください。"
           }
         ]
       },
       {
         "num": 3,
         "title": "De Minimis比率算出",
-        "detail": "米国技術比率を確認する（一般: 25%超でEAR適用、テロ支援国向け: 10%閾値）",
+        "detail": "仕向地国コードを入力してBOM全体の米国管理品価値比率を計算する（一般25%・E:1国向け10%）",
         "navigate_to": null,
-        "highlight": "De Minimis",
+        "highlight": "De Minimisタブ",
         "guidance_steps": [
           {
             "type": "highlight",
-            "target": "De Minimis",
-            "tooltip": "BOMデータから米国技術比率を自動算出します",
-            "message": "「De Minimis」をクリックして米国技術比率を確認してください"
+            "target": "De Minimisタブ",
+            "tooltip": "De Minimisルール計算（EAR §734.4）タブに切り替えます",
+            "message": "「📐 De Minimis」タブをクリックします"
+          },
+          {
+            "type": "fill_hint",
+            "target": "仕向地国コード",
+            "hint": "ISO 3166-1 alpha-2コードを入力します。E:1グループ（CN/RU/IR/SY/KP/CU）は閾値が10%に下がります",
+            "example": "例: CN（中国）, TW（台湾）, KR（韓国）",
+            "message": "仕向地国コードを入力してください"
+          },
+          {
+            "type": "highlight",
+            "target": "De Minimis計算実行",
+            "tooltip": "BOM全体を再帰スキャンしてUS管理品価値比率を計算します",
+            "message": "「計算実行」ボタンをクリックしてください"
           },
           {
             "type": "explain",
-            "message": "判断基準: 米国技術比率 25%超 → EAR 対象（一般仕向地）。10%超 → EAR 対象（テロ支援国：キューバ・イラン・北朝鮮・シリア・ロシア向け）。閾値以下 → EAR 適用外（De Minimis 適用）"
+            "message": "結果の見方: ①比率が閾値超過 → EAR §742.4 に基づく米国政府の輸出許可証が必要。②閾値以下 → De Minimis適用・EAR管轄外。③ECCN prefix 0A/0B/0C/0D/0E/2B352（AT1品目）は比率に関わらずDe Minimis免除不可（EAR適用）。"
           }
         ]
       },
       {
         "num": 4,
-        "title": "FDPR判定",
-        "detail": "外国直接製品ルール（FDPR）: 米国技術で製造した外国製品への適用を確認する",
-        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions",
-        "highlight": "FDPR判定",
+        "title": "サプライヤー証明収集",
+        "detail": "証明管理タブで招待URLを発行し、サプライヤーからECCN・原産地・USコンテンツ比率の自己申告を収集する",
+        "navigate_to": null,
+        "highlight": "証明管理タブ",
         "guidance_steps": [
           {
-            "type": "navigate",
-            "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions",
-            "message": "AI取引審査を開きます"
+            "type": "highlight",
+            "target": "証明管理タブ",
+            "tooltip": "サプライヤーへのECCN申告依頼・証明書管理を行います",
+            "message": "「📋 証明管理」タブをクリックしてください"
           },
           {
             "type": "highlight",
-            "target": "FDPR判定",
-            "tooltip": "FDPR（外国直接製品ルール）への該当性を自動判定します",
-            "message": "「FDPR判定」をクリックしてください"
+            "target": "招待URL発行",
+            "tooltip": "サプライヤーが直接ECCN・原産地・USコンテンツ比率を入力できるポータルURLを発行します",
+            "message": "「🔗 招待URL発行」でサプライヤーポータルURLを生成してください"
           },
           {
             "type": "explain",
-            "message": "FDPR は米国外で製造された製品でも、米国の技術・ソフトウェアを使って製造された場合に EAR が適用されるルールです。2022年以降、半導体・スパコン分野で適用範囲が大幅に拡大しています"
+            "message": "発行URLをサプライヤーに送付してください。サプライヤーはアカウント不要で「ECCN・原産国・USコンテンツ比率」を自己申告でき、申告後AIが内容を自動検証します。申告データはノードのECCN判定に利用され、De Minimis計算の精度向上に直結します。"
           }
         ]
       },
       {
         "num": 5,
         "title": "AI取引審査連携",
-        "detail": "De Minimis比率・FDPRフラグをAI取引審査案件のサプライチェーンリンクに保存する",
+        "detail": "De Minimis算出結果をAI取引審査案件に保存して輸出審査を完結する",
         "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions",
         "highlight": "サプライチェーン連携",
         "guidance_steps": [
@@ -875,10 +900,14 @@
             "message": "AI取引審査の案件一覧を開きます"
           },
           {
+            "type": "explain",
+            "message": "De Minimis算出結果（比率・閾値適用可否）とFDPRフラグをAI取引審査案件のサプライチェーンリンクに保存します。これにより「品目登録→BOM構築→De Minimis計算→審査」の証跡が一気通貫で管理できます。許可証が必要な案件はUC6へ進んでください。"
+          },
+          {
             "type": "highlight",
             "target": "サプライチェーン連携",
             "tooltip": "De Minimis比率・FDPRフラグを案件に紐付けて保存します",
-            "message": "「サプライチェーン連携」をクリックして BOM 情報を案件に保存してください"
+            "message": "「サプライチェーン連携」をクリックしてBOM情報を案件に保存してください"
           }
         ]
       }
@@ -1732,14 +1761,18 @@
             "message": "「LS-500」で検索します"
           },
           {
+            "type": "explain",
+            "message": "【BOMデータ構造】デモデータには「LS-500（JP産 ECCN 3A002 $2,400）→ US-LASER-DM650（US産 ECCN 6A005.a.2 $850）」のBOMエッジが設定済みです。品目管理の製品コードとproduct_codeで紐付けられたサプライチェーンノードがコンプライアンスBOMの実体です。"
+          },
+          {
             "type": "highlight",
-            "target": "BOMツリータブ",
-            "tooltip": "LS-500を選択してBOMツリーを展開します",
-            "message": "⑥ 「🌳 BOM ツリー」タブでBOM階層構造を確認します"
+            "target": "ツリー表示",
+            "tooltip": "LS-500行の「ツリー」ボタンで右パネルにBOM階層ツリーが展開されます",
+            "message": "⑥ LS-500行の「ツリー」ボタンをクリックしてBOM階層ツリーを展開します"
           },
           {
             "type": "explain",
-            "message": "【BOMツリーの見方】ノードの色がリスクを示します: 🔴赤（HIGH）= US EAR規制品（ECCN ≠ EAR99）、🟠オレンジ（MED）= US原産・EAR99/未設定、🟢緑 = 一般構成品。LS-500のツリーにはHIGHノード（US-LASER-DM650）が含まれています。"
+            "message": "【ツリーの見方】🔴赤（HIGH）= US EAR規制品（ECCN ≠ EAR99）→ De Minimis計算必須。🟠オレンジ（MED）= US原産・EAR99/未判定。🟢緑 = 非US一般構成品。LS-500のツリーにはHIGHノード「US-LASER-DM650（ECCN 6A005.a.2）」が含まれています。"
           },
           {
             "type": "pause",

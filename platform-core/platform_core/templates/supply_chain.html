@@ -141,7 +141,7 @@
       <div class="card">
         <div class="card-header">
           <h2>部品・製品ノード一覧</h2>
-          <button class="btn btn-primary btn-sm" onclick="openNodeModal()">＋ ノード追加</button>
+          <button class="btn btn-primary btn-sm" onclick="openNodeModal()" data-dap-field="ノード追加">＋ ノード追加</button>
         </div>
         <div class="card-body">
           <div class="toolbar">
@@ -460,7 +460,7 @@ function renderNodeTable(items) {
       <td>${eccnBadge}</td>
       <td>${n.unit_value_usd!=null?'$'+n.unit_value_usd.toFixed(2):'—'}</td>
       <td class="action-btns">
-        <button class="btn btn-sm btn-tree" onclick="loadTree('${n.id}','${esc(n.name)}')">ツリー</button>
+        <button class="btn btn-sm btn-tree" onclick="loadTree('${n.id}','${esc(n.name)}')" data-dap-field="ツリー表示">ツリー</button>
         <button class="btn btn-sm btn-edit" onclick="openEditNode(${JSON.stringify(n).replace(/"/g,'&quot;')})">編集</button>
         <button class="btn btn-sm btn-del" onclick="deleteNode('${n.id}','${esc(n.name)}')">削除</button>
       </td>
