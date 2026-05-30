@@ -1,4 +1,4 @@
-// cache-bust: 1748570400
+// cache-bust: 1748574000
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -17,7 +17,14 @@
   if (window !== window.top) return;
   if (document.getElementById('dap-chat-root')) return;
 
-  const DAP_BASE = 'http://localhost:8010';
+  // 外部アクセス（HTTPS）時は dap.{domain} サブドメインを自動解決、ローカルは localhost:8010
+  const DAP_BASE = (function () {
+    var h = window.location.hostname;
+    if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:8010';
+    var parts = h.split('.');
+    if (parts.length >= 2) return window.location.protocol + '//dap.' + parts.slice(-2).join('.');
+    return 'http://localhost:8010';
+  })();
 
   // ── セッション ID（cookie 経由でポートをまたいで共有）─────────────
   function getOrCreateSessionId() {
@@ -1142,12 +1149,23 @@
     '8010': 'dap',
   };
 
+  // localhost URL を外部公開 URL に書き換える（外部アクセス時のみ）
+  function _rewriteLocalUrl(url) {
+    if (!url || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return url;
+    if (!/https?:\/\/localhost/.test(url)) return url;
+    // app.{domain} = ポータルのホスト
+    var parts = window.location.hostname.split('.');
+    var portalOrigin = window.location.protocol + '//app.' + parts.slice(-2).join('.');
+    return url.replace(/https?:\/\/localhost:\d+/, portalOrigin);
+  }
+
   /**
    * URL に応じてナビゲートする。
    * - ポータル上（window.__dap_portal_navigate__ あり）: iframe を切り替える
    * - スタンドアロン: window.location.href で直接移動
    */
   function _portalNavigate(url) {
+    url = _rewriteLocalUrl(url);
     if (!url) return;
     // ポータル公開 API が存在する場合はiframe切り替え
     if (typeof window.__dap_portal_navigate__ === 'function') {
