@@ -1316,7 +1316,9 @@
                 _portalNavigate(step.url);
                 setTimeout(function () { _onLoad(); }, 8000); // タイムアウト保険
               });
-              await sleep(800); // DOM 安定待ち
+              // DEMO はリダイレクト経由が多いため長めに待つ
+              var _navWait = (_wfState && _wfState.uc_id && _wfState.uc_id.startsWith('DEMO')) ? 1600 : 800;
+              await sleep(_navWait); // DOM 安定待ち
               appendGuidanceMsg('✅ ページに移動しました。続けてご案内します。');
               await sleep(600);
               break; // ループを continue（return しない）

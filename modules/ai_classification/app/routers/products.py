@@ -1208,7 +1208,22 @@ def bom_upload(
 
             comp = db.query(Product).filter(Product.code == comp_code).first()
             if not comp:
-                raise HTTPException(status_code=400, detail=f"構成品目コードが未登録です: {comp_code}")
+                coo_for_comp = coo  # already cleaned above
+                comp = Product(
+                    code=comp_code,
+                    name=description or comp_code,
+                    country_of_origin=coo_for_comp,
+                    std_price=unit_value,
+                    source="BOM_AUTO",
+                    is_unconfirmed=True,
+                )
+                db.add(comp)
+                db.flush()
+            else:
+                if coo:
+                    comp.country_of_origin = coo
+                if unit_value is not None:
+                    comp.std_price = unit_value
 
             comp_price = float(comp.std_price or 0.0)
             cost = comp_price * ratio
@@ -1282,6 +1297,84 @@ def bom_upload(
             pg.close()
     except Exception as e:
         logger.warning("BOM sync to supply chain failed (non-fatal): %s", e)
+
+    return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
+
+
+@router.post("/products/{product_id}/bom-add-item")
+def bom_add_item(
+    product_id: int,
+    component_code: str = Form(...),
+    component_name: str = Form(""),
+    coo: str = Form(""),
+    ratio: float = Form(1.0),
+    unit_value: Optional[float] = Form(None),
+    db: Session = Depends(get_db),
+):
+    """BOM構成品をインラインフォームで追加。未登録の構成品は自動登録、既存は更新。"""
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    coo_clean = coo.strip().upper()[:2] if coo.strip() else None
+
+    # 構成品を upsert
+    comp = db.query(Product).filter(Product.code == component_code).first()
+    if not comp:
+        comp = Product(
+            code=component_code,
+            name=component_name or component_code,
+            country_of_origin=coo_clean,
+            std_price=unit_value,
+            source="BOM_AUTO",
+            is_unconfirmed=True,
+        )
+        db.add(comp)
+        db.flush()
+    else:
+        if coo_clean:
+            comp.country_of_origin = coo_clean
+        if unit_value is not None:
+            comp.std_price = unit_value
+        if component_name:
+            comp.name = component_name
+
+    # bom_json に upsert（同じ code は上書き）
+    items: list[dict] = []
+    if product.bom_json:
+        try:
+            items = json.loads(product.bom_json)
+        except Exception:
+            items = []
+
+    new_item: dict = {
+        "kind": "material",
+        "component_id": comp.id,
+        "component_code": comp.code,
+        "component_name": comp.name,
+        "ratio": ratio,
+    }
+    if coo_clean:
+        new_item["coo"] = coo_clean
+    if unit_value is not None:
+        new_item["unit_value"] = unit_value
+
+    items = [i for i in items if i.get("component_code") != component_code]
+    items.append(new_item)
+
+    product.bom_json = json.dumps(items, ensure_ascii=False)
+    db.commit()
+
+    # SC 同期（非同期化しない — デモで即時反映が必要）
+    try:
+        pg = get_pg_db_sync()
+        try:
+            db.refresh(product)
+            sync_bom_to_supply_chain(product, pg, sqlite_db=db)
+        finally:
+            pg.close()
+    except Exception as e:
+        logger.warning("bom-add-item SC sync failed (non-fatal): %s", e)
 
     return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
 

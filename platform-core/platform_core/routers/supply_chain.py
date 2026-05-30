@@ -85,6 +85,40 @@ async def redirect_product_by_code(code: str):
     return RedirectResponse(url=f"/proxy/ai_classification/products/{product_id}/edit", status_code=302)
 
 
+@router.post("/api/products/by-code/{code}/bom-add-item")
+async def bom_add_item_by_code(code: str, request: Request):
+    """製品コード指定でBOM構成品を追加するプロキシ（DEMO api_call 用）。"""
+    body = await request.json()
+    base = _AI_CLASSIFICATION_URL
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        r = await client.get(f"{base}/api/products/by-code/{code}")
+        if r.status_code != 200:
+            return JSONResponse({"error": f"Product not found: {code}"}, status_code=404)
+        product_id = r.json()["id"]
+
+        unit_val = body.get("unit_value")
+        r2 = await client.post(
+            f"{base}/products/{product_id}/bom-add-item",
+            data={
+                "component_code": body.get("component_code", ""),
+                "component_name": body.get("component_name", ""),
+                "coo": body.get("coo", ""),
+                "ratio": str(body.get("ratio", 1.0)),
+                "unit_value": str(unit_val) if unit_val is not None else "",
+            },
+            follow_redirects=False,
+        )
+
+    return JSONResponse({
+        "status": "ok",
+        "product_code": code,
+        "product_id": product_id,
+        "component_code": body.get("component_code"),
+        "http_status": r2.status_code,
+    })
+
+
 @router.post("/api/demo/seed-demo3")
 async def seed_demo3():
     """DEMO3用デモデータ: ai_classification に両製品＋BOM CSVを登録し SC同期まで実行する。

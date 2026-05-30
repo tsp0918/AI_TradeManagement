@@ -1735,7 +1735,7 @@
       {
         "num": 3,
         "title": "親品目BOM登録・サプライチェーン同期（LS-500）",
-        "detail": "LS-500の編集ページでBOM CSVをアップロードし、サプライチェーン管理DBに同期する",
+        "detail": "LS-500の編集ページでBOM構成品を直接入力してサプライチェーン管理DBに同期する",
         "navigate_to": null,
         "highlight": null,
         "guidance_steps": [
@@ -1746,42 +1746,77 @@
           },
           {
             "type": "explain",
-            "message": "【BOMマスターの場所】品目管理（ai_classification）の品目編集ページがBOMデータのマスター登録場所です。ここに登録したBOMがサプライチェーン管理のコンプライアンスBOMグラフに同期されます。"
+            "message": "【BOMマスターの場所】品目管理の品目編集ページ下部に「BOM構成品を直接追加」フォームがあります。構成品コード・原産地・構成比・単価を入力するだけで、未登録の構成品は品目管理に自動登録され、SC同期まで一括実行されます。"
           },
           {
             "type": "highlight",
-            "target": "BOM CSVアップロード",
-            "tooltip": "BOM構成をCSV形式（component_code, coo, ratio, kind, unit_value列）でアップロードします",
-            "message": "⑤ 「BOM CSV アップロード」リンクをクリックしてBOM構成を登録します"
+            "target": "BOM構成品コード",
+            "tooltip": "構成品の品目コードを入力します（未登録でも自動登録されます）",
+            "message": "⑤ 「構成品コード」フィールドに米国製レーザーダイオードのコードを入力します"
           },
           {
-            "type": "explain",
-            "message": "【BOM CSVフォーマット】ヘッダ: component_code, component_name, ratio, kind, coo, unit_value。今回のデモデータ: US-LASER-DM650, Laser Diode Module 650nm, 0.354, material, US, 850.0。kindがmaterialの行のみSC同期対象となります。"
+            "type": "fill_demo",
+            "target": "BOM構成品コード",
+            "value": "US-LASER-DM650",
+            "message": "構成品コードを入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "BOM構成品名",
+            "value": "Laser Diode Module 650nm (US Origin)",
+            "message": "構成品名を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "BOM原産地",
+            "value": "US",
+            "message": "原産地（COO）に US を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "BOM構成比",
+            "value": "0.354",
+            "message": "構成比を入力します（製品原価の35.4%）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "BOM単価USD",
+            "value": "850",
+            "message": "単価USDを入力します（De Minimis計算に使用）"
           },
           {
             "type": "highlight",
-            "target": "SC同期",
-            "tooltip": "品目管理のBOMデータをサプライチェーン管理（PostgreSQL）のノード・エッジに書き込みます",
-            "message": "⑥ 「🔄 SC同期」ボタンで品目管理のBOMをサプライチェーン管理DBに同期します"
+            "target": "BOM構成品追加",
+            "tooltip": "クリックすると構成品を自動登録してBOMに追加、SC同期まで自動実行します",
+            "message": "⑥ 「＋ 構成品を追加」ボタンをクリックします（未登録構成品の自動登録＋SC同期まで一括実行）"
+          },
+          {
+            "type": "api_call",
+            "url": "{PLATFORM_URL}/api/products/by-code/LS-500/bom-add-item",
+            "method": "POST",
+            "body": {
+              "component_code": "US-LASER-DM650",
+              "component_name": "Laser Diode Module 650nm (US Origin)",
+              "coo": "US",
+              "ratio": 0.354,
+              "unit_value": 850.0
+            },
+            "message": "BOM構成品を登録してSC同期を実行しています…"
           },
           {
             "type": "explain",
-            "message": "【SC同期の仕組み】SC同期ボタンを押すと: ①LS-500ノード（親）を upsert → ②US-LASER-DM650ノード（子）をupsert（ECCNも引継ぎ）→ ③BOMエッジ（quantity=0.354）を登録。これによりサプライチェーン管理でDe Minimis計算が可能になります。"
+            "message": "【登録完了】US-LASER-DM650がBOMに追加され、サプライチェーン管理DBに自動同期されました。未登録の構成品は品目マスタに「BOM_AUTO」ソースで自動登録されます。"
           },
           {
             "type": "highlight",
             "target": "BOMグラフ",
             "tooltip": "品目管理内でBOMチェーンをグラフ表示で確認できます",
-            "message": "⑦ 「📊 グラフ」ボタンで品目管理内のBOMチェーン可視化を確認できます"
-          },
-          {
-            "type": "explain",
-            "message": "【BOMグラフ】品目管理のBOMグラフは「SC同期済」の状態を確認するためのビューです。US原産ノードは赤ハイライトで表示され、De Minimis計算が必要な構成品を一目で識別できます。"
+            "message": "⑦ 「📊 グラフ」ボタンで品目管理内のBOMチェーン可視化を確認できます（US原産ノードは赤ハイライト）"
           },
           {
             "type": "pause",
-            "button_label": "BOM同期完了 → サプライチェーン管理でツリー確認へ",
-            "message": "BOM CSVのアップロードとSC同期が完了しました。次はサプライチェーン管理ダッシュボードでBOMツリーを確認します。"
+            "button_label": "BOM登録完了 → サプライチェーン管理でツリー確認へ",
+            "message": "BOM構成品の登録とSC同期が完了しました。次はサプライチェーン管理ダッシュボードでBOMツリーを確認します。"
           }
         ]
       },

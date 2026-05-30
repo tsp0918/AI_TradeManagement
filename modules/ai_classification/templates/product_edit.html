@@ -418,8 +418,51 @@
           ※ 構成比は 0〜100% 表記。標準価格は Material + Overhead の合計コストです。
         </p>
       {% else %}
-        <p class="has-text-grey">BOMが登録されていません。Finished Goods の場合はBOM CSVをアップロードしてください。</p>
+        <p class="has-text-grey">BOMが登録されていません。Finished Goods の場合はBOM CSVをアップロードするか、下のフォームで直接追加してください。</p>
       {% endif %}
+
+      <!-- ===== BOM構成品 直接入力フォーム ===== -->
+      <div style="border-top:1px solid #e8e8e8; margin-top:16px; padding-top:14px;">
+        <p class="is-size-7 has-text-weight-semibold mb-2" style="color:#555;">🔩 BOM構成品を直接追加（未登録の構成品は自動登録）</p>
+        <form method="post" action="/products/{{ product.id }}/bom-add-item"
+              style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end;">
+          <div>
+            <label class="label is-small" style="margin-bottom:2px;">構成品コード *</label>
+            <input class="input is-small" name="component_code" type="text"
+                   placeholder="例: US-LASER-DM650" required style="width:180px;"
+                   data-dap-field="BOM構成品コード">
+          </div>
+          <div>
+            <label class="label is-small" style="margin-bottom:2px;">構成品名</label>
+            <input class="input is-small" name="component_name" type="text"
+                   placeholder="例: Laser Diode Module" style="width:210px;"
+                   data-dap-field="BOM構成品名">
+          </div>
+          <div>
+            <label class="label is-small" style="margin-bottom:2px;">原産地(COO)</label>
+            <input class="input is-small" name="coo" type="text"
+                   placeholder="US" maxlength="2" style="width:60px;"
+                   data-dap-field="BOM原産地">
+          </div>
+          <div>
+            <label class="label is-small" style="margin-bottom:2px;">構成比(0〜1)</label>
+            <input class="input is-small" name="ratio" type="number"
+                   step="0.001" min="0" max="1" placeholder="0.354" style="width:90px;"
+                   data-dap-field="BOM構成比">
+          </div>
+          <div>
+            <label class="label is-small" style="margin-bottom:2px;">単価USD</label>
+            <input class="input is-small" name="unit_value" type="number"
+                   step="0.01" min="0" placeholder="850.00" style="width:100px;"
+                   data-dap-field="BOM単価USD">
+          </div>
+          <div>
+            <button type="submit" class="button is-small is-primary" data-dap-field="BOM構成品追加">
+              ＋ 構成品を追加
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- ===== 輸出管理 該非判定（リデザイン） ===== -->
