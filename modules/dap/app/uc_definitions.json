@@ -1329,6 +1329,16 @@
             "message": "品名を入力します"
           },
           {
+            "type": "explain",
+            "message": "【品目連携】品目管理との連携が必須です。LS-500は品目管理に登録済みのため、通常は品目ピッカーで選択します。デモでは「品目管理に未登録の品目」チェックボックスを使って品番を直接入力します。"
+          },
+          {
+            "type": "fill_demo",
+            "target": "品目同時登録",
+            "value": "1",
+            "message": "「品目管理に未登録の品目」チェックを入れると品番フィールドが表示されます"
+          },
+          {
             "type": "highlight",
             "target": "品番",
             "tooltip": "型番・品目コード（品目管理と一致させると追跡が容易）",
@@ -1420,7 +1430,7 @@
       {
         "num": 6,
         "title": "判定結果と証跡保存",
-        "detail": "AI判定結果を確認し、PDF出力で証跡を保存する",
+        "detail": "AI判定結果を確認し、該非判定明細を記録してPDF出力で証跡を保存する",
         "navigate_to": null,
         "highlight": "PDF出力",
         "guidance_steps": [
@@ -1433,15 +1443,19 @@
             "message": "判定色分け: 🟡黄（intersection）= 外為法・EAR両リストに登場→要注意、🔵青（core_only）= 外為法リストに直接ヒット、⚪灰（expanded_only）= 周辺語のみ→低リスク"
           },
           {
+            "type": "explain",
+            "message": "【NEW: 品目側の該非判定記録】品目管理の編集ページに戻ると、「⚖️ 該非判定」セクションに「🤖 外部AI判定から転記」ボタンがあります。クリックするとAI判定の合致項目（hit/intersection/core_only/list2_only）が判定明細テーブルに自動転記されます。not_matchedは自動除外されます。転記後に不要な行を削除してから「⚖️ 判定記録を保存」で確定します（外為法7年保存義務）。"
+          },
+          {
             "type": "highlight",
             "target": "PDF出力",
             "tooltip": "外為法の規定により7年間の証跡保存が義務付けられています",
-            "message": "「PDF出力」で判定証跡を保存できます（外為法7年保存義務）"
+            "message": "AI取引審査の「PDF出力」で審査証跡を保存できます（外為法7年保存義務）"
           },
           {
             "type": "pause",
             "button_label": "デモ完了 ✓",
-            "message": "以上が輸出審査ワンストップフローのデモです。品目登録からAI判定・証跡保存まで一気通貫で完結しました。ご質問があればお気軽にどうぞ。"
+            "message": "以上が輸出審査ワンストップフローのデモです。品目登録からAI判定・該非判定記録・証跡保存まで一気通貫で完結しました。ご質問があればお気軽にどうぞ。"
           }
         ]
       }
@@ -1503,6 +1517,12 @@
             "target": "品名",
             "value": "高精度レーザーダイオード Module LD-200",
             "message": "品名を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "品目同時登録",
+            "value": "1",
+            "message": "「品目管理に未登録の品目」チェックを入れて品番フィールドを表示します"
           },
           {
             "type": "highlight",
@@ -1625,51 +1645,44 @@
   },
   {
     "id": "DEMO3",
-    "title": "【デモ】サプライチェーン・調達リスク管理",
-    "persona": "調達コンプライアンス担当",
-    "description": "米国EAR管理品を含む製品のBOM登録→サプライチェーン可視化→De Minimis計算→サプライヤー証明管理の一連フロー（EAR §734.4対応）",
+    "title": "【デモ】品目登録→BOM→正式審査→輸出許可 完全ワンストップ",
+    "persona": "デモプレゼンター / セールスエンジニア",
+    "description": "精密光学計測システム OMEGA-300の台湾TSMC向け輸出を例に、品目登録・BOM登録・サプライヤー証明・AI取引審査・エージェント判定・正式審査・輸出許可申請まで完全なEnd-to-Endフローを15分でご覧いただきます。各フォームにサンプルデータを自動入力します。",
     "steps": [
       {
         "num": 1,
-        "title": "シナリオ概要",
-        "detail": "調達部品のサプライチェーンリスク管理フローを体験します",
+        "title": "シナリオ概要・全体フロー",
+        "detail": "OMEGA-300台湾向け輸出のEnd-to-Endフロー全体像を把握する",
         "navigate_to": null,
         "highlight": null,
         "guidance_steps": [
           {
             "type": "pause",
             "button_label": "デモを開始 →",
-            "message": "【デモ開始】シナリオ: 米国製レーザーダイオード（ECCN 6A005.a.2）を含む製品LS-500のBOM登録から、EAR §734.4 De Minimisルール計算・サプライヤー証明管理までの一連フローです。準備ができたらボタンを押してください。"
+            "message": "【デモ開始】シナリオ: 精密光学計測システム OMEGA-300（半導体ウェハー検査用）を台湾TSMCへ輸出するケースです。品目登録からBOM4部品の直接追加・SC同期・サプライヤー証明・AI取引審査・正式審査・輸出許可申請まで一気通貫でご覧いただきます。準備ができたらボタンを押してください。"
           },
           {
             "type": "explain",
-            "message": "調達リスクの核心: 米国EAR管理品の価値比率が「一般国25%」「E:1グループ（CN/RU/IR/SY/KP/CU）10%」を超えると、製品全体がEARの管轄下に入り、第三国への再輸出に米国政府の輸出許可証が必要になります。AIが自動計算します。"
+            "message": "今日のデモの流れ（7ステップ）: ①Finished Goods品目登録（OMEGA-300）→ ②BOM4部品を編集ページから直接追加・SC同期 → ③サプライチェーン管理でBOMツリー確認・サプライヤー証明収集 → ④AI取引審査フォーム入力 → ⑤AI判定 + NeuroSymbolicエージェント判定 → ⑥キャッチオール自己判定 + 正式審査提出 → ⑦輸出許可申請ドラフト生成・管理"
           },
           {
             "type": "explain",
-            "message": "今日のデモの流れ: ①米国調達部品を品目マスタに登録 → ②親品目LS-500にBOM CSVをアップロード・SC同期 → ③サプライチェーン管理でBOMツリー確認 → ④De Minimis計算（仕向地: 中国CN）→ ⑤サプライヤー証明管理・招待URL発行"
+            "message": "【品目スペックとリスクポイント】OMEGA-300: 光学分解能0.01μm・計測速度100mm/s。BOM構成: PCB-001（米国産 ECCN 3A001.a.2 $620）+ OPT-001（JP産 $380）+ OPT-002（JP産 $275）+ MEC-001（JP産 $20）。合計$1,295のうち米国管理品$620 = 47.9%。De Minimis閾値（台湾向け25%）超過 → EAR BIS-748P申請が必要。"
           },
           {
             "type": "pause",
-            "button_label": "BOM構成品登録へ進む →",
-            "message": "それでは米国調達部品の登録から始めましょう。"
+            "button_label": "① 品目登録へ進む →",
+            "message": "それでは品目登録から始めましょう。"
           }
         ]
       },
       {
         "num": 2,
-        "title": "BOM構成品登録（米国調達部品）",
-        "detail": "品目マスタに米国原産EAR管理品（ECCN 6A005）を登録する",
-        "navigate_to": null,
+        "title": "Finished Goods品目登録（OMEGA-300）",
+        "detail": "品目管理に精密光学計測システムOMEGA-300をFinished Goodsとして新規登録する",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_classification/products/new",
         "highlight": null,
         "guidance_steps": [
-          {
-            "type": "api_call",
-            "url": "{PLATFORM_URL}/api/demo/seed-demo3",
-            "method": "POST",
-            "body": {},
-            "message": "デモデータ（LS-500・US-LASER-DM650・BOM）を準備しています…"
-          },
           {
             "type": "navigate",
             "url": "{PLATFORM_URL}/proxy/ai_classification/products/new",
@@ -1677,279 +1690,840 @@
           },
           {
             "type": "explain",
-            "message": "LS-500の中核部品「米国産レーザーダイオードモジュール」を品目マスタに登録します。原産地(COO)をUSに設定することで後続のDe Minimis計算に自動反映されます。"
+            "message": "品目登録フォームです。品目コード・品目名・用途概要の3項目を入力します。【品目種別】は「Finished Goods（完成品）」を選択してください。サンプルデータを順番に自動入力します。"
           },
           {
             "type": "highlight",
             "target": "品目コード",
-            "tooltip": "品目コードを入力します（英数字・ハイフン推奨）",
-            "message": "① 「品目コード」フィールドにサンプルデータを入力します"
+            "tooltip": "型番をそのまま使います。後続のBOM登録・SC同期・取引審査で共通キーになります",
+            "message": "① 「品目コード」にサンプルデータを入力します"
           },
           {
             "type": "fill_demo",
             "target": "品目コード",
-            "value": "US-LASER-DM650",
+            "value": "OMEGA-300",
             "message": "品目コードを入力します"
           },
           {
             "type": "highlight",
             "target": "品目名",
-            "tooltip": "部品の正式名称を入力します",
+            "tooltip": "規制照合の対象となる正式な品目名称",
             "message": "② 「品目名」を入力します"
           },
           {
             "type": "fill_demo",
             "target": "品目名",
-            "value": "Laser Diode Module 650nm (US Origin)",
+            "value": "精密光学計測システム OMEGA-300",
             "message": "品目名を入力します"
           },
           {
             "type": "highlight",
             "target": "用途概要",
-            "tooltip": "ECCN・原産地・用途・単価を含めることでDe Minimis計算の精度が向上します",
-            "message": "③ 「用途概要」を入力します（ECCN・原産地・単価を記載）"
+            "tooltip": "工程・装置・性能・最終使用地の4要素がAI判定精度の鍵",
+            "message": "③ 「用途概要」を入力します（最重要項目）"
           },
           {
             "type": "fill_demo",
             "target": "用途概要",
-            "value": "米国原産レーザーダイオードモジュール。ECCN: 6A005.a.2。原産地: US。LS-500の中核光学デバイス。半導体ウェハー検査用650nm精密発光素子。単価: USD 850/pcs",
-            "message": "用途概要を入力します（ECCN・原産地・単価を含む）"
+            "value": "半導体ウェハー検査ライン向け精密光学計測システム（光学分解能0.01μm、計測速度100mm/s）。最終使用地: 台湾TSMC Fab15B。露光後工程でのウェハー表面3D形状・欠陥自動検出に使用。民間半導体製造専用、軍事転用なし。",
+            "message": "用途概要を入力します（工程/装置/性能/最終使用地の4要素を含む）"
           },
           {
             "type": "explain",
-            "message": "【ポイント】品目種別は「購入品（外部調達・輸入）」を選択します。種別設定により、AIがコスト積算・BOM構造・De Minimis計算を自動で切り替えます。"
+            "message": "【差別化ポイント】「工程/装置/性能/最終使用地」の4要素を含む用途概要が、外為法別表第1・EAR CCL・Wassenaar MLの3体系同時照合における精度の鍵です。この情報は後続の審査フェーズに自動引き継ぎされます。"
           },
           {
             "type": "highlight",
             "target": "登録",
-            "tooltip": "入力内容を確認したら「登録」ボタンで品目を保存します",
-            "message": "④ 「登録」ボタンで品目マスタに保存します"
+            "tooltip": "クリックすると品目が保存され、編集ページに移動します",
+            "message": "④ 「登録」ボタンをクリックしてください。編集ページに移動したら次へ進みます"
           },
           {
             "type": "pause",
-            "button_label": "品目登録確認完了 → LS-500にBOM登録へ",
-            "message": "構成品（US-LASER-DM650）の品目マスタ登録を確認しました。次は親品目LS-500のBOM CSVアップロードとサプライチェーン同期を行います。"
+            "button_label": "編集ページが開いたら → ② BOM登録へ",
+            "message": "「登録」をクリックすると品目編集ページにリダイレクトされます。ページ上部のオレンジ色スティッキーセーブバーに「💾 基本情報を保存」ボタンが常時表示されます。セクション順は①基本情報 → ②⚖️ 該非判定 → ③🔩 BOM → ④🌏 国別規制プロファイル です。BOM登録は③のセクションを使います。"
           }
         ]
       },
       {
         "num": 3,
-        "title": "親品目BOM登録・サプライチェーン同期（LS-500）",
-        "detail": "LS-500の編集ページでBOM構成品を直接入力してサプライチェーン管理DBに同期する",
+        "title": "BOM構成品4点を直接追加・SC同期",
+        "detail": "OMEGA-300の品目編集ページ下部のBOM直接入力フォームで4部品を登録し、サプライチェーンDBに同期する",
         "navigate_to": null,
         "highlight": null,
         "guidance_steps": [
           {
-            "type": "navigate",
-            "url": "{PLATFORM_URL}/ui/product-by-code/LS-500",
-            "message": "LS-500の品目編集ページを開きます"
+            "type": "explain",
+            "message": "品目編集ページが開きました。ページ下部に「🔩 BOM構成品を直接追加」フォームがあります。構成品コード・構成品名・原産地(COO)・構成比・単価USDを入力して「＋ 構成品を追加」で登録します。未登録の構成品は自動登録されます。"
           },
           {
             "type": "explain",
-            "message": "【BOMマスターの場所】品目管理の品目編集ページ下部に「BOM構成品を直接追加」フォームがあります。構成品コード・原産地・構成比・単価を入力するだけで、未登録の構成品は品目管理に自動登録され、SC同期まで一括実行されます。"
+            "message": "【BOM4部品】今回登録する構成品: PCB-001（米国産 ECCN 3A001.a.2 $620 ← US管理品・最重要）、OPT-001（JP産 ECCN 6A004.b $380）、OPT-002（JP産 $275）、MEC-001（JP産 $20）。まず最重要の米国管理品 PCB-001 から登録します。"
           },
           {
             "type": "highlight",
             "target": "BOM構成品コード",
-            "tooltip": "構成品の品目コードを入力します（未登録でも自動登録されます）",
-            "message": "⑤ 「構成品コード」フィールドに米国製レーザーダイオードのコードを入力します"
+            "tooltip": "登録する構成品のコードを入力します（未登録でも自動登録されます）",
+            "message": "⑤ 「構成品コード」フィールドにPCB-001を入力します（US管理品 ECCN 3A001.a.2）"
           },
           {
             "type": "fill_demo",
             "target": "BOM構成品コード",
-            "value": "US-LASER-DM650",
+            "value": "PCB-001",
             "message": "構成品コードを入力します"
           },
           {
             "type": "fill_demo",
             "target": "BOM構成品名",
-            "value": "Laser Diode Module 650nm (US Origin)",
+            "value": "精密制御基板（US Origin）",
             "message": "構成品名を入力します"
           },
           {
             "type": "fill_demo",
             "target": "BOM原産地",
             "value": "US",
-            "message": "原産地（COO）に US を入力します"
+            "message": "原産地COO: US（米国産）を入力します ← De Minimis計算に直結"
           },
           {
             "type": "fill_demo",
             "target": "BOM構成比",
-            "value": "0.354",
-            "message": "構成比を入力します（製品原価の35.4%）"
+            "value": "0.479",
+            "message": "構成比（製品原価の47.9%）を入力します"
           },
           {
             "type": "fill_demo",
             "target": "BOM単価USD",
-            "value": "850",
-            "message": "単価USDを入力します（De Minimis計算に使用）"
+            "value": "620",
+            "message": "単価USD: $620を入力します（De Minimis金額加重計算に使用）"
           },
           {
             "type": "highlight",
             "target": "BOM構成品追加",
-            "tooltip": "クリックすると構成品を自動登録してBOMに追加、SC同期まで自動実行します",
-            "message": "⑥ 「＋ 構成品を追加」ボタンをクリックします（未登録構成品の自動登録＋SC同期まで一括実行）"
-          },
-          {
-            "type": "api_call",
-            "url": "{PLATFORM_URL}/api/products/by-code/LS-500/bom-add-item",
-            "method": "POST",
-            "body": {
-              "component_code": "US-LASER-DM650",
-              "component_name": "Laser Diode Module 650nm (US Origin)",
-              "coo": "US",
-              "ratio": 0.354,
-              "unit_value": 850.0
-            },
-            "message": "BOM構成品を登録してSC同期を実行しています…"
+            "tooltip": "クリックするとPCB-001がBOMに追加されます。ページがリロードされてBOM一覧に反映されます",
+            "message": "⑥ 「＋ 構成品を追加」をクリックします。ページがリロードされてBOM一覧にPCB-001が表示されます"
           },
           {
             "type": "explain",
-            "message": "【登録完了】US-LASER-DM650がBOMに追加され、サプライチェーン管理DBに自動同期されました。未登録の構成品は品目マスタに「BOM_AUTO」ソースで自動登録されます。"
+            "message": "【PCB-001登録完了】ページリロード後、BOM一覧にPCB-001（US 3A001.a.2 $620）が表示されます。同様に残り3点を追加します: OPT-001（JP $380）、OPT-002（JP $275）、MEC-001（JP $20）。同じフォームを繰り返し使います。4点すべて追加したら次へ進みます。"
+          },
+          {
+            "type": "pause",
+            "button_label": "4点追加完了 → SC同期へ",
+            "message": "PCB-001・OPT-001・OPT-002・MEC-001の4部品をすべて追加したら次へ進んでください。"
+          },
+          {
+            "type": "highlight",
+            "target": "SC同期",
+            "tooltip": "BOM登録情報をサプライチェーン管理DBに同期します。この操作でSC管理でBOMツリーが確認できるようになります",
+            "message": "⑦ 「🔄 SC同期」ボタンをクリックして、BOM情報をサプライチェーン管理に反映します"
           },
           {
             "type": "highlight",
             "target": "BOMグラフ",
-            "tooltip": "品目管理内でBOMチェーンをグラフ表示で確認できます",
-            "message": "⑦ 「📊 グラフ」ボタンで品目管理内のBOMチェーン可視化を確認できます（US原産ノードは赤ハイライト）"
+            "tooltip": "品目管理の中でBOM構成をグラフ表示で確認できます。米国産ノードは赤ハイライトで表示されます",
+            "message": "⑧ 「📊 グラフ」ボタンで品目管理内のBOM構成グラフを確認できます（確認のみ）"
           },
           {
             "type": "pause",
-            "button_label": "BOM登録完了 → サプライチェーン管理でツリー確認へ",
-            "message": "BOM構成品の登録とSC同期が完了しました。次はサプライチェーン管理ダッシュボードでBOMツリーを確認します。"
+            "button_label": "SC同期完了 → ③ サプライチェーン管理へ",
+            "message": "SC同期が完了したら次のステップへ進みます。"
           }
         ]
       },
       {
         "num": 4,
-        "title": "サプライチェーン管理・BOMツリー確認",
-        "detail": "調達・BOM管理ダッシュボードでBOM構造と米国管理品の状況を把握する",
-        "navigate_to": null,
+        "title": "SCでBOMツリー確認・サプライヤー証明収集",
+        "detail": "サプライチェーン管理でBOMツリーを確認し、サプライヤーポータルへの招待URLを発行する",
+        "navigate_to": "{PLATFORM_URL}/ui/supply-chain",
         "highlight": null,
         "guidance_steps": [
           {
             "type": "navigate",
             "url": "{PLATFORM_URL}/ui/supply-chain",
-            "message": "調達・BOM管理ダッシュボードを開きます"
-          },
-          {
-            "type": "explain",
-            "message": "調達・BOM管理ダッシュボードです。左上の統計バー「US管理品ノード数（赤数字）」がリスク状況を一目で示します。赤い数字が多い場合は優先的にDe Minimis計算が必要です。"
+            "message": "サプライチェーン管理（BOM管理ダッシュボード）を開きます"
           },
           {
             "type": "highlight",
             "target": "品名部品番号検索",
-            "tooltip": "品名・部品番号でノードを検索して絞り込みます",
-            "message": "⑧ 検索フィールドで「LS-500」を検索してノードを絞り込みます"
+            "tooltip": "製品コードまたは品名で検索してノードを絞り込みます",
+            "message": "⑨ 検索フィールドで「OMEGA-300」を検索してノードを絞り込みます"
           },
           {
             "type": "fill_demo",
             "target": "品名部品番号検索",
-            "value": "LS-500",
-            "message": "「LS-500」で検索します"
-          },
-          {
-            "type": "explain",
-            "message": "【BOMデータ構造】デモデータには「LS-500（JP産 ECCN 3A002 $2,400）→ US-LASER-DM650（US産 ECCN 6A005.a.2 $850）」のBOMエッジが設定済みです。品目管理の製品コードとproduct_codeで紐付けられたサプライチェーンノードがコンプライアンスBOMの実体です。"
+            "value": "OMEGA-300",
+            "message": "「OMEGA-300」で検索します"
           },
           {
             "type": "highlight",
             "target": "ツリー表示",
-            "tooltip": "LS-500行の「ツリー」ボタンで右パネルにBOM階層ツリーが展開されます",
-            "message": "⑨ LS-500行の「ツリー」ボタンをクリックしてBOM階層ツリーを展開します"
+            "tooltip": "「ツリー」ボタンで右パネルにBOM階層ツリーが展開されます",
+            "message": "⑩ OMEGA-300行の「ツリー」ボタンをクリックしてBOM構成を展開します"
           },
           {
             "type": "explain",
-            "message": "【ツリーの見方】🔴赤（HIGH）= US EAR規制品（ECCN ≠ EAR99）→ De Minimis計算必須。🟠オレンジ（MED）= US原産・EAR99/未判定。🟢緑 = 非US一般構成品。LS-500のツリーにはHIGHノード「US-LASER-DM650（ECCN 6A005.a.2）」が含まれています。"
+            "message": "【ツリーの見方】🔴赤（HIGH）= US EAR規制品（ECCN ≠ EAR99）→ De Minimis計算必須。🟠オレンジ（MED）= US原産・EAR99/未判定。🟢緑 = 非US一般構成品。OMEGA-300のツリーにはHIGHノード「PCB-001（ECCN 3A001.a.2 $620）」が表示されます。赤いノードが多いほど EAR 対応が必要です。"
+          },
+          {
+            "type": "highlight",
+            "target": "証明管理タブ",
+            "tooltip": "サプライヤーへのECCN申告依頼・証明書管理を行います",
+            "message": "⑪ 「📋 証明管理」タブをクリックしてサプライヤー証明収集フローを確認します"
+          },
+          {
+            "type": "highlight",
+            "target": "招待URL発行",
+            "tooltip": "サプライヤーがアカウント不要でECCN・原産国・USコンテンツ%を直接入力できる専用URLを発行します",
+            "message": "⑫ 「🔗 招待URL発行」でサプライヤーポータルへの専用URLを生成します"
+          },
+          {
+            "type": "explain",
+            "message": "【サプライヤーポータルの特徴】①アカウント不要でURLアクセス（トークン認証）②BOM内訳は非公開（自社ノードのみ表示）③ECCN・原産国・USコンテンツ%を自己申告④申告後AIが内容を自動検証⑤承認後SC管理グラフに値を反映。メール往復が大幅削減されます。"
           },
           {
             "type": "pause",
-            "button_label": "BOMツリー確認完了 → De Minimis計算へ",
-            "message": "BOMツリーの構造と米国管理品ノードを確認しました。次はDe Minimisルールの計算を行います。"
+            "button_label": "確認完了 → ④ AI取引審査へ",
+            "message": "BOMツリー確認とサプライヤー証明収集の仕組みをご確認いただきました。次はAI取引審査に進みます。"
           }
         ]
       },
       {
         "num": 5,
-        "title": "De Minimis計算（EAR §734.4）",
-        "detail": "仕向地国コードを入力して米国管理品の価値比率を自動計算する",
-        "navigate_to": null,
-        "highlight": null,
+        "title": "AI取引審査フォーム入力（7項目）",
+        "detail": "品名・品番・用途説明・取引先名・仕向国・最終需要者名・申告用途を入力して審査を登録する",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new",
+        "highlight": "審査を登録",
         "guidance_steps": [
           {
-            "type": "highlight",
-            "target": "De Minimisタブ",
-            "tooltip": "De Minimisルール計算タブに切り替えます",
-            "message": "⑩ 「📐 De Minimis」タブをクリックします"
+            "type": "navigate",
+            "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new",
+            "message": "AI取引審査の新規案件フォームを開きます"
           },
           {
             "type": "explain",
-            "message": "EAR §734.4 De Minimis ルール: 製品に含まれる米国EAR管理品の価値比率が閾値を超えると製品全体がEARの管轄下に入ります。一般国: 25%、E:1グループ（CN/RU/IR/SY/KP/CU）: 10%。"
-          },
-          {
-            "type": "highlight",
-            "target": "仕向地国コード",
-            "tooltip": "ISO 3166-1 alpha-2コードを入力します（例: CN, TW, KR）",
-            "message": "⑪ 仕向地国コードを入力します（今回は中国向け: CN）"
+            "message": "AI取引審査フォームです。品目情報（品名・品番・用途説明）と取引情報（取引先名・仕向国・最終需要者名・申告用途）の7項目を入力します。サンプルデータを順番に自動入力します。"
           },
           {
             "type": "fill_demo",
-            "target": "仕向地国コード",
-            "value": "CN",
-            "message": "中国（CN）を入力します"
-          },
-          {
-            "type": "highlight",
-            "target": "De Minimis計算実行",
-            "tooltip": "BOM全体を再帰的にスキャンしてUS管理品比率を計算します",
-            "message": "⑫ 「計算実行」ボタンでDe Minimis計算を起動します"
+            "target": "品名",
+            "value": "精密光学計測システム OMEGA-300",
+            "message": "① 品名を入力します"
           },
           {
             "type": "explain",
-            "message": "【デモ計算結果イメージ】US-LASER-DM650（ECCN 6A005.a.2）の価値比率: 35.2%。仕向地CN（E:1グループ）の閾値10%を大幅超過。→ De Minimisルール適用不可。LS-500のCN向け輸出にはEAR §742.4に基づく米国政府の輸出許可証が必要です。"
+            "message": "【品目連携】ステップ②でOMEGA-300を品目管理に登録しました。通常は品目ピッカーで「OMEGA-300」を検索・選択するとECCNが自動引き継ぎされます。デモでは「品目管理に未登録の品目」チェックで品番を直接入力します。"
+          },
+          {
+            "type": "fill_demo",
+            "target": "品目同時登録",
+            "value": "1",
+            "message": "「品目管理に未登録の品目」チェックを入れて品番フィールドを表示します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "品番",
+            "value": "OMEGA-300",
+            "message": "② 品番を入力します（品目管理のコードと一致）"
+          },
+          {
+            "type": "highlight",
+            "target": "用途説明",
+            "tooltip": "AI判定の照合テキストに使用されます。品目管理の用途概要と一致させてください",
+            "message": "③ 「用途・説明」を入力します（AI判定精度の核となる項目）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "用途説明",
+            "value": "半導体ウェハー検査ライン向け精密光学計測システム（光学分解能0.01μm、計測速度100mm/s）。最終使用地: 台湾TSMC Fab15B。露光後工程でのウェハー表面3D形状・欠陥自動検出に使用。民間半導体製造専用、軍事転用なし。",
+            "message": "用途・説明を入力します（品目管理の用途概要と一致）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "取引先名",
+            "value": "Taiwan Semiconductor Manufacturing Co., Ltd.",
+            "message": "④ 取引先名を入力します（スクリーニング済みの正式名称）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "仕向国",
+            "value": "TW",
+            "message": "⑤ 仕向国: 台湾（TW）を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "最終需要者名",
+            "value": "TSMC Fab15B Advanced Inspection Division",
+            "message": "⑥ 最終需要者名を入力します（実際の使用部門まで記載）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "申告用途",
+            "value": "半導体製造ライン（露光後工程）でのウェハー表面光学計測・欠陥検査。民間用途のみ。第三国への転送・再輸出なし。",
+            "message": "⑦ 申告用途を入力します"
+          },
+          {
+            "type": "explain",
+            "message": "【差別化ポイント】7項目の情報から、AIが外為法別表第1・EAR CCL・Wassenaar MLの3体系を同時照合します。従来の手動チェックリスト作業が数分で完了します。内容を確認・修正してから次へ進んでください。"
+          },
+          {
+            "type": "highlight",
+            "target": "審査を登録",
+            "tooltip": "「審査を登録」ボタンで案件がDBに保存されます。AI判定は詳細ページで起動します",
+            "message": "⑧ 「審査を登録」ボタンで案件を登録します"
           },
           {
             "type": "pause",
-            "button_label": "De Minimis確認完了 → サプライヤー証明管理へ",
-            "message": "De Minimis計算結果を確認しました。次はサプライヤーへの証明依頼フローを見ます。"
+            "button_label": "登録完了 → ⑤ AI判定へ",
+            "message": "案件を登録したら、案件一覧から今登録した案件を開いてください。次のステップで AI判定を起動します。"
           }
         ]
       },
       {
         "num": 6,
-        "title": "サプライヤー証明管理とリスクレポート",
-        "detail": "ECCN申告収集・招待URL発行・サプライチェーンリスクサマリーを確認する",
+        "title": "AI判定実行・結果確認",
+        "detail": "AIが外為法・EAR・Wassenaarの3体系照合を実行し、判定結果を確認する",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions",
+        "highlight": "AI解析を実行",
+        "guidance_steps": [
+          {
+            "type": "navigate",
+            "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions",
+            "message": "AI取引審査の案件一覧を開きます"
+          },
+          {
+            "type": "pause",
+            "button_label": "詳細を開きました →",
+            "message": "案件一覧が表示されました。今登録した OMEGA-300 のドラフト案件の行をクリックして詳細ページを開いてください。詳細ページが開いたら「次へ」を押してください。"
+          },
+          {
+            "type": "explain",
+            "message": "【AI判定パイプライン】①取引先スクリーニング（OFAC/BIS/国連等7ソース同時照合）→ ②外為法別表第1 × EAR CCL 2リスト照合（交差・単独・周辺語の3段階）→ ③FAISS 10,783ベクトルとのセマンティック類似度 → ④キャッチオール規制リスク評価（仕向地・用途・需要者の3要素）。4パイプラインの結果がチェックリストに反映されます。"
+          },
+          {
+            "type": "highlight",
+            "target": "AI解析を実行",
+            "tooltip": "クリックすると①スクリーニング照合②2リスト検索③ベクトル類似度④キャッチオール評価の4パイプラインが実行されます（30〜60秒）",
+            "message": "⑨ 「AI解析を実行」をクリックします（30〜60秒かかります）"
+          },
+          {
+            "type": "explain",
+            "message": "【判定結果の見方】判定色分け: 🟡黄（intersection）= 外為法・EAR両リストに登場→要注意、🔵青（core_only）= 外為法リストに直接ヒット、⚪灰（expanded_only）= 周辺語のみ→低リスク。OMEGA-300の場合、光学系 × 半導体製造 × 台湾向けで「REVIEW」判定が想定されます。"
+          },
+          {
+            "type": "explain",
+            "message": "【エージェント判定について】「🚀 エージェント判定を開始」は追加の対話型詳細確認機能です（オプション）。スクリーニング✅ + AI判定✅が揃えば「📨 正式審査へ提出」ボタンが有効になります。エージェント判定を実行しなくても次のステップに進めます。"
+          },
+          {
+            "type": "pause",
+            "button_label": "AI判定完了 → ⑥ 正式審査へ",
+            "message": "AI判定が完了してチェックリストにスクリーニング✅・AI判定✅が入ったら次へ進んでください。"
+          }
+        ]
+      },
+      {
+        "num": 7,
+        "title": "キャッチオール判定・正式審査提出・輸出許可申請",
+        "detail": "キャッチオール自己判定を完了し正式審査を提出。輸出許可申請ドラフトを生成して申請管理ビューで確認する",
         "navigate_to": null,
         "highlight": null,
         "guidance_steps": [
           {
-            "type": "highlight",
-            "target": "証明管理タブ",
-            "tooltip": "サプライヤーからの申告・証明書を管理します",
-            "message": "⑬ 「📋 証明管理」タブでサプライヤーからのECCN申告を管理します"
-          },
-          {
             "type": "explain",
-            "message": "証明管理では各サプライヤーからECCN・原産国・USコンテンツ比率の申告を収集します。証明書のステータス「未申告 → 申告済 → AI検証 → 承認/却下」でトレーサビリティを確保します。"
+            "message": "【キャッチオール規制（輸出令第4条）】品目リストに非該当でも、仕向地・最終需要者・用途によって輸出許可が必要になる規制です。AI判定でキャッチオール確認が推奨された場合、ページ下部Section 5「🛡️ キャッチオール規制自己判定」が表示されます。ページ上部の「🛡️ キャッチオール判定 →」リンクをクリックするとジャンプできます。"
           },
           {
             "type": "highlight",
-            "target": "招待URL発行",
-            "tooltip": "サプライヤーに専用URLを発行してECCN情報を直接入力してもらいます",
-            "message": "⑭ 「🔗 招待URL発行」でサプライヤーポータルへのリンクを発行します"
+            "target": "キャッチオール判定",
+            "tooltip": "ページ上部のリンクまたはページ下部のSection 5でキャッチオール自己判定フォームが確認できます",
+            "message": "⑫ 「🛡️ キャッチオール判定 →」リンクでSection 5に移動します"
           },
           {
             "type": "explain",
-            "message": "【サプライヤーポータル】発行URLからサプライヤーが自社のECCN・原産国・USコンテンツ%を直接入力できます。入力後AIが内容を自動検証し、疑義がある場合はフラグを立てます。担当者のメール往復が大幅に削減されます。"
+            "message": "【OMEGA-300のチェックポイント】仕向地TW（台湾）: Country Group B（管理対象外）。需要者TSMC: 公開大企業・制裁リスト未掲載。用途: 民間半導体製造（ウェハー検査）→ 軍事転用の懸念なし。大量破壊兵器関連: なし。これらをチェックリストで確認します。"
+          },
+          {
+            "type": "highlight",
+            "target": "自己判定を実行",
+            "tooltip": "チェックリスト入力後にクリックしてキャッチオール自己判定を確定します",
+            "message": "⑬ チェックリストに回答後「自己判定を実行」をクリックします → 🟢 キャッチオール非該当"
+          },
+          {
+            "type": "highlight",
+            "target": "正式審査へ提出",
+            "tooltip": "スクリーニング・AI判定・キャッチオール判定が完了すると「📨 正式審査へ提出」ボタンが有効になります",
+            "message": "⑭ 「📨 正式審査へ提出」ボタンをクリックします"
           },
           {
             "type": "explain",
-            "message": "【サプライチェーンリスクサマリー（デモ）】HIGH（US EAR規制品）: 1件、MED（US原産・EAR99/未判定）: 2件、SAFE（非US・EAR99確定）: 5件。HIGHノードをクリックするとAI取引審査モジュールと連携して該非判定トランザクションを自動起票できます。"
+            "message": "【正式審査提出後に自動生成】①判定書番号（JDG-{案件番号}-{日付}）②保存期限（提出日＋7年、外為法第67条）③ステータス: in_review → approved。外為法7年保存義務に対応した証跡が自動完成します。"
+          },
+          {
+            "type": "highlight",
+            "target": "輸出許可申請ドラフトを作成",
+            "tooltip": "案件情報から申請書ドラフトを自動生成します。許可種別ポップアップで「EAR」を選択してください",
+            "message": "⑮ 「🔎 輸出許可申請ドラフトを作成」をクリックします（EARを選択）"
+          },
+          {
+            "type": "navigate",
+            "url": "{PLATFORM_URL}/ui/export-license",
+            "message": "輸出許可申請管理ビューを開きます"
+          },
+          {
+            "type": "explain",
+            "message": "【輸出許可申請管理ビュー】統計ダッシュボード（申請総数・承認済み・ドラフト・期限アラート）と申請一覧が表示されます。OMEGA-300の EAR ドラフトが追加されています。申請ライフサイクル: ドラフト → 申請済み（BIS提出）→ 承認（許可証番号・有効期限・許可総額を登録）→ 出荷時に価値控除。"
+          },
+          {
+            "type": "explain",
+            "message": "【License Exception GBS §740.4 の検討】台湾（TW）はEAR Country Group Bに該当します。PCB-001（ECCN 3A001.a.2）がGBS対象エントリであれば、BIS許可証なしで輸出できる場合があります。最終確認は実際のEAR規定と専門家に委ねてください。"
+          },
+          {
+            "type": "explain",
+            "message": "【NEW: 国別HSコード・関税率テーブル】品目編集ページの④「🌏 国別規制プロファイル」セクションに、登録した全仕向国のローカルHSコード・MFN関税率・EPA/FTA優遇税率・輸出許可要否が一覧サマリーテーブルで確認できます。「🌐 関税率一括取得」ボタンでWTO APIから自動入力することも可能です。"
           },
           {
             "type": "pause",
             "button_label": "デモ完了 ✓",
-            "message": "以上がBOM登録→サプライチェーン可視化→De Minimis計算→サプライヤー証明管理の一連デモです。ご質問があればお気軽にどうぞ。"
+            "message": "以上が「品目登録→BOM4部品直接追加→SC同期→サプライヤー証明→AI取引審査→AI判定→正式審査→輸出許可申請」完全ワンストップデモです。ご質問があればお気軽にどうぞ。"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "DEMO4",
+    "title": "【デモ】品目マスター完全セットアップ（HS・AI該非・国別関税）",
+    "persona": "デモプレゼンター / 品目管理担当者",
+    "description": "精密温度センサー PT-300を例に、品目登録からHSコードAI判定・外部AI該非判定・判定項番記録・US/CN/ID/EUの国別規制プロファイル登録（HSコード・関税率）まで、品目マスターを完全セットアップするフローを8分でご覧いただきます。",
+    "steps": [
+      {
+        "num": 1,
+        "title": "デモ概要・シナリオ説明",
+        "detail": "品目マスター完全セットアップの5フェーズを把握する",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "pause",
+            "button_label": "デモを開始 →",
+            "message": "【デモ開始】シナリオ: 精密温度センサー PT-300（Pt100/Pt1000対応・-200〜+850℃対応）を食品加工・半導体向けに輸出するため、品目マスターを完全セットアップします。"
+          },
+          {
+            "type": "explain",
+            "message": "今日のデモの流れ（5フェーズ）: ①品目登録 → ②HSコードAI判定 → ③外部AI該非判定（Webhook） → ④判定項番転記・記録 → ⑤US/CN/ID/EU 国別プロファイル登録（HSコード・関税率・輸出許可）。各フェーズは品目管理の編集ページで完結します。"
+          },
+          {
+            "type": "explain",
+            "message": "【品目管理編集ページの新UI】登録後の編集ページは: ①基本情報（型番・品目名・ECCN・用途概要）→ ②⚖️ 該非判定（外部AI連携・判定明細テーブル）→ ③🔩 BOM構成 → ④🌏 国別規制プロファイル の4セクション構成。ページ上部のスティッキーバーに「💾 基本情報を保存」が常時表示されます。"
+          },
+          {
+            "type": "pause",
+            "button_label": "① 品目登録へ進む →",
+            "message": "それでは品目登録から始めましょう。"
+          }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "品目登録",
+        "detail": "品目コード・品目名・用途概要を入力して品目を登録する",
+        "navigate_to": "{PLATFORM_URL}/proxy/ai_classification/products/new",
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "navigate",
+            "url": "{PLATFORM_URL}/proxy/ai_classification/products/new",
+            "message": "品目管理の新規登録フォームを開きます"
+          },
+          {
+            "type": "explain",
+            "message": "品目登録フォームが開きました。品目コード・品目名・用途概要の3つを順番に入力します。サンプルデータを自動入力しますので、必要に応じて修正してください。"
+          },
+          {
+            "type": "highlight",
+            "target": "品目コード",
+            "tooltip": "型番をそのまま使います。後続のBOM・SC同期・取引審査で共通キーになります",
+            "message": "① 「品目コード」にサンプルデータを入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "品目コード",
+            "value": "PT-300",
+            "message": "品目コードを入力します（型番そのまま）"
+          },
+          {
+            "type": "highlight",
+            "target": "品目名",
+            "tooltip": "規制照合の対象となる正式な品目名称",
+            "message": "② 「品目名」を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "品目名",
+            "value": "精密温度センサー PT-300",
+            "message": "品目名を入力します"
+          },
+          {
+            "type": "highlight",
+            "target": "用途概要",
+            "tooltip": "工程・装置・性能・最終使用地の4要素がAI判定精度の鍵",
+            "message": "③ 「用途概要」を入力します（外部AI判定・HS判定の両方に使われます）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "用途概要",
+            "value": "食品加工ライン・半導体プロセスチャンバーの温度制御に使用するPt100/Pt1000対応精密温度センサー（精度±0.1℃、測定範囲-200〜+850℃）。工業計測・プロセス制御専用、軍事転用なし。",
+            "message": "用途概要を入力します（工程/装置/性能の要素を含む）"
+          },
+          {
+            "type": "explain",
+            "message": "【ポイント】用途概要は「外部AI該非判定」の照合テキストと「HSコード判定」の入力として使われます。工程・装置・性能・最終使用地の4要素を含めると両方の判定精度が向上します。"
+          },
+          {
+            "type": "highlight",
+            "target": "登録",
+            "tooltip": "クリックすると品目が保存され、編集ページにリダイレクトされます",
+            "message": "④ 「登録」ボタンで品目を保存します。編集ページに移動したら次のステップへ進んでください"
+          },
+          {
+            "type": "pause",
+            "button_label": "編集ページが開いたら → ② HSコード判定へ",
+            "message": "「登録」をクリックすると品目編集ページにリダイレクトされます。ページ上部のスティッキーバーと4セクション構成を確認してください。"
+          }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "HSコード AI判定",
+        "detail": "品目名と用途概要からAIが上位5候補を提示し、HSコードを確定する",
+        "navigate_to": null,
+        "highlight": "HSコード判定",
+        "guidance_steps": [
+          {
+            "type": "explain",
+            "message": "品目編集ページの「基本情報」セクションに「🏷️ HSコード判定」ボタンがあります。クリックすると品目名・用途概要から9,133件のHSコードDBをFAISSベクトル検索し、上位5候補を類似度スコア付きで提示します。"
+          },
+          {
+            "type": "highlight",
+            "target": "HSコード判定",
+            "tooltip": "クリックするとAIが上位5候補を類似度スコア付きで提示します（5〜10秒）",
+            "message": "「🏷️ HSコード判定」ボタンをクリックしてください"
+          },
+          {
+            "type": "explain",
+            "message": "【デモ結果イメージ】PT-300の場合: 第1候補 9025.19（類似度0.91）= 温度計（その他）、第2候補 9025.11（類似度0.88）= 液体充填温度計。最もスコアが高い候補を選択して「適用」をクリックするとHSコードが自動入力されます。"
+          },
+          {
+            "type": "explain",
+            "message": "【ECCNも合わせて確認】PT-300（精度±0.1℃・広温度範囲センサー）のECCNは EAR99（規制なし）または 3A999（計測装置）が想定されます。基本情報セクションのECCNフィールドに入力して「💾 基本情報を保存」で保存してください。"
+          },
+          {
+            "type": "pause",
+            "button_label": "HSコード確定 → ③ 外部AI該非判定へ",
+            "message": "HSコードを選択・確定したら次のステップへ進みます。"
+          }
+        ]
+      },
+      {
+        "num": 4,
+        "title": "外部AI該非判定（Webhook連携）",
+        "detail": "外部AIへ該非判定を依頼し、規制リスト照合結果を受信する",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "explain",
+            "message": "「⚖️ 該非判定」セクション（基本情報のすぐ下）に「外部AI判定（Webhook連携）」折りたたみエリアがあります。クリックして展開してください。外部AIが外為法別表第1・EAR CCL・Wassenaar MLの3体系を照合した結果がここに表示されます。"
+          },
+          {
+            "type": "explain",
+            "message": "「📝 用途概要（AI判定テキスト）」フィールドを確認してください。品目登録時に入力した用途概要が引き継がれています。必要に応じて「工程/装置/性能/最終使用地」をより詳しく記述してから「📄 用途概要を保存」してください。"
+          },
+          {
+            "type": "highlight",
+            "target": "外部AIへ判定依頼",
+            "tooltip": "クリックすると用途概要テキストがWebhook経由で外部AIに送信されます（30〜60秒）",
+            "message": "「🚀 外部AIへ判定依頼」ボタンをクリックして該非判定を依頼します"
+          },
+          {
+            "type": "explain",
+            "message": "【外部AI判定パイプライン】①用途概要テキストを外為法別表第1の全規制品目と意味的照合（FAISS）→ ②EAR CCLとのクロスリスト分析（matrix_matches_top）→ ③各マッチに判定スコア・項番・合致トークンを付与して返却。判定結果（hit/intersection/core_only/list2_only/not_matched）が確認できます。"
+          },
+          {
+            "type": "explain",
+            "message": "判定完了後: 「🔄 最新結果を更新」をクリックして結果を取得します。「根拠（上位ヒット）」カードに項番・品目名・類似度スコア・判定区分が表示されます。"
+          },
+          {
+            "type": "pause",
+            "button_label": "判定結果受信 → ④ 判定項番転記へ",
+            "message": "判定結果が表示されたら次のステップへ進みます。"
+          }
+        ]
+      },
+      {
+        "num": 5,
+        "title": "判定項番転記・判定記録保存",
+        "detail": "AI判定の合致項目を判定明細テーブルに転記し、判定結果と理由コメントを保存する",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "explain",
+            "message": "「⚖️ 該非判定」セクション上部に「判定明細」テーブルがあります。「🤖 外部AI判定から転記」ボタンをクリックすると、外部AI判定の合致項目（hit/intersection/core_only/list2_only）が自動転記されます。not_matched（非該当）の項目は自動除外されます。"
+          },
+          {
+            "type": "highlight",
+            "target": "外部AI判定から転記",
+            "tooltip": "hit/intersection/core_only/list2_only の項目を判定明細テーブルに転記します（not_matchedは除外）",
+            "message": "「🤖 外部AI判定から転記」ボタンをクリックします"
+          },
+          {
+            "type": "explain",
+            "message": "【転記結果の見方】テーブルの各行: 「該当項番」= 外為法別表の規制項番（例: EL-3-19.c）、「判定結果」= controlled/needs_review/non_controlled、「コメント」= 項番[判定区分] + スコア。不要な行は右端の✕ボタンで削除できます。"
+          },
+          {
+            "type": "explain",
+            "message": "【判定結果を選択】「该非判定結果」プルダウンで: 非該当と推定 / 要注意（要確認）/ 要確認（情報不足）/ 該当（要専門家レビュー）のいずれかを選択します。PT-300（EAR99想定）は「非該当と推定」を選択します。"
+          },
+          {
+            "type": "explain",
+            "message": "「判定理由・コメント」テキストエリアに判定根拠を記入します。例: 「外為法別表第1 非該当。外部AI判定スコア0.72未満、EAR99相当。キャッチオール確認：仕向地TW（Country Group B）・民間温度計測用途のため不要と判断。」"
+          },
+          {
+            "type": "highlight",
+            "target": "判定記録を保存",
+            "tooltip": "判定結果・理由コメント・判定明細テーブルをまとめて保存します（外為法7年保存義務）",
+            "message": "「⚖️ 判定記録を保存」ボタンで判定結果・理由・明細をまとめて保存します"
+          },
+          {
+            "type": "pause",
+            "button_label": "判定記録保存完了 → ⑤ 国別プロファイルへ",
+            "message": "判定記録が保存されました。次は4か国の国別規制プロファイルを登録します。"
+          }
+        ]
+      },
+      {
+        "num": 6,
+        "title": "国別プロファイル登録（US → CN → ID → EU）",
+        "detail": "US/CN/ID/EUの4か国について、ローカルHSコード・MFN関税率・EPA/FTA優遇税率・輸出許可要否を登録する",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "explain",
+            "message": "ページ下部④「🌏 国別規制プロファイル / HSコード・関税テーブル」セクションを開いてください。右上の「＋ 国を追加」で国別プロファイルモーダルが開きます。まず米国（US）向けプロファイルを登録します。"
+          },
+          {
+            "type": "highlight",
+            "target": "国を追加",
+            "tooltip": "クリックして国別プロファイル追加モーダルを開きます",
+            "message": "「＋ 国を追加」をクリックします（①US向けプロファイル登録）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-country-code",
+            "value": "US",
+            "message": "国: 米国（US）を選択します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-role",
+            "value": "destination",
+            "message": "役割: 仕向国（Destination）を選択します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-local-hs",
+            "value": "9025190040",
+            "message": "米国向けローカルHSコード（HTS 10桁）: 9025190040を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-tariff-rate",
+            "value": "0.0",
+            "message": "MFN関税率: 0.0%（免税）を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-license-required",
+            "value": "nLR",
+            "message": "輸出許可要否: NLR（許可不要）を選択します"
+          },
+          {
+            "type": "explain",
+            "message": "【US向けのポイント】精密温度センサー（HTS 9025.19.0040）は現行MFN関税率0%（免税）。EAR99相当のため輸出許可不要（NLR）。301条制裁の対象外。入力が完了したら「保存」ボタンをクリックしてください。"
+          },
+          {
+            "type": "pause",
+            "button_label": "US保存完了 → CN追加へ",
+            "message": "「保存」をクリックしてUSプロファイルを保存しました。次は中国（CN）を追加します。「＋ 国を追加」をクリックしてください。"
+          },
+          {
+            "type": "highlight",
+            "target": "国を追加",
+            "tooltip": "クリックして国別プロファイル追加モーダルを開きます",
+            "message": "「＋ 国を追加」をクリックします（②CN向けプロファイル登録）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-country-code",
+            "value": "CN",
+            "message": "国: 中国（CN）を選択します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-role",
+            "value": "destination",
+            "message": "役割: 仕向国（Destination）を選択します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-local-hs",
+            "value": "9025190000",
+            "message": "中国向けローカルHSコード（10桁）: 9025190000を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-tariff-rate",
+            "value": "8.0",
+            "message": "MFN関税率: 8.0%を入力します（中国MFN）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-license-required",
+            "value": "license_required",
+            "message": "輸出許可要否: 許可証必要（キャッチオール確認）を選択します"
+          },
+          {
+            "type": "explain",
+            "message": "【CN向けのポイント】中国（EAR Country Group D:1）向けはキャッチオール規制の確認が必須。MFN関税8%。技術輸出の場合は輸出許可の要否を専門家に確認してください。「保存」をクリックしてください。"
+          },
+          {
+            "type": "pause",
+            "button_label": "CN保存完了 → ID追加へ",
+            "message": "CNプロファイルを保存しました。次はインドネシア（ID）を追加します。「＋ 国を追加」をクリックしてください。"
+          },
+          {
+            "type": "highlight",
+            "target": "国を追加",
+            "tooltip": "クリックして国別プロファイル追加モーダルを開きます",
+            "message": "「＋ 国を追加」をクリックします（③ID向けプロファイル登録）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-country-code",
+            "value": "ID",
+            "message": "国: インドネシア（ID）を選択します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-role",
+            "value": "destination",
+            "message": "役割: 仕向国（Destination）を選択します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-local-hs",
+            "value": "9025190000",
+            "message": "インドネシア向けローカルHSコード（10桁）: 9025190000を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-tariff-rate",
+            "value": "5.0",
+            "message": "MFN関税率: 5.0%を入力します（インドネシアMFN）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-epa-tariff-rate",
+            "value": "0.0",
+            "message": "EPA/FTA優遇税率: 0.0%（日ASEAN AJCEP協定）を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-epa-agreement",
+            "value": "AJCEP（日ASEAN包括的経済連携協定）",
+            "message": "協定名: AJCEP（日ASEAN包括的経済連携協定）を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-license-required",
+            "value": "nLR",
+            "message": "輸出許可要否: NLR（許可不要）を選択します"
+          },
+          {
+            "type": "explain",
+            "message": "【ID向けのポイント】インドネシアはAJCEP（日ASEAN協定）適用で0%優遇。原産地証明書（特定原産地証明書 Form AJ）が必要です。MFN税率5% → AJCEP適用で0%になります。「保存」をクリックしてください。"
+          },
+          {
+            "type": "pause",
+            "button_label": "ID保存完了 → EU追加へ",
+            "message": "IDプロファイルを保存しました。最後にEU（欧州連合）を追加します。「＋ 国を追加」をクリックしてください。"
+          },
+          {
+            "type": "highlight",
+            "target": "国を追加",
+            "tooltip": "クリックして国別プロファイル追加モーダルを開きます",
+            "message": "「＋ 国を追加」をクリックします（④EU向けプロファイル登録）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-country-code",
+            "value": "EU",
+            "message": "国: EU（欧州連合）を選択します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-role",
+            "value": "destination",
+            "message": "役割: 仕向国（Destination）を選択します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-local-hs",
+            "value": "90251900",
+            "message": "EU向けローカルHSコード（CN8桁）: 90251900を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-tariff-rate",
+            "value": "1.7",
+            "message": "MFN関税率: 1.7%（EU MFN）を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-epa-tariff-rate",
+            "value": "0.0",
+            "message": "EPA/FTA優遇税率: 0.0%（EU-Japan EPA）を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-epa-agreement",
+            "value": "EU-Japan EPA（日欧経済連携協定）",
+            "message": "協定名: EU-Japan EPA（日欧経済連携協定）を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "cp-license-required",
+            "value": "nLR",
+            "message": "輸出許可要否: NLR（許可不要）を選択します"
+          },
+          {
+            "type": "explain",
+            "message": "【EU向けのポイント】EU向けはEU-Japan EPA適用で0%優遇（2021年以降）。EU Dual-Use Regulation（理事会規則 2021/821）の確認も必要ですが、PT-300（EAR99相当）はEU規制対象外の可能性が高いです。「保存」をクリックしてください。"
+          },
+          {
+            "type": "pause",
+            "button_label": "EU保存完了 → サマリー確認",
+            "message": "EUプロファイルを保存しました。4か国のプロファイルが登録されました。HSコード・関税率サマリーテーブルを確認します。"
+          },
+          {
+            "type": "explain",
+            "message": "【HSコード・関税率サマリーテーブル】セクション上部に「📊 国別HSコード・関税率サマリー」テーブルが表示されています。国 / 役割 / ローカルHS / 品目説明 / MFN関税率 / EPA/FTA優遇 / 協定名 / 輸出許可 の8列で全仕向国を一覧管理できます。「🌐 関税率一括取得」ボタンでWTO APIからMFN関税率を自動入力することもできます。"
+          },
+          {
+            "type": "pause",
+            "button_label": "デモ完了 ✓",
+            "message": "以上が「品目登録→HSコードAI判定→外部AI該非判定→判定項番記録→US/CN/ID/EU国別プロファイル登録」の品目マスター完全セットアップデモです。品目管理だけで輸出コンプライアンスの基礎データが一元管理できることをご確認いただきました。ご質問があればお気軽にどうぞ。"
           }
         ]
       }

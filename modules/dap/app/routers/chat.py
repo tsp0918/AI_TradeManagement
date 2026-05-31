@@ -589,9 +589,15 @@ def _persona_context_str(persona: dict, session_data: dict) -> str:
     if gaps:
         lines.append(f"補足が必要な用語: {', '.join(gaps[:5])}")
     if intake and not intake.get("completed"):
-        p = intake.get("product_name") or "未確認"
-        c = intake.get("destination_country") or "未確認"
-        lines.append(f"進行中ヒアリング: 品目={p} / 仕向国={c} / ターン{intake.get('turn_count', 0)}")
+        _im = intake.get("mode", "export_transaction")
+        if _im == "product_registration":
+            lines.append(f"進行中ヒアリング[品目登録]: 品番={intake.get('product_code') or '未確認'} / ターン{intake.get('turn_count', 0)}")
+        elif _im == "rnd_project":
+            lines.append(f"進行中ヒアリング[R&D起案]: タイトル={intake.get('project_title') or '未確認'} / ターン{intake.get('turn_count', 0)}")
+        else:
+            p = intake.get("product_name") or "未確認"
+            c = intake.get("destination_country") or "未確認"
+            lines.append(f"進行中ヒアリング[輸出案件]: 品目={p} / 仕向国={c} / ターン{intake.get('turn_count', 0)}")
     return "\n".join(lines)
 
 
@@ -643,18 +649,30 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
             "action_hint": "「スクリーニングをしたい」と話しかけると手順を案内します",
         })
 
-    # ヒアリング完了済みだが案件未作成
-    if intake and intake.get("completed") and not intake.get("created_transaction_id"):
-        alerts.append({
-            "type":     "pending_action",
-            "severity": "info",
-            "guide_id": "pending_action:no_tx",
-            "message":  (
-                "ヒアリング情報が収集済みですが案件がまだ作成されていません。"
-                "「案件を作成してください」と話しかけると自動入力します。"
-            ),
-            "action_hint": "「案件を作成してください」",
-        })
+    # ヒアリング完了済みだが登録未実施
+    if intake and intake.get("completed"):
+        _im = intake.get("mode", "export_transaction")
+        if _im == "export_transaction" and not intake.get("created_transaction_id"):
+            alerts.append({
+                "type": "pending_action", "severity": "info",
+                "guide_id": "pending_action:no_tx",
+                "message": "ヒアリング情報が収集済みですが案件がまだ作成されていません。「案件を作成してください」と話しかけると自動入力します。",
+                "action_hint": "「案件を作成してください」",
+            })
+        elif _im == "product_registration" and not intake.get("created_product_id"):
+            alerts.append({
+                "type": "pending_action", "severity": "info",
+                "guide_id": "pending_action:no_product",
+                "message": "品目情報が収集済みですがまだ登録されていません。「品目を登録してください」と話しかけると自動作成します。",
+                "action_hint": "「品目を登録してください」",
+            })
+        elif _im == "rnd_project" and not intake.get("created_rnd_case_id"):
+            alerts.append({
+                "type": "pending_action", "severity": "info",
+                "guide_id": "pending_action:no_rnd",
+                "message": "R&D情報が収集済みですがまだ起案されていません。「起案してください」と話しかけると自動作成します。",
+                "action_hint": "「起案してください」",
+            })
 
     # リスク国仕向けでスクリーニング未実施
     if intake:
@@ -764,12 +782,24 @@ _DEMO_TRIGGERS = [
     "デモンストレーション", "プレゼンデモ", "紹介してほしい",
 ]
 _DEMO2_TRIGGERS = [
-    "キャッチオール", "catchall", "リスク検知デモ", "デモ2", "demo2",
+    "キャッチオール", "catchall", "リスク検知デモ", "デモ2", "demo2", "DEMO2",
+]
+_DEMO3_TRIGGERS = [
+    "OMEGA", "ワンストップ完全", "BOMデモ", "デモ3", "demo3", "DEMO3",
+    "完全ワンストップ", "サプライヤー証明デモ",
+]
+_DEMO4_TRIGGERS = [
+    "品目マスター", "品目管理デモ", "デモ4", "demo4", "DEMO4",
+    "HS判定デモ", "国別プロファイルデモ", "品目セットアップ",
 ]
 
 def _is_demo_trigger(message: str) -> tuple[bool, str]:
     """デモモードトリガーか判定し、(True/False, uc_id) を返す。"""
     msg_lower = message.lower()
+    if any(kw.lower() in msg_lower for kw in _DEMO4_TRIGGERS):
+        return True, "DEMO4"
+    if any(kw.lower() in msg_lower for kw in _DEMO3_TRIGGERS):
+        return True, "DEMO3"
     if any(kw.lower() in msg_lower for kw in _DEMO2_TRIGGERS):
         return True, "DEMO2"
     if any(kw.lower() in msg_lower for kw in _DEMO_TRIGGERS):
@@ -783,53 +813,176 @@ _INTAKE_TRIGGERS = [
     "案件を作", "登録したい", "輸出したい", "どこから始め",
     "何から始め", "どうすればいい", "初めて", "はじめて",
 ]
+_PRODUCT_INTAKE_TRIGGERS = [
+    "品目を登録", "新しい品目", "製品を登録", "品目登録したい", "品目を追加",
+    "品目を新規", "新規品目", "品目を作",
+]
+_RND_INTAKE_TRIGGERS = [
+    "研究開発を", "R&D起案", "RD起案", "プロジェクト起案", "R&Dを登録",
+    "研究プロジェクト", "みなし輸出を相談", "R&D案件",
+]
+
+
+def _detect_intake_mode(message: str) -> str | None:
+    """メッセージから Intake モードを検出する。None = Intake 不要"""
+    if any(kw in message for kw in _PRODUCT_INTAKE_TRIGGERS):
+        return "product_registration"
+    if any(kw in message for kw in _RND_INTAKE_TRIGGERS):
+        return "rnd_project"
+    if any(kw in message for kw in _INTAKE_TRIGGERS):
+        return "export_transaction"
+    return None
+
 
 def _is_intake_trigger(message: str) -> bool:
     """ヒアリングモード開始トリガーかどうかを判定する"""
-    return any(kw in message for kw in _INTAKE_TRIGGERS)
+    return _detect_intake_mode(message) is not None
 
 
 # ── ヒアリングモード: セッション状態初期化 ─────────────────────────────────────
-def _init_intake_state() -> dict:
-    return {
-        "stage": "situation",    # situation → product → destination → enduser → confirm
-        "product_name":         None,
-        "product_description":  None,
-        "declared_usage":       None,
-        "destination_country":  None,
-        "end_user":             None,
-        "known_eccn":           None,
-        "transaction_type":     None,  # "export" | "deemed_export"
-        "risk_flags":           [],    # 検出されたリスク（懸念国、曖昧な用途等）
-        "gaps":                 [],    # 未解決の不明事項
-        "turn_count":           0,
+def _init_intake_state(mode: str = "export_transaction") -> dict:
+    base: dict = {"mode": mode, "turn_count": 0, "risk_flags": [], "gaps": []}
+    if mode == "product_registration":
+        return {**base,
+            "product_code":       None,   # 品番（英数字）
+            "product_name":       None,   # 品目名
+            "item_type":          None,   # FINISHED_GOODS/PURCHASED_PART/RAW_MATERIAL/SOFTWARE/BOM_COMPONENT
+            "product_description": None,
+            "usage_summary":      None,   # 用途概要（AI判定用）
+            "known_eccn":         None,
+            "known_hs":           None,
+        }
+    if mode == "rnd_project":
+        return {**base,
+            "project_title":       None,
+            "project_description": None,
+            "tech_domain":         None,  # 技術領域
+            "end_users":           None,  # 研究者名／機関
+            "foreign_researchers": None,  # 外国籍研究者の有無
+            "tech_sensitivity":    None,  # public/controlled/restricted
+        }
+    # export_transaction（既存動作）
+    return {**base,
+        "stage":             "situation",
+        "product_name":      None,
+        "product_description": None,
+        "declared_usage":    None,
+        "destination_country": None,
+        "end_user":          None,
+        "known_eccn":        None,
+        "transaction_type":  None,
     }
 
 
 # ── ヒアリングモード: システムプロンプト ─────────────────────────────────────
 def _build_intake_system_prompt(intake: dict) -> str:
-    # 収集済みフィールドのサマリー
-    filled: list[str] = []
-    if intake.get("product_name"):
-        filled.append(f"品目: {intake['product_name']}")
-    if intake.get("product_description"):
-        filled.append(f"仕様: {intake['product_description'][:80]}...")
-    if intake.get("declared_usage"):
-        filled.append(f"用途: {intake['declared_usage'][:80]}...")
-    if intake.get("destination_country"):
-        filled.append(f"仕向国: {intake['destination_country']}")
-    if intake.get("end_user"):
-        filled.append(f"需要者: {intake['end_user']}")
-    if intake.get("known_eccn"):
-        filled.append(f"ECCN/外為法項: {intake['known_eccn']}")
-
-    filled_block = "\n".join(f"  ✓ {f}" for f in filled) if filled else "  （まだヒアリング開始前）"
+    mode = intake.get("mode", "export_transaction")
 
     gaps = intake.get("gaps", [])
     gaps_block = "\n".join(f"  ❓ {g}" for g in gaps) if gaps else "  （なし）"
-
     risk_flags = intake.get("risk_flags", [])
     risk_block = "\n".join(f"  ⚠️ {r}" for r in risk_flags) if risk_flags else "  （なし）"
+
+    # ────────── 品目登録モード ──────────────────────────────────────────
+    if mode == "product_registration":
+        filled: list[str] = []
+        if intake.get("product_code"):      filled.append(f"品番: {intake['product_code']}")
+        if intake.get("product_name"):      filled.append(f"品目名: {intake['product_name']}")
+        if intake.get("item_type"):         filled.append(f"品目種別: {intake['item_type']}")
+        if intake.get("product_description"): filled.append(f"仕様: {intake['product_description'][:80]}...")
+        if intake.get("usage_summary"):     filled.append(f"用途概要: {intake['usage_summary'][:80]}...")
+        if intake.get("known_eccn"):        filled.append(f"ECCN: {intake['known_eccn']}")
+        if intake.get("known_hs"):          filled.append(f"HSコード: {intake['known_hs']}")
+        filled_block = "\n".join(f"  ✓ {f}" for f in filled) if filled else "  （まだヒアリング開始前）"
+        return f"""あなたは輸出管理コンプライアンス部門の先輩担当者です。
+後輩が品目管理システムへの品目新規登録をしようとしており、必要情報をヒアリングしています。
+
+【収集すべき情報（必須）】
+1. 品番（英数字・ハイフン可。例: TSP-001, LS-500）
+2. 品目名（製品の正式名称）
+3. 品目種別: FINISHED_GOODS（完成品）/ PURCHASED_PART（購入品・輸入品）/ RAW_MATERIAL（原材料）/ SOFTWARE（ソフトウェア）/ BOM_COMPONENT（BOM構成品）
+4. 用途概要（輸出管理 AI 判定で使う：工程・装置・最終用途を 1〜2 文で）
+
+【任意で確認】
+- ECCN / 外為法の該当項番（わかれば）
+- HSコード（わかれば）
+
+【完了条件】
+品番・品目名・品目種別・用途概要の4項目が揃ったとき。
+完了時は is_intake_complete=true を返し、action_plan に create_product を含める。
+
+【現在のヒアリング状況】
+収集済み情報:
+{filled_block}
+
+未解決のギャップ:
+{gaps_block}
+
+ターン数: {intake.get('turn_count', 0)} / 5（目標完了ターン数）
+
+【ルール】
+- reply: 口語体日本語。120字以内。先輩が後輩に話すような自然なトーン。
+- 必ず1つの核心的な質問か確認で終わる
+- choices は次の回答候補を2〜3件提示"""
+
+    # ────────── R&D起案モード ──────────────────────────────────────────
+    if mode == "rnd_project":
+        filled = []
+        if intake.get("project_title"):       filled.append(f"タイトル: {intake['project_title']}")
+        if intake.get("project_description"): filled.append(f"内容: {intake['project_description'][:80]}...")
+        if intake.get("tech_domain"):         filled.append(f"技術領域: {intake['tech_domain']}")
+        if intake.get("end_users"):           filled.append(f"研究者/機関: {intake['end_users']}")
+        if intake.get("foreign_researchers"): filled.append(f"外国籍研究者: {intake['foreign_researchers']}")
+        if intake.get("tech_sensitivity"):    filled.append(f"機密区分: {intake['tech_sensitivity']}")
+        filled_block = "\n".join(f"  ✓ {f}" for f in filled) if filled else "  （まだヒアリング開始前）"
+        return f"""あなたは輸出管理コンプライアンス部門の先輩担当者です。
+後輩がR&Dリスク評価システムへの新規起案をしようとしており、必要情報をヒアリングしています。
+
+【収集すべき情報（必須）】
+1. プロジェクトタイトル（50字以内）
+2. 研究内容・技術概要（どんな技術・装置・ソフトウェアか）
+3. 技術領域（例: 半導体、光学、ロボット、化学、AI・ソフトウェア）
+4. 関係する研究者・機関名
+5. 外国籍研究者の関与有無（みなし輸出リスク評価のため必須）
+
+【任意で確認】
+- 機密区分の想定（public / controlled / restricted）
+
+【リスクサインの検出】
+- 外国籍研究者が関与 → みなし輸出の可能性を指摘
+- 技術が EAR/外為法規制対象に該当しそう → ECCN 確認を促す
+- 成果の海外発表・論文化の予定 → 開示管理要件を確認
+
+【完了条件】
+タイトル・研究内容・技術領域・研究者・外国籍研究者有無の5項目が揃ったとき。
+完了時は is_intake_complete=true を返し、action_plan に create_rnd_case を含める。
+
+【現在のヒアリング状況】
+収集済み情報:
+{filled_block}
+
+未解決のギャップ:
+{gaps_block}
+
+検出されたリスクフラグ:
+{risk_block}
+
+ターン数: {intake.get('turn_count', 0)} / 6（目標完了ターン数）
+
+【ルール】
+- reply: 口語体日本語。150字以内。先輩が後輩に話すような自然なトーン。
+- 必ず1つの核心的な質問か確認で終わる
+- choices は次の回答候補を2〜3件提示"""
+
+    # ────────── 輸出案件モード（既存）──────────────────────────────────
+    filled = []
+    if intake.get("product_name"):        filled.append(f"品目: {intake['product_name']}")
+    if intake.get("product_description"): filled.append(f"仕様: {intake['product_description'][:80]}...")
+    if intake.get("declared_usage"):      filled.append(f"用途: {intake['declared_usage'][:80]}...")
+    if intake.get("destination_country"): filled.append(f"仕向国: {intake['destination_country']}")
+    if intake.get("end_user"):            filled.append(f"需要者: {intake['end_user']}")
+    if intake.get("known_eccn"):          filled.append(f"ECCN/外為法項: {intake['known_eccn']}")
+    filled_block = "\n".join(f"  ✓ {f}" for f in filled) if filled else "  （まだヒアリング開始前）"
 
     return f"""あなたは輸出管理コンプライアンス部門の先輩担当者です。
 後輩（ユーザー）の輸出案件を対話形式でヒアリングしています。
@@ -901,8 +1054,9 @@ _RESPOND_INTAKE_TOOL = {
             },
             "intake_updates": {
                 "type": "object",
-                "description": "今ターンで収集・確定した情報フィールド。未収集は含めない。",
+                "description": "今ターンで収集・確定した情報フィールド。未収集は含めない。モードにより使うフィールドが異なる。",
                 "properties": {
+                    # export_transaction
                     "product_name":        {"type": "string"},
                     "product_description": {"type": "string"},
                     "declared_usage":      {"type": "string"},
@@ -910,6 +1064,20 @@ _RESPOND_INTAKE_TOOL = {
                     "end_user":            {"type": "string"},
                     "known_eccn":          {"type": "string"},
                     "transaction_type":    {"type": "string", "enum": ["export", "deemed_export"]},
+                    # product_registration
+                    "product_code":        {"type": "string"},
+                    "item_type":           {"type": "string",
+                                           "enum": ["FINISHED_GOODS","PURCHASED_PART","RAW_MATERIAL",
+                                                    "SOFTWARE","BOM_COMPONENT"]},
+                    "usage_summary":       {"type": "string"},
+                    "known_hs":            {"type": "string"},
+                    # rnd_project
+                    "project_title":       {"type": "string"},
+                    "project_description": {"type": "string"},
+                    "tech_domain":         {"type": "string"},
+                    "end_users":           {"type": "string"},
+                    "foreign_researchers": {"type": "string"},
+                    "tech_sensitivity":    {"type": "string", "enum": ["public","controlled","restricted"]},
                 },
             },
             "risk_flags_new": {
@@ -936,7 +1104,8 @@ _RESPOND_INTAKE_TOOL = {
                         "label":       {"type": "string",  "description": "ユーザー向け説明（20字以内）"},
                         "action_type": {"type": "string",
                                         "enum": ["create_transaction", "run_screening",
-                                                 "run_ai_validation", "start_agent",
+                                                 "run_ai_validation", "create_product",
+                                                 "create_rnd_case", "start_agent",
                                                  "navigate_to", "manual"],
                                         "description": "実行するアクション種別"},
                         "params":      {"type": "object", "description": "アクション実行パラメータ"},
@@ -1007,6 +1176,27 @@ async def _execute_action_plan(
                     results.append({"step": step["step"], "label": label,
                                      "result": "skip", "detail": "案件IDなし"})
 
+            elif action_type == "create_product":
+                classification_url = os.environ.get(
+                    "MODULE_AI_CLASSIFICATION_URL", "http://localhost:8002"
+                )
+                result = await _create_product(intake, classification_url)
+                product_id = result.get("id")
+                intake["created_product_id"] = product_id
+                edit_url = result.get("edit_url", f"/products/{product_id}/edit")
+                results.append({"step": step["step"], "label": label,
+                                 "result": "ok",
+                                 "detail": f"品目ID: {product_id} — 編集画面: {edit_url}"})
+
+            elif action_type == "create_rnd_case":
+                rnd_url = os.environ.get("MODULE_RND_ASSESSMENT_URL", "http://localhost:8003")
+                result = await _create_rnd_case(intake, rnd_url)
+                case_id = result.get("case_id")
+                intake["created_rnd_case_id"] = case_id
+                results.append({"step": step["step"], "label": label,
+                                 "result": "ok",
+                                 "detail": f"ケースID: {case_id}"})
+
             elif action_type == "navigate_to":
                 url = params.get("url", "")
                 results.append({"step": step["step"], "label": label,
@@ -1045,6 +1235,42 @@ async def _create_transaction(intake: dict, ai_validation_url: str) -> dict:
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.post(
             f"{ai_validation_url}/api/transactions",
+            json=payload,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def _create_product(intake: dict, classification_url: str) -> dict:
+    """ai_classification に品目を新規作成する（product_registration モード用）"""
+    payload = {
+        "code":          intake.get("product_code") or "",
+        "name":          intake.get("product_name") or "",
+        "description":   intake.get("product_description") or None,
+        "item_type":     intake.get("item_type") or None,
+        "usage_summary": intake.get("usage_summary") or None,
+        "eccn":          intake.get("known_eccn") or None,
+        "hs_code":       intake.get("known_hs") or None,
+    }
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(
+            f"{classification_url}/api/products",
+            json=payload,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def _create_rnd_case(intake: dict, rnd_url: str) -> dict:
+    """rnd_assessment に R&Dケースを新規作成する（rnd_project モード用）"""
+    payload = {
+        "tenant_id":   "default",
+        "title":       intake.get("project_title") or "（タイトル未定）",
+        "description": intake.get("project_description") or None,
+    }
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(
+            f"{rnd_url}/api/v1/cases",
             json=payload,
         )
         resp.raise_for_status()
@@ -1276,6 +1502,13 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
   actions: [{{"type": "navigate_to", "url": "{_PLATFORM_URL}/proxy/ai_classification/"}}]
   choices: [{{"label": "AI分類の手順", "message": "AI分類の手順を教えてください"}}, {{"label": "戻り方", "message": "DAPに戻るにはどうしますか"}}]
 
+【対話ヒアリング機能（Intake）— 3モード】
+ユーザーが以下のような言葉を発したとき、DAPは対話形式でヒアリングを開始し、必要情報を収集してシステムに自動登録する。
+- 輸出案件ヒアリング: 「新規案件」「輸出したい」「ヒアリングして」「相談したい」→ AI取引審査に案件を自動作成
+- 品目登録ヒアリング: 「品目を登録したい」「新しい品目を追加したい」→ 品目管理に品目を自動作成
+- R&D起案ヒアリング: 「R&D起案したい」「研究プロジェクトを登録」「みなし輸出の相談」→ R&D評価システムに案件を自動作成
+ヒアリング開始後は専用AIが引き継ぎ、必要情報をすべて収集するまで対話を続ける。
+
 【NeuroSymbolic 該非判定エージェント（重要機能）】
 - ユーザーが以下のような意図を示した場合、actions に {{"type": "start_agent", ...}} を含める:
   「該非判定したい」「規制対象か確認したい」「輸出できるか確認したい」「外為法に引っかかるか」
@@ -1428,6 +1661,13 @@ A: サプライヤーポータルのURL発行機能（UC7 Step1）でサプラ�
 - start_agent を含む場合の reply は「これから〇〇について確認していきます」という自然な誘導文にする
 - エージェントが起動すると、以降の返答はシステムが生成し、ユーザーは自由に日本語・英語で回答できる
 - ユーザーが明示的な専門用語（"civilian"等）を知らなくても構わない。システムが自動的に解釈する
+
+【対話ヒアリング機能（Intake）— 3モード】
+ユーザーが以下のような言葉を発したとき、DAPは対話形式でヒアリングを開始し、必要情報を収集してシステムに自動登録する。
+- 輸出案件ヒアリング: 「新規案件」「輸出したい」「ヒアリングして」「相談したい」→ AI取引審査に案件を自動作成
+- 品目登録ヒアリング: 「品目を登録したい」「新しい品目を追加したい」→ 品目管理に品目を自動作成
+- R&D起案ヒアリング: 「R&D起案したい」「研究プロジェクトを登録」「みなし輸出の相談」→ R&D評価システムに案件を自動作成
+ヒアリング開始後は専用AIが引き継ぎ、必要情報をすべて収集するまで対話を続ける。
 
 【ルール】
 - reply: マークダウン禁止（**や# など使わない）。100字以内の口語体日本語。
@@ -1791,15 +2031,17 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
         demo_titles = {
             "DEMO1": "輸出審査ワンストップフロー",
             "DEMO2": "キャッチオール規制リスク検知",
+            "DEMO3": "品目登録→BOM→正式審査→輸出許可 完全ワンストップ",
+            "DEMO4": "品目マスター完全セットアップ（HS・AI該非・国別関税）",
         }
         demo_title = demo_titles.get(demo_uc_id, "デモ")
+        other_choices = [d for d in ["DEMO1","DEMO2","DEMO3","DEMO4"] if d != demo_uc_id]
         return ChatResponse(
             reply=f"「{demo_title}」のデモを開始します。チャット内のボタンを押すと次のステップに進みます。",
             actions=[{"type": "start_workflow", "uc_id": demo_uc_id, "target": ""}],
             choices=[
-                {"label": "もう一方のデモ",  "message": "DEMO2" if demo_uc_id == "DEMO1" else "デモ1を見せてほしい"},
-                {"label": "通常モードに戻る", "message": "通常の使い方を教えてください"},
-            ],
+                {"label": f"DEMO{d[-1]}を見る", "message": d} for d in other_choices[:2]
+            ] + [{"label": "通常モードに戻る", "message": "通常の使い方を教えてください"}],
         )
 
     # ── ヒアリングモード ──────────────────────────────────────────────────────
@@ -1832,24 +2074,57 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
             intake_state["exec_results"] = exec_results
             if req.session_id:
                 session_data["intake_state"] = intake_state
-                # 後続モジュール（AI取引審査・品目管理等）のフォーム自動入力に使うデータを蓄積
+                # transfer_context にキー情報を保存（クロスモジュール引き継ぎ用）
                 tc = dict(session_data.get("transfer_context") or {})
-                if intake_state.get("product_name"):
-                    tc["product_name"] = intake_state["product_name"]
-                if intake_state.get("product_description"):
-                    tc["product_description"] = intake_state["product_description"]
-                if intake_state.get("declared_usage"):
-                    tc["declared_usage"] = intake_state["declared_usage"]
-                if intake_state.get("destination_country"):
-                    tc["destination_country"] = intake_state["destination_country"]
-                if intake_state.get("end_user"):
-                    tc["end_user"] = intake_state["end_user"]
-                if intake_state.get("known_eccn"):
-                    tc["known_eccn"] = intake_state["known_eccn"]
+                for _k in ("product_name","product_description","declared_usage",
+                           "destination_country","end_user","known_eccn"):
+                    if intake_state.get(_k):
+                        tc[_k] = intake_state[_k]
                 if intake_state.get("created_transaction_id"):
                     tc["last_transaction_id"] = intake_state["created_transaction_id"]
                 session_data["transfer_context"] = tc
                 _save_session(req.session_id, session_data)
+
+            _intake_mode = intake_state.get("mode", "export_transaction")
+
+            if _intake_mode == "product_registration":
+                product_id = intake_state.get("created_product_id")
+                classification_pub = _PORTAL_MODULE_URLS.get(
+                    "ai_classification",
+                    os.environ.get("MODULE_AI_CLASSIFICATION_PUBLIC_URL", "http://localhost:8002")
+                )
+                choices = [
+                    {"label": "品目編集画面を開く", "message": "品目の編集画面に移動したい"},
+                    {"label": "別の品目を登録", "message": "新しい品目を登録したい"},
+                    {"label": "品目一覧を確認", "message": "品目一覧を見せてください"},
+                ]
+                nav_url = f"{classification_pub}/products/{product_id}/edit" if product_id else ""
+                return ChatResponse(
+                    reply=reply[:300],
+                    actions=[{"type": "navigate_to", "target": "", "url": nav_url}] if nav_url else [],
+                    choices=choices,
+                    intake_state=intake_state,
+                )
+
+            if _intake_mode == "rnd_project":
+                case_id = intake_state.get("created_rnd_case_id")
+                rnd_pub = _PORTAL_MODULE_URLS.get(
+                    "rnd_assessment",
+                    os.environ.get("MODULE_RND_ASSESSMENT_PUBLIC_URL", "http://localhost:8003")
+                )
+                choices = [
+                    {"label": "R&Dケースを開く", "message": "R&Dケースの詳細を確認したい"},
+                    {"label": "別の案件を起案", "message": "別のR&Dプロジェクトを起案したい"},
+                ]
+                nav_url = f"{rnd_pub}/ui/cases/{case_id}" if case_id else ""
+                return ChatResponse(
+                    reply=reply[:300],
+                    actions=[{"type": "navigate_to", "target": "", "url": nav_url}] if nav_url else [],
+                    choices=choices,
+                    intake_state=intake_state,
+                )
+
+            # export_transaction（既存）
             tx_id = intake_state.get("created_transaction_id")
             choices = [
                 {"label": "判定結果を確認", "message": "AI判定の結果を見せてください"},
@@ -1888,7 +2163,8 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     is_new_intake = not is_in_intake and _is_intake_trigger(req.message)
 
     if is_new_intake and req.session_id:
-        intake_state = _init_intake_state()
+        _mode = _detect_intake_mode(req.message) or "export_transaction"
+        intake_state = _init_intake_state(_mode)
         session_data["intake_state"] = intake_state
         is_in_intake = True
 
