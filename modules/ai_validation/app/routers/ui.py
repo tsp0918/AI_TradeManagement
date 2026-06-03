@@ -16,7 +16,8 @@ from app.db.models.transaction import Transaction
 logger = logging.getLogger(__name__)
 
 import os as _os
-SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
+SCREENING_BASE         = _os.environ.get("MODULE_SCREENING_URL",         "http://localhost:8005")
+AI_CLASSIFICATION_BASE = _os.environ.get("MODULE_AI_CLASSIFICATION_URL", "http://localhost:8002")
 
 
 def _auto_screen(db: Session, tx: Transaction) -> None:
@@ -35,6 +36,20 @@ def _auto_screen(db: Session, tx: Transaction) -> None:
             db.flush()
     except Exception:
         pass
+
+
+def _fetch_product_eccn(product_code: str) -> Optional[str]:
+    """ai_classification から品目コードでECCNを取得する（非致命的）。"""
+    if not product_code:
+        return None
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            r = client.get(f"{AI_CLASSIFICATION_BASE}/api/products/by-code/{product_code}")
+        if r.status_code == 200:
+            return r.json().get("eccn") or None
+    except Exception:
+        pass
+    return None
 
 from app.db.deps import get_db
 
@@ -191,6 +206,20 @@ def transaction_new_form(request: Request):
     )
 
 
+@router.get("/api/products/search")
+def products_search_proxy(q: str = Query(default="")):
+    """ai_classification の品目検索を中継する（transaction_new.html 品目ピッカー用）。"""
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            r = client.get(f"{AI_CLASSIFICATION_BASE}/api/products/json-search",
+                           params={"q": q})
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return []
+
+
 @router.get("/api/transactions/search")
 def transactions_search(
     q: str = Query(default=""),
@@ -248,17 +277,31 @@ def transaction_new_submit(
     destination_country: Optional[str] = Form(None),
     end_user_name: Optional[str] = Form(None),
     end_use_description: Optional[str] = Form(None),
+    linked_product_code: Optional[str] = Form(None),
+    is_new_product_entry: Optional[str] = Form(None),  # checkbox: "1" if checked
 ):
     """手動入力で新規審査を作成（AIパイプラインは実行しない）。"""
     templates = request.app.state.templates
-    if not title.strip() and not product_code.strip() and not description.strip():
-        return templates.TemplateResponse(request, "transaction_new.html", {"error": "品名・品番・用途のいずれかを入力してください。"},
+
+    new_entry = bool(is_new_product_entry)
+    effective_product_code = linked_product_code.strip() if linked_product_code else product_code.strip()
+
+    # 品目未連携かつ同時登録チェックなし → エラー
+    if not new_entry and not effective_product_code:
+        return templates.TemplateResponse(
+            request, "transaction_new.html",
+            {"error": "品目管理から品目を選択するか、「品目同時登録」にチェックして品番を入力してください。"},
         )
+
+    if not title.strip() and not effective_product_code and not description.strip():
+        return templates.TemplateResponse(request, "transaction_new.html",
+                                          {"error": "品名・品番・用途のいずれかを入力してください。"})
+
     try:
         tx = _create_transaction_manual(
             db=db,
             title=title,
-            product_code=product_code,
+            product_code=effective_product_code,
             description=description,
             spec_text=spec_text,
             case_no=case_no.strip() or None,
@@ -270,12 +313,18 @@ def transaction_new_submit(
             end_user_name=end_user_name,
             end_use_description=end_use_description,
         )
+        # 品目連携情報を保存
+        if effective_product_code:
+            tx.linked_product_code  = effective_product_code
+            tx.is_new_product_entry = 1 if new_entry else 0
+            if not new_entry:
+                eccn = _fetch_product_eccn(effective_product_code)
+                tx.linked_product_eccn = eccn
         _auto_screen(db, tx)
         db.commit()
     except Exception as e:
         db.rollback()
-        return templates.TemplateResponse(request, "transaction_new.html", {"error": f"登録エラー: {e}"},
-        )
+        return templates.TemplateResponse(request, "transaction_new.html", {"error": f"登録エラー: {e}"})
     return RedirectResponse(url=f"/ui/transactions/{tx.id}", status_code=303)
 
 

@@ -231,23 +231,63 @@ def run_and_two_lists(
     """
     ① pipeline を matrix_match まで実行
     ② 2リスト集計を返す（intersection / expanded_only）
+    ③ ティア判定を実行し DB に保存（Tier 1 は自動承認）
     """
-    try:
-        # pipeline（thresholdだけ上書きしたいなら orchestrator を引数化するのが綺麗）
-        run_until_matrix_match(db=db, transaction_id=transaction_id)
+    from app.services.tier_determination import determine_tier
 
-        # 省略時は最新runを拾う設計なので run_id は渡さない
+    try:
+        run_until_matrix_match(db=db, transaction_id=transaction_id)
         result = compute_two_lists(db=db, transaction_id=transaction_id, run_id=None)
-        return {
-            "ok": True,
-            "transaction_id": transaction_id,
-            "threshold": threshold,
-            "two_lists": result,
-        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    # ── ティア判定 ───────────────────────────────────────────────────
+    tx = db.get(Transaction, transaction_id)
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    eccn = tx.linked_product_eccn  # 品目管理から引き継いだECCN（なければ None）
+    tier, req_steps, reason = determine_tier(
+        two_list_result=result,
+        eccn=eccn,
+        screening_status=tx.screening_status,
+        destination_country=tx.destination_country,
+    )
+
+    import json as _json
+    tx.approval_tier     = tier
+    tx.required_steps    = req_steps
+    tx.tier_reason       = reason
+    tx.tier_determined_at = datetime.utcnow()
+
+    auto_approved = False
+    if tier == 1 and tx.status != TransactionStatus.approved.value:
+        # Tier 1: 自動承認
+        submitted_at = datetime.utcnow()
+        tx.status              = TransactionStatus.approved.value
+        tx.formal_submitted_at = submitted_at
+        if not tx.retention_until:
+            from datetime import timedelta
+            tx.retention_until = submitted_at + timedelta(days=365 * 7 + 2)
+        if not tx.judgment_no and tx.case_no:
+            tx.judgment_no = f"JDG-{tx.case_no}-{submitted_at.strftime('%Y%m%d')}"
+        auto_approved = True
+
+    db.commit()
+
+    return {
+        "ok": True,
+        "transaction_id": transaction_id,
+        "threshold": threshold,
+        "two_lists": result,
+        "tier": tier,
+        "tier_label": {1: "自動承認", 2: "標準審査", 3: "輸出許可確認"}.get(tier, ""),
+        "tier_reason": reason,
+        "required_steps": req_steps,
+        "auto_approved": auto_approved,
+    }
 
 
 # ── エージェント判定結果の保存 ───────────────────────────────────────────
@@ -351,16 +391,29 @@ def get_review_checklist(
     ).first() is not None
     is_submitted = tx.status == TransactionStatus.approved.value
 
+    # ティア対応の required_steps
+    tier = tx.approval_tier
+    required_steps = tx.required_steps or (["screening", "ai_run"] if tier is None else [])
+
+    checklist_map = {
+        "screening":        {"done": has_screening,      "label": "スクリーニング"},
+        "ai_run":           {"done": has_ai_run,         "label": "AI判定実行"},
+        "agent_judgment":   {"done": has_agent_judgment, "label": "エージェント判定"},
+        "catchall":         {"done": has_catchall,       "label": "キャッチオール自己判定"},
+        "formal_submitted": {"done": is_submitted,       "label": "正式審査提出"},
+    }
+
+    required_done = all(checklist_map.get(s, {}).get("done", False) for s in required_steps)
+
     return {
         "transaction_id": transaction_id,
         "status": tx.status,
-        "checklist": {
-            "screening":        {"done": has_screening,      "label": "スクリーニング実施"},
-            "ai_run":           {"done": has_ai_run,         "label": "AI判定（FAISS照合）実行"},
-            "agent_judgment":   {"done": has_agent_judgment, "label": "エージェント対話・判定完了"},
-            "catchall":         {"done": has_catchall,       "label": "キャッチオール自己判定"},
-            "formal_submitted": {"done": is_submitted,       "label": "正式審査へ提出"},
-        },
+        "tier": tier,
+        "tier_label": {1: "自動承認", 2: "標準審査", 3: "輸出許可確認"}.get(tier, "") if tier else "",
+        "tier_reason": tx.tier_reason,
+        "required_steps": required_steps,
+        "required_done": required_done,
+        "checklist": checklist_map,
         "agent_judgment_status": tx.agent_judgment_status,
         "formal_submitted_at": tx.formal_submitted_at.isoformat() if tx.formal_submitted_at else None,
     }

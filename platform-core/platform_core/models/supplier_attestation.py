@@ -41,6 +41,8 @@ class SupplierAttestation(PlatformBase):
     supplier_contact: Mapped[str | None] = mapped_column(String(512), nullable=True)
     # 申告 ECCN（"EAR99" / "3A001" / "EAR未判定" 等）
     claimed_eccn: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # 申告 HS コード（サプライヤー付番）
+    claimed_hs_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # 申告原産国（ISO 3166-1 alpha-2/3）
     claimed_country_of_origin: Mapped[str | None] = mapped_column(String(3), nullable=True)
     # サプライヤー自身が算出した US コンテンツ比率（任意）
@@ -53,6 +55,11 @@ class SupplierAttestation(PlatformBase):
     supporting_docs: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     # 例: [{"filename": "CoO_2026.pdf", "uploaded_at": "2026-04-26"}]
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # ── 監査ログ（不変タイムスタンプ履歴）────────────────────────
+    # 各エントリ: {"action": str, "actor": str, "timestamp": ISO8601, "note": str}
+    # action: "submitted" | "ai_judged" | "accepted" | "returned" | "ai_validate_requested"
+    history: Mapped[list | None] = mapped_column(JSONB, nullable=True, default=list)
 
     # ── AI 検証結果 ──────────────────────────────────────────────
     # "pending" | "ai_reviewed" | "accepted" | "rejected" | "expired"

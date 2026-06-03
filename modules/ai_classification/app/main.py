@@ -30,6 +30,8 @@ async def _ensure_columns() -> None:
         "product_country_profiles": [
             ("local_eccn",       "VARCHAR(32)"),
             ("license_required", "VARCHAR(20)"),
+            ("epa_tariff_rate",  "REAL"),
+            ("epa_agreement",    "VARCHAR(64)"),
         ],
         "products": [
             ("source_rnd_case_id",          "VARCHAR(64)"),

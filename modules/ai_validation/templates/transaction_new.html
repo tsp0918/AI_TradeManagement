@@ -45,6 +45,52 @@
     <form method="post" action="/ui/transactions/new">
       <div class="form-grid">
 
+        <!-- ── 品目連携（必須） ── -->
+        <div class="form-row" style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:8px; padding:12px 14px;">
+          <div style="font-size:.78rem; font-weight:700; color:#0369a1; margin-bottom:8px;">
+            🔗 品目管理との連携（必須）
+          </div>
+
+          <!-- チェックボックス: 同時登録モード -->
+          <label style="display:flex; align-items:center; gap:8px; font-size:.87rem; color:#374151; cursor:pointer; margin-bottom:10px;">
+            <input type="checkbox" name="is_new_product_entry" id="newProductEntry" value="1"
+                   data-dap-field="品目同時登録"
+                   onchange="toggleProductPicker(this.checked)" style="width:15px; height:15px;">
+            <span>品目管理に未登録の品目（このまま新規登録する）</span>
+          </label>
+
+          <!-- 品目ピッカー（デフォルト表示） -->
+          <div id="productPickerWrap">
+            <input type="hidden" name="linked_product_code" id="linkedProductCode">
+            <div id="productPickerDisplay" class="ptx-display" onclick="productPickerOpen()">
+              <span id="productPickerLabel" class="ptx-placeholder">クリックして品目を選択（品目管理から）...</span>
+              <span id="productPickerClear" class="ptx-clear" onclick="productPickerClear(event)" style="display:none;">✕ 解除</span>
+            </div>
+            <div id="productPickerPanel" class="ptx-panel" style="display:none;">
+              <div class="ptx-search-wrap">
+                <input type="text" id="productPickerSearch" class="ptx-search"
+                       placeholder="品目コード・品名で検索..."
+                       oninput="productPickerSearch(this.value)" autocomplete="off">
+              </div>
+              <div id="productPickerList" class="ptx-list">
+                <div class="ptx-loading">読み込み中...</div>
+              </div>
+            </div>
+            <div id="productEccnPreview" style="display:none; margin-top:6px; font-size:.82rem; color:#0369a1; background:#e0f2fe; border-radius:5px; padding:4px 10px;">
+              ECCN: <span id="productEccnValue">-</span>
+            </div>
+            <div class="hint">品目管理に登録された品目を選択すると、ECCNが自動的に引き継がれます。</div>
+          </div>
+
+          <!-- 同時登録モード: 品番フリーテキスト -->
+          <div id="newProductWrap" style="display:none;">
+            <input class="input" type="text" id="newProductCode" name="product_code"
+                   data-dap-field="品番"
+                   placeholder="新規品目の品番を入力（品目管理に後で登録）">
+            <div class="hint" style="color:#d97706;">品目管理への登録は別途行ってください。ECCN未設定のためTier判定は保守的に行われます。</div>
+          </div>
+        </div>
+
         <div class="form-row">
           <label class="label-sm">品名 <span class="required">*</span></label>
           <input class="input" type="text" name="title"
@@ -52,11 +98,6 @@
                  placeholder="例: TSP2110 テスト品目" required
                  value="{{ request.query_params.get('title', '') }}">
           <div class="hint">表示用のタイトル。自動的に審査 ID が付与されます。</div>
-        </div>
-
-        <div class="form-row">
-          <label class="label-sm">品番</label>
-          <input class="input" type="text" name="product_code" data-dap-field="品番" placeholder="例: ts0002">
         </div>
 
         <div class="form-row">
@@ -396,6 +437,116 @@ code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-size: 0.8
 </style>
 
 <script>
+// ── 品目ピッカー ────────────────────────────────────────────────────
+(function(){
+  const hidCode    = document.getElementById("linkedProductCode");
+  const label      = document.getElementById("productPickerLabel");
+  const clearBtn   = document.getElementById("productPickerClear");
+  const display    = document.getElementById("productPickerDisplay");
+  const panel      = document.getElementById("productPickerPanel");
+  const searchEl   = document.getElementById("productPickerSearch");
+  const listEl     = document.getElementById("productPickerList");
+  const eccnWrap   = document.getElementById("productEccnPreview");
+  const eccnVal    = document.getElementById("productEccnValue");
+
+  let _cache = null;
+  let _open  = false;
+
+  function _renderList(items) {
+    if (!items.length) { listEl.innerHTML = '<div class="ptx-empty">品目が見つかりません</div>'; return; }
+    listEl.innerHTML = "";
+    items.forEach(function(item) {
+      const div = document.createElement("div");
+      div.className = "ptx-item";
+      div.innerHTML =
+        `<div class="ptx-item-left">` +
+          `<div class="ptx-caseno">${item.code}</div>` +
+          `<div class="ptx-title">${item.name || "（名称なし）"}</div>` +
+        `</div>` +
+        `<div style="text-align:right;flex-shrink:0;">` +
+          `<div class="ptx-badge ptx-badge-ui">${item.eccn || "ECCN未設定"}</div>` +
+          `<div class="ptx-date">${item.item_type || ""}</div>` +
+        `</div>`;
+      div.addEventListener("click", function() {
+        hidCode.value = item.code;
+        label.textContent = `${item.code}  ${item.name || ""}`;
+        label.classList.remove("ptx-placeholder");
+        label.classList.add("ptx-selected");
+        clearBtn.style.display = "";
+        if (item.eccn) {
+          eccnVal.textContent = item.eccn;
+          eccnWrap.style.display = "";
+        } else {
+          eccnWrap.style.display = "none";
+        }
+        productPickerClose();
+      });
+      listEl.appendChild(div);
+    });
+  }
+
+  async function _loadAll() {
+    if (_cache) { _renderList(_cache); return; }
+    listEl.innerHTML = '<div class="ptx-loading">読み込み中...</div>';
+    try {
+      const res = await fetch("/api/products/search");
+      _cache = await res.json();
+      _renderList(_cache);
+    } catch(e) {
+      listEl.innerHTML = '<div class="ptx-empty">読み込みに失敗しました</div>';
+    }
+  }
+
+  window.productPickerOpen = function() {
+    if (_open) { productPickerClose(); return; }
+    _open = true;
+    panel.style.display = "";
+    searchEl.value = "";
+    _loadAll();
+    setTimeout(function(){ searchEl.focus(); }, 50);
+  };
+
+  window.productPickerClose = function() {
+    _open = false;
+    panel.style.display = "none";
+  };
+
+  window.productPickerClear = function(e) {
+    e.stopPropagation();
+    hidCode.value = "";
+    label.textContent = "クリックして品目を選択（品目管理から）...";
+    label.classList.remove("ptx-selected");
+    label.classList.add("ptx-placeholder");
+    clearBtn.style.display = "none";
+    eccnWrap.style.display = "none";
+    productPickerClose();
+  };
+
+  let _timer = null;
+  window.productPickerSearch = function(q) {
+    clearTimeout(_timer);
+    _timer = setTimeout(async function() {
+      const trimmed = q.trim();
+      if (!trimmed) { _renderList(_cache || []); return; }
+      try {
+        const res  = await fetch(`/api/products/search?q=${encodeURIComponent(trimmed)}`);
+        _renderList(await res.json());
+      } catch(e) {}
+    }, 200);
+  };
+
+  document.addEventListener("click", function(e) {
+    if (_open && !panel.contains(e.target) && !display.contains(e.target)) productPickerClose();
+  });
+})();
+
+function toggleProductPicker(isNewEntry) {
+  document.getElementById("productPickerWrap").style.display = isNewEntry ? "none" : "";
+  document.getElementById("newProductWrap").style.display    = isNewEntry ? "" : "none";
+  // 新規登録モードにしたら hidden をクリア
+  if (isNewEntry) document.getElementById("linkedProductCode").value = "";
+}
+
 function switchTab(event, tabId) {
   document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));

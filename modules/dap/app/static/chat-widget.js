@@ -1264,6 +1264,26 @@
       el.focus();
       el.value = '';
       el.classList.add('dap-fill-typing');
+      // checkbox: set checked state
+      if (el.type === 'checkbox') {
+        const shouldCheck = text === '1' || text.toLowerCase() === 'true' || text.toLowerCase() === 'check';
+        el.checked = shouldCheck;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        el.classList.remove('dap-fill-typing');
+        resolve();
+        return;
+      }
+      // number inputs can't append char-by-char (decimal gets sanitized), set all at once
+      if (el.type === 'number') {
+        setTimeout(function () {
+          el.value = text;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          el.classList.remove('dap-fill-typing');
+          resolve();
+        }, 400);
+        return;
+      }
       var i = 0;
       var sp = speedMs || 55;
       function typeNext() {

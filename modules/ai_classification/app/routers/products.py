@@ -571,7 +571,28 @@ def get_product_by_code(code: str, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.code == code).first()
     if not product:
         raise HTTPException(status_code=404, detail=f"Product not found: {code}")
-    return {"id": product.id, "code": product.code, "name": product.name}
+    return {"id": product.id, "code": product.code, "name": product.name,
+            "eccn": product.eccn or "", "hs_code": getattr(product, "hs_code", "") or ""}
+
+
+@router.get("/api/products/json-search")
+def json_search_products(q: str = Query(default=""), db: Session = Depends(get_db)):
+    """品目コード・品名で絞り込んで JSON リストを返す（ai_validation 品目連携ピッカー用）。"""
+    query = db.query(Product).order_by(Product.updated_at.desc())
+    if q.strip():
+        like = f"%{q.strip()}%"
+        query = query.filter(or_(Product.code.ilike(like), Product.name.ilike(like)))
+    products = query.limit(30).all()
+    return [
+        {
+            "id": p.id,
+            "code": p.code or "",
+            "name": p.name or "",
+            "eccn": p.eccn or "",
+            "item_type": p.item_type or "",
+        }
+        for p in products
+    ]
 
 
 @router.get("/api/products/quadrant-data")
@@ -772,6 +793,42 @@ def create_product(
     db.commit()
     db.refresh(product)
     return RedirectResponse(url="/products", status_code=303)
+
+
+# ── DAP Intake 品目作成 JSON API ──────────────────────────────────────────────
+
+class _ApiProductCreateRequest(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+    item_type: Optional[str] = None
+    usage_summary: Optional[str] = None
+    eccn: Optional[str] = None
+    hs_code: Optional[str] = None
+
+
+@router.post("/api/products")
+def api_create_product(body: _ApiProductCreateRequest, db: Session = Depends(get_db)):
+    """DAP Intake などからの品目 JSON 新規作成。code 重複時は 409。"""
+    existing = db.query(Product).filter(Product.code == body.code).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Product code '{body.code}' already exists (id={existing.id})")
+    product = Product(
+        code=body.code,
+        name=body.name,
+        description=body.description or None,
+        item_type=body.item_type or None,
+        usage_summary=body.usage_summary or None,
+        eccn=body.eccn or None,
+        hs_code=body.hs_code or None,
+        source="AI_TM",
+        is_unconfirmed=False,
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return {"id": product.id, "code": product.code, "name": product.name,
+            "item_type": product.item_type, "edit_url": f"/products/{product.id}/edit"}
 
 
 # ── ERP MDM 同期 ──────────────────────────────────────────────────────────────
@@ -1266,7 +1323,8 @@ def bom_upload(
     bom_json_str = json.dumps(bom_items, ensure_ascii=False)
 
     product.bom_json = bom_json_str
-    product.std_price = total_cost
+    if not product.std_price:
+        product.std_price = total_cost
 
     max_version = (
         db.query(func.max(BomHistory.version))

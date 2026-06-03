@@ -93,6 +93,16 @@
     .checkbox-row { display: flex; align-items: center; gap: 8px; }
     .checkbox-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
     .checkbox-row label { font-size: .9rem; font-weight: 500; color: #374151; cursor: pointer; }
+    .cert-box {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 20px;
+    }
+    .cert-box p { font-size: .85rem; color: #166534; line-height: 1.6; margin-bottom: 10px; }
+    .cert-box .checkbox-row label { color: #166534; font-weight: 600; }
+    .btn-submit:disabled { background: #9ca3af; cursor: not-allowed; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .hint { font-size: .78rem; color: #6b7280; margin-top: 4px; }
     .btn-submit {
@@ -169,7 +179,12 @@
     </div>
 
     <div class="form-section">
-      <h4>輸出管理分類</h4>
+      <h4>HS コード・輸出管理分類</h4>
+      <div class="field">
+        <label>HS コード（Harmonized System）<span class="req">*</span></label>
+        <input type="text" name="claimed_hs_code" placeholder="例: 8543.70 / 9031.49.90" required />
+        <div class="hint">6桁（章.項）または8〜10桁（国内細分）で入力してください。不明な場合はお調べの上ご回答ください。</div>
+      </div>
       <div class="field">
         <label>ECCN（Export Control Classification Number）</label>
         <input type="text" name="claimed_eccn" placeholder="例: 3A001.a.2  /  EAR99" />
@@ -228,7 +243,22 @@
       </div>
     </div>
 
-    <button type="submit" class="btn-submit">申告内容を送信する</button>
+    <div class="cert-box">
+      <p>
+        <strong>【サプライヤー自己申告に関する確認事項】</strong><br/>
+        本フォームに記載する原産国・HSコード・ECCN等の申告内容は、貴社が正確であると判断した情報に基づくものであり、
+        その正確性・完全性についての責任は申告者（貴社）が負います。<br/>
+        本申告は証明書類として弊社の輸出管理審査に使用されます。虚偽の申告は輸出管理法令に基づく制裁の対象となる場合があります。
+      </p>
+      <div class="checkbox-row">
+        <input type="checkbox" name="cert_confirmed" id="certConfirmed" required onchange="document.querySelector('.btn-submit').disabled = !this.checked;" />
+        <label for="certConfirmed">
+          上記内容を確認し、申告内容が正確であることをサプライヤーとしての責任において証明します
+        </label>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-submit" disabled>申告内容を送信する</button>
   </form>
 
   <div class="footer">

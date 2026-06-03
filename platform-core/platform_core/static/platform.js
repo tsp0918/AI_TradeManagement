@@ -183,7 +183,13 @@
   // ── DAP ウィジェットに公開するポータルナビゲーション API ──────────
   // chat-widget.js から window.__dap_portal_navigate__(key, path) で呼べる
   window.__dap_portal_navigate__ = function (moduleKey, subPath) {
-    var iframeUrl = "/proxy/" + moduleKey + (subPath || "/");
+    var btn = document.querySelector('.module-main-btn[data-key="' + moduleKey + '"]');
+    var iframeUrl;
+    if (btn && btn.dataset.iframeUrl && !subPath) {
+      iframeUrl = btn.dataset.iframeUrl;
+    } else {
+      iframeUrl = "/proxy/" + moduleKey + (subPath || "/");
+    }
     selectModule(moduleKey, iframeUrl);
   };
 

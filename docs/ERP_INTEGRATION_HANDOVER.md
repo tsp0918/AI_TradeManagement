@@ -1,7 +1,7 @@
 # AI Trade Management — ERP 連携インターフェース引き継ぎ書
 
 **作成日**: 2026-06-03  
-**対象システム**: AI Trade Management Platform v2.3  
+**対象システム**: AI Trade Management Platform v2.4  
 **作成者**: 安全保障貿易管理チーム  
 **宛先**: ERP 開発担当チーム
 
@@ -15,19 +15,24 @@
 ERP システム
     │
     ▼  REST API (JSON over HTTPS)
-┌───────────────────────────────────────────────────────┐
-│             AI Trade Management Platform               │
-│  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
-│  │ rnd_assessment│  │ai_validation │  │ai_classif.  │ │
-│  │ Port 8003    │  │ Port 8011    │  │ Port 8002   │ │
-│  │ R&Dリスク評価│  │ 取引審査     │  │ 品目管理    │ │
-│  └──────────────┘  └──────────────┘  └─────────────┘ │
-│  ┌──────────────┐  ┌──────────────┐                   │
-│  │  screening   │  │ platform-core│                   │
-│  │ Port 8005    │  │ Port 8000    │                   │
-│  │ 制裁照合     │  │ 共通基盤     │                   │
-│  └──────────────┘  └──────────────┘                   │
-└───────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                   AI Trade Management Platform                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐            │
+│  │ rnd_assessment│  │ai_validation │  │ai_classif.  │            │
+│  │ Port 8003    │  │ Port 8011    │  │ Port 8002   │            │
+│  │ R&Dリスク評価│  │ 取引審査     │  │ 品目管理    │            │
+│  └──────────────┘  └──────────────┘  └─────────────┘            │
+│  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐            │
+│  │  screening   │  │ platform-core│  │export_license│            │
+│  │ Port 8005    │  │ Port 8000    │  │ Port 8012   │            │
+│  │ 制裁照合     │  │ 共通基盤     │  │ 輸出許可管理│            │
+│  └──────────────┘  └──────────────┘  └─────────────┘            │
+│  ┌──────────────┐  ┌──────────────┐                              │
+│  │  trade_gate  │  │  fta_origin  │                              │
+│  │ Port 8013    │  │ Port 8014    │                              │
+│  │ ERP連携ゲート│  │ 原産地管理   │                              │
+│  └──────────────┘  └──────────────┘                              │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ### ベース URL
@@ -39,13 +44,16 @@ ERP システム
 
 各モジュールへの直接アクセス（サーバー間）:
 
-| モジュール | 役割 | ローカルURL |
-|---|---|---|
-| platform-core | 共通基盤・サプライチェーン | `http://localhost:8000` |
-| ai_validation | 取引審査・AI判定 | `http://localhost:8011` |
-| ai_classification | 品目管理・HS分類 | `http://localhost:8002` |
-| rnd_assessment | R&Dリスク評価 | `http://localhost:8003` |
-| screening | 制裁リストスクリーニング | `http://localhost:8005` |
+| モジュール | 役割 | ローカルURL | Cloudflare Tunnel |
+|---|---|---|---|
+| platform-core | 共通基盤・サプライチェーン | `http://localhost:8000` | `https://app.tsp-aitrademanagement.com` |
+| ai_validation | 取引審査・AI判定 | `http://localhost:8011` | `https://validation.tsp-aitrademanagement.com` |
+| ai_classification | 品目管理・HS分類 | `http://localhost:8002` | `https://classification.tsp-aitrademanagement.com` |
+| rnd_assessment | R&Dリスク評価 | `http://localhost:8003` | `https://rnd.tsp-aitrademanagement.com` |
+| screening | 制裁リストスクリーニング | `http://localhost:8005` | `https://screening.tsp-aitrademanagement.com` |
+| export_license | 輸出ライセンス管理 | `http://localhost:8012` | — （内部のみ） |
+| trade_gate | ERP連携ゲートウェイ | `http://localhost:8013` | — （内部のみ） |
+| fta_origin | FTA/EPA原産地管理 | `http://localhost:8014` | — （内部のみ） |
 
 ---
 
@@ -411,7 +419,29 @@ GET http://localhost:8011/api/transactions/{id}
 ```
 
 **ERP 連携ポーリング推奨間隔**: 30分ごと  
-**Webhook 対応**: `POST /api/transactions/{id}/webhook` でコールバック URL を登録可能（status 変更時に ERP へ通知）
+
+**Webhook 対応（実装済み）**: ai_validation は AI 判定完了時に自動でコールバックを送信します。  
+ERP 側でコールバック URL を受け付ける場合は、取引審査作成リクエストに `callback_webhook` フィールドを追加してください。
+
+```json
+POST http://localhost:8011/api/transactions
+{
+  "case_no": "ERP-TX-2026-0123",
+  ...（通常フィールド）...
+  "callback_webhook": "https://your-erp.example.com/api/ai-trade/callback"
+}
+```
+
+コールバックは AI 判定完了後に `POST {callback_webhook}` で送信されます（3リトライ、バックオフあり）:
+```json
+{
+  "transaction_id": 62,
+  "case_no": "ERP-TX-2026-0123",
+  "ai_status": "REQUIRES_PERMIT",
+  "catchall_status": "high",
+  "judged_at": "2026-06-03T10:00:00"
+}
+```
 
 ---
 
@@ -643,9 +673,31 @@ GET http://localhost:{port}/health
 
 ---
 
-## 7. 開発要件・ERP 側対応事項
+## 7. 環境変数・本番デプロイ設定
 
-### 7-1. 必須対応事項（P0）
+### 7-0. 必須環境変数（`.env`）
+
+本番環境では以下の環境変数を適切に設定してください。
+
+| 変数名 | 用途 | 本番値 |
+|---|---|---|
+| `MODULE_AI_VALIDATION_URL` | ai_validation サーバー間通信 | `http://localhost:8011` |
+| `MODULE_AI_CLASSIFICATION_URL` | ai_classification サーバー間通信 | `http://localhost:8002` |
+| `MODULE_EXPORT_LICENSE_URL` | export_license サーバー間通信 | `http://localhost:8012` |
+| `MODULE_TRADE_GATE_URL` | trade_gate サーバー間通信 | `http://localhost:8013` |
+| `MODULE_FTA_ORIGIN_URL` | fta_origin サーバー間通信 | `http://localhost:8014` |
+| `PUBLIC_WEBHOOK_URL` | ai_classification Webhook 受信 URL（ai_validation → ai_classification） | `https://classification.tsp-aitrademanagement.com/integrations/export-control/webhook` |
+| `HS_WEBHOOK_URL` | HS 分類 Webhook 受信 URL | `https://classification.tsp-aitrademanagement.com/integrations/hs-classifier/webhook` |
+
+> **注意**: `PUBLIC_WEBHOOK_URL` / `HS_WEBHOOK_URL` はデフォルトが `localhost` であるため、  
+> 本番（Cloudflare Tunnel）環境では必ず上記の Cloudflare URL を設定してください。  
+> ローカル開発環境ではデフォルト（localhost）のままで問題ありません。
+
+---
+
+## 8. 開発要件・ERP 側対応事項
+
+### 8-1. 必須対応事項（P0）
 
 | No. | 要件 | 詳細 |
 |---|---|---|
@@ -654,7 +706,7 @@ GET http://localhost:{port}/health
 | 3 | **審査結果ポーリング** | `GET /api/transactions/{id}` を30分ごとにポーリングして `ai_status` の変化を検知し、ERP の審査ステータスに反映すること |
 | 4 | **みなし輸出人物同期** | 外国籍の研究者・共同研究者が ERP に登録された場合、`POST /api/v1/personnel` を呼び出すこと |
 
-### 7-2. 推奨対応事項（P1）
+### 8-2. 推奨対応事項（P1）
 
 | No. | 要件 | 詳細 |
 |---|---|---|
@@ -662,7 +714,7 @@ GET http://localhost:{port}/health
 | 6 | **BOM 同期** | BOM 部材（特に US 由来部材）が ERP で更新された際、`/products/erp-sync` で同期すること（De Minimis 計算の精度維持） |
 | 7 | **国別プロファイル同期** | ERP の仕向国マスターに国を追加した際、`/products/{id}/country-profiles` を更新すること |
 
-### 7-3. データ品質要件
+### 8-3. データ品質要件
 
 | フィールド | 品質要件 |
 |---|---|
@@ -674,15 +726,16 @@ GET http://localhost:{port}/health
 
 ---
 
-## 8. 変更履歴
+## 9. 変更履歴
 
 | 日付 | バージョン | 変更内容 |
 |---|---|---|
 | 2026-06-03 | v2.3 | 初版作成。Personnel JSON API 追加、ASEAN 対応国拡充（5→17カ国）、Red Flag 連携フロー追加 |
+| 2026-06-03 | v2.4 | アーキテクチャ図に export_license (8012) / trade_gate (8013) / fta_origin (8014) を追加。Webhook コールバック仕様を詳細化（callback_webhook フィールド・レスポンス形式・3リトライ）。環境変数セクション（§7-0）を新設。モジュール URL 表に Cloudflare Tunnel ドメインを追加。 |
 
 ---
 
-## 9. 問い合わせ先
+## 10. 問い合わせ先
 
 | 担当 | 連絡先 |
 |---|---|
@@ -691,5 +744,5 @@ GET http://localhost:{port}/health
 
 ---
 
-*このドキュメントは AI Trade Management Platform v2.3 のAPI仕様に基づきます。*  
+*このドキュメントは AI Trade Management Platform v2.4 のAPI仕様に基づきます。*  
 *APIの最新仕様は各モジュールの `http://localhost:{port}/docs` で確認できます。*

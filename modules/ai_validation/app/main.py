@@ -172,6 +172,14 @@ async def _ensure_columns() -> None:
                 # サプライチェーン連携
                 ("supply_chain_node_id", "VARCHAR(36)"),    # plat_supply_chain_node UUID
                 ("de_minimis_result",    "TEXT"),           # De Minimis 計算スナップショット JSON
+                # リスク分岐型承認フロー（Phase redesign）
+                ("approval_tier",        "INTEGER"),        # 1=自動承認 2=標準 3=輸出許可確認
+                ("required_steps",       "TEXT"),           # JSON: ["screening","ai_run","catchall"] etc.
+                ("tier_reason",          "TEXT"),           # ティア判定理由
+                ("tier_determined_at",   "DATETIME"),       # ティア確定日時
+                ("linked_product_code",  "VARCHAR(64)"),    # 品目管理の product.code
+                ("linked_product_eccn",  "VARCHAR(32)"),    # 品目管理から取得したECCN
+                ("is_new_product_entry", "INTEGER"),        # 1=品目同時登録モード
             ]:
                 if col_name not in existing_tx:
                     conn.execute(text(f"ALTER TABLE transactions ADD COLUMN {col_name} {col_type}"))

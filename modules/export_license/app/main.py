@@ -40,7 +40,7 @@ def create_app() -> FastAPI:
 
     @app.get("/", include_in_schema=False)
     async def root():
-        return RedirectResponse(url="/api/export-licenses/stats")
+        return RedirectResponse(url="/health")
 
     return app
 

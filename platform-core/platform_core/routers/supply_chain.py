@@ -65,6 +65,11 @@ async def supply_chain_by_product_code(request: Request, path: str):
     return await _proxy(request, f"by-product-code/{path}")
 
 
+@router.api_route("/api/supply-chain/bom-attestation-summary/{product_code}", methods=["GET"])
+async def supply_chain_bom_attestation_summary(request: Request, product_code: str):
+    return await _proxy(request, f"by-product-code/{product_code}/bom-attestation-summary")
+
+
 @router.api_route("/api/supply-chain/impact/{path:path}", methods=["GET"])
 async def supply_chain_impact(request: Request, path: str):
     return await _proxy(request, f"impact/{path}")

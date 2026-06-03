@@ -74,6 +74,15 @@ class Transaction(Base, TimestampMixin):
     supply_chain_node_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)    # platform-core plat_supply_chain_node UUID
     de_minimis_result: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)  # 取引審査時点の De Minimis 計算スナップショット
 
+    # リスク分岐型承認ティア（Phase redesign）
+    approval_tier: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)              # 1=自動承認 2=標準 3=輸出許可確認
+    required_steps: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)          # ["screening","ai_run","catchall"] etc.
+    tier_reason: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)            # ティア判定理由
+    tier_determined_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)   # ティア確定日時
+    linked_product_code: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)     # 品目管理の product.code
+    linked_product_eccn: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)     # 品目管理から取得したECCN
+    is_new_product_entry: Mapped[Optional[bool]] = mapped_column(Integer, nullable=True)      # 1=品目同時登録モード
+
     # 輸出審査記録の法的要件（外為法 7年保存・CISTEC様式準拠）
     evaluator_name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)         # 判定者氏名
     evaluator_title: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)        # 判定者役職

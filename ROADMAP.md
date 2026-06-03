@@ -1,7 +1,9 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-25 更新（モジュール間連携強化・BOMグラフ操作性向上）
+# 2026-05-31 更新（品目管理UI全面リデザイン・EPA/FTA優遇税率・国別HSサマリーテーブル・DAP DEMO3完成）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
+> 2026-05-31（2回目）追加: ①品目管理 UI 全面リデザイン（sticky セーブバー・ブロック順序最適化・GHS折り畳み・外部AI判定2カラム整理）②国別HSコードサマリーテーブル追加（国|役割|ローカルHS|品目説明|MFN関税率|EPA/FTA優遇|協定名|輸出許可）③EPA/FTA優遇税率（epa_tariff_rate）+ 協定名（epa_agreement）をDB・API・UIに追加④DAP DEMO3（OMEGA-300輸出審査フロー）完成・DEMO1/DEMO2の品番入力前「品目同時登録」チェック追加
+> 2026-05-31（1回目）追加: ①サプライヤー申告フォームに HS コード必須フィールド追加・cert_confirmed チェックボックス（責任確認）追加・送信ボタン disabled 制御 ②社内手動証明書登録ルート（is_manual_registration フラグ・upload-doc エンドポイント・📎手動証明書登録モーダル）③サプライヤーは単一ノードのみ参照（BOM構造非公開）・?superadmin=1 でハイパーADMINモード（紫バナー・全ノード生JSON・コンソールヘルパー）④bom_attestation_summary の us_controlled_pct 104%バグ修正（edge.quantity直和 → unit_value_usd 金額加重計算）⑤フルDryRun完了: FG-001 OMEGA-300 → BOM 4品目 → SC sync → ポータル申告 → AI判定 → アクセプト → AI取引審査（API-20260531-1646、catchall_recommended:true）
 > 2026-05-25（2回目）追加: ①BOMグラフノードパネルに ECCN同期・AI判定依頼ボタン追加（ワンクリックで sync-eccn / request-eccn、グラフリアルタイム更新）②サプライヤーポータル招待メール自動送信（smtplib STARTTLS、SMTP_HOST等env var設定で有効化）③R&D→AI判定フロー修正（form POST→JSON API統一、end_user_name counterparty_name引き継ぎ、FAISS自動起動）④取引先情報 GET /api/transactions/{id} に counterparty_name 追加⑤transaction_detail.html BOMコンテキストカード強化（JS動的取得: HSコード/ECCN/EARリスク/BOM構成品テーブル/BOMグラフリンク）⑥R&Dコンテキストカード追加（rnd_assessment起案時）⑦item_version再判定: item_code→SCノード逆引きでsupply_chain_node_id自動リンク。
 > 2026-05-25（1回目）追加: URL整合性修正・データ一元化完了。①全モジュールのハードコードlocalhost URLを環境変数化（item_version.py/export_license.py/import_profiles.html/transaction_detail.html）②BOM→AI判定リンクのURLパス修正（/transactions/{id}→/ui/transactions/{id}）③transaction_detail.html BOMコンテキストカード追加（ai_classification起案時にspec_text key-valueグリッド・バックリンク表示）④ヒットなし時 FAISS 候補チップ表示（catchall_recommended の場合）⑤supply_chain_node_id を Transaction に自動リンク（portal_submit / request-eccn 双方）⑥FAISS + 2リスト自動実行（fire-and-forget）。
 > 2026-05-24（5回目）追加: サプライヤーポータル → AI 2リスト該非判定 → BOM 自動更新フロー完全実装。Alembic m1n2o3p4q5r6（ECCN判定4フィールド）・supplier_portal.py AI判定自動トリガー・sync-eccn FAISS照合ロジック・bom_graph.html 判定ステータスバッジ（⏳/🤖/✅/❌）・Graphviz DOT スタイル可視化（cytoscape-dagre）。デモ: EUV-PR-001 BOM の EUV-RM-002（PAG） サプライヤー申告 1C010.a → FAISS Layer A 1C010 候補一致確認 → eccn_judgment_status=ai_completed → ECCN=1C010.a 自動書込。
@@ -29,7 +31,7 @@
 |-----------|--------|-----|-----|--------|------|
 | platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 4レイヤー（A/B/C/D）・知識グラフ・規制スケジューラー（業務ロジック分離済） |
 | ai_validation | 8011 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent・AI run 後キャッチオール自動評価 |
-| ai_classification | 8002 | SQLite+PG | ✅ | ✅ | 品目管理・6種 item_type・輸入品プロファイル・BOM→SC自動同期・BOMグラフ可視化（cytoscape-dagre）・輸入品影響分析・ECCN付番フロー・US EAR再輸出申請トリガー・**サプライヤー→AI取引審査→BOM自動更新** |
+| ai_classification | 8002 | SQLite+PG | ✅ | ✅ | 品目管理・6種 item_type・輸入品プロファイル・BOM→SC自動同期・BOMグラフ可視化（cytoscape-dagre）・輸入品影響分析・ECCN付番フロー・US EAR再輸出申請トリガー・**サプライヤー→AI取引審査→BOM自動更新**・HS/ECCN申告+cert確認・手動証明書登録・Hyper-Admin mode・BOM US管理品比率（金額加重）・**国別HSサマリーテーブル・EPA/FTA優遇税率**|
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
 | patent_search | 8004 | SQLite | ✅ | ✅ | BigQuery連携・J-PlatPatフォールバック |
 | screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS/UN/EU）・与信管理・ERP JSON一括インポート・無料3ソース自動同期 |
@@ -620,6 +622,8 @@ Ph.D — patent_search 双方向リンク
 | platform-core 業務ドメインルーター — Phase 6A〜6C で全7本をプロキシスタブ化済み ✅ | — | 解消済み |
 | 各モジュールの pg_session.py が個別実装 | 接続パラメータ変更時に全モジュール修正が必要 | 低（env var 統一で対応済み） |
 | ハードコードURL → 全モジュール環境変数化 ✅（2026-05-24 修正） | — | 解消済み（item_version.py / export_license.py / transaction_detail.html / import_profiles.html）|
+| `bom_attestation_summary` us_controlled_pct 104% ✅（2026-05-31 修正） | — | 解消済み（edge.quantity 直和 → unit_value_usd 金額加重計算）|
+| `api/products/by-code/{code}` が id/code/name のみ返却 | BOM取得等でフル情報が取れない | 低（次フェーズ候補）|
 
 ---
 
@@ -779,6 +783,8 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | ERP JSON一括インポート（2026-05-16） | POST /api/counterparties/import-batch（最大500件・同期スクリーニング・upsert・flagged_list即時返却） |
 | ✅ | is_hit バグ修正（2026-05-16） | counterparty.py: `"hit"` → `in ("match", "possible_match")` / `list_type` → `list_source` |
 | ✅ | **DAP Phase 1-4: 先輩担当者モード完全強化（2026-05-30）** | UC定義外部化(9UC)・fill_field_from_context・4段階フィールドマッチ・デモモード（DEMO1/DEMO2・typewriterFill・pause/fill_demo）|
+| ✅ | **品目管理 UI リデザイン + EPA/FTA対応（2026-05-31）** | sticky セーブバー・ブロック順序最適化（基本情報→該非判定→BOM→国別プロファイル）・GHS折り畳み・外部AI判定2カラム化・国別HSサマリーテーブル・epa_tariff_rate/epa_agreement DB追加・DEMO3完成 |
+| ✅ | **DAP Intake 3モード拡張（2026-05-31）** | 品目登録ヒアリング（product_registration）・R&D起案ヒアリング（rnd_project）追加。POST /api/products JSON エンドポイント新設。`_detect_intake_mode()` でメッセージから自動判別 → モード別システムプロンプト・action_plan・完了後ナビゲーション |
 | ★★★☆☆ | 制裁リスト全量同期 | OFAC SDN URL変更対応済。Trade.gov API キー取得で BIS EL 完全収録（現在 watchlist 15件のみ）|
 
 ---
