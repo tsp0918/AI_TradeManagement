@@ -833,6 +833,36 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
     except Exception:
         pass  # platform-core 未起動時は無視
 
+    # キャッチオール判定が indeterminate（Red Flag未回答）の案件を検出
+    _ai_val_url = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+    try:
+        import httpx as _httpx
+        r = _httpx.get(f"{_ai_val_url}/api/transactions?status=under_review&limit=20", timeout=3)
+        if r.status_code == 200:
+            txs = r.json() if isinstance(r.json(), list) else r.json().get("transactions", [])
+            indeterminate_txs = [
+                t for t in txs
+                if t.get("catchall_status") == "indeterminate"
+                or t.get("ai_status") == "indeterminate"
+                or (t.get("catchall_result") or {}).get("verdict") == "indeterminate"
+            ]
+            if indeterminate_txs:
+                tx = indeterminate_txs[0]
+                tx_id = tx.get("id", "?")
+                tx_name = tx.get("case_no") or tx.get("title") or f"案件#{tx_id}"
+                alerts.append({
+                    "type":        "red_flag_required",
+                    "severity":    "danger",
+                    "guide_id":    f"red_flag:{tx_id}",
+                    "message":     (
+                        f"案件「{tx_name}」のキャッチオール判定が「判定不能（indeterminate）」のまま止まっています。"
+                        "Red Flag 7項目の回答を入力することで審査を完結できます。"
+                    ),
+                    "action_hint": f"「案件{tx_id}のRed Flagを入力したい」と話しかけてください",
+                })
+    except Exception:
+        pass
+
     return {"stage": stage, "gap_modules": gap_modules, "proactive_alerts": alerts}
 
 
@@ -1679,6 +1709,18 @@ UC9: 技術インテリジェンス調査（特許検索 → 制裁照合 → �
     highlight: 制裁照合
   Step3: 「R&Dリスク評価 → 技術インテリジェンス」で学術論文類似度を確認
     navigate_to: {_PLATFORM_URL}/proxy/rnd_assessment/ui/academic-intel
+
+UC-RF: キャッチオール Red Flag 回答（indeterminate → 最終判定まで完結）
+  このUCは「キャッチオール判定がindeterminateで止まっている」案件を完結させるためのフロー。
+  Step1: 対象の取引審査案件詳細を開く
+    navigate_to: {_PLATFORM_URL}/proxy/ai_validation/ui/transactions
+    explain: キャッチオール判定がindeterminate（判定不能）になっている案件を選択してください。AI判定タブでキャッチオール詳細を確認します。
+  Step2: Red Flag 7項目を確認・回答する
+    highlight: キャッチオール詳細
+    explain: 以下の7項目を確認し、各項目に「該当あり/なし」を回答してください。①技術水準・用途の不一致 ②不自然な数量・発注 ③異常な支払条件・価格 ④迂回取引の疑い ⑤後から用途変更を求める ⑥アフターサービス不要を強調 ⑦通常外の発送先指定。「該当あり」の項目がある場合は取引を一時停止してコンプライアンス担当に報告してください。
+  Step3: Red Flag結果を記録してキャッチオール最終判定を確定
+    highlight: AI判定を実行
+    explain: Red Flagが「全て該当なし」であれば再AI判定を実行してCLEAR/REVIEWに更新します。1項目でも「該当あり」の場合はエスカレーションが必要です（REQUIRES_PERMIT扱い）。
 
 【よくある質問と回答（DAP即答ガイド）】
 
