@@ -79,6 +79,67 @@ _SESSION_MAX = 200
 _SESSION_MAX_HISTORY = 40  # 最大 20 往復
 
 
+# ── 専門知識ベース（FAQ）────────────────────────────────────────────
+def _load_faq_knowledge() -> str:
+    faq_path = Path(__file__).parent.parent / "knowledge" / "faq_export_control.md"
+    try:
+        return faq_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return ""
+
+_FAQ_KNOWLEDGE: str = _load_faq_knowledge()
+
+# FAQ をトピック別セクションに分割（キーワード引き当て用）
+def _select_faq_sections(message: str) -> str:
+    """ユーザーメッセージのキーワードに基づき関連FAQセクションを返す"""
+    if not _FAQ_KNOWLEDGE:
+        return ""
+    msg_lower = message.lower()
+    # セクション見出し（## 行）で分割
+    sections: list[str] = []
+    current: list[str] = []
+    for line in _FAQ_KNOWLEDGE.splitlines():
+        if line.startswith("## "):
+            if current:
+                sections.append("\n".join(current))
+            current = [line]
+        else:
+            current.append(line)
+    if current:
+        sections.append("\n".join(current))
+
+    # sections[0]=タイトル行, sections[1]=外為法, sections[2]=EAR例外, ...
+    keyword_map: list[tuple[list[str], int]] = [
+        (["cistec", "icp", "内部管理", "包括許可", "外為法", "役務取引", "みなし輸出", "経済安保", "7年", "記録", "外国ユーザー"], 1),
+        (["ear", "eccn", "nlr", "sta", "enc", "lvs", "tmp", "bag", "gov", "tsr", "ライセンス例外", "license exception"], 2),
+        (["country group", "country chart", "entity list", "denied", "part 744", "deemed export", "対中", "対ロシア", "fdpr"], 3),
+        (["itar", "usml", "ddtc", "dsp", "taa", "mla", "munitions", "武器取引"], 4),
+        (["eu dual-use", "eu デュアル", "2021/821", "annex", "gea", "eu001", "article 4", "eus", "ドイツ", "awg"], 5),
+        (["uk", "英国", "ogel", "siel", "oiel", "ecju", "post-brexit", "brexit"], 6),
+        (["中国", "caerc", "china", "輸出管理法", "信頼性評価"], 7),
+        (["sanctions", "制裁", "ofac", "sdn", "ssi", "secondary", "二次制裁", "general license"], 8),
+        (["euc", "エンドユーザー証明", "euv", "kyc", "red flag", "不審サイン"], 9),
+        (["fta", "epa", "rcep", "cptpp", "原産地", "psr", "rvc", "roo", "gsp", "累積"], 10),
+        (["ecp", "コンプライアンスプログラム", "vsd", "自主開示", "tcp", "技術管理計画"], 11),
+        (["hscode", "hsコード", "hs分類", "ghs", "誤分類", "事前教示", "hs番号"], 12),
+        (["スクリーニング結果", "fuzzy", "false positive", "偽陽性", "possible_match"], 13),
+        (["展示会", "一時輸出", "クラウド", "saas", "re-export", "再輸出", "in-country", "代替品", "罰則", "違反", "制裁額"], 14),
+    ]
+    selected: list[str] = []
+    seen: set[int] = set()
+    for kws, idx in keyword_map:
+        if idx not in seen and idx < len(sections) and any(kw in msg_lower for kw in kws):
+            selected.append(sections[idx])
+            seen.add(idx)
+
+    if not selected:
+        # デフォルト：外為法・EAR例外・実務の3セクション
+        default_idx = [1, 2, 14]
+        selected = [sections[i] for i in default_idx if i < len(sections)]
+
+    return "\n\n".join(selected)
+
+
 def _get_session(session_id: str) -> dict:
     if session_id in _SESSION_STORE:
         _SESSION_STORE.move_to_end(session_id)
@@ -1339,6 +1400,14 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
         f"{rag_block}"
     ) if rag_block else ""
 
+    # 専門知識ベース（メッセージキーワードで選択済みセクション）
+    faq_snippet = ctx.get("_faq_snippet", "")
+    faq_ext_section = (
+        f"\n\n【専門知識ベース（輸出管理詳細Q&A）】\n"
+        f"以下は輸出管理プロフェッショナル向けの詳細Q&Aです。ユーザーの質問に関連する情報として参照してください:\n"
+        f"{faq_snippet}"
+    ) if faq_snippet else ""
+
     return f"""あなたは輸出管理コンプライアンス業務の AI アシスタントです。
 ユーザーが今この画面で何をしようとしているかを理解し、業務フローの文脈に沿って行動まで完結させてください。
 
@@ -1460,7 +1529,7 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 {persona_ctx if persona_ctx else "（セッション開始直後 — 慎重にレベルを把握しながら対応する）"}
 
 【ワークフロー状況】
-{workflow_ctx if workflow_ctx else "（問題なし）"}{rag_section}
+{workflow_ctx if workflow_ctx else "（問題なし）"}{rag_section}{faq_ext_section}
 
 【行動指針】
 - ユーザーの発言から「最終的にやりたいこと」を推測し、そのゴールへの最短経路を案内する
@@ -2282,6 +2351,9 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     rag_context = await _rag_multilayer(req.message)
     if rag_context:
         ctx["_rag_context"] = rag_context
+
+    # 専門知識ベース：メッセージキーワードで関連セクションを選択
+    ctx["_faq_snippet"] = _select_faq_sections(req.message)
 
     # role の正規化
     valid_roles = {"user", "assistant"}
