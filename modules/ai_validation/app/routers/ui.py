@@ -224,11 +224,19 @@ def products_search_proxy(q: str = Query(default="")):
 @router.get("/api/transactions/search")
 def transactions_search(
     q: str = Query(default=""),
+    erp_case_no: str = Query(default=""),
     db: Session = Depends(get_db),
 ):
-    """前段審査参照フィールドの検索用。q が空なら直近20件を返す。"""
+    """
+    取引検索。
+    - erp_case_no: ERP 受注番号での完全一致検索（ERP 再審査フロー用）
+    - q: case_no / title のキーワード検索（UI 用）
+    - 両方空の場合は直近 20 件を返す
+    """
     query = db.query(Transaction).order_by(desc(Transaction.id))
-    if q.strip():
+    if erp_case_no.strip():
+        query = query.filter(Transaction.erp_case_no == erp_case_no.strip())
+    elif q.strip():
         keyword = f"%{q.strip()}%"
         from sqlalchemy import or_
         query = query.filter(
@@ -240,7 +248,6 @@ def transactions_search(
     results = query.limit(20).all()
 
     def _infer_source(t: Transaction) -> str:
-        """source_module が未設定の場合、case_no プレフィックスから推定する。"""
         if t.source_module:
             return t.source_module
         cn = (t.case_no or "").upper()
@@ -254,7 +261,9 @@ def transactions_search(
         {
             "id": t.id,
             "case_no": t.case_no,
+            "erp_case_no": t.erp_case_no,
             "title": t.title,
+            "status": t.status,
             "source_module": _infer_source(t),
             "created_at": t.created_at.strftime("%Y-%m-%d") if t.created_at else None,
         }

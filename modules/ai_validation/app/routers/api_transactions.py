@@ -459,6 +459,29 @@ def get_stuck_transactions(
     return {"stuck_transactions": stuck, "total": len(stuck)}
 
 
+# ── 判定ステータス正規化 (ERP 向け) ──────────────────────────────
+# /api/transactions/search は ui.py に実装済み（erp_case_no / q / 直近20件をサポート）
+
+_JUDGMENT_MAP: Dict[str, str] = {
+    "not_controlled":  "APPROVED",
+    "controlled":      "NEEDS_REVIEW",
+    "requires_review": "NEEDS_REVIEW",
+    "requires_permit": "REQUIRES_PERMIT",
+}
+
+
+def _normalize_judgment(tx_status: str, agent_judgment_status: Optional[str]) -> str:
+    """
+    AI_TM 内部値を ERP 向け正規化値に変換する。
+    APPROVED / NEEDS_REVIEW / REQUIRES_PERMIT / REJECTED / PENDING
+    """
+    if tx_status == "rejected":
+        return "REJECTED"
+    if not agent_judgment_status:
+        return "PENDING"
+    return _JUDGMENT_MAP.get(agent_judgment_status.lower(), "PENDING")
+
+
 # ── De Minimis スナップショット保存 ───────────────────────────────
 
 class SupplyChainLinkBody(BaseModel):
@@ -484,12 +507,16 @@ def get_transaction_detail(tx_id: int, db: Session = Depends(get_db)) -> Dict[st
     return {
         "id": tx.id,
         "case_no": tx.case_no,
+        "erp_case_no": tx.erp_case_no,
         "title": tx.title,
         "status": tx.status,
         "agent_judgment_status": tx.agent_judgment_status,
+        # ERP 向け正規化判定値: APPROVED / NEEDS_REVIEW / REQUIRES_PERMIT / REJECTED / PENDING
+        "judgment": _normalize_judgment(tx.status, tx.agent_judgment_status),
         "destination_country": tx.destination_country,
         "source_module": tx.source_module,
         "counterparty_name": tx.counterparty_name,
+        "linked_product_code": tx.linked_product_code,
         "items": [
             {"item_name": i.item_name, "spec_text": i.spec_text}
             for i in tx.items
