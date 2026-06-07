@@ -93,6 +93,9 @@ class Transaction(Base, TimestampMixin):
     end_user_country: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)         # 最終需要者所在国 ISO alpha-2
     end_use_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)           # 最終用途
 
+    # みなし輸出連携
+    deemed_export_personnel_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)  # rnd_assessment personnel_id
+
     # ERP 連携フィールド（受注・出荷情報）
     erp_case_no: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True) # ERP 側の受注番号（case_no と分離）
     total_value_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)            # 取引総額 (USD)

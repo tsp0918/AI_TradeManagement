@@ -42,6 +42,38 @@ import os as _os
 router = APIRouter(tags=["products"])
 
 _SELF_BASE = _os.environ.get("MODULE_AI_CLASSIFICATION_URL", "http://localhost:8002")
+_AI_VALIDATION_BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+
+
+def _trigger_coo_change_rescreening(
+    product_code: str,
+    old_country: Optional[str],
+    new_country: str,
+) -> None:
+    """
+    原産国（COO）変更時に ai_validation へ通知し、関連取引を再審査キューに戻す。
+    fire-and-forget — 失敗しても品目更新フローは止めない。
+    """
+    if not product_code or not new_country:
+        return
+    if (old_country or "").upper() == new_country.upper():
+        return  # 変更なし
+
+    def _post() -> None:
+        try:
+            with httpx.Client(timeout=8.0) as client:
+                client.post(
+                    f"{_AI_VALIDATION_BASE}/api/transactions/coo-changed",
+                    json={
+                        "product_code": product_code,
+                        "old_country":  old_country,
+                        "new_country":  new_country,
+                    },
+                )
+        except Exception:
+            pass
+
+    threading.Thread(target=_post, daemon=True).start()
 
 
 def _trigger_supplier_change_event(
@@ -910,6 +942,7 @@ def erp_sync_product(body: _ErpSyncRequest, db: Session = Depends(get_db)):
         product.hs_code = body.hs_code
     if body.eccn is not None:
         product.eccn = body.eccn
+    _old_erp_coo = product.country_of_origin
     if body.country_of_origin is not None:
         coo = body.country_of_origin.strip().upper()
         product.country_of_origin = coo[:2] if coo else None
@@ -924,6 +957,13 @@ def erp_sync_product(body: _ErpSyncRequest, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(product)
+
+    # COO 変更があれば ai_validation へ通知
+    if body.country_of_origin is not None:
+        _new_erp_coo = product.country_of_origin or ""
+        if _new_erp_coo != (_old_erp_coo or "").upper():
+            _trigger_coo_change_rescreening(product.code, _old_erp_coo, _new_erp_coo)
+
     return {"ok": True, "id": product.id, "code": product.code, "created": is_new}
 
 
@@ -1097,7 +1137,9 @@ def update_product(
     product.hs_code = hs_code or None
     product.eccn = eccn or None
     coo_val = country_of_origin.strip().upper()
-    product.country_of_origin = coo_val[:2] if coo_val else None
+    _old_coo = product.country_of_origin
+    _new_coo = coo_val[:2] if coo_val else None
+    product.country_of_origin = _new_coo
     product.ghs_signal_word = ghs_signal_word or None
     product.ghs_pictograms = ghs_pictograms or None
     product.ghs_h_statements = ghs_h_statements or None
@@ -1124,6 +1166,10 @@ def update_product(
     product.regulation_score = calculate_regulation_score(product, db)
 
     db.commit()
+
+    # COO 変更があれば ai_validation へ通知
+    if _new_coo != (_old_coo or "").upper():
+        _trigger_coo_change_rescreening(product.code, _old_coo, _new_coo or "")
 
     return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
 

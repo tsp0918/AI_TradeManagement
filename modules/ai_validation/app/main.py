@@ -180,6 +180,8 @@ async def _ensure_columns() -> None:
                 ("linked_product_code",  "VARCHAR(64)"),    # 品目管理の product.code
                 ("linked_product_eccn",  "VARCHAR(32)"),    # 品目管理から取得したECCN
                 ("is_new_product_entry", "INTEGER"),        # 1=品目同時登録モード
+                # みなし輸出連携
+                ("deemed_export_personnel_id", "VARCHAR(36)"),  # rnd_assessment personnel_id
                 # ERP 連携フィールド
                 ("end_user_country",     "VARCHAR(8)"),     # 最終需要者所在国 ISO alpha-2
                 ("erp_case_no",          "VARCHAR(64)"),    # ERP 側受注番号（case_no は内部管理番号）

@@ -14,6 +14,7 @@ from app.services.pipeline.orchestrator import run_until_matrix_match
 
 import os as _os
 _EXPORT_LICENSE_BASE = _os.environ.get("MODULE_EXPORT_LICENSE_URL", "http://localhost:8012")
+_RND_BASE = _os.environ.get("MODULE_RND_ASSESSMENT_URL", "http://localhost:8003")
 
 router = APIRouter(prefix="/decision", tags=["decision"])
 
@@ -38,6 +39,54 @@ def _auto_create_license_draft(tx_id: int, tx_case_no: str, product_code: str | 
                 )
         except Exception:
             pass
+    threading.Thread(target=_post, daemon=True).start()
+
+
+def _auto_register_deemed_export(
+    tx_id: int,
+    end_user_name: str | None,
+    nationality: str | None,
+    eccn: str | None,
+    case_no: str | None,
+) -> None:
+    """
+    みなし輸出対象人物を rnd_assessment に自動登録する。
+    登録成功時に personnel_id を transaction.deemed_export_personnel_id へ書き戻す。
+    fire-and-forget — 失敗しても審査フローは止めない。
+    """
+    if not nationality or nationality.upper() == "JP":
+        return
+
+    def _post() -> None:
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                r = client.post(
+                    f"{_RND_BASE}/api/v1/personnel",
+                    json={
+                        "name":            end_user_name or f"EndUser-{case_no}",
+                        "role":            "contractor",
+                        "nationality":     nationality.upper(),
+                        "residence_country": nationality.upper(),
+                        "tech_access_eccn": eccn,
+                        "note":            f"ai_validation 取引審査 {case_no} からの自動登録（みなし輸出判定）",
+                    },
+                )
+            if r.status_code not in (200, 201):
+                return
+            personnel_id = r.json().get("personnel_id")
+            if not personnel_id:
+                return
+            # personnel_id を transaction へ書き戻す
+            from app.db.session import SessionLocal
+            from app.db.models.transaction import Transaction as _Tx
+            with SessionLocal() as db:
+                tx = db.get(_Tx, tx_id)
+                if tx and not tx.deemed_export_personnel_id:
+                    tx.deemed_export_personnel_id = personnel_id
+                    db.commit()
+        except Exception:
+            pass
+
     threading.Thread(target=_post, daemon=True).start()
 
 
@@ -357,6 +406,19 @@ def save_agent_judgment(
             dest_country=tx.destination_country,
             end_use=tx.end_use_description,
         )
+
+    # 規制品 + 外国人エンドユーザー → みなし輸出人物登録
+    _DEEMED_EXPORT_STATUSES = {"controlled", "requires_review", "requires_permit"}
+    if body.overall_status in _DEEMED_EXPORT_STATUSES:
+        nat = (tx.end_user_country or tx.destination_country or "").upper()
+        if nat and nat != "JP":
+            _auto_register_deemed_export(
+                tx_id=transaction_id,
+                end_user_name=tx.end_user_name or tx.counterparty_name,
+                nationality=nat,
+                eccn=tx.linked_product_eccn,
+                case_no=tx.case_no,
+            )
 
     return {
         "ok": True,

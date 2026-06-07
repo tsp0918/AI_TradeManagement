@@ -629,6 +629,66 @@ def get_transaction_detail(tx_id: int, db: Session = Depends(get_db)) -> Dict[st
     }
 
 
+class _CooChangedPayload(BaseModel):
+    product_code: str
+    old_country:  Optional[str] = None
+    new_country:  str
+
+
+@router.post("/coo-changed")
+def coo_changed(
+    body: _CooChangedPayload,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    ai_classification から COO（原産国）変更を受信し、
+    当該品目を参照している審査済み・審査中の取引を再審査キューに戻す。
+
+    対象: linked_product_code == body.product_code
+          AND status IN ("in_review", "approved")
+    処置: agent_judgment_status → NULL, status → draft,
+          tier_reason に COO 変更メモを追記
+    """
+    from datetime import datetime as _dt
+    from sqlalchemy import or_
+
+    targets = (
+        db.query(Transaction)
+        .filter(
+            Transaction.linked_product_code == body.product_code,
+            Transaction.status.in_(["in_review", "approved"]),
+        )
+        .all()
+    )
+
+    reset_ids: List[int] = []
+    for tx in targets:
+        tx.agent_judgment_status = None
+        tx.agent_judged_at       = None
+        tx.status                = "draft"
+        note = (
+            f"[COO変更 {_dt.utcnow().strftime('%Y-%m-%d')}] "
+            f"原産国変更 {body.old_country or '?'} → {body.new_country} により自動再審査"
+        )
+        tx.tier_reason = f"{tx.tier_reason}\n{note}" if tx.tier_reason else note
+        reset_ids.append(tx.id)
+
+    db.commit()
+    _logger.info(
+        "coo-changed product=%s %s→%s: reset %d transactions %s",
+        body.product_code, body.old_country, body.new_country,
+        len(reset_ids), reset_ids,
+    )
+    return {
+        "ok": True,
+        "product_code": body.product_code,
+        "old_country": body.old_country,
+        "new_country": body.new_country,
+        "reset_count": len(reset_ids),
+        "reset_transaction_ids": reset_ids,
+    }
+
+
 @router.post("/{tx_id}/supply-chain")
 def save_supply_chain_link(
     tx_id: int,
