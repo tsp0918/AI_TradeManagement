@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 import os as _os
 SCREENING_BASE         = _os.environ.get("MODULE_SCREENING_URL",         "http://localhost:8005")
 AI_CLASSIFICATION_BASE = _os.environ.get("MODULE_AI_CLASSIFICATION_URL", "http://localhost:8002")
+EXPORT_LICENSE_BASE    = _os.environ.get("MODULE_EXPORT_LICENSE_URL",    "http://localhost:8012")
 
 
 def _auto_screen(db: Session, tx: Transaction) -> None:
@@ -741,3 +742,78 @@ def run_screening(
         logger.warning("Screening call failed for tx %d: %s", transaction_id, exc)
 
     return RedirectResponse(url=f"/ui/transactions/{transaction_id}", status_code=303)
+
+
+# ──────────────────────────────────────────────
+# 輸出ライセンス管理 UI（export_license モジュール proxy）
+# ──────────────────────────────────────────────
+
+@router.get("/ui/export-licenses", response_class=HTMLResponse)
+def export_licenses_page(request: Request, db: Session = Depends(get_db)):
+    """輸出許可申請管理画面 — export_license モジュール (port 8012) のデータを表示。"""
+    licenses = []
+    stats = {}
+    error_msg = None
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            r_stats = client.get(f"{EXPORT_LICENSE_BASE}/api/export-licenses/stats")
+            r_list  = client.get(f"{EXPORT_LICENSE_BASE}/api/export-licenses?limit=100")
+        if r_stats.status_code == 200:
+            stats = r_stats.json()
+        if r_list.status_code == 200:
+            data = r_list.json()
+            licenses = data if isinstance(data, list) else data.get("items", data.get("licenses", []))
+    except Exception as exc:
+        error_msg = f"輸出ライセンス管理モジュールに接続できませんでした: {exc}"
+    templates = request.app.state.templates
+    return templates.TemplateResponse(
+        request, "export_licenses.html",
+        {"licenses": licenses, "stats": stats, "error_msg": error_msg},
+    )
+
+
+@router.post("/ui/export-licenses/draft", response_class=HTMLResponse)
+def create_license_draft(
+    request: Request,
+    transaction_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    """取引審査案件から輸出許可申請ドラフトを自動生成して一覧ページへ戻す。"""
+    tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="transaction not found")
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.post(
+                f"{EXPORT_LICENSE_BASE}/api/export-licenses/draft-from-transaction",
+                json={"transaction_id": transaction_id},
+            )
+        if r.status_code not in (200, 201):
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    return RedirectResponse(url="/ui/export-licenses", status_code=303)
+
+
+@router.post("/ui/export-licenses/{license_id}/approve")
+def approve_license(
+    license_id: str,
+    license_number: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    """輸出許可申請を承認し許可番号を記録する。"""
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.post(
+                f"{EXPORT_LICENSE_BASE}/api/export-licenses/{license_id}/approve",
+                json={"license_number": license_number},
+            )
+        if r.status_code not in (200, 201):
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    return RedirectResponse(url="/ui/export-licenses", status_code=303)

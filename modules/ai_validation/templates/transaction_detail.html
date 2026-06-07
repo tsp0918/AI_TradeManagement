@@ -89,7 +89,7 @@ async function createExportLicense(txId) {
   if (!r.ok) { alert('作成エラー: ' + r.status); return; }
   const d = await r.json();
   alert('✅ 輸出許可申請ドラフトを作成しました\nID: ' + d.id.slice(0,8));
-  window.open('/ui/export-license', '_blank');
+  window.open('/ui/export-licenses', '_blank');
 }
 </script>
 </div>

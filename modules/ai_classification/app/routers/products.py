@@ -36,8 +36,56 @@ from .bom_sync import sync_bom_to_supply_chain
 from ..services.external_app_client import ExternalAppClient
 
 from urllib.parse import quote_plus as _quote_plus
+import threading
+import os as _os
 
 router = APIRouter(tags=["products"])
+
+_SELF_BASE = _os.environ.get("MODULE_AI_CLASSIFICATION_URL", "http://localhost:8002")
+
+
+def _trigger_supplier_change_event(
+    product_code: str,
+    product_name: str,
+    old_component_codes: list[str],
+    new_component_codes: list[str],
+) -> None:
+    """BOM のサプライヤー（構成品）変化を item_version に非同期で通知する。
+
+    fire-and-forget — 失敗してもメインフローには影響しない。
+    """
+    added   = [c for c in new_component_codes if c not in old_component_codes]
+    removed = [c for c in old_component_codes if c not in new_component_codes]
+    if not added and not removed:
+        return
+
+    def _post():
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                # Step 1: Item を upsert して item_id を取得
+                r1 = client.post(
+                    f"{_SELF_BASE}/api/item-versions/items",
+                    json={"item_code": product_code, "name": product_name},
+                )
+                if r1.status_code not in (200, 201):
+                    return
+                item_id = r1.json().get("id")
+                if not item_id:
+                    return
+                # Step 2: 新バージョンを作成（supplier_ids 変化として記録）
+                client.post(
+                    f"{_SELF_BASE}/api/item-versions/items/{item_id}/versions",
+                    json={
+                        "supplier_ids":    new_component_codes,
+                        "change_category": "supplier_change",
+                        "change_reason":   f"BOM 更新: 追加={added}, 削除={removed}",
+                        "source_system":   "bom_sync",
+                    },
+                )
+        except Exception:
+            pass  # 非同期通知は silent fail
+
+    threading.Thread(target=_post, daemon=True).start()
 templates = Jinja2Templates(directory="templates")
 templates.env.filters["urlencode"] = lambda s: _quote_plus(str(s) if s is not None else "")
 
@@ -1322,6 +1370,17 @@ def bom_upload(
 
     bom_json_str = json.dumps(bom_items, ensure_ascii=False)
 
+    # サプライヤー変更検知: 更新前の構成品コード一覧
+    old_bom_items: list[dict] = []
+    if product.bom_json:
+        try:
+            old_bom_items = json.loads(product.bom_json)
+        except Exception:
+            pass
+    old_component_codes_csv = [
+        i.get("component_code", "") for i in old_bom_items if i.get("kind") == "material"
+    ]
+
     product.bom_json = bom_json_str
     if not product.std_price:
         product.std_price = total_cost
@@ -1344,6 +1403,17 @@ def bom_upload(
     db.add(history)
 
     db.commit()
+
+    # サプライヤー変更を item_version に非同期通知
+    new_component_codes_csv = [
+        i.get("component_code", "") for i in bom_items if i.get("kind") == "material"
+    ]
+    _trigger_supplier_change_event(
+        product_code=product.code or str(product.id),
+        product_name=product.name or "",
+        old_component_codes=old_component_codes_csv,
+        new_component_codes=new_component_codes_csv,
+    )
 
     # BOM を plat_supply_chain_node/edge に同期（sqlite_db を渡してECCNを品目マスタから引き継ぎ）
     try:
@@ -1405,6 +1475,12 @@ def bom_add_item(
         except Exception:
             items = []
 
+    # サプライヤー変更検知用: 更新前の構成品コード一覧を保持
+    old_component_codes = [
+        i.get("component_code", "")
+        for i in items if i.get("kind") == "material"
+    ]
+
     new_item: dict = {
         "kind": "material",
         "component_id": comp.id,
@@ -1422,6 +1498,18 @@ def bom_add_item(
 
     product.bom_json = json.dumps(items, ensure_ascii=False)
     db.commit()
+
+    # サプライヤー変更を item_version に非同期通知
+    new_component_codes = [
+        i.get("component_code", "")
+        for i in items if i.get("kind") == "material"
+    ]
+    _trigger_supplier_change_event(
+        product_code=product.code or str(product.id),
+        product_name=product.name or "",
+        old_component_codes=old_component_codes,
+        new_component_codes=new_component_codes,
+    )
 
     # SC 同期（非同期化しない — デモで即時反映が必要）
     try:

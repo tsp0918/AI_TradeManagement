@@ -90,7 +90,16 @@ class Transaction(Base, TimestampMixin):
     retention_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)      # 保存期限（+7年）
     destination_country: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)      # 仕向国 ISO alpha-2
     end_user_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)          # 最終需要者名
+    end_user_country: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)         # 最終需要者所在国 ISO alpha-2
     end_use_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)           # 最終用途
+
+    # ERP 連携フィールド（受注・出荷情報）
+    erp_case_no: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True) # ERP 側の受注番号（case_no と分離）
+    total_value_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)            # 取引総額 (USD)
+    unit_price_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)             # 単価 (USD)
+    quantity: Mapped[Optional[float]] = mapped_column(Float, nullable=True)                   # 数量
+    hs_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)                 # HSコード
+    incoterms: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)               # インコタームズ（CIF/FOB 等）
 
     items: Mapped[List["TransactionItem"]] = relationship(
         back_populates="transaction",

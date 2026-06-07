@@ -180,6 +180,14 @@ async def _ensure_columns() -> None:
                 ("linked_product_code",  "VARCHAR(64)"),    # 品目管理の product.code
                 ("linked_product_eccn",  "VARCHAR(32)"),    # 品目管理から取得したECCN
                 ("is_new_product_entry", "INTEGER"),        # 1=品目同時登録モード
+                # ERP 連携フィールド
+                ("end_user_country",     "VARCHAR(8)"),     # 最終需要者所在国 ISO alpha-2
+                ("erp_case_no",          "VARCHAR(64)"),    # ERP 側受注番号（case_no は内部管理番号）
+                ("total_value_usd",      "REAL"),           # 取引総額 (USD)
+                ("unit_price_usd",       "REAL"),           # 単価 (USD)
+                ("quantity",             "REAL"),           # 数量
+                ("hs_code",              "VARCHAR(20)"),    # HSコード
+                ("incoterms",            "VARCHAR(10)"),    # インコタームズ
             ]:
                 if col_name not in existing_tx:
                     conn.execute(text(f"ALTER TABLE transactions ADD COLUMN {col_name} {col_type}"))

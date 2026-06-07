@@ -252,7 +252,20 @@ class TransactionCreateRequest(BaseModel):
     destination_country: Optional[str] = None
     items: List[_ItemIn] = []
     usage_requirements: List[_UsageIn] = []
-    source_module: Optional[str] = None  # "dap" | "item_version" | etc.
+    source_module: Optional[str] = None  # "dap" | "item_version" | "erp" | etc.
+
+    # ERP 連携フィールド（任意）
+    erp_case_no: Optional[str] = None         # ERP 側受注番号（指定時は内部 case_no とは別に保存）
+    product_code: Optional[str] = None        # ai_classification の品目コード
+    product_name: Optional[str] = None        # 品目名（items 未指定時に自動補完）
+    total_value_usd: Optional[float] = None   # 取引総額 (USD)
+    unit_price_usd: Optional[float] = None    # 単価 (USD)
+    quantity: Optional[float] = None          # 数量
+    end_user: Optional[str] = None            # 最終需要者名
+    end_user_country: Optional[str] = None    # 最終需要者所在国 ISO alpha-2
+    intended_use: Optional[str] = None        # 最終用途（AI 判定品質向上のため推奨）
+    hs_code: Optional[str] = None             # HSコード
+    incoterms: Optional[str] = None           # インコタームズ（CIF/FOB 等）
 
 
 def _make_case_no_api() -> str:
@@ -273,20 +286,48 @@ def create_transaction_api(
 
     Returns: {id, case_no, title, status, url}
     """
+    # case_no: ERP が指定した場合はそれを使用、なければ自動生成
+    internal_case_no = _make_case_no_api()
     tx = Transaction(
-        case_no=_make_case_no_api(),
+        case_no=internal_case_no,
         title=body.title.strip() or "新規審査",
         status="draft",
         counterparty_name=body.counterparty_name.strip() if body.counterparty_name else None,
-        source_module=body.source_module or "dap",
+        source_module=body.source_module or ("erp" if body.erp_case_no else "dap"),
         org_id=x_org_id,
     )
     if body.destination_country:
         tx.destination_country = body.destination_country
+    # ERP フィールドのマッピング
+    if body.erp_case_no:
+        tx.erp_case_no = body.erp_case_no.strip()
+    if body.product_code:
+        tx.linked_product_code = body.product_code.strip()
+    if body.end_user:
+        tx.end_user_name = body.end_user.strip()
+    if body.end_user_country:
+        tx.end_user_country = body.end_user_country.strip().upper()
+    if body.intended_use:
+        tx.end_use_description = body.intended_use.strip()
+    if body.total_value_usd is not None:
+        tx.total_value_usd = body.total_value_usd
+    if body.unit_price_usd is not None:
+        tx.unit_price_usd = body.unit_price_usd
+    if body.quantity is not None:
+        tx.quantity = body.quantity
+    if body.hs_code:
+        tx.hs_code = body.hs_code.strip()
+    if body.incoterms:
+        tx.incoterms = body.incoterms.strip().upper()
     db.add(tx)
     db.flush()
 
-    for item in body.items:
+    # ERP の product_name を items に補完（items が空の場合）
+    effective_items = list(body.items)
+    if body.product_name and not any(i.item_name.strip() for i in effective_items):
+        effective_items.insert(0, _ItemIn(item_name=body.product_name))
+
+    for item in effective_items:
         if item.item_name.strip() or item.item_description.strip():
             ti = TransactionItem(
                 transaction_id=tx.id,
@@ -304,11 +345,21 @@ def create_transaction_api(
                         source=usage.source or "core",
                         text=usage.text.strip(),
                         risk_tags=[],
-                        created_by="dap",
+                        created_by="erp" if body.erp_case_no else "dap",
                     ))
-            break  # 現状は先頭1品目のみ
+            # intended_use を UsageRequirement として自動登録
+            if body.intended_use and not body.usage_requirements:
+                db.add(UsageRequirement(
+                    transaction_id=tx.id,
+                    transaction_item_id=ti.id,
+                    source="core",
+                    text=body.intended_use.strip(),
+                    risk_tags=[],
+                    created_by="erp",
+                ))
+            break  # 先頭1品目のみ
 
-    if not body.items or not any(i.item_name.strip() for i in body.items):
+    if not effective_items or not any(i.item_name.strip() for i in effective_items):
         # 品目なしでも UsageRequirement だけ追加
         for usage in body.usage_requirements:
             if usage.text.strip():
@@ -318,7 +369,7 @@ def create_transaction_api(
                     source=usage.source or "core",
                     text=usage.text.strip(),
                     risk_tags=[],
-                    created_by="dap",
+                    created_by="erp" if body.erp_case_no else "dap",
                 ))
 
     try:
@@ -339,8 +390,10 @@ def create_transaction_api(
     return {
         "id":                tx.id,
         "case_no":           tx.case_no,
+        "erp_case_no":       tx.erp_case_no,
         "title":             tx.title,
         "status":            tx.status,
+        "linked_product_code": tx.linked_product_code,
         "url":               f"{_BASE}/ui/transactions/{tx.id}",
         "screening_queued":  bool(tx.counterparty_name),
     }

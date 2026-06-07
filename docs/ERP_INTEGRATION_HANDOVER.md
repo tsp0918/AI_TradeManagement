@@ -1,7 +1,7 @@
 # AI Trade Management — ERP 連携インターフェース引き継ぎ書
 
 **作成日**: 2026-06-03  
-**対象システム**: AI Trade Management Platform v2.4  
+**対象システム**: AI Trade Management Platform v2.5  
 **作成者**: 安全保障貿易管理チーム  
 **宛先**: ERP 開発担当チーム
 
@@ -287,32 +287,41 @@ POST http://localhost:8011/api/transactions
 **リクエスト本文:**
 ```json
 {
-  "case_no": "ERP-TX-2026-0123",      // ERP 受注番号・案件番号
+  "title": "ERP-PRODUCT-001 → Shanghai Tech Co. 向け出荷審査",  // 必須
   "counterparty_name": "Shanghai Tech Co., Ltd.",
   "destination_country": "CN",
-  "product_code": "ERP-PRODUCT-001",
+
+  // ERP 連携フィールド（任意・v2.5 で追加）
+  "erp_case_no": "ERP-TX-2026-0123",   // ERP 側の受注番号（内部 case_no とは別管理）
+  "product_code": "ERP-PRODUCT-001",   // ai_classification の品目コード
   "product_name": "精密センサーユニット A型",
-  "product_id": 51,                    // ai_classification の品目ID
   "quantity": 10,
   "unit_price_usd": 5000.0,
   "total_value_usd": 50000.0,
-  "intended_use": "工場自動化向けセンシングシステム",
+  "intended_use": "工場自動化向けセンシングシステム",  // AI 判定品質向上のため強く推奨
   "end_user": "Shanghai Auto Factory",
   "end_user_country": "CN",
   "incoterms": "CIF",
-  "hs_code": "9025190040"
+  "hs_code": "9025190040",
+  "source_module": "erp"
 }
 ```
+
+> **フィールド注意**: `erp_case_no` と内部 `case_no` は別フィールドです。  
+> 内部 `case_no` は自動生成（`API-YYYYMMDD-XXXX`）され、ポーリング用の一意キーになります。  
+> ERP 側の受注番号は `erp_case_no` に格納し、レスポンスで返ります。
 
 **レスポンス:**
 ```json
 {
   "id": 62,
-  "case_no": "ERP-TX-2026-0123",
-  "status": "pending",
-  "catchall_status": null,
-  "ai_status": null,
-  "created_at": "2026-06-03T01:00:00"
+  "case_no": "API-20260603-4821",       // 内部管理番号（ポーリングキー）
+  "erp_case_no": "ERP-TX-2026-0123",   // ERP 側受注番号（echo back）
+  "title": "ERP-PRODUCT-001 → Shanghai Tech Co. 向け出荷審査",
+  "status": "draft",
+  "linked_product_code": "ERP-PRODUCT-001",
+  "url": "https://validation.tsp-aitrademanagement.com/ui/transactions/62",
+  "screening_queued": true              // counterparty_name があれば自動スクリーニング開始
 }
 ```
 
@@ -541,6 +550,17 @@ GET http://localhost:8012/api/export-licenses/{id}/balance
 }
 ```
 
+#### 3-5-3. 輸出許可申請管理 UI
+
+輸出許可申請の管理画面は ai_validation モジュールの UI に統合されています。
+
+| URL | 用途 |
+|---|---|
+| `https://validation.tsp-aitrademanagement.com/ui/export-licenses` | 申請一覧・統計・承認操作 |
+| 取引審査詳細 > 「📋 輸出許可申請」ボタン | 取引から自動ドラフト生成 |
+
+ERP 側が UI を使わずに申請を作成・照会する場合は §3-5-1/3-5-2 の API を直接呼び出してください。
+
 ---
 
 ## 4. ERP 連携フロー図
@@ -556,6 +576,10 @@ ERP 品目マスター更新
     │       （TH/VN/ID/MY/SG等のASEAN + JP/US/CN/KR）
     │
     └─ POST /products/{id}/bom      → BOM 部材登録（US由来部材の把握）
+            ↓ 自動実行（v2.5 追加）
+            構成品（サプライヤー）の変化を検知した場合:
+            → item_version に supplier_change イベントを自動作成
+            → ComplianceChangeEvent が生成（GET /api/item-versions/events で確認可）
 ```
 
 ### フロー B: 受注時 輸出審査起票
@@ -732,6 +756,7 @@ GET http://localhost:{port}/health
 |---|---|---|
 | 2026-06-03 | v2.3 | 初版作成。Personnel JSON API 追加、ASEAN 対応国拡充（5→17カ国）、Red Flag 連携フロー追加 |
 | 2026-06-03 | v2.4 | アーキテクチャ図に export_license (8012) / trade_gate (8013) / fta_origin (8014) を追加。Webhook コールバック仕様を詳細化（callback_webhook フィールド・レスポンス形式・3リトライ）。環境変数セクション（§7-0）を新設。モジュール URL 表に Cloudflare Tunnel ドメインを追加。 |
+| 2026-06-07 | v2.5 | **① POST /api/transactions ERP フィールド拡張**: `erp_case_no` / `product_code` / `product_name` / `total_value_usd` / `unit_price_usd` / `quantity` / `end_user` / `end_user_country` / `intended_use` / `hs_code` / `incoterms` を追加。内部 `case_no` と `erp_case_no` を分離。**② 輸出許可申請管理 UI**: ai_validation の `/ui/export-licenses` に一覧・承認・ドラフト作成 UI を追加。**③ BOM サプライヤー変更連携**: BOM 更新時に構成品コード差分を検出し `supplier_change` ComplianceChangeEvent を自動作成。 |
 
 ---
 
@@ -744,5 +769,5 @@ GET http://localhost:{port}/health
 
 ---
 
-*このドキュメントは AI Trade Management Platform v2.4 のAPI仕様に基づきます。*  
+*このドキュメントは AI Trade Management Platform v2.5 のAPI仕様に基づきます。*  
 *APIの最新仕様は各モジュールの `http://localhost:{port}/docs` で確認できます。*
