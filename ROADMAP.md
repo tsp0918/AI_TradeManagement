@@ -785,6 +785,8 @@ lsof | grep ".db$" | grep -v ".venv"
 | ✅ | **DAP Phase 1-4: 先輩担当者モード完全強化（2026-05-30）** | UC定義外部化(9UC)・fill_field_from_context・4段階フィールドマッチ・デモモード（DEMO1/DEMO2・typewriterFill・pause/fill_demo）|
 | ✅ | **品目管理 UI リデザイン + EPA/FTA対応（2026-05-31）** | sticky セーブバー・ブロック順序最適化（基本情報→該非判定→BOM→国別プロファイル）・GHS折り畳み・外部AI判定2カラム化・国別HSサマリーテーブル・epa_tariff_rate/epa_agreement DB追加・DEMO3完成 |
 | ✅ | **DAP Intake 3モード拡張（2026-05-31）** | 品目登録ヒアリング（product_registration）・R&D起案ヒアリング（rnd_project）追加。POST /api/products JSON エンドポイント新設。`_detect_intake_mode()` でメッセージから自動判別 → モード別システムプロンプト・action_plan・完了後ナビゲーション |
+| ✅ | **ERP連携 v2.5 全機能実装（2026-06-07）** | TransactionCreateRequest v2.5（erp_case_no等11フィールド）・judgment正規化フィールド（APPROVED/NEEDS_REVIEW/REQUIRES_PERMIT/REJECTED/PENDING）・GET /api/transactions/search erp_case_no検索・POST webhook/judgment-updated ERP Webhook受信・GET pending-erp ERPポーリング・POST /api/export-licenses/draft-from-transaction プロキシ・requires_permit確定時export_licenseドラフト自動生成・base.htmlナビ「輸出許可申請」追加 |
+| ✅ | **ERP_INTEGRATION_HANDOVER.md v2.5改訂（2026-06-07）** | ERP視点(v1.1)とAI_TM v2.5を統合。CRITICAL: BLOCKED_JUDGMENTS修正手順・case_noフォーマット・v2.5リクエストスキーマ全面更新 |
 | ★★★☆☆ | 制裁リスト全量同期 | OFAC SDN URL変更対応済。Trade.gov API キー取得で BIS EL 完全収録（現在 watchlist 15件のみ）|
 
 ---
@@ -819,7 +821,7 @@ platform-core の責務 = インフラ・接着剤
 
 | # | 抽出元（platform-core） | 新モジュール | ポート | 状態 |
 |---|----------------------|------------|--------|------|
-| 6B-1 | `routers/export_license.py` (762行) | `export_license` | 8012 | ⬜ 未着手 |
+| 6B-1 | `routers/export_license.py` (762行) | `export_license` | 8012 | ✅ 完了（ai_validation proxy・ERP連携・自動ドラフト生成済み）|
 | 6B-2 | `routers/fta.py` (397行) | `fta_origin` | 8014 | ⬜ 未着手 |
 
 ### Phase 6C — 低優先度（ERP連携成熟後に抽出）
