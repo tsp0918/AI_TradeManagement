@@ -781,6 +781,27 @@ def export_licenses_page(request: Request, db: Session = Depends(get_db)):
     )
 
 
+@router.post("/api/export-licenses/draft-from-transaction")
+def create_license_draft_api(
+    body: Dict,
+    db: Session = Depends(get_db),
+):
+    """transaction_detail.html の JS fetch 用 JSON API プロキシ。export_license:8012 に転送する。"""
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.post(
+                f"{EXPORT_LICENSE_BASE}/api/export-licenses/draft-from-transaction",
+                json=body,
+            )
+        if r.status_code not in (200, 201):
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
 @router.post("/ui/export-licenses/draft", response_class=HTMLResponse)
 def create_license_draft(
     request: Request,

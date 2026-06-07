@@ -459,6 +459,102 @@ def get_stuck_transactions(
     return {"stuck_transactions": stuck, "total": len(stuck)}
 
 
+# ── ERP Webhook 受信 ─────────────────────────────────────────────
+
+_ERP_WEBHOOK_URL = _os.environ.get("ERP_WEBHOOK_URL", "")
+
+
+class _WebhookPayload(BaseModel):
+    """ERP が AI_TM に送信する審査結果通知ペイロード（オプション）。"""
+    event: str = "judgment_updated"
+    erp_case_no: Optional[str] = None
+    transaction_id: Optional[int] = None
+    judgment: Optional[str] = None          # ERP 側の正規化値
+    agent_judgment_status: Optional[str] = None
+    comment: Optional[str] = None
+
+
+@router.post("/webhook/judgment-updated")
+def receive_erp_webhook(
+    payload: _WebhookPayload,
+    db: Session = Depends(get_db),
+    x_org_id: Optional[str] = Header(None, alias="X-Organization-Id"),
+) -> Dict[str, Any]:
+    """
+    ERP → AI_TM への Webhook 受信。
+    ERP が自社システムで判定ステータスを更新した際に通知する（将来拡張用）。
+    現状は受信ログを残し、erp_case_no で取引を特定して comment を保存する。
+    """
+    tx: Optional[Transaction] = None
+    if payload.transaction_id:
+        tx = db.query(Transaction).filter(Transaction.id == payload.transaction_id).first()
+    if tx is None and payload.erp_case_no:
+        tx = db.query(Transaction).filter(
+            Transaction.erp_case_no == payload.erp_case_no
+        ).order_by(desc(Transaction.created_at)).first()
+
+    if tx is None:
+        _logger.warning("webhook received but transaction not found: %s", payload.dict())
+        return {"ok": False, "detail": "transaction not found"}
+
+    _logger.info(
+        "ERP webhook received: tx=%d erp_case_no=%s judgment=%s",
+        tx.id, payload.erp_case_no, payload.judgment,
+    )
+    return {
+        "ok": True,
+        "transaction_id": tx.id,
+        "case_no": tx.case_no,
+        "erp_case_no": tx.erp_case_no,
+        "current_judgment": _normalize_judgment(tx.status, tx.agent_judgment_status),
+    }
+
+
+# ── ERP ポーリング用：PENDING 案件一覧 ──────────────────────────
+
+@router.get("/pending-erp")
+def get_pending_erp_transactions(
+    limit: int = Query(default=50, le=200),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    ERP ポーリングジョブ向け。
+    erp_case_no が設定されていて judgment が PENDING（未判定）の案件を返す。
+    ERP は 30 分おきにこのエンドポイントをポーリングして判定完了を検知する。
+    """
+    txs = (
+        db.query(Transaction)
+        .filter(
+            Transaction.erp_case_no.isnot(None),
+            Transaction.erp_case_no != "",
+        )
+        .order_by(desc(Transaction.created_at))
+        .limit(limit)
+        .all()
+    )
+
+    results = []
+    for tx in txs:
+        j = _normalize_judgment(tx.status, tx.agent_judgment_status)
+        results.append({
+            "id": tx.id,
+            "case_no": tx.case_no,
+            "erp_case_no": tx.erp_case_no,
+            "status": tx.status,
+            "judgment": j,
+            "agent_judgment_status": tx.agent_judgment_status,
+            "is_pending": j == "PENDING",
+            "updated_at": tx.updated_at.isoformat(),
+        })
+
+    pending_count = sum(1 for r in results if r["is_pending"])
+    return {
+        "results": results,
+        "total": len(results),
+        "pending_count": pending_count,
+    }
+
+
 # ── 判定ステータス正規化 (ERP 向け) ──────────────────────────────
 # /api/transactions/search は ui.py に実装済み（erp_case_no / q / 直近20件をサポート）
 

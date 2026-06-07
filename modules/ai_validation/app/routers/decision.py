@@ -1,6 +1,8 @@
+import threading
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -10,7 +12,33 @@ from app.db.models.transaction import Transaction, TransactionItem, UsageRequire
 from app.services.two_list import compute_two_lists
 from app.services.pipeline.orchestrator import run_until_matrix_match
 
+import os as _os
+_EXPORT_LICENSE_BASE = _os.environ.get("MODULE_EXPORT_LICENSE_URL", "http://localhost:8012")
+
 router = APIRouter(prefix="/decision", tags=["decision"])
+
+
+def _auto_create_license_draft(tx_id: int, tx_case_no: str, product_code: str | None,
+                                dest_country: str | None, end_use: str | None) -> None:
+    """
+    judgment=requires_permit 確定時に export_license モジュールへドラフトを自動作成する。
+    fire-and-forget スレッドで実行（失敗しても審査フローは止めない）。
+    """
+    def _post():
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                client.post(
+                    f"{_EXPORT_LICENSE_BASE}/api/export-licenses/draft-from-transaction",
+                    json={
+                        "transaction_id": tx_id,
+                        "transaction_ids": [str(tx_id)],
+                        "auto_created": True,
+                        "reason": "requires_permit",
+                    },
+                )
+        except Exception:
+            pass
+    threading.Thread(target=_post, daemon=True).start()
 
 
 @router.get("/{transaction_id}/faiss-candidates")
@@ -319,6 +347,17 @@ def save_agent_judgment(
         tx.status = TransactionStatus.in_review.value
 
     db.commit()
+
+    # requires_permit 確定時: export_license モジュールへドラフトを自動作成
+    if body.overall_status == "requires_permit":
+        _auto_create_license_draft(
+            tx_id=transaction_id,
+            tx_case_no=tx.case_no,
+            product_code=tx.linked_product_code,
+            dest_country=tx.destination_country,
+            end_use=tx.end_use_description,
+        )
+
     return {
         "ok": True,
         "transaction_id": transaction_id,
