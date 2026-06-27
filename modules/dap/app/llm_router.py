@@ -42,6 +42,9 @@ SIMPLE_KEYWORDS: frozenset[str] = frozenset([
     "保存", "登録する方法", "作成する方法",
     "ボタンはどこ", "クリック", "押せば",
     "この画面で何", "ここで何", "どの画面",
+    # チュートリアル固有キーワード
+    "このフィールド", "何を入力", "入力例", "記入例", "スキップ",
+    "前に戻", "次へ", "このステップ", "どう入力", "何の項目",
 ])
 
 # これに一致 → Sonnet へ直接 (規制判断・法令解釈・リスク評価)
@@ -235,3 +238,80 @@ def _validate_response(raw: str) -> None:
     choices = data.get("choices", [])
     if len(choices) < 2:
         raise ValueError(f"choices が 2件未満: {len(choices)}件")
+
+
+# ── チュートリアルモード専用生成関数 ──────────────────────────────────────────
+# 通常チャットとの違い:
+#   - プレーンテキスト返却（JSON actions/choices 不要）
+#   - Ollama: max 150 tok / Claude: max 350 tok
+#   - コンテキストはステップ情報のみ（full page state を除外）
+
+_TUTORIAL_LOCAL_SYSTEM = """\
+あなたは輸出管理コンプライアンスシステムのチュートリアルアシスタントです。
+ユーザーが特定の操作ステップを実行中に質問しています。
+80字以内の口語体日本語で、操作手順に関する具体的なアドバイスを返してください。
+マークダウン・記号・改行は使わないこと。"""
+
+_TUTORIAL_SONNET_SYSTEM = """\
+あなたは輸出管理コンプライアンスシステムの専門アシスタントです。
+ユーザーがチュートリアルを実行中に規制・コンプライアンスの質問をしています。
+120字以内の日本語で、正確かつ実務的な回答をしてください。
+マークダウンは使わないこと。"""
+
+
+async def generate_tutorial_local(message: str, step_ctx: str) -> str:
+    """
+    Ollama でチュートリアル Q&A に回答する（max 150 tok）。
+
+    Returns:
+        プレーンテキスト回答文字列
+
+    Raises:
+        RuntimeError: Ollama 未起動または生成失敗
+    """
+    if not _ollama_available or _ollama_client is None:
+        raise RuntimeError("Ollama 未起動")
+
+    user_msg = f"{step_ctx}\n\nユーザーの質問: {message}"
+
+    try:
+        resp = _ollama_client.chat(
+            model=_LOCAL_MODEL,
+            messages=[
+                {"role": "system", "content": _TUTORIAL_LOCAL_SYSTEM},
+                {"role": "user",   "content": user_msg},
+            ],
+            options={"temperature": 0.1, "num_predict": 150},
+        )
+        return (resp.message.content or "").strip()
+    except Exception as e:
+        raise RuntimeError(f"tutorial local生成失敗: {e}") from e
+
+
+async def generate_tutorial_sonnet(message: str, step_ctx: str) -> str:
+    """
+    Claude Sonnet でチュートリアル Q&A に回答する（max 350 tok）。
+    通常チャットの約 65% のトークンで処理する。
+
+    Returns:
+        プレーンテキスト回答文字列
+
+    Raises:
+        Exception: API エラー
+    """
+    import anthropic
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY 未設定")
+
+    client = anthropic.Anthropic(api_key=api_key)
+    user_msg = f"{step_ctx}\n\nユーザーの質問: {message}"
+
+    msg = client.messages.create(
+        model=os.environ.get("DEFAULT_LLM_MODEL", "claude-sonnet-4-6"),
+        max_tokens=350,
+        system=_TUTORIAL_SONNET_SYSTEM,
+        messages=[{"role": "user", "content": user_msg}],
+    )
+    return (msg.content[0].text if msg.content else "").strip()

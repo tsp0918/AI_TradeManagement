@@ -22,6 +22,8 @@ from .utils import stable_etag
 from .seed import seed_if_empty, ensure_new_apps
 from .routers import chat as chat_router
 from .routers import workflow as workflow_router
+from .routers import tutorial as tutorial_router
+from .routers import ux_events as ux_events_router
 
 MODULE = ModuleInfo(
     key="dap",
@@ -78,6 +80,8 @@ templates = Jinja2Templates(directory="app/templates")
 app.include_router(health_router)
 app.include_router(chat_router.router)
 app.include_router(workflow_router.router)
+app.include_router(tutorial_router.router)
+app.include_router(ux_events_router.router)
 
 # ─────────────────── Admin UI ────────────────────────────────────────────────
 

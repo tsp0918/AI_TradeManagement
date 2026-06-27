@@ -1,4 +1,5 @@
 from platform_core.models.audit import AuditLog, LlmUsageLog
+from platform_core.models.ux_event import UxEvent  # noqa: F401
 # Ontology ORM models (register with PlatformBase.metadata for Alembic)
 from platform_core.ontology.db.schema import (  # noqa: F401
     HanteiKubanbangORM,
@@ -49,4 +50,5 @@ __all__ = [
     "FtaAgreement",
     "FtaRate",
     "ImportProfile",
+    "UxEvent",
 ]

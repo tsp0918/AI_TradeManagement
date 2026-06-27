@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import DapChatConfig
+from ..models import DapChatConfig, DapChatLog
 
 _PLATFORM_URL = os.environ.get("MODULE_PLATFORM_URL", "http://localhost:8000")
 
@@ -152,6 +152,35 @@ def _save_session(session_id: str, data: dict) -> None:
     _SESSION_STORE.move_to_end(session_id)
     while len(_SESSION_STORE) > _SESSION_MAX:
         _SESSION_STORE.popitem(last=False)
+
+
+def _log_chat_turn(
+    db: Session,
+    session_id: str | None,
+    user_message: str,
+    assistant_reply: str,
+    context: dict,
+    actions: list,
+    intake_mode: str | None = None,
+) -> None:
+    if not session_id:
+        return
+    try:
+        turn_num = db.query(DapChatLog).filter(DapChatLog.session_id == session_id).count() + 1
+        page_ctx = {k: v for k, v in context.items() if not k.startswith("_")}
+        log = DapChatLog(
+            session_id=session_id,
+            turn_num=turn_num,
+            user_message=user_message[:4000],
+            assistant_reply=assistant_reply[:4000],
+            page_context=page_ctx,
+            actions=actions,
+            intake_mode=intake_mode,
+        )
+        db.add(log)
+        db.commit()
+    except Exception:
+        db.rollback()
 
 
 # ── Pydantic スキーマ ────────────────────────────────────────────────
@@ -899,6 +928,11 @@ def _is_demo_trigger(message: str) -> tuple[bool, str]:
 
 
 # ── ヒアリングモード: トリガーキーワード ──────────────────────────────────────
+_ECCN_INTAKE_TRIGGERS = [
+    "ECCN", "該非判定", "該非確認", "規制対象か", "規制対象を確認",
+    "外為法に引っかかる", "輸出規制を確認", "品目判定", "対話で判定",
+    "NeuroSymbolic", "列規制",
+]
 _INTAKE_TRIGGERS = [
     "新規案件", "案件を登録", "輸出案件", "ヒアリング", "相談",
     "案件を作", "登録したい", "輸出したい", "どこから始め",
@@ -916,6 +950,8 @@ _RND_INTAKE_TRIGGERS = [
 
 def _detect_intake_mode(message: str) -> str | None:
     """メッセージから Intake モードを検出する。None = Intake 不要"""
+    if any(kw in message for kw in _ECCN_INTAKE_TRIGGERS):
+        return "eccn_judgment"
     if any(kw in message for kw in _PRODUCT_INTAKE_TRIGGERS):
         return "product_registration"
     if any(kw in message for kw in _RND_INTAKE_TRIGGERS):
@@ -951,6 +987,14 @@ def _init_intake_state(mode: str = "export_transaction") -> dict:
             "end_users":           None,  # 研究者名／機関
             "foreign_researchers": None,  # 外国籍研究者の有無
             "tech_sensitivity":    None,  # public/controlled/restricted
+        }
+    if mode == "eccn_judgment":
+        return {**base,
+            "product_name":        None,  # 品目名/型番
+            "product_description": None,  # 技術仕様・性能数値
+            "declared_usage":      None,  # 用途（工程/装置/最終使用）
+            "destination_country": None,
+            "end_user":            None,
         }
     # export_transaction（既存動作）
     return {**base,
@@ -1063,6 +1107,48 @@ def _build_intake_system_prompt(intake: dict) -> str:
 【ルール】
 - reply: 口語体日本語。150字以内。先輩が後輩に話すような自然なトーン。
 - 必ず1つの核心的な質問か確認で終わる
+- choices は次の回答候補を2〜3件提示"""
+
+    # ────────── ECCN 該非判定モード ────────────────────────────────────
+    if mode == "eccn_judgment":
+        filled = []
+        if intake.get("product_name"):        filled.append(f"品目名/型番: {intake['product_name']}")
+        if intake.get("product_description"): filled.append(f"仕様: {intake['product_description'][:100]}...")
+        if intake.get("declared_usage"):      filled.append(f"用途: {intake['declared_usage'][:100]}...")
+        if intake.get("destination_country"): filled.append(f"仕向国: {intake['destination_country']}")
+        if intake.get("end_user"):            filled.append(f"需要者: {intake['end_user']}")
+        filled_block = "\n".join(f"  ✓ {f}" for f in filled) if filled else "  （まだヒアリング開始前）"
+        return f"""あなたは輸出管理コンプライアンス部門の先輩担当者です。
+後輩が品目の外為法/EAR規制該否（ECCN判定）を確認しようとしています。
+NeuroSymbolicエージェントによる対話形式判定を行う前に、品目の基本情報をヒアリングしてください。
+
+【重要ルール】
+- 業界・用途を先入観で決めつけない。ユーザーが述べた情報だけを使う
+- 半導体・軍事・化学などの特定業界を前提にした質問は絶対にしない
+- 品目名を聞いた後は、その品目に適した追加質問を考える
+
+【収集すべき情報（必須 3項目）】
+1. 品目名または型番（例: 「光学レンズ EX-200」「真空ポンプ VP-50L」「解析ソフトウェア」）
+2. 主な技術仕様・性能（品目の特徴を数値・機能で具体的に）
+3. 申告用途（誰が・どの工程で・何のために使うか）
+
+【任意で確認（判定精度向上）】
+- 仕向国・需要者名（判明している場合）
+
+【完了条件】
+品目名・技術仕様・用途の3項目が揃ったとき。
+完了時は is_intake_complete=true を設定する（action_plan は不要）。
+
+【現在のヒアリング状況】
+収集済み情報:
+{filled_block}
+
+ターン数: {intake.get('turn_count', 0)} / 4（目標完了ターン数）
+
+【ルール】
+- reply: 口語体日本語。120字以内。先輩が後輩に話すような自然なトーン。
+- 品目名が判明したら、その品目に関係する具体的な質問をすること（半導体前提・軍事前提は禁止）
+- 必ず1つの核心的な質問で終わる
 - choices は次の回答候補を2〜3件提示"""
 
     # ────────── 輸出案件モード（既存）──────────────────────────────────
@@ -1196,8 +1282,7 @@ _RESPOND_INTAKE_TOOL = {
                         "action_type": {"type": "string",
                                         "enum": ["create_transaction", "run_screening",
                                                  "run_ai_validation", "create_product",
-                                                 "create_rnd_case", "start_agent",
-                                                 "navigate_to", "manual"],
+                                                 "create_rnd_case", "navigate_to", "manual"],
                                         "description": "実行するアクション種別"},
                         "params":      {"type": "object", "description": "アクション実行パラメータ"},
                     },
@@ -1606,17 +1691,14 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 - 輸出案件ヒアリング: 「新規案件」「輸出したい」「ヒアリングして」「相談したい」→ AI取引審査に案件を自動作成
 - 品目登録ヒアリング: 「品目を登録したい」「新しい品目を追加したい」→ 品目管理に品目を自動作成
 - R&D起案ヒアリング: 「R&D起案したい」「研究プロジェクトを登録」「みなし輸出の相談」→ R&D評価システムに案件を自動作成
+- ECCN該非判定: 「該非判定したい」「ECCN確認」「規制対象か確認」→ 品目情報を収集後にNeuroSymbolicエージェントで判定
 ヒアリング開始後は専用AIが引き継ぎ、必要情報をすべて収集するまで対話を続ける。
 
-【NeuroSymbolic 該非判定エージェント（重要機能）】
-- ユーザーが以下のような意図を示した場合、actions に {{"type": "start_agent", ...}} を含める:
-  「該非判定したい」「規制対象か確認したい」「輸出できるか確認したい」「外為法に引っかかるか」
-  「NeuroSymbolicエージェント」「対話形式で判定」「AI質問形式で判定」など
-- initial_query にはユーザーが述べた品目・仕様・取引に関する情報をそのまま渡す（日本語可）
-- transaction_id はコンテキストから判断できる場合のみ数値で設定（不明な場合は省略）
-- start_agent を含む場合の reply は「これから〇〇について確認していきます」という自然な誘導文にする
-- エージェントが起動すると、以降の返答はシステムが生成し、ユーザーは自由に日本語・英語で回答できる
-- ユーザーが明示的な専門用語（"civilian"等）を知らなくても構わない。システムが自動的に解釈する
+【ECCN 該非判定について】
+- ユーザーが「該非判定したい」「ECCN確認したい」「規制対象か確認したい」などと言った場合：
+  reply で「まず品目の情報をお聞きします」と案内し、choices に「品目情報を入力する」を含める
+- 該非判定はヒアリングモードが自動起動するので、actions に start_agent は含めない
+- 判定中は専門知識AIが順に質問するので、ユーザーはその都度回答すればよいと説明する
 
 【ユースケース別ナビゲーションガイド — 業務完結まで伴走する】
 
@@ -1763,21 +1845,18 @@ A: 海外拠点（例：欧州子会社）からの輸出であっても、日�
 Q: BOM管理でサプライヤーから情報が取れない場合は？
 A: サプライヤーポータルのURL発行機能（UC7 Step1）でサプライヤーに申告書提出を依頼できます。提出期限を設定して催促することも重要です。情報が取得できない場合は「最悪ケース仮定」（全て規制対象と仮定）でDe Minimisを計算し、リスクが高ければ代替部品の調達を検討してください。
 
-【NeuroSymbolic 該非判定エージェント（重要機能）】
-- ユーザーが以下のような意図を示した場合、actions に {{"type": "start_agent", ...}} を含める:
-  「該非判定したい」「規制対象か確認したい」「輸出できるか確認したい」「外為法に引っかかるか」
-  「NeuroSymbolicエージェント」「対話形式で判定」「AI質問形式で判定」など
-- initial_query にはユーザーが述べた品目・仕様・取引に関する情報をそのまま渡す（日本語可）
-- transaction_id はコンテキストから判断できる場合のみ数値で設定（不明な場合は省略）
-- start_agent を含む場合の reply は「これから〇〇について確認していきます」という自然な誘導文にする
-- エージェントが起動すると、以降の返答はシステムが生成し、ユーザーは自由に日本語・英語で回答できる
-- ユーザーが明示的な専門用語（"civilian"等）を知らなくても構わない。システムが自動的に解釈する
+【ECCN 該非判定について】
+- ユーザーが「該非判定したい」「ECCN確認したい」「規制対象か確認したい」などと言った場合：
+  reply で「まず品目の情報をお聞きします」と案内し、choices に「品目情報を入力する」を含める
+- 該非判定はヒアリングモードが自動起動するので、actions に start_agent は含めない
+- 判定中は専門知識AIが順に質問するので、ユーザーはその都度回答すればよいと説明する
 
-【対話ヒアリング機能（Intake）— 3モード】
+【対話ヒアリング機能（Intake）— 4モード】
 ユーザーが以下のような言葉を発したとき、DAPは対話形式でヒアリングを開始し、必要情報を収集してシステムに自動登録する。
 - 輸出案件ヒアリング: 「新規案件」「輸出したい」「ヒアリングして」「相談したい」→ AI取引審査に案件を自動作成
 - 品目登録ヒアリング: 「品目を登録したい」「新しい品目を追加したい」→ 品目管理に品目を自動作成
 - R&D起案ヒアリング: 「R&D起案したい」「研究プロジェクトを登録」「みなし輸出の相談」→ R&D評価システムに案件を自動作成
+- ECCN該非判定: 「該非判定したい」「ECCN確認」「規制対象か確認」→ 品目情報を収集後にNeuroSymbolicエージェントで判定
 ヒアリング開始後は専用AIが引き継ぎ、必要情報をすべて収集するまで対話を続ける。
 
 【ルール】
@@ -2026,9 +2105,9 @@ def _format_judge_result(judge_data: dict) -> tuple[str, list[dict]]:
         lines.append("一部項目について追加情報の収集または専門家への確認をお勧めします。")
 
     choices = [
-        {"label": "判定結果の詳細を確認",   "message": "判定結果の詳細と根拠を詳しく説明してください"},
+        {"label": "判定根拠を確認",         "message": "今の判定結果の詳細と根拠を教えてください"},
         {"label": "許可申請の手続きを確認", "message": "輸出許可申請はどのように進めればよいですか"},
-        {"label": "別の品目を判定する",     "message": "新しい品目で該非判定エージェントを起動したい"},
+        {"label": "別の品目を判定する",     "message": "別の品目のECCN判定をしたいです"},
     ]
     return "\n".join(lines), choices
 
@@ -2079,8 +2158,8 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
                 reply="該非判定を終了しました。いつでも再開できます。何か他にお手伝いできることがあればお気軽にどうぞ。",
                 actions=[],
                 choices=[
-                    {"label": "新規判定",     "message": "新しい品目で該非判定エージェントを起動したい"},
-                    {"label": "通常操作へ戻る", "message": "次にすることを教えてください"},
+                    {"label": "別の品目を判定", "message": "別の品目のECCN判定をしたいです"},
+                    {"label": "通常操作へ戻る",  "message": "次にすることを教えてください"},
                 ],
             )
 
@@ -2336,15 +2415,54 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
                 {"label": "わからない", "message": "この項目はよくわかりません"},
             ]
 
-        # ヒアリング完了 → 確認待ちに移行
-        if is_complete and action_plan:
-            intake_state["awaiting_confirm"] = True
-            intake_state["pending_action_plan"] = action_plan
-            result_choices = [
-                {"label": "はい、実行する", "message": "はい、実行してください"},
-                {"label": "修正したい",     "message": "内容を修正したいです"},
-                {"label": "キャンセル",     "message": "キャンセルします"},
-            ]
+        # ヒアリング完了 → eccn_judgment は直接エージェント起動、他は確認待ち
+        if is_complete:
+            if intake_state.get("mode") == "eccn_judgment" and req.session_id:
+                # 収集した品目情報からクエリを構築してエージェントセッションを開始
+                parts = []
+                if intake_state.get("product_name"):
+                    parts.append(f"品目: {intake_state['product_name']}")
+                if intake_state.get("product_description"):
+                    parts.append(f"仕様: {intake_state['product_description']}")
+                if intake_state.get("declared_usage"):
+                    parts.append(f"用途: {intake_state['declared_usage']}")
+                if intake_state.get("destination_country"):
+                    parts.append(f"仕向国: {intake_state['destination_country']}")
+                if intake_state.get("end_user"):
+                    parts.append(f"需要者: {intake_state['end_user']}")
+                initial_query = "。".join(parts)
+                try:
+                    agent_start = await _start_agent_session(initial_query)
+                    new_agent_session_id = agent_start["session_id"]
+                    session_data["hantei_agent_session_id"] = new_agent_session_id
+                    if agent_start.get("missing_attr"):
+                        session_data["hantei_missing_attr"] = agent_start["missing_attr"]
+                    intake_state["completed"] = True
+                    session_data["intake_state"] = intake_state
+                    _save_session(req.session_id, session_data)
+                    first_q = agent_start.get("question", "")
+                    reply_text = (
+                        "情報を確認しました。NeuroSymbolicエージェントで該非判定を開始します。\n\n"
+                        + (f"{first_q}\n\n" if first_q else "")
+                        + "日本語でも英語でも、自由に回答していただいて構いません。"
+                    )
+                    _, result_choices = _format_agent_turn(agent_start)
+                    _log_chat_turn(db, req.session_id, req.message, reply_text,
+                                   req.context, [], "eccn_judgment")
+                    return ChatResponse(reply=reply_text, actions=[], choices=result_choices)
+                except Exception as _e:
+                    reply_text += f"\n\n（エージェント起動に失敗しました: {str(_e)[:80]}）"
+            elif action_plan:
+                intake_state["awaiting_confirm"] = True
+                intake_state["pending_action_plan"] = action_plan
+                result_choices = [
+                    {"label": "はい、実行する", "message": "はい、実行してください"},
+                    {"label": "修正したい",     "message": "内容を修正したいです"},
+                    {"label": "キャンセル",     "message": "キャンセルします"},
+                ]
+
+        _log_chat_turn(db, req.session_id, req.message, reply_text,
+                       req.context, [], intake_state.get("mode"))
 
         if req.session_id:
             history.append({"role": "user",      "content": req.message})
@@ -2428,11 +2546,10 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
                     "items": {
                         "type": "object",
                         "properties": {
-                            "type":   {"type": "string", "enum": ["highlight", "fill_field", "start_agent"]},
-                            "target": {"type": "string", "description": "対象要素のテキスト（interactive_elements のラベルと完全一致）。start_agent の場合は空文字列でよい"},
+                            "type":   {"type": "string", "enum": ["highlight", "fill_field", "navigate_to"]},
+                            "target": {"type": "string", "description": "対象要素のテキスト（interactive_elements のラベルと完全一致）。navigate_to の場合は空文字列でよい"},
                             "value":  {"type": "string", "description": "fill_field 時に転記する値"},
-                            "initial_query": {"type": "string", "description": "start_agent 時: NeuroSymbolic 該非判定エージェントへの初期クエリ（品目・取引の説明）"},
-                            "transaction_id": {"type": "integer", "description": "start_agent 時: 紐付ける Transaction ID（ai_validation モジュール）"},
+                            "url":    {"type": "string", "description": "navigate_to 時の移動先URL"},
                         },
                         "required": ["type", "target"],
                     },
@@ -2540,37 +2657,9 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
         reply_text = next((b.text for b in resp.content if hasattr(b, "text")), "")
         result_choices = default_choices
 
-    # ── start_agent action 検出: エージェントセッションを開始 ─────────────────
-    start_agent_action = next(
-        (a for a in result_actions if a.get("type") == "start_agent"), None
-    )
-    if start_agent_action and req.session_id:
-        initial_query = start_agent_action.get("initial_query", req.message)
-        tx_id_raw = start_agent_action.get("transaction_id")
-        tx_id = int(tx_id_raw) if tx_id_raw else None
-        try:
-            agent_start = await _start_agent_session(initial_query, transaction_id=tx_id)
-            new_agent_session_id = agent_start["session_id"]
-            session_data["hantei_agent_session_id"] = new_agent_session_id
-
-            # 最初の missing_attr を保存（次の回答抽出に使用）
-            if agent_start.get("missing_attr"):
-                session_data["hantei_missing_attr"] = agent_start["missing_attr"]
-
-            # エージェントの最初の質問を自然な形で提示
-            first_q = agent_start.get("question", "")
-            if first_q:
-                reply_text = (
-                    "該非判定を開始します。いくつか確認させてください。\n\n"
-                    f"{first_q}\n\n"
-                    "日本語でも英語でも、自由に回答していただいて構いません。"
-                )
-            result_actions = [a for a in result_actions if a.get("type") != "start_agent"]
-            _, result_choices = _format_agent_turn(agent_start)
-        except httpx.HTTPError:
-            reply_text += "\n\n（判定エージェントの起動に失敗しました。しばらく経ってから再度お試しください）"
-
     # セッションに保存
+    _log_chat_turn(db, req.session_id, req.message, reply_text,
+                   req.context, result_actions)
     if req.session_id:
         history.append({"role": "user", "content": req.message})
         history.append({"role": "assistant", "content": reply_text})
@@ -2608,6 +2697,65 @@ async def clear_session(session_id: str) -> dict:
     """セッション履歴を削除（会話クリア時に呼ばれる）"""
     _SESSION_STORE.pop(session_id, None)
     return {"ok": True}
+
+
+@router.get("/api/chat/logs")
+async def list_chat_sessions(
+    limit: int = 30,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+) -> dict:
+    """チャットセッション一覧（管理画面ログビュー用）"""
+    from sqlalchemy import text as _text
+    rows = db.execute(_text("""
+        SELECT
+            session_id,
+            MIN(created_at) AS started_at,
+            MAX(created_at) AS last_at,
+            COUNT(*) AS turn_count,
+            MIN(page_context) AS first_ctx
+        FROM dap_chat_logs
+        GROUP BY session_id
+        ORDER BY MAX(created_at) DESC
+        LIMIT :lim OFFSET :off
+    """), {"lim": limit, "off": offset}).mappings().all()
+    total = db.execute(_text(
+        "SELECT COUNT(DISTINCT session_id) FROM dap_chat_logs"
+    )).scalar() or 0
+    sessions = [
+        {
+            "session_id":  r["session_id"],
+            "started_at":  str(r["started_at"]),
+            "last_at":     str(r["last_at"]),
+            "turn_count":  r["turn_count"],
+        }
+        for r in rows
+    ]
+    return {"sessions": sessions, "total": total}
+
+
+@router.get("/api/chat/logs/{session_id}")
+async def get_chat_log(session_id: str, db: Session = Depends(get_db)) -> dict:
+    """特定セッションの全ターンログを返す（管理画面詳細ビュー用）"""
+    logs = (
+        db.query(DapChatLog)
+        .filter(DapChatLog.session_id == session_id)
+        .order_by(DapChatLog.turn_num)
+        .all()
+    )
+    turns = [
+        {
+            "turn_num":        log.turn_num,
+            "user_message":    log.user_message,
+            "assistant_reply": log.assistant_reply,
+            "page_context":    log.page_context,
+            "actions":         log.actions,
+            "intake_mode":     log.intake_mode,
+            "created_at":      log.created_at.isoformat(),
+        }
+        for log in logs
+    ]
+    return {"session_id": session_id, "turns": turns}
 
 
 @router.get("/api/chat/transfer-context")

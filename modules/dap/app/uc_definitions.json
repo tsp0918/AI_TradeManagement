@@ -1116,346 +1116,186 @@
   },
   {
     "id": "DEMO1",
-    "title": "【デモ】輸出審査ワンストップフロー",
+    "title": "【デモ】AI輸出審査クイックデモ（5分）",
     "persona": "デモプレゼンター / セールスエンジニア",
-    "description": "レーザー変位センサーの台湾向け輸出を例に、品目登録からAI取引審査まで一連フローを8分でご覧いただきます。各フォームにサンプルデータを自動入力します。",
+    "description": "レーザー変位センサー LS-500の台湾TSMC向け輸出を例に、スクリーニング→AI取引審査→判定結果を5分でご体験いただきます。品目はデモデータを使用します。",
     "steps": [
       {
         "num": 1,
-        "title": "システム概要",
-        "detail": "デモシナリオの説明と全体フローの把握",
+        "title": "システム概要 & デモ開始",
+        "detail": "デモシナリオ説明とプラットフォームの概要把握",
         "navigate_to": null,
         "highlight": null,
         "guidance_steps": [
           {
             "type": "pause",
             "button_label": "デモを開始 →",
-            "message": "【デモ開始】シナリオ: レーザー変位センサー Model LS-500（波長650nm）の台湾TSMC向け輸出審査です。準備ができたらボタンを押してください。"
+            "message": "【デモ開始】シナリオ: レーザー変位センサー LS-500（波長650nm）の台湾TSMC向け輸出審査です。準備ができたらボタンを押してください。"
           },
           {
             "type": "explain",
-            "message": "このプラットフォームは外為法・EAR（米国輸出管理規則）対応のAIコンプライアンスSaaSです。従来30分〜数時間かかる審査フローを、AIが伴走することで大幅に短縮できます。"
+            "message": "このプラットフォームは外為法・EAR（米国輸出管理規則）対応のAIコンプライアンスSaaSです。従来30分〜数時間かかる審査フローをAIが5分以内に処理します。"
           },
           {
             "type": "explain",
-            "message": "今日のデモの流れ: ①品目登録（品目コード・品目名・用途概要）→ ②HSコードAI判定 → ③スクリーニング（制裁照合）→ ④AI取引審査（全フィールド入力）→ ⑤判定結果・証跡保存。各フォームにサンプルデータを自動入力します。変更したい場合は直接編集してから「次へ」を押してください。"
+            "message": "今日のデモ（3ステップ）: ①スクリーニング（TSMC / 台湾の制裁照合）→ ②AI取引審査フォーム入力（自動入力あり）→ ③判定結果・証跡確認。DEMO3では品目登録〜BOM〜輸出許可まで完全フローをご覧いただけます。"
           },
           {
             "type": "pause",
-            "button_label": "品目登録へ進む →",
-            "message": "それでは品目登録から始めましょう。"
+            "button_label": "スクリーニングへ進む →",
+            "message": "まず制裁照合（スクリーニング）から始めます。"
           }
         ]
       },
       {
         "num": 2,
-        "title": "品目登録",
-        "detail": "品目コード・品目名・用途概要を入力して品目を登録する",
-        "navigate_to": "{PLATFORM_URL}/proxy/ai_classification/products/new",
+        "title": "スクリーニング（制裁照合）",
+        "detail": "取引先 TSMC を OFAC/BIS/国連 7ソースで一括照合する",
+        "navigate_to": null,
         "highlight": null,
         "guidance_steps": [
           {
             "type": "navigate",
-            "url": "{PLATFORM_URL}/proxy/ai_classification/products/new",
-            "message": "品目管理の新規登録フォームを開きます"
+            "url": "http://localhost:8005/",
+            "message": "スクリーニング（制裁照合）画面を開きます"
           },
           {
             "type": "explain",
-            "message": "品目登録フォームが開きました。品目コード・品目名・用途概要の3つを順番に入力します。サンプルデータを自動入力しますので、必要に応じて修正してください。"
+            "message": "スクリーニング画面です。企業名・個人名を入力してOFAC SDN・BIS Entity List・国連制裁・EU制裁・日本外為法など7つのリストを一括照合できます。"
           },
           {
             "type": "highlight",
-            "target": "品目コード",
-            "tooltip": "品目の識別コード。型番をそのまま使うことが多いです",
-            "message": "① 「品目コード」フィールドにサンプルデータを入力します"
+            "target": "企業名",
+            "tooltip": "照合対象の正式名称を入力してください",
+            "message": "① 「企業名」フィールドに取引先名を入力します"
           },
           {
             "type": "fill_demo",
-            "target": "品目コード",
-            "value": "LS-500",
-            "message": "品目コードを入力します（型番そのまま）"
+            "target": "企業名",
+            "value": "Taiwan Semiconductor Manufacturing Company",
+            "message": "取引先名（TSMC）を入力します"
           },
           {
             "type": "highlight",
-            "target": "品目名",
-            "tooltip": "規制照合の対象となる正式な品目名称",
-            "message": "② 「品目名」を入力します"
-          },
-          {
-            "type": "fill_demo",
-            "target": "品目名",
-            "value": "レーザー変位センサー Model LS-500",
-            "message": "品目名を入力します"
-          },
-          {
-            "type": "highlight",
-            "target": "用途概要",
-            "tooltip": "工程・装置・性能・最終使用地の4要素が判定精度の鍵",
-            "message": "③ 「用途概要」を入力します（最重要項目）"
-          },
-          {
-            "type": "fill_demo",
-            "target": "用途概要",
-            "value": "半導体製造ラインの表面検査工程で使用するレーザー変位センサー（波長650nm、分解能0.1μm）。最終使用地: 台湾TSMC Fab15B。ウェハ表面の平坦度・段差測定に使用。軍事転用なし。",
-            "message": "用途概要を入力します（工程/装置/性能/最終使用地の4要素を含む）"
+            "target": "🔍 実行",
+            "tooltip": "クリックすると7ソース同時照合が始まります",
+            "message": "② 「スクリーニング実行」をクリックしてください"
           },
           {
             "type": "explain",
-            "message": "【差別化ポイント】用途概要の4要素「工程/装置/性能/最終使用地」がAI判定精度の決め手です。この情報が後続の審査フェーズに自動引き継ぎされます。内容を確認・修正してから「次へ」を押してください。"
-          },
-          {
-            "type": "highlight",
-            "target": "登録",
-            "tooltip": "入力内容を確認したら「登録」ボタンで品目を保存します",
-            "message": "④ 入力が完了しました。「登録」ボタンをクリックして品目を保存します"
+            "message": "【デモ結果】TSMC はCLEAR（制裁対象外）。照合時間: 約1秒。結果は取引審査にリンクして証跡として自動保存されます。7ソース同時照合は手作業なら30分以上かかる作業です。"
           },
           {
             "type": "pause",
-            "button_label": "確認完了 → HSコード判定へ",
-            "message": "入力内容の確認・修正が完了したら次のステップへ進みます。"
+            "button_label": "取引審査へ進む →",
+            "message": "スクリーニング完了。次はAI取引審査フォームに進みます。"
           }
         ]
       },
       {
         "num": 3,
-        "title": "HSコード AI判定",
-        "detail": "品目詳細のHSコード判定ボタンでAIが上位5候補を提示する",
-        "navigate_to": "{PLATFORM_URL}/proxy/ai_classification/products",
-        "highlight": "HSコード判定",
-        "guidance_steps": [
-          {
-            "type": "navigate",
-            "url": "{PLATFORM_URL}/proxy/ai_classification/products",
-            "message": "品目管理の一覧を開きます"
-          },
-          {
-            "type": "explain",
-            "message": "登録した品目の詳細画面で「HSコード判定」ボタンを押すと、AIが品目名と用途概要から9,133件のHSコードDBをベクトル検索し、上位5候補を類似度スコア付きで提示します。担当者は候補から選択するだけでOKです。"
-          },
-          {
-            "type": "explain",
-            "message": "【デモ結果イメージ】LS-500の場合: 第1候補 9031.80.900（類似度0.94）= 計測機器・検査機器。ECCNは自動マッピングで3A002候補が提示されます。従来の手動調査が数分から数十秒に短縮されます。"
-          },
-          {
-            "type": "pause",
-            "button_label": "スクリーニング（制裁照合）へ →",
-            "message": "HSコード判定の仕組みをご確認いただきました。次は制裁照合に進みます。"
-          }
-        ]
-      },
-      {
-        "num": 4,
-        "title": "スクリーニング（制裁照合）",
-        "detail": "取引先名TSMCをOFAC/BIS等7ソースの制裁リストで照合する",
-        "navigate_to": "{PLATFORM_URL}/proxy/screening/ui/screen",
-        "highlight": "実行",
-        "guidance_steps": [
-          {
-            "type": "navigate",
-            "url": "{PLATFORM_URL}/proxy/screening/ui/screen",
-            "message": "スクリーニング（制裁照合）を開きます"
-          },
-          {
-            "type": "explain",
-            "message": "スクリーニング画面です。企業名を入力して7つの制裁リストを一括照合できます。OFAC SDN・BIS Entity List・国連安保理等が対象です。"
-          },
-          {
-            "type": "highlight",
-            "target": "照合対象",
-            "tooltip": "照合したい企業名または氏名を入力します",
-            "message": "① 「企業名 / 氏名」フィールドに取引先名を入力します"
-          },
-          {
-            "type": "fill_demo",
-            "target": "照合対象",
-            "value": "Taiwan Semiconductor Manufacturing Co., Ltd.",
-            "message": "取引先名を入力します"
-          },
-          {
-            "type": "highlight",
-            "target": "照合国",
-            "tooltip": "国コードを入力すると照合精度が上がります（例: TW, CN, RU）",
-            "message": "② 「国コード」で絞り込み精度を上げます"
-          },
-          {
-            "type": "fill_demo",
-            "target": "照合国",
-            "value": "TW",
-            "message": "台湾（TW）を入力します"
-          },
-          {
-            "type": "highlight",
-            "target": "実行",
-            "tooltip": "クリックするとOFAC・BIS・国連等7ソースを同時照合します（10〜30秒）",
-            "message": "③ 「🔍 実行」ボタンで照合を実行します。内容を確認してから「次へ」を押してください。"
-          },
-          {
-            "type": "explain",
-            "message": "【デモ結果】TSMCはOFAC SDN・BIS Entity Listいずれにも未掲載（no_match）。スクリーニングはクリアです。BIS 50%ルール: SDN指定企業が50%以上保有する子会社も自動チェックされます。"
-          },
-          {
-            "type": "pause",
-            "button_label": "確認完了 → AI取引審査へ",
-            "message": "スクリーニングをご確認いただきました。次はAI取引審査フォームに進みます。"
-          }
-        ]
-      },
-      {
-        "num": 5,
         "title": "AI取引審査フォーム入力",
-        "detail": "品名・品番・用途説明・取引先名・仕向国・最終需要者名・申告用途の7項目を入力する",
-        "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new",
-        "highlight": "AI判定実行",
+        "detail": "品目・取引先・仕向国・用途の7項目を入力してAI審査を依頼する",
+        "navigate_to": null,
+        "highlight": null,
         "guidance_steps": [
           {
             "type": "navigate",
-            "url": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new",
+            "url": "http://localhost:8011/ui/transactions/new",
             "message": "AI取引審査の新規案件フォームを開きます"
           },
           {
             "type": "explain",
-            "message": "AI取引審査フォームです。品名・品番・用途説明（製品情報）と取引先名・仕向国・最終需要者名・申告用途（取引情報）の7項目を入力します。サンプルデータを順番に自動入力します。"
-          },
-          {
-            "type": "highlight",
-            "target": "品名",
-            "tooltip": "審査対象品目の正式名称（規制照合に使用）",
-            "message": "① 「品名」を入力します"
+            "message": "AI取引審査フォームです。品目情報（品名・品番・用途説明）と取引情報（取引先名・仕向国・最終需要者名・申告用途）の7項目を入力します。各フィールドにサンプルデータを入力します。"
           },
           {
             "type": "fill_demo",
             "target": "品名",
-            "value": "レーザー変位センサー Model LS-500",
-            "message": "品名を入力します"
-          },
-          {
-            "type": "explain",
-            "message": "【品目連携】品目管理との連携が必須です。LS-500は品目管理に登録済みのため、通常は品目ピッカーで選択します。デモでは「品目管理に未登録の品目」チェックボックスを使って品番を直接入力します。"
-          },
-          {
-            "type": "fill_demo",
-            "target": "品目同時登録",
-            "value": "1",
-            "message": "「品目管理に未登録の品目」チェックを入れると品番フィールドが表示されます"
-          },
-          {
-            "type": "highlight",
-            "target": "品番",
-            "tooltip": "型番・品目コード（品目管理と一致させると追跡が容易）",
-            "message": "② 「品番」を入力します"
+            "value": "レーザー変位センサー",
+            "message": "① 品名を入力します"
           },
           {
             "type": "fill_demo",
             "target": "品番",
             "value": "LS-500",
-            "message": "品番を入力します"
-          },
-          {
-            "type": "highlight",
-            "target": "用途説明",
-            "tooltip": "AI判定の照合テキストに使用されます。品目管理の用途概要と一致させてください",
-            "message": "③ 「用途・説明」を入力します（AI判定の核となる項目）"
+            "message": "② 品番（型番）を入力します"
           },
           {
             "type": "fill_demo",
             "target": "用途説明",
-            "value": "半導体製造ラインの表面検査工程で使用するレーザー変位センサー（波長650nm、分解能0.1μm）。最終使用地: 台湾TSMC Fab15B。ウェハ表面の平坦度・段差測定に使用。軍事転用なし。",
-            "message": "用途・説明を入力します（品目管理の用途概要と一致）"
-          },
-          {
-            "type": "highlight",
-            "target": "取引先名",
-            "tooltip": "スクリーニングで照合した取引先と同じ表記を使用します",
-            "message": "④ 「取引先名」を入力します（スクリーニングと同じ表記）"
+            "value": "半導体ウェハー表面平坦度の非接触計測。波長650nm、測定範囲±5mm。TSMC 台湾工場での生産ライン品質管理用途。",
+            "message": "③ 用途説明を入力します（AI判定の重要インプット）"
           },
           {
             "type": "fill_demo",
             "target": "取引先名",
-            "value": "Taiwan Semiconductor Manufacturing Co., Ltd.",
-            "message": "取引先名を入力します"
-          },
-          {
-            "type": "highlight",
-            "target": "仕向国",
-            "tooltip": "ISO alpha-2コード（例: TW, CN, KR）で入力します",
-            "message": "⑤ 「仕向国」を入力します（ISO alpha-2コード）"
+            "value": "Taiwan Semiconductor Manufacturing Company",
+            "message": "④ 取引先名を入力します"
           },
           {
             "type": "fill_demo",
             "target": "仕向国",
             "value": "TW",
-            "message": "仕向国: 台湾（TW）を入力します"
-          },
-          {
-            "type": "highlight",
-            "target": "最終需要者名",
-            "tooltip": "実際に品目を使用する部署・工場・チームを記入します",
-            "message": "⑥ 「最終需要者名」を入力します（実際の使用部署）"
+            "message": "⑤ 仕向国（台湾: TW）を入力します"
           },
           {
             "type": "fill_demo",
             "target": "最終需要者名",
-            "value": "TSMC Fab15B Division",
-            "message": "最終需要者名を入力します"
-          },
-          {
-            "type": "highlight",
-            "target": "申告用途",
-            "tooltip": "最終用途の詳細を記載します。用途・説明と整合性を保ってください",
-            "message": "⑦ 「最終用途（申告用途）」を入力します"
+            "value": "TSMC Fab 12（台湾 新竹市）",
+            "message": "⑥ 最終需要者名を入力します"
           },
           {
             "type": "fill_demo",
             "target": "申告用途",
-            "value": "半導体製造工程（ウェハ表面検査）での変位測定。光計測装置として使用。第三国への転送なし。",
-            "message": "申告用途を入力します"
-          },
-          {
-            "type": "explain",
-            "message": "【差別化ポイント】入力した用途概要から、AIが外為法別表第1・EAR CCL・Wassenaar MLの3体系を同時照合します。従来の手動チェックリスト作業が大幅に削減されます。内容を確認・修正してから「次へ」を押してください。"
+            "value": "半導体製造装置向け計測センサー。民需用途。軍事・大量破壊兵器への転用なし。",
+            "message": "⑦ 申告用途を入力します"
           },
           {
             "type": "highlight",
             "target": "審査を登録",
-            "tooltip": "「審査を登録」ボタンで取引審査を登録・AI判定を起動します",
-            "message": "⑧ 「審査を登録」ボタンで取引審査を登録します"
+            "tooltip": "クリックするとドラフト保存されます。一覧画面でAI判定を実行してください",
+            "message": "⑧ 「審査を保存」ボタンをクリックしてドラフト保存してください"
           },
           {
             "type": "pause",
-            "button_label": "確認完了 → 判定結果へ",
-            "message": "全7項目の入力が完了しました。実際の業務では「審査を登録」ボタンでAI判定を起動します。"
+            "button_label": "判定結果を確認 →",
+            "message": "保存後、案件一覧から該当案件をクリックして詳細ページで「AI判定実行」を押してください。"
           }
         ]
       },
       {
-        "num": 6,
-        "title": "判定結果と証跡保存",
-        "detail": "AI判定結果を確認し、該非判定明細を記録してPDF出力で証跡を保存する",
+        "num": 4,
+        "title": "AI判定結果・証跡確認",
+        "detail": "AI判定結果（CLEAR/REVIEW/CONTROLLED）と判定根拠・証跡を確認する",
         "navigate_to": null,
-        "highlight": "PDF出力",
+        "highlight": null,
         "guidance_steps": [
           {
-            "type": "explain",
-            "message": "【デモ判定結果】LS-500（ECCN 3A002相当）× 台湾（TW）: REVIEW判定。外為法別表第1第3項に部分一致。キャッチオール確認が必要ですが輸出許可申請は不要（NLR）の可能性が高い案件です。"
+            "type": "navigate",
+            "url": "http://localhost:8011/ui/transactions",
+            "message": "AI取引審査の案件一覧を開きます"
           },
           {
             "type": "explain",
-            "message": "判定色分け: 🟡黄（intersection）= 外為法・EAR両リストに登場→要注意、🔵青（core_only）= 外為法リストに直接ヒット、⚪灰（expanded_only）= 周辺語のみ→低リスク"
+            "message": "案件一覧が表示されました。LS-500のドラフト案件の行をクリックして詳細ページを開いてください。詳細ページで「AI判定を実行」ボタンを押すと審査が始まります。"
+          },
+          {
+            "type": "pause",
+            "button_label": "判定実行済み →",
+            "message": "詳細ページで「AI判定を実行」ボタンを押してから、このボタンで次へ進んでください。"
           },
           {
             "type": "explain",
-            "message": "【NEW: 品目側の該非判定記録】品目管理の編集ページに戻ると、「⚖️ 該非判定」セクションに「🤖 外部AI判定から転記」ボタンがあります。クリックするとAI判定の合致項目（hit/intersection/core_only/list2_only）が判定明細テーブルに自動転記されます。not_matchedは自動除外されます。転記後に不要な行を削除してから「⚖️ 判定記録を保存」で確定します（外為法7年保存義務）。"
+            "message": "【デモ判定結果】LS-500（ECCN 3A002相当）× 台湾（TW）: REVIEW判定。外為法別表第1第3項に部分該当。台湾は管理対象外（Country Group B）のため輸出許可は不要ですが、内部審査記録が必要です。"
           },
           {
-            "type": "highlight",
-            "target": "PDF出力",
-            "tooltip": "外為法の規定により7年間の証跡保存が義務付けられています",
-            "message": "AI取引審査の「PDF出力」で審査証跡を保存できます（外為法7年保存義務）"
+            "type": "explain",
+            "message": "この画面で確認できること: ①AI判定根拠（規制条文・マトリクス照合結果）→ ②担当者による最終判断（承認/要確認/差戻）→ ③判定証跡のPDF出力 → ④輸出許可申請ドラフトの自動生成。全てワンストップで完結します。"
           },
           {
             "type": "pause",
             "button_label": "デモ完了 ✓",
-            "message": "以上が輸出審査ワンストップフローのデモです。品目登録からAI判定・該非判定記録・証跡保存まで一気通貫で完結しました。ご質問があればお気軽にどうぞ。"
+            "message": "【デモ完了】AI輸出審査クイックデモをご覧いただきありがとうございました。より詳細なフロー（品目登録〜BOM〜サプライチェーン〜輸出許可まで）はDEMO3でご確認ください。"
           }
         ]
       }
@@ -1495,7 +1335,7 @@
         "title": "リスク案件の入力",
         "detail": "中国向け案件の情報を入力してAI判定を起動する",
         "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions/new",
-        "highlight": "AI判定実行",
+        "highlight": "審査を登録",
         "guidance_steps": [
           {
             "type": "navigate",
@@ -1630,7 +1470,7 @@
           },
           {
             "type": "highlight",
-            "target": "輸出許可申請ドラフト生成",
+            "target": "📋 輸出許可申請",
             "tooltip": "REQUIRES_PERMIT案件は、このボタンで経産省向け申請書ドラフトを自動生成できます",
             "message": "「輸出許可申請ドラフト生成」で申請書の骨子を自動作成できます"
           },
@@ -1866,7 +1706,7 @@
           },
           {
             "type": "highlight",
-            "target": "証明管理タブ",
+            "target": "証明管理",
             "tooltip": "サプライヤーへのECCN申告依頼・証明書管理を行います",
             "message": "⑪ 「📋 証明管理」タブをクリックしてサプライヤー証明収集フローを確認します"
           },
@@ -1983,7 +1823,7 @@
         "title": "AI判定実行・結果確認",
         "detail": "AIが外為法・EAR・Wassenaarの3体系照合を実行し、判定結果を確認する",
         "navigate_to": "{PLATFORM_URL}/proxy/ai_validation/ui/transactions",
-        "highlight": "AI解析を実行",
+        "highlight": "AI判定",
         "guidance_steps": [
           {
             "type": "navigate",
@@ -2059,7 +1899,7 @@
           },
           {
             "type": "highlight",
-            "target": "輸出許可申請ドラフトを作成",
+            "target": "📋 輸出許可申請",
             "tooltip": "案件情報から申請書ドラフトを自動生成します。許可種別ポップアップで「EAR」を選択してください",
             "message": "⑮ 「🔎 輸出許可申請ドラフトを作成」をクリックします（EARを選択）"
           },
@@ -2524,6 +2364,416 @@
             "type": "pause",
             "button_label": "デモ完了 ✓",
             "message": "以上が「品目登録→HSコードAI判定→外部AI該非判定→判定項番記録→US/CN/ID/EU国別プロファイル登録」の品目マスター完全セットアップデモです。品目管理だけで輸出コンプライアンスの基礎データが一元管理できることをご確認いただきました。ご質問があればお気軽にどうぞ。"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "DEMO5",
+    "title": "【デモ】R&Dリスク管理 — みなし輸出・外国人研究者審査",
+    "persona": "コンプライアンス担当者 / R&Dマネージャー",
+    "description": "GaN-HEMT次世代プロセス研究に従事する中国籍研究者（陳 雷）を例に、外為法第25条みなし輸出審査フロー（人物登録→スクリーニング→案件起案→AIリスク評価→カテゴリー判定）を8分でご覧いただきます。",
+    "steps": [
+      {
+        "num": 1,
+        "title": "みなし輸出とは — シナリオ概要",
+        "detail": "外為法第25条みなし輸出規制の概要とデモシナリオの説明",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "pause",
+            "button_label": "デモを開始 →",
+            "message": "【デモ開始】シナリオ: 中国籍研究者・陳 雷 氏がGaN-HEMT次世代プロセス技術（外為法別表第一第7項・ECCN 3E001相当）に従事。外為法第25条みなし輸出審査が必要なケースです。"
+          },
+          {
+            "type": "explain",
+            "message": "みなし輸出（Deemed Export）とは — 外為法第25条: 日本国内であっても、外国籍の者に対して特定の技術（規制技術）を提供する場合は「輸出」とみなされ、輸出許可が必要になる場合があります。"
+          },
+          {
+            "type": "explain",
+            "message": "対象となる技術: 外為法別表第1に掲げる技術（ECCN管理品も含む）。外国籍研究者が研究資料・設計図・プロセス仕様書にアクセスする場合が典型例。規制を見落とすと最大10年の懲役・1億円以下の罰金リスク。"
+          },
+          {
+            "type": "explain",
+            "message": "デモの流れ（5ステップ）: ①人物登録（外国籍研究者の情報・アクセス予定技術）→ ②スクリーニング結果確認 → ③R&D案件起案 → ④プロファイル入力 → ⑤AIリスク評価実行とカテゴリー判定。"
+          },
+          {
+            "type": "pause",
+            "button_label": "人物登録へ進む →",
+            "message": "それでは人物管理から始めましょう。"
+          }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "人物登録 — 外国籍研究者の登録",
+        "detail": "外国籍研究員の基本情報・国籍・アクセス予定技術を登録する",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "navigate",
+            "url": "http://localhost:8003/ui/personnel/new",
+            "message": "R&D人物管理 — 新規人物登録フォームを開きます"
+          },
+          {
+            "type": "explain",
+            "message": "人物登録フォームが開きました。外国籍研究者の氏名・所属・国籍・居住国と、アクセスさせる予定の技術（ECCN・外為法項番）を登録します。"
+          },
+          {
+            "type": "fill_demo",
+            "target": "氏名",
+            "value": "陳 雷",
+            "message": "① 氏名を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "所属・役職",
+            "value": "研究員 / 契約者",
+            "message": "② 所属・役職を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "所属組織・部門",
+            "value": "先端材料研究部",
+            "message": "③ 所属組織・部門を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "国籍",
+            "value": "CN",
+            "message": "④ 国籍（ISO 3166-1 alpha-2）を入力します — CNは重点審査国フラグ対象"
+          },
+          {
+            "type": "fill_demo",
+            "target": "居住国",
+            "value": "JP",
+            "message": "⑤ 居住国（日本: JP）を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "アクセス対象 ECCN",
+            "value": "3E001",
+            "message": "⑥ アクセスさせる技術のECCNを入力します（GaN製造技術）"
+          },
+          {
+            "type": "fill_demo",
+            "target": "アクセス対象 外為法項番",
+            "value": "外為法別表第一 7項",
+            "message": "⑦ 外為法の対象項番を入力します"
+          },
+          {
+            "type": "highlight",
+            "target": "登録 & スクリーニング実行",
+            "tooltip": "クリックして人物を登録 & 自動スクリーニング実行",
+            "message": "⑧ 「登録 & スクリーニング実行」ボタンをクリックしてください"
+          },
+          {
+            "type": "pause",
+            "button_label": "登録完了・次へ →",
+            "message": "ボタンをクリックして登録完了後、このボタンで次に進んでください。"
+          }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "スクリーニング結果確認",
+        "detail": "登録した研究員の制裁リスト照合結果・みなし輸出フラグを一覧で確認する",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "explain",
+            "message": "人物一覧画面に戻りました。登録時にOFAC SDN・BIS Entity List・国連制裁リスト等との照合が自動実行されています。「陳 雷」のみなし輸出カテゴリとリスクレベルが表示されています。"
+          },
+          {
+            "type": "highlight",
+            "target": "陳 雷",
+            "tooltip": "登録された外国籍研究者",
+            "message": "① 「陳 雷」の行でリスクレベルとカテゴリ判定結果を確認してください"
+          },
+          {
+            "type": "explain",
+            "message": "【照合ロジック】氏名（中国語・英語ピンイン両方）× 国籍 × 所属機関でファジー検索。CN国籍 × ECCN 3E001（GaN製造技術）の組み合わせはカテゴリ判定の対象です。"
+          },
+          {
+            "type": "explain",
+            "message": "氏名リンクをクリックすると詳細ページで根拠となるフラグ・判定理由・スクリーニング証跡を確認できます。次は研究プロジェクト（R&D案件）を起案します。"
+          },
+          {
+            "type": "pause",
+            "button_label": "R&D案件起案へ進む →",
+            "message": "確認が完了したら、R&D案件起案へ進みます。"
+          }
+        ]
+      },
+      {
+        "num": 4,
+        "title": "R&D案件起案",
+        "detail": "みなし輸出審査が必要なR&D案件をシステムに登録する",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "navigate",
+            "url": "http://localhost:8003/ui/cases/new",
+            "message": "R&D案件起案フォームを開きます"
+          },
+          {
+            "type": "explain",
+            "message": "R&D案件起案フォームです。研究プロジェクトのタイトル・背景・対象技術を登録します。この情報がAIリスク評価のインプットになります。"
+          },
+          {
+            "type": "fill_demo",
+            "target": "ケースタイトル",
+            "value": "GaN-HEMT次世代プロセス研究 — みなし輸出審査（陳 雷 / CN）",
+            "message": "① ケースタイトルを入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "説明",
+            "value": "窒化ガリウム（GaN）HEMTデバイスの次世代プロセス技術開発。外国籍研究者（陳 雷/CN）が研究資料・プロセス仕様書にアクセス予定。対象技術: GaN エピタキシャル成長・ゲート形成技術（外為法別表第1第7項・ECCN 3E001）。外為法第25条みなし輸出審査が必要。",
+            "message": "② 研究背景・対象技術の説明を入力します"
+          },
+          {
+            "type": "highlight",
+            "target": "ケースを作成して入力へ →",
+            "tooltip": "クリックしてプロファイル入力フォームへ進みます",
+            "message": "③ 「ケースを作成して入力へ →」ボタンをクリックしてください"
+          },
+          {
+            "type": "pause",
+            "button_label": "作成完了・次へ →",
+            "message": "ボタンをクリックしてプロファイル入力画面へ移動後、このボタンで次に進んでください。"
+          }
+        ]
+      },
+      {
+        "num": 5,
+        "title": "プロファイル入力 & AIリスク評価",
+        "detail": "AIがみなし輸出リスクを総合評価してカテゴリーA/B/Cに分類する",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "explain",
+            "message": "案件プロファイル入力画面です。エンドユーザー情報を入力することでAIリスク評価の精度が向上します。"
+          },
+          {
+            "type": "fill_demo",
+            "target": "需要者名",
+            "value": "Beijing Institute of Technology",
+            "message": "① エンドユーザー（需要者）名を入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "需要者国コード",
+            "value": "CN",
+            "message": "② 需要者国（中国: CN）を入力します"
+          },
+          {
+            "type": "highlight",
+            "target": "プロファイルを保存して評価へ →",
+            "tooltip": "クリックしてリスク評価画面へ進みます",
+            "message": "③ 「プロファイルを保存して評価へ →」ボタンをクリックしてください"
+          },
+          {
+            "type": "pause",
+            "button_label": "評価画面へ進む →",
+            "message": "フォームを送信後、評価画面に移動したらこのボタンで次に進んでください。"
+          },
+          {
+            "type": "explain",
+            "message": "リスク評価画面が開きました。AIが分析する観点: ①技術レベル（ECCN/外為法項番の規制対象性）→ ②国籍・居住国リスク（EAR Country Group）→ ③組織的背景（二重雇用・スポンサーシップ）→ ④みなし輸出カテゴリー分類"
+          },
+          {
+            "type": "highlight",
+            "target": "▶ 評価を実行",
+            "tooltip": "クリックするとAIによる総合評価がDB保存されます",
+            "message": "④ 「▶ 評価を実行」ボタンをクリックしてください"
+          },
+          {
+            "type": "pause",
+            "button_label": "評価結果を確認 →",
+            "message": "評価が完了したら結果を確認してから次へ進んでください。"
+          },
+          {
+            "type": "explain",
+            "message": "【判定結果の見方】カテゴリーA（外為法施行規則第17条の3 第1号）: 技術力高 × 安全保障上のリスク高 → 経産省への事前許可申請が必要。カテゴリーB（第2号）: 技術力中 → 内部審査委員会の承認と教育義務。カテゴリーC（第3号）: 規制外技術 → 記録保存のみ。"
+          },
+          {
+            "type": "explain",
+            "message": "【GaN-HEMT × CN国籍の場合】3E001（製造技術）× CN国籍: カテゴリーA判定の可能性が高い。推奨アクション: ①経産省への技術提供許可申請（処理期間: 通常30〜60日）、または②アクセス範囲の限定（非規制部分のみに制限）して再評価。"
+          },
+          {
+            "type": "explain",
+            "message": "この画面からできること: 判定証跡の保存（監査ログ）→ 関連取引への人物IDリンク（ai_validationと連携）→ 管理アクション（許可申請・アクセス制限・教育実施）の記録。外為法違反の立証リスクをゼロに近づける完全なコンプライアンス記録を実現します。"
+          },
+          {
+            "type": "pause",
+            "button_label": "デモ完了 ✓",
+            "message": "【デモ完了】R&Dリスク管理（みなし輸出審査）のデモをご覧いただきありがとうございました。人物登録からAIカテゴリー判定まで、外為法第25条対応を完全にデジタル化できます。"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "DEMO6",
+    "title": "【デモ】役務取引管理 — みなし輸出サービス取引審査フロー",
+    "persona": "コンプライアンス担当者 / 契約管理者",
+    "description": "外為法第25条に基づく役務取引（技術提供・ソフトウェアライセンス供与）のみなし輸出審査フローを5分でご覧いただきます。新規案件登録から自動スクリーニング・審査提出・許可判定記録まで一気通貫で管理できます。",
+    "steps": [
+      {
+        "num": 1,
+        "title": "役務取引（みなし輸出）とは — シナリオ概要",
+        "detail": "外為法第25条 役務取引規制とデモシナリオの説明",
+        "navigate_to": null,
+        "highlight": null,
+        "guidance_steps": [
+          {
+            "type": "pause",
+            "button_label": "デモを開始 →",
+            "message": "【デモ開始】シナリオ: 韓国籍の研究者（朴 ジフン）に対し、EUV露光装置制御ソフトウェア（ECCN 3D001相当）の技術指導・オンラインアクセス権を付与するケース。外為法第25条に基づく役務取引許可が必要かを審査します。"
+          },
+          {
+            "type": "explain",
+            "message": "役務取引とは — 外為法第25条: 「役務取引」とは、技術の提供・指導、ソフトウェアライセンス供与、クラウドサービス提供など、モノではなく技術・サービスを外国へ提供する行為。国内での提供も含まれ、外国籍の相手方への提供は「みなし輸出」として規制対象となります。"
+          },
+          {
+            "type": "explain",
+            "message": "デモの流れ（5ステップ）: ①役務案件一覧確認 → ②新規案件登録（相手方情報・技術概要入力）→ ③自動スクリーニング結果確認 → ④審査提出（7年記録保存） → ⑤許可判定記録。"
+          },
+          {
+            "type": "pause",
+            "button_label": "役務案件一覧へ →",
+            "message": "まず役務取引の管理一覧画面を開きます。"
+          }
+        ]
+      },
+      {
+        "num": 2,
+        "title": "役務案件一覧 — 管理画面の確認",
+        "detail": "役務取引管理一覧画面でステータス・スクリーニング結果を確認する",
+        "navigate_to": "http://localhost:8011/ui/services",
+        "highlight": "役務取引管理",
+        "guidance_steps": [
+          {
+            "type": "explain",
+            "message": "役務取引管理一覧画面: 登録済みの全役務案件が一覧表示されます。ステータス（draft/screening/submitted/approved/denied）・スクリーニング結果・許可要否が一目で確認できます。"
+          },
+          {
+            "type": "explain",
+            "message": "外為法第25条チェックポイント: 「許可要否」列がredの案件は輸出許可申請が必要です。「スクリーニング」列でOFAC/BIS制裁リストのヒット状況を確認できます。"
+          },
+          {
+            "type": "pause",
+            "button_label": "新規案件を登録する →",
+            "message": "新規役務案件登録フォームへ進みます。"
+          }
+        ]
+      },
+      {
+        "num": 3,
+        "title": "新規役務案件登録 — 相手方情報と技術概要を入力",
+        "detail": "役務種別・技術説明・相手方（受領者）・契約情報を登録する",
+        "navigate_to": "http://localhost:8011/ui/services/new",
+        "highlight": "新規役務案件",
+        "guidance_steps": [
+          {
+            "type": "explain",
+            "message": "登録フォームのポイント: 「役務種別」で技術指導/ソフトウェアライセンス/クラウドサービスを選択。「みなし輸出」チェックは外国籍相手方の場合に自動推奨されます。"
+          },
+          {
+            "type": "fill_demo",
+            "target": "title",
+            "value": "EUV制御ソフトウェア技術指導（朴 ジフン 氏向け）",
+            "message": "案件タイトルを入力します"
+          },
+          {
+            "type": "fill_demo",
+            "target": "service_type",
+            "value": "technology_transfer",
+            "message": "役務種別: 技術移転・指導を選択"
+          },
+          {
+            "type": "fill_demo",
+            "target": "technology_description",
+            "value": "EUV露光装置制御ソフトウェア（ECCN 3D001相当）のアルゴリズム・パラメータ調整手法の技術指導およびオンラインアクセス権付与",
+            "message": "技術内容の説明を入力"
+          },
+          {
+            "type": "fill_demo",
+            "target": "eccn",
+            "value": "3D001",
+            "message": "ECCNコードを入力"
+          },
+          {
+            "type": "fill_demo",
+            "target": "recipient_name",
+            "value": "朴 ジフン（Park Ji-hun）",
+            "message": "受領者氏名を入力"
+          },
+          {
+            "type": "fill_demo",
+            "target": "recipient_nationality",
+            "value": "KR",
+            "message": "国籍コード（KR: 韓国）を入力。みなし輸出フラグが自動設定されます"
+          },
+          {
+            "type": "pause",
+            "button_label": "登録して結果を確認する →",
+            "message": "フォームを送信すると自動スクリーニングが実行されます。"
+          }
+        ]
+      },
+      {
+        "num": 4,
+        "title": "スクリーニング結果確認 — OFAC/BIS制裁リストチェック",
+        "detail": "登録直後に自動実行されたスクリーニング結果と許可要否判定を確認する",
+        "navigate_to": "http://localhost:8011/ui/services/1",
+        "highlight": "スクリーニング",
+        "guidance_steps": [
+          {
+            "type": "explain",
+            "message": "自動スクリーニング: 登録と同時にOFAC SDN・BIS Entity List・外務省制裁リストを照合。相手方氏名・組織・国籍が対象リストと照合されます。"
+          },
+          {
+            "type": "explain",
+            "message": "みなし輸出フラグ: 外国籍（KR）の相手方への技術提供のため「みなし輸出」マークが表示されています。ECCN 3D001は規制品目のため許可要否が「要確認」と判定されます。"
+          },
+          {
+            "type": "pause",
+            "button_label": "審査を提出する →",
+            "message": "問題がなければ審査提出に進みます。提出により記録が7年間保存されます。"
+          }
+        ]
+      },
+      {
+        "num": 5,
+        "title": "審査提出・許可判定記録",
+        "detail": "正式審査提出（7年保存）と許可番号の記録登録",
+        "navigate_to": "http://localhost:8011/ui/services/1",
+        "highlight": "審査提出",
+        "guidance_steps": [
+          {
+            "type": "explain",
+            "message": "「審査提出」ボタン: ステータスがdraft→submittedに変わり、提出日時・保存期限（7年後）が自動記録されます。外為法の記録保管義務（第25条の4）に対応しています。"
+          },
+          {
+            "type": "explain",
+            "message": "許可判定記録フォーム: 当局（経済産業省）から許可証が発行されたら、許可証番号・有効期限を登録します。これにより案件ステータスがapprovedに変わり、取引を開始できます。"
+          },
+          {
+            "type": "explain",
+            "message": "監査証跡: すべての操作（登録・スクリーニング・提出・判定）がタイムスタンプ付きで記録されます。輸出管理監査・税関検査に対応した証跡管理が実現できます。"
+          },
+          {
+            "type": "pause",
+            "button_label": "デモ完了 ✓",
+            "message": "【デモ完了】役務取引管理（みなし輸出サービス取引審査）のデモをご覧いただきありがとうございました。技術提供・ソフトウェアライセンス・クラウドサービスの外為法第25条対応を完全にデジタル化・記録保管できます。"
           }
         ]
       }

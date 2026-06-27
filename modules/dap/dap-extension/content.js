@@ -7,6 +7,11 @@
   _chatScript.src = SERVER_BASE + '/static/chat-widget.js?v=' + Date.now();
   document.head.appendChild(_chatScript);
 
+  // チュートリアルウィジェットを注入（chat-widget の直後）
+  const _tutScript = document.createElement('script');
+  _tutScript.src = SERVER_BASE + '/static/tutorial-widget.js?v=' + Date.now();
+  document.head.appendChild(_tutScript);
+
   // 現在のタブのポートから app_key を自動選択
   const PORT_TO_APP = {
     "8000": "rd_risk_local",

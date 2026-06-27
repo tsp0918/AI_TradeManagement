@@ -170,3 +170,21 @@ class DapWorkflowSession(Base):
     status: Mapped[str] = mapped_column(String(20), default="active")
     started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_active_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class DapChatLog(Base):
+    """チャット会話ログ。セッションID単位で全ターンを記録する。"""
+    __tablename__ = "dap_chat_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    turn_num: Mapped[int] = mapped_column(Integer, default=0)
+    user_message: Mapped[str] = mapped_column(String(4000), default="")
+    assistant_reply: Mapped[str] = mapped_column(String(4000), default="")
+    # ページ/モジュールコンテキスト（port, page_path, module_key 等）
+    page_context: Mapped[dict] = mapped_column(JSON, default=dict)
+    # レスポンスで返されたアクション (highlight / navigate_to 等)
+    actions: Mapped[list] = mapped_column(JSON, default=list)
+    # ヒアリングモード中の場合のモード名（eccn_judgment, export_transaction 等）
+    intake_mode: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

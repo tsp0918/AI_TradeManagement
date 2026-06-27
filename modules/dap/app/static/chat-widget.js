@@ -1,4 +1,4 @@
-// cache-bust: 1780155858
+// cache-bust: 1782000000
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -747,9 +747,10 @@
         <div id="dap-uc-list"></div>
       </div>
     </div>
+    <div style="padding:0 12px 3px;text-align:right;font-size:9.5px;color:rgba(255,255,255,0.22);user-select:none;letter-spacing:.01em;">Shift+Enter で送信 &nbsp;·&nbsp; Enter で改行</div>
     <div class="dap-chat-input-wrap">
       <button id="dap-wf-start-btn" title="業務フロー開始" style="width:36px;height:36px;border-radius:9px;flex-shrink:0;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:background 0.15s;" onclick="toggleUcPanel()">📋</button>
-      <textarea id="dap-chat-textarea" rows="1" placeholder="質問・相談をどうぞ… (Shift+Enter で送信)"></textarea>
+      <textarea id="dap-chat-textarea" rows="1" placeholder="質問・相談をどうぞ…"></textarea>
       <button id="dap-chat-send" disabled>
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
@@ -924,6 +925,45 @@
   wfNextBtn.addEventListener('click', _advanceWorkflow);
   wfStopBtn.addEventListener('click', _stopWorkflow);
 
+  // ── チャットパネル ドラッグ移動 ───────────────────────────────────
+  (function () {
+    var header = panel.querySelector('.dap-chat-header');
+    if (!header) return;
+    header.style.cursor = 'grab';
+    header.title = 'ドラッグで移動できます';
+
+    var _drag = false, _ox = 0, _oy = 0;
+
+    header.addEventListener('mousedown', function (e) {
+      if (e.target.closest('button')) return;
+      _drag = true;
+      var r = panel.getBoundingClientRect();
+      // fixed 座標に切り替え（right/bottom → left/top）
+      panel.style.right  = 'auto';
+      panel.style.bottom = 'auto';
+      panel.style.left   = r.left + 'px';
+      panel.style.top    = r.top  + 'px';
+      _ox = e.clientX - r.left;
+      _oy = e.clientY - r.top;
+      header.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function (e) {
+      if (!_drag) return;
+      var nx = Math.max(0, Math.min(window.innerWidth  - panel.offsetWidth,  e.clientX - _ox));
+      var ny = Math.max(0, Math.min(window.innerHeight - panel.offsetHeight, e.clientY - _oy));
+      panel.style.left = nx + 'px';
+      panel.style.top  = ny + 'px';
+    });
+
+    document.addEventListener('mouseup', function () {
+      if (!_drag) return;
+      _drag = false;
+      header.style.cursor = 'grab';
+    });
+  })();
+
   // ── アラートバナー ────────────────────────────────────────────────
   function showAlertBanner(alert, choices) {
     if (!alert || !alert.message) return;
@@ -943,7 +983,19 @@
       b.addEventListener('click', function () {
         dismissAlertBanner();
         openPanel();
-        setTimeout(function () { handleSend(c.message || c.label); }, 200);
+        var msg = c.message || c.label || '';
+        setTimeout(function () {
+          if (msg.startsWith('__')) {
+            handleSend(msg);
+            return;
+          }
+          textarea.value = msg;
+          textarea.style.height = 'auto';
+          textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+          sendBtn.disabled = false;
+          textarea.focus();
+          textarea.setSelectionRange(msg.length, msg.length);
+        }, 200);
       });
       alertChoices.appendChild(b);
     });
@@ -1051,92 +1103,121 @@
    * 背景をグレーアウト（Canvas）し、対象要素のみ切り抜いて浮かび上がらせる。
    * @returns {Promise} dismiss ボタン押下 or タイムアウトで resolve
    */
+  // チャットパネルがスポットライト対象と重なる場合に自動退避させる
+  function _avoidSpotlightOverlap(rx, ry, rw, rh) {
+    if (!isOpen) return;
+    var pr = panel.getBoundingClientRect();
+    var overlapH = !(pr.right < rx - 10 || pr.left > rx + rw + 10);
+    var overlapV = !(pr.bottom < ry - 10 || pr.top > ry + rh + 10);
+    if (!overlapH || !overlapV) return;
+    // スポットライト対象が画面左半分 → パネルを右下に保持（現状維持）
+    // スポットライト対象が画面右半分 → パネルを左に退避
+    if (rx + rw / 2 > window.innerWidth * 0.55) {
+      panel.style.right = 'auto';
+      panel.style.left  = '16px';
+      panel.style.bottom = '96px';
+      panel.style.top    = 'auto';
+    } else {
+      // 上方向に退避
+      panel.style.bottom = 'auto';
+      panel.style.top    = '12px';
+      panel.style.right  = '28px';
+      panel.style.left   = 'auto';
+    }
+  }
+
   function highlightElementWithTooltip(target, tooltipText, durationMs) {
     const el = findInteractiveElement(target) || findFieldElement(target);
     if (!el) return Promise.resolve();
 
     return new Promise(function (resolve) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // behavior:'instant' でスクロール完了を確実に待つ（smooth は 300-600ms かかりズレの原因）
+      el.scrollIntoView({ behavior: 'instant', block: 'center' });
 
-      // スクロール完了を待ってから描画
-      setTimeout(function () {
-        var dur = durationMs || 7000;
-        var rect = el.getBoundingClientRect();
-        var ifrOff = getIframeOffset();
-        var pad = 12;
-        var rx = rect.left - pad + ifrOff.left;
-        var ry = rect.top - pad + ifrOff.top;
-        var rw = rect.width + pad * 2;
-        var rh = rect.height + pad * 2;
-        var borderR = 10;
+      // 再描画1フレーム後に座標取得
+      requestAnimationFrame(function () {
+        setTimeout(function () {
+          var dur = durationMs || 7000;
+          var rect = el.getBoundingClientRect();
+          var ifrOff = getIframeOffset();
+          var pad = 12;
+          var rx = rect.left - pad + ifrOff.left;
+          var ry = rect.top  - pad + ifrOff.top;
+          var rw = rect.width  + pad * 2;
+          var rh = rect.height + pad * 2;
+          var borderR = 10;
 
-        // Canvas でグレーアウト + 切り抜き穴
-        var cvs = spotlightCanvas;
-        cvs.width  = window.innerWidth;
-        cvs.height = window.innerHeight;
-        var ctx = cvs.getContext('2d');
-        ctx.clearRect(0, 0, cvs.width, cvs.height);
-        ctx.fillStyle = 'rgba(0,0,0,0.62)';
-        ctx.fillRect(0, 0, cvs.width, cvs.height);
-        // 切り抜き（composite destination-out）
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.beginPath();
-        ctx.moveTo(rx + borderR, ry);
-        ctx.lineTo(rx + rw - borderR, ry);
-        ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + borderR);
-        ctx.lineTo(rx + rw, ry + rh - borderR);
-        ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - borderR, ry + rh);
-        ctx.lineTo(rx + borderR, ry + rh);
-        ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - borderR);
-        ctx.lineTo(rx, ry + borderR);
-        ctx.quadraticCurveTo(rx, ry, rx + borderR, ry);
-        ctx.closePath();
-        ctx.fill();
-        ctx.globalCompositeOperation = 'source-over';
-        // 切り抜き周囲にシアンのグロー
-        ctx.strokeStyle = 'rgba(0,212,255,0.85)';
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = '#00D4FF';
-        ctx.shadowBlur = 18;
-        ctx.stroke();
+          // チャットパネルが被る場合は先に退避
+          _avoidSpotlightOverlap(rx, ry, rw, rh);
 
-        // ツールチップ配置（切り抜き枠の下、または上）
-        if (tooltipText) {
-          spotlightTooltip.textContent = tooltipText;
-          var tipTop = ry + rh + 14;
-          if (tipTop + 80 > window.innerHeight) tipTop = ry - 80;
-          var tipLeft = rx;
-          if (tipLeft + 290 > window.innerWidth) tipLeft = window.innerWidth - 295;
-          spotlightTooltip.style.top  = tipTop + 'px';
-          spotlightTooltip.style.left = tipLeft + 'px';
-          spotlightTooltip.style.display = 'block';
-          setTimeout(function () { spotlightTooltip.classList.add('is-visible'); }, 50);
-        }
+          // Canvas でグレーアウト + 切り抜き穴
+          var cvs = spotlightCanvas;
+          cvs.width  = window.innerWidth;
+          cvs.height = window.innerHeight;
+          var ctx = cvs.getContext('2d');
+          ctx.clearRect(0, 0, cvs.width, cvs.height);
+          ctx.fillStyle = 'rgba(0,0,0,0.62)';
+          ctx.fillRect(0, 0, cvs.width, cvs.height);
+          // 切り抜き（composite destination-out）
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.beginPath();
+          ctx.moveTo(rx + borderR, ry);
+          ctx.lineTo(rx + rw - borderR, ry);
+          ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + borderR);
+          ctx.lineTo(rx + rw, ry + rh - borderR);
+          ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - borderR, ry + rh);
+          ctx.lineTo(rx + borderR, ry + rh);
+          ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - borderR);
+          ctx.lineTo(rx, ry + borderR);
+          ctx.quadraticCurveTo(rx, ry, rx + borderR, ry);
+          ctx.closePath();
+          ctx.fill();
+          ctx.globalCompositeOperation = 'source-over';
+          // 切り抜き周囲にシアンのグロー
+          ctx.strokeStyle = 'rgba(0,212,255,0.85)';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = '#00D4FF';
+          ctx.shadowBlur = 18;
+          ctx.stroke();
 
-        // オーバーレイ表示
-        spotlightOverlay.classList.add('is-visible');
-        setTimeout(function () { spotlightDismiss.classList.add('is-visible'); }, 300);
+          // ツールチップ配置（切り抜き枠の下、または上）
+          if (tooltipText) {
+            spotlightTooltip.textContent = tooltipText;
+            var tipTop = ry + rh + 14;
+            if (tipTop + 80 > window.innerHeight) tipTop = ry - 80;
+            var tipLeft = rx;
+            if (tipLeft + 290 > window.innerWidth) tipLeft = window.innerWidth - 295;
+            spotlightTooltip.style.top  = tipTop + 'px';
+            spotlightTooltip.style.left = tipLeft + 'px';
+            spotlightTooltip.style.display = 'block';
+            setTimeout(function () { spotlightTooltip.classList.add('is-visible'); }, 50);
+          }
 
-        var done = false;
-        function dismiss() {
-          if (done) return;
-          done = true;
-          spotlightDismiss.classList.remove('is-visible');
-          spotlightTooltip.classList.remove('is-visible');
-          setTimeout(function () {
-            spotlightOverlay.classList.remove('is-visible');
-            var c = spotlightCanvas.getContext('2d');
-            c.clearRect(0, 0, spotlightCanvas.width, spotlightCanvas.height);
-          }, 350);
-          if (_spotlightTimer) { clearTimeout(_spotlightTimer); _spotlightTimer = null; }
-          resolve();
-        }
+          // オーバーレイ表示
+          spotlightOverlay.classList.add('is-visible');
+          setTimeout(function () { spotlightDismiss.classList.add('is-visible'); }, 300);
 
-        _spotlightTimer = setTimeout(dismiss, dur);
-        spotlightDismiss.onclick = dismiss;
-        // オーバーレイ自体をクリックしても閉じる（ただし切り抜き部分は pass-through）
-        spotlightCanvas.onclick = dismiss;
-      }, 350);
+          var done = false;
+          function dismiss() {
+            if (done) return;
+            done = true;
+            spotlightDismiss.classList.remove('is-visible');
+            spotlightTooltip.classList.remove('is-visible');
+            setTimeout(function () {
+              spotlightOverlay.classList.remove('is-visible');
+              var c = spotlightCanvas.getContext('2d');
+              c.clearRect(0, 0, spotlightCanvas.width, spotlightCanvas.height);
+            }, 350);
+            if (_spotlightTimer) { clearTimeout(_spotlightTimer); _spotlightTimer = null; }
+            resolve();
+          }
+
+          _spotlightTimer = setTimeout(dismiss, dur);
+          spotlightDismiss.onclick = dismiss;
+          // オーバーレイ自体をクリックしても閉じる
+          spotlightCanvas.onclick = dismiss;
+        }, 80);
+      });
     });
   }
 
@@ -1164,19 +1245,33 @@
   // ポート番号 → ポータルのモジュールキー対応表
   var _PORT_TO_MODULE = {
     '8001': 'ai_validation',
+    '8011': 'ai_validation',
     '8002': 'ai_classification',
     '8003': 'rnd_assessment',
     '8004': 'patent_search',
     '8005': 'screening',
     '8006': 'hs_classifier',
     '8010': 'dap',
+    '8012': 'export_license',
+    '8013': 'trade_gate',
+    '8014': 'fta_origin',
   };
 
   // localhost URL を外部公開 URL に書き換える（外部アクセス時のみ）
   function _rewriteLocalUrl(url) {
     if (!url || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return url;
-    if (!/https?:\/\/localhost/.test(url)) return url;
-    // app.{domain} = ポータルのホスト
+    if (!/https?:\/\/localhost:\d+/.test(url)) return url;
+    // ポート番号からモジュールキーを取得して /proxy/{key}{path} 形式に書き換え
+    var portMatch = url.match(/https?:\/\/localhost:(\d+)(\/.*)?$/);
+    if (portMatch) {
+      var mPort = portMatch[1];
+      var mPath = portMatch[2] || '/';
+      var mKey  = _PORT_TO_MODULE[mPort];
+      if (mKey) {
+        return window.location.protocol + '//' + window.location.host + '/proxy/' + mKey + mPath;
+      }
+    }
+    // フォールバック: port 8000 等は /proxy/... パスをそのままポータルオリジンで使用
     var parts = window.location.hostname.split('.');
     var portalOrigin = window.location.protocol + '//app.' + parts.slice(-2).join('.');
     return url.replace(/https?:\/\/localhost:\d+/, portalOrigin);
@@ -1520,8 +1615,20 @@
         choiceBtn.className = 'dap-choice-btn';
         choiceBtn.textContent = choice.label || '';
         choiceBtn.addEventListener('click', function () {
-          choicesEl.querySelectorAll('.dap-choice-btn').forEach(function (b) { b.disabled = true; });
-          handleSend(choice.message || choice.label);
+          var msg = choice.message || choice.label || '';
+          // __ で始まるシステムコマンドは直接実行
+          if (msg.startsWith('__')) {
+            choicesEl.querySelectorAll('.dap-choice-btn').forEach(function (b) { b.disabled = true; });
+            handleSend(msg);
+            return;
+          }
+          // 通常メッセージは textarea に転記して編集可能にする
+          textarea.value = msg;
+          textarea.style.height = 'auto';
+          textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+          sendBtn.disabled = false;
+          textarea.focus();
+          textarea.setSelectionRange(msg.length, msg.length);
         });
         choicesEl.appendChild(choiceBtn);
       });

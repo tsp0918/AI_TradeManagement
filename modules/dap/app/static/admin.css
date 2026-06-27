@@ -1153,3 +1153,167 @@ dialog::backdrop { background: rgba(0,0,0,0.65); }
   background: var(--yellow-dim);
   color: var(--yellow);
 }
+
+/* ============================================================
+   Dashboard Tab — Platform Health / KPI / Events
+   ============================================================ */
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  padding: 4px 0;
+}
+.health-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.06);
+  font-size: 11px;
+}
+.health-card.ok  { border-color: rgba(52,211,153,.25); }
+.health-card.down { border-color: rgba(248,113,113,.25); }
+.hc-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.health-card.ok  .hc-dot { background: #34d399; box-shadow: 0 0 5px #34d399; }
+.health-card.down .hc-dot { background: #f87171; }
+.hc-name { color: #cbd5e1; flex: 1; }
+.hc-port { color: #475569; font-size: 10px; }
+
+.kpi-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+.kpi-card {
+  flex: 1;
+  min-width: 110px;
+  padding: 14px 12px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 8px;
+  text-align: center;
+}
+.kpi-val   { font-size: 22px; font-weight: 700; color: #00d4ff; line-height: 1.1; }
+.kpi-label { font-size: 11px; color: #6b88a8; margin-top: 4px; }
+
+/* Module badge in event stream */
+.ev-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(0,212,255,.15);
+  color: #00d4ff;
+}
+
+/* ============================================================
+   Tutorial Analytics Tab
+   ============================================================ */
+
+.uc-summary-row {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+}
+.uc-id {
+  color: #94a3b8;
+  min-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.faq-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.faq-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(167,139,250,.15);
+  color: #a78bfa;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.faq-count { color: #6b88a8; }
+
+/* ============================================================
+   Chat Analytics Tab
+   ============================================================ */
+
+.src-row {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+}
+.src-label {
+  color: #94a3b8;
+  min-width: 110px;
+}
+.src-pct { color: #94a3b8; font-size: 10px; min-width: 80px; text-align: right; }
+
+.day-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  cursor: default;
+}
+.day-bar {
+  width: 100%;
+  background: #00d4ff;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  transition: opacity .15s;
+}
+.day-bar-wrap:hover .day-bar { opacity: .75; }
+.day-label { font-size: 9px; color: #475569; }
+
+.dash-error { color: #f87171; font-size: 12px; padding: 4px 0; }
+
+/* ── Chat Log Tab ─────────────────────────────────── */
+.chatlog-turn {
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  padding: 10px 0;
+}
+.chatlog-turn-meta {
+  font-size: 10px;
+  color: #475569;
+  margin-bottom: 6px;
+}
+.chatlog-bubble {
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin: 4px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.chatlog-bubble.user { background: rgba(96,165,250,.1); color: #93c5fd; }
+.chatlog-bubble.asst { background: rgba(52,211,153,.08); color: #6ee7b7; }
+.chatlog-role {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  margin-right: 6px;
+  opacity: .6;
+}
+.chatlog-actions {
+  font-size: 10px;
+  color: #475569;
+  margin-top: 4px;
+  padding-left: 4px;
+}
