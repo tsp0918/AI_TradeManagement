@@ -36,14 +36,72 @@
   <main class="main">
 
     <div class="tabBar">
-      <button class="tabBtn isActive" data-tab="tab-scenarios">シナリオ</button>
+      <button class="tabBtn isActive" data-tab="tab-dashboard">ダッシュボード</button>
+      <button class="tabBtn" data-tab="tab-scenarios">シナリオ</button>
       <button class="tabBtn" data-tab="tab-analytics">分析</button>
+      <button class="tabBtn" data-tab="tab-tutorial">チュートリアル</button>
+      <button class="tabBtn" data-tab="tab-chat-stats">チャット分析</button>
       <button class="tabBtn" data-tab="tab-recorder">レコーダー</button>
       <button class="tabBtn" data-tab="tab-chat-widget">Chat Widget</button>
+      <button class="tabBtn" data-tab="tab-chat-logs">チャットログ</button>
     </div>
 
+    <!-- ===== DASHBOARD TAB ===== -->
+    <section id="tab-dashboard" class="tab isActive">
+
+      <!-- ヘッダー行 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:14px;font-weight:600;color:#e2e8f0;">Platform 全体状況</div>
+        <button id="dash-reload-btn" class="btnGhost btnSm">再読み込み</button>
+      </div>
+
+      <!-- モジュールヘルス -->
+      <div class="analyticsCard" style="margin-bottom:16px;">
+        <div class="analyticsHeader">
+          <div class="analyticsTitle">モジュールヘルス</div>
+          <div id="dash-health-summary" style="display:flex;align-items:center;gap:8px;font-size:12px;"></div>
+        </div>
+        <div id="dash-health-grid" class="health-grid">
+          <div class="analyticsEmpty">チェック中…</div>
+        </div>
+      </div>
+
+      <!-- Platform KPI -->
+      <div class="analyticsCard" style="margin-bottom:16px;">
+        <div class="analyticsHeader">
+          <div class="analyticsTitle">Platform KPI（30日）</div>
+        </div>
+        <div id="dash-kpi-row" class="kpi-row">
+          <div class="analyticsEmpty">読み込み中…</div>
+        </div>
+      </div>
+
+      <!-- 直近イベントストリーム -->
+      <div class="analyticsCard">
+        <div class="analyticsHeader">
+          <div class="analyticsTitle">直近 UX イベント（15件）</div>
+        </div>
+        <div class="tableWrap">
+          <table class="dataTable">
+            <thead>
+              <tr>
+                <th>時刻</th>
+                <th>モジュール</th>
+                <th>イベント</th>
+                <th>コンテキスト</th>
+                <th>セッション</th>
+              </tr>
+            </thead>
+            <tbody id="dash-events-body">
+              <tr><td colspan="5" class="analyticsEmpty">読み込み中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== SCENARIOS TAB ===== -->
-    <section id="tab-scenarios" class="tab isActive">
+    <section id="tab-scenarios" class="tab">
       <div class="scenarioToolbar">
         <button id="btnAddPage" class="btnGhost btnSm">＋ ページを追加</button>
       </div>
@@ -54,7 +112,7 @@
       <div id="pagesContainer"></div>
     </section>
 
-    <!-- ===== ANALYTICS TAB ===== -->
+    <!-- ===== ANALYTICS (TELEMETRY) TAB ===== -->
     <section id="tab-analytics" class="tab">
       <div class="analyticsCard">
         <div class="analyticsHeader">
@@ -77,6 +135,124 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </section>
+
+    <!-- ===== TUTORIAL ANALYTICS TAB ===== -->
+    <section id="tab-tutorial" class="tab">
+
+      <!-- フィルター -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:12px;color:#6b88a8;">UC</label>
+          <select id="tut-uc-select" class="select" style="min-width:180px;">
+            <option value="">すべての UC</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:12px;color:#6b88a8;">期間</label>
+          <select id="tut-days-select" class="select">
+            <option value="7">7日</option>
+            <option value="30" selected>30日</option>
+            <option value="90">90日</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;">
+
+        <!-- ステップファネル -->
+        <div class="analyticsCard">
+          <div class="analyticsHeader">
+            <div class="analyticsTitle">ステップ別ファネル</div>
+          </div>
+          <div class="tableWrap">
+            <table class="dataTable">
+              <thead>
+                <tr>
+                  <th>UC</th>
+                  <th>ステップ</th>
+                  <th>表示</th>
+                  <th>完了</th>
+                  <th>完了率</th>
+                  <th>スキップ</th>
+                  <th>平均時間</th>
+                </tr>
+              </thead>
+              <tbody id="tut-funnel-body">
+                <tr><td colspan="7" class="analyticsEmpty">読み込み中…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 右カラム -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+
+          <!-- UC 別完了率 -->
+          <div class="analyticsCard">
+            <div class="analyticsHeader">
+              <div class="analyticsTitle" style="font-size:12px;">UC 別完了率</div>
+            </div>
+            <div id="tut-uc-summary" style="display:flex;flex-direction:column;gap:8px;padding:4px 0;">
+              <div class="analyticsEmpty">読み込み中…</div>
+            </div>
+          </div>
+
+          <!-- FAQ 候補 -->
+          <div class="analyticsCard">
+            <div class="analyticsHeader">
+              <div class="analyticsTitle" style="font-size:12px;">FAQ 自動キャッシュ候補</div>
+            </div>
+            <div id="tut-faq-list" style="display:flex;flex-direction:column;gap:6px;padding:4px 0;">
+              <div class="analyticsEmpty">読み込み中…</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CHAT ANALYTICS TAB ===== -->
+    <section id="tab-chat-stats" class="tab">
+
+      <!-- フィルター -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:12px;color:#6b88a8;">期間</label>
+          <select id="chat-days-select" class="select">
+            <option value="7">7日</option>
+            <option value="30" selected>30日</option>
+            <option value="90">90日</option>
+          </select>
+        </div>
+        <div style="font-size:20px;font-weight:700;color:#e2e8f0;margin-left:16px;">
+          総質問数: <span id="chat-total-q" style="color:#00d4ff;">—</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+        <!-- 回答ソース分布 -->
+        <div class="analyticsCard">
+          <div class="analyticsHeader">
+            <div class="analyticsTitle">回答ソース分布</div>
+          </div>
+          <div id="chat-source-bars" style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
+            <div class="analyticsEmpty">読み込み中…</div>
+          </div>
+        </div>
+
+        <!-- 日別セッション推移 -->
+        <div class="analyticsCard">
+          <div class="analyticsHeader">
+            <div class="analyticsTitle">日別セッション推移（直近14日）</div>
+          </div>
+          <div id="chat-daily-chart" style="display:flex;align-items:flex-end;gap:4px;height:60px;padding:8px 0 0;">
+            <div class="analyticsEmpty">読み込み中…</div>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -113,6 +289,32 @@
         <div id="chatWidgetCards" class="chatWidgetGrid">
           <div class="analyticsEmpty">読み込み中…</div>
         </div>
+      </div>
+    </section>
+
+    <!-- ===== CHAT LOGS TAB ===== -->
+    <section id="tab-chat-logs" class="tab">
+      <div class="analyticsCard">
+        <div class="analyticsHeader">
+          <div class="analyticsTitle">チャットログ — セッション別会話履歴</div>
+          <select id="chatlog-limit-select" class="analyticsSelect">
+            <option value="20">直近 20 セッション</option>
+            <option value="50">直近 50 セッション</option>
+            <option value="100">直近 100 セッション</option>
+          </select>
+        </div>
+        <div id="chatlog-session-list">
+          <div class="analyticsEmpty">読み込み中…</div>
+        </div>
+      </div>
+
+      <!-- セッション詳細パネル -->
+      <div id="chatlog-detail-panel" class="analyticsCard" style="display:none;margin-top:16px;">
+        <div class="analyticsHeader">
+          <div class="analyticsTitle">会話詳細 — <span id="chatlog-detail-sid"></span></div>
+          <button id="chatlog-detail-close" class="btnGhost btnSm">閉じる</button>
+        </div>
+        <div id="chatlog-detail-body"></div>
       </div>
     </section>
 
@@ -163,5 +365,7 @@
     </div>
   </div>
 </dialog>
+
+<script src="/static/dashboard.js?v={{ sv }}"></script>
 
 {% endblock %}

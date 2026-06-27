@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}輸出許可申請管理{% endblock %}
+{% block nav_licenses %} active{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">輸出許可申請管理</h4>
+    <a href="/ui/transactions" class="btn btn-sm btn-outline-secondary">← 取引審査一覧</a>
+  </div>
+
+  {% if error_msg %}
+  <div class="alert alert-danger">{{ error_msg }}</div>
+  {% endif %}
+
+  <!-- 統計バー -->
+  {% if stats %}
+  <div class="row g-2 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 bg-light py-2">
+        <div class="fs-4 fw-bold">{{ stats.total or 0 }}</div>
+        <div class="small text-muted">総申請数</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 bg-warning bg-opacity-10 py-2">
+        <div class="fs-4 fw-bold text-warning">{{ stats.pending or 0 }}</div>
+        <div class="small text-muted">申請中</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 bg-success bg-opacity-10 py-2">
+        <div class="fs-4 fw-bold text-success">{{ stats.approved or 0 }}</div>
+        <div class="small text-muted">承認済</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 bg-danger bg-opacity-10 py-2">
+        <div class="fs-4 fw-bold text-danger">{{ stats.expiring_soon or 0 }}</div>
+        <div class="small text-muted">期限切れ間近</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 申請一覧テーブル -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+      <span class="fw-semibold">申請一覧</span>
+    </div>
+    <div class="card-body p-0">
+      {% if not licenses %}
+      <div class="text-center text-muted py-5">
+        <div class="mb-2">申請がありません</div>
+        <small>取引審査の詳細画面から「輸出許可申請ドラフト作成」ボタンで登録できます。</small>
+      </div>
+      {% else %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>申請番号</th>
+              <th>品目コード</th>
+              <th>仕向国</th>
+              <th>許可種別</th>
+              <th>当局</th>
+              <th>許可額 (USD)</th>
+              <th>残額 (USD)</th>
+              <th>有効期限</th>
+              <th>ステータス</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lic in licenses %}
+            <tr>
+              <td class="text-nowrap">
+                <span class="fw-semibold">{{ lic.application_number or "—" }}</span>
+                {% if lic.license_number %}
+                <br><small class="text-muted">許可: {{ lic.license_number }}</small>
+                {% endif %}
+              </td>
+              <td>{{ lic.product_code or "—" }}</td>
+              <td>{{ lic.destination_country or "—" }}</td>
+              <td>
+                {% if lic.license_type == "individual" %}個別許可
+                {% elif lic.license_type == "general" %}一般許可
+                {% elif lic.license_type == "blanket" %}包括許可
+                {% else %}{{ lic.license_type or "—" }}{% endif %}
+              </td>
+              <td><span class="badge bg-secondary">{{ lic.authority or "—" }}</span></td>
+              <td class="text-end">{{ "{:,.0f}".format(lic.value_usd or 0) }}</td>
+              <td class="text-end">
+                {% if lic.remaining_value_usd is not none %}
+                  {% set ratio = lic.remaining_value_usd / lic.value_usd * 100 if lic.value_usd else 0 %}
+                  <span class="{{ 'text-danger fw-bold' if ratio < 20 else 'text-success' }}">
+                    {{ "{:,.0f}".format(lic.remaining_value_usd) }}
+                  </span>
+                  <div class="progress" style="height:4px;min-width:60px">
+                    <div class="progress-bar {{ 'bg-danger' if ratio < 20 else 'bg-success' }}"
+                         style="width:{{ ratio|round|int }}%"></div>
+                  </div>
+                {% else %}—{% endif %}
+              </td>
+              <td class="text-nowrap">
+                {% if lic.expires_at %}
+                  {% set days = lic.days_until_expiry %}
+                  <span class="{{ 'text-danger fw-bold' if days is not none and days < 30 else '' }}">
+                    {{ lic.expires_at[:10] }}
+                  </span>
+                  {% if days is not none and days < 30 %}
+                  <br><small class="text-danger">残{{ days }}日</small>
+                  {% endif %}
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {% if lic.status == "draft" %}
+                  <span class="badge bg-secondary">ドラフト</span>
+                {% elif lic.status == "submitted" %}
+                  <span class="badge bg-warning text-dark">申請中</span>
+                {% elif lic.status == "approved" %}
+                  <span class="badge bg-success">承認済</span>
+                {% elif lic.status == "denied" %}
+                  <span class="badge bg-danger">却下</span>
+                {% elif lic.status == "expired" %}
+                  <span class="badge bg-dark">期限切れ</span>
+                {% else %}
+                  <span class="badge bg-light text-dark">{{ lic.status }}</span>
+                {% endif %}
+              </td>
+              <td class="text-nowrap">
+                {% if lic.status == "submitted" %}
+                <form method="post" action="/ui/export-licenses/{{ lic.id }}/approve"
+                      class="d-inline" onsubmit="return confirmApprove(this)">
+                  <input type="hidden" name="license_number" id="ln_{{ lic.id }}" value="">
+                  <button type="button" class="btn btn-xs btn-success"
+                    onclick="promptLicenseNo('{{ lic.id }}', this.closest('form'))">承認</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="mt-3 text-muted small">
+    ※ 新規申請ドラフトは取引審査詳細画面の「輸出許可申請」セクションから作成できます。
+  </div>
+</div>
+
+<script>
+function promptLicenseNo(licId, form) {
+  const no = prompt("許可証番号を入力してください:");
+  if (!no) return;
+  document.getElementById("ln_" + licId).value = no;
+  form.submit();
+}
+</script>
+{% endblock %}

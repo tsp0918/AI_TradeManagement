@@ -252,7 +252,20 @@ class TransactionCreateRequest(BaseModel):
     destination_country: Optional[str] = None
     items: List[_ItemIn] = []
     usage_requirements: List[_UsageIn] = []
-    source_module: Optional[str] = None  # "dap" | "item_version" | etc.
+    source_module: Optional[str] = None  # "dap" | "item_version" | "erp" | etc.
+
+    # ERP 連携フィールド（任意）
+    erp_case_no: Optional[str] = None         # ERP 側受注番号（指定時は内部 case_no とは別に保存）
+    product_code: Optional[str] = None        # ai_classification の品目コード
+    product_name: Optional[str] = None        # 品目名（items 未指定時に自動補完）
+    total_value_usd: Optional[float] = None   # 取引総額 (USD)
+    unit_price_usd: Optional[float] = None    # 単価 (USD)
+    quantity: Optional[float] = None          # 数量
+    end_user: Optional[str] = None            # 最終需要者名
+    end_user_country: Optional[str] = None    # 最終需要者所在国 ISO alpha-2
+    intended_use: Optional[str] = None        # 最終用途（AI 判定品質向上のため推奨）
+    hs_code: Optional[str] = None             # HSコード
+    incoterms: Optional[str] = None           # インコタームズ（CIF/FOB 等）
 
 
 def _make_case_no_api() -> str:
@@ -273,20 +286,48 @@ def create_transaction_api(
 
     Returns: {id, case_no, title, status, url}
     """
+    # case_no: ERP が指定した場合はそれを使用、なければ自動生成
+    internal_case_no = _make_case_no_api()
     tx = Transaction(
-        case_no=_make_case_no_api(),
+        case_no=internal_case_no,
         title=body.title.strip() or "新規審査",
         status="draft",
         counterparty_name=body.counterparty_name.strip() if body.counterparty_name else None,
-        source_module=body.source_module or "dap",
+        source_module=body.source_module or ("erp" if body.erp_case_no else "dap"),
         org_id=x_org_id,
     )
     if body.destination_country:
         tx.destination_country = body.destination_country
+    # ERP フィールドのマッピング
+    if body.erp_case_no:
+        tx.erp_case_no = body.erp_case_no.strip()
+    if body.product_code:
+        tx.linked_product_code = body.product_code.strip()
+    if body.end_user:
+        tx.end_user_name = body.end_user.strip()
+    if body.end_user_country:
+        tx.end_user_country = body.end_user_country.strip().upper()
+    if body.intended_use:
+        tx.end_use_description = body.intended_use.strip()
+    if body.total_value_usd is not None:
+        tx.total_value_usd = body.total_value_usd
+    if body.unit_price_usd is not None:
+        tx.unit_price_usd = body.unit_price_usd
+    if body.quantity is not None:
+        tx.quantity = body.quantity
+    if body.hs_code:
+        tx.hs_code = body.hs_code.strip()
+    if body.incoterms:
+        tx.incoterms = body.incoterms.strip().upper()
     db.add(tx)
     db.flush()
 
-    for item in body.items:
+    # ERP の product_name を items に補完（items が空の場合）
+    effective_items = list(body.items)
+    if body.product_name and not any(i.item_name.strip() for i in effective_items):
+        effective_items.insert(0, _ItemIn(item_name=body.product_name))
+
+    for item in effective_items:
         if item.item_name.strip() or item.item_description.strip():
             ti = TransactionItem(
                 transaction_id=tx.id,
@@ -304,11 +345,21 @@ def create_transaction_api(
                         source=usage.source or "core",
                         text=usage.text.strip(),
                         risk_tags=[],
-                        created_by="dap",
+                        created_by="erp" if body.erp_case_no else "dap",
                     ))
-            break  # 現状は先頭1品目のみ
+            # intended_use を UsageRequirement として自動登録
+            if body.intended_use and not body.usage_requirements:
+                db.add(UsageRequirement(
+                    transaction_id=tx.id,
+                    transaction_item_id=ti.id,
+                    source="core",
+                    text=body.intended_use.strip(),
+                    risk_tags=[],
+                    created_by="erp",
+                ))
+            break  # 先頭1品目のみ
 
-    if not body.items or not any(i.item_name.strip() for i in body.items):
+    if not effective_items or not any(i.item_name.strip() for i in effective_items):
         # 品目なしでも UsageRequirement だけ追加
         for usage in body.usage_requirements:
             if usage.text.strip():
@@ -318,7 +369,7 @@ def create_transaction_api(
                     source=usage.source or "core",
                     text=usage.text.strip(),
                     risk_tags=[],
-                    created_by="dap",
+                    created_by="erp" if body.erp_case_no else "dap",
                 ))
 
     try:
@@ -339,8 +390,10 @@ def create_transaction_api(
     return {
         "id":                tx.id,
         "case_no":           tx.case_no,
+        "erp_case_no":       tx.erp_case_no,
         "title":             tx.title,
         "status":            tx.status,
+        "linked_product_code": tx.linked_product_code,
         "url":               f"{_BASE}/ui/transactions/{tx.id}",
         "screening_queued":  bool(tx.counterparty_name),
     }
@@ -406,6 +459,125 @@ def get_stuck_transactions(
     return {"stuck_transactions": stuck, "total": len(stuck)}
 
 
+# ── ERP Webhook 受信 ─────────────────────────────────────────────
+
+_ERP_WEBHOOK_URL = _os.environ.get("ERP_WEBHOOK_URL", "")
+
+
+class _WebhookPayload(BaseModel):
+    """ERP が AI_TM に送信する審査結果通知ペイロード（オプション）。"""
+    event: str = "judgment_updated"
+    erp_case_no: Optional[str] = None
+    transaction_id: Optional[int] = None
+    judgment: Optional[str] = None          # ERP 側の正規化値
+    agent_judgment_status: Optional[str] = None
+    comment: Optional[str] = None
+
+
+@router.post("/webhook/judgment-updated")
+def receive_erp_webhook(
+    payload: _WebhookPayload,
+    db: Session = Depends(get_db),
+    x_org_id: Optional[str] = Header(None, alias="X-Organization-Id"),
+) -> Dict[str, Any]:
+    """
+    ERP → AI_TM への Webhook 受信。
+    ERP が自社システムで判定ステータスを更新した際に通知する（将来拡張用）。
+    現状は受信ログを残し、erp_case_no で取引を特定して comment を保存する。
+    """
+    tx: Optional[Transaction] = None
+    if payload.transaction_id:
+        tx = db.query(Transaction).filter(Transaction.id == payload.transaction_id).first()
+    if tx is None and payload.erp_case_no:
+        tx = db.query(Transaction).filter(
+            Transaction.erp_case_no == payload.erp_case_no
+        ).order_by(desc(Transaction.created_at)).first()
+
+    if tx is None:
+        _logger.warning("webhook received but transaction not found: %s", payload.dict())
+        return {"ok": False, "detail": "transaction not found"}
+
+    _logger.info(
+        "ERP webhook received: tx=%d erp_case_no=%s judgment=%s",
+        tx.id, payload.erp_case_no, payload.judgment,
+    )
+    return {
+        "ok": True,
+        "transaction_id": tx.id,
+        "case_no": tx.case_no,
+        "erp_case_no": tx.erp_case_no,
+        "current_judgment": _normalize_judgment(tx.status, tx.agent_judgment_status),
+    }
+
+
+# ── ERP ポーリング用：PENDING 案件一覧 ──────────────────────────
+
+@router.get("/pending-erp")
+def get_pending_erp_transactions(
+    limit: int = Query(default=50, le=200),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    ERP ポーリングジョブ向け。
+    erp_case_no が設定されていて judgment が PENDING（未判定）の案件を返す。
+    ERP は 30 分おきにこのエンドポイントをポーリングして判定完了を検知する。
+    """
+    txs = (
+        db.query(Transaction)
+        .filter(
+            Transaction.erp_case_no.isnot(None),
+            Transaction.erp_case_no != "",
+        )
+        .order_by(desc(Transaction.created_at))
+        .limit(limit)
+        .all()
+    )
+
+    results = []
+    for tx in txs:
+        j = _normalize_judgment(tx.status, tx.agent_judgment_status)
+        results.append({
+            "id": tx.id,
+            "case_no": tx.case_no,
+            "erp_case_no": tx.erp_case_no,
+            "status": tx.status,
+            "judgment": j,
+            "agent_judgment_status": tx.agent_judgment_status,
+            "is_pending": j == "PENDING",
+            "updated_at": tx.updated_at.isoformat(),
+        })
+
+    pending_count = sum(1 for r in results if r["is_pending"])
+    return {
+        "results": results,
+        "total": len(results),
+        "pending_count": pending_count,
+    }
+
+
+# ── 判定ステータス正規化 (ERP 向け) ──────────────────────────────
+# /api/transactions/search は ui.py に実装済み（erp_case_no / q / 直近20件をサポート）
+
+_JUDGMENT_MAP: Dict[str, str] = {
+    "not_controlled":  "APPROVED",
+    "controlled":      "NEEDS_REVIEW",
+    "requires_review": "NEEDS_REVIEW",
+    "requires_permit": "REQUIRES_PERMIT",
+}
+
+
+def _normalize_judgment(tx_status: str, agent_judgment_status: Optional[str]) -> str:
+    """
+    AI_TM 内部値を ERP 向け正規化値に変換する。
+    APPROVED / NEEDS_REVIEW / REQUIRES_PERMIT / REJECTED / PENDING
+    """
+    if tx_status == "rejected":
+        return "REJECTED"
+    if not agent_judgment_status:
+        return "PENDING"
+    return _JUDGMENT_MAP.get(agent_judgment_status.lower(), "PENDING")
+
+
 # ── De Minimis スナップショット保存 ───────────────────────────────
 
 class SupplyChainLinkBody(BaseModel):
@@ -431,12 +603,16 @@ def get_transaction_detail(tx_id: int, db: Session = Depends(get_db)) -> Dict[st
     return {
         "id": tx.id,
         "case_no": tx.case_no,
+        "erp_case_no": tx.erp_case_no,
         "title": tx.title,
         "status": tx.status,
         "agent_judgment_status": tx.agent_judgment_status,
+        # ERP 向け正規化判定値: APPROVED / NEEDS_REVIEW / REQUIRES_PERMIT / REJECTED / PENDING
+        "judgment": _normalize_judgment(tx.status, tx.agent_judgment_status),
         "destination_country": tx.destination_country,
         "source_module": tx.source_module,
         "counterparty_name": tx.counterparty_name,
+        "linked_product_code": tx.linked_product_code,
         "items": [
             {"item_name": i.item_name, "spec_text": i.spec_text}
             for i in tx.items
@@ -450,6 +626,66 @@ def get_transaction_detail(tx_id: int, db: Session = Depends(get_db)) -> Dict[st
         "created_at": tx.created_at.isoformat(),
         "updated_at": tx.updated_at.isoformat(),
         "url": f"/ui/transactions/{tx.id}",
+    }
+
+
+class _CooChangedPayload(BaseModel):
+    product_code: str
+    old_country:  Optional[str] = None
+    new_country:  str
+
+
+@router.post("/coo-changed")
+def coo_changed(
+    body: _CooChangedPayload,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    ai_classification から COO（原産国）変更を受信し、
+    当該品目を参照している審査済み・審査中の取引を再審査キューに戻す。
+
+    対象: linked_product_code == body.product_code
+          AND status IN ("in_review", "approved")
+    処置: agent_judgment_status → NULL, status → draft,
+          tier_reason に COO 変更メモを追記
+    """
+    from datetime import datetime as _dt
+    from sqlalchemy import or_
+
+    targets = (
+        db.query(Transaction)
+        .filter(
+            Transaction.linked_product_code == body.product_code,
+            Transaction.status.in_(["in_review", "approved"]),
+        )
+        .all()
+    )
+
+    reset_ids: List[int] = []
+    for tx in targets:
+        tx.agent_judgment_status = None
+        tx.agent_judged_at       = None
+        tx.status                = "draft"
+        note = (
+            f"[COO変更 {_dt.utcnow().strftime('%Y-%m-%d')}] "
+            f"原産国変更 {body.old_country or '?'} → {body.new_country} により自動再審査"
+        )
+        tx.tier_reason = f"{tx.tier_reason}\n{note}" if tx.tier_reason else note
+        reset_ids.append(tx.id)
+
+    db.commit()
+    _logger.info(
+        "coo-changed product=%s %s→%s: reset %d transactions %s",
+        body.product_code, body.old_country, body.new_country,
+        len(reset_ids), reset_ids,
+    )
+    return {
+        "ok": True,
+        "product_code": body.product_code,
+        "old_country": body.old_country,
+        "new_country": body.new_country,
+        "reset_count": len(reset_ids),
+        "reset_transaction_ids": reset_ids,
     }
 
 

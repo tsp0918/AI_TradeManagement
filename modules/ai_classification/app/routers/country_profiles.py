@@ -28,6 +28,20 @@ SUPPORTED_COUNTRIES: dict[str, str] = {
     "CN": "中国",
     "EU": "EU（欧州連合）",
     "KR": "韓国",
+    # ASEAN
+    "TH": "タイ",
+    "VN": "ベトナム",
+    "ID": "インドネシア",
+    "MY": "マレーシア",
+    "SG": "シンガポール",
+    "PH": "フィリピン",
+    # その他主要仕向国
+    "TW": "台湾",
+    "IN": "インド",
+    "AU": "オーストラリア",
+    "GB": "英国",
+    "DE": "ドイツ",
+    "FR": "フランス",
 }
 
 ROLES = {
@@ -55,9 +69,12 @@ class CountryProfileIn(BaseModel):
     local_eccn:          Optional[str]   = None
     license_required:    Optional[str]   = None   # no_license / nLR / license_required / prohibited
     tariff_rate:         Optional[float] = Field(None, ge=0.0, le=5.0,
-                                                  description="小数（例: 0.05 = 5%）")
+                                                  description="MFN税率（例: 0.05 = 5%）")
     tariff_type:         Optional[str]  = None   # MFN / FTA / GSP / 301 / ...
     tariff_notes:        Optional[str]  = None
+    epa_tariff_rate:     Optional[float] = Field(None, ge=0.0, le=5.0,
+                                                  description="EPA/FTA優遇税率（例: 0.0 = 0%）")
+    epa_agreement:       Optional[str]  = None   # AJFTA, CPTPP, RCEP ...
     import_restrictions: Optional[dict] = None
     re_export_control:   Optional[dict] = None
     trade_stats:         Optional[dict] = None
@@ -80,6 +97,9 @@ class CountryProfileOut(BaseModel):
     tariff_rate_pct:     Optional[str]   # "5.0%" 表示用
     tariff_type:         Optional[str]
     tariff_notes:        Optional[str]
+    epa_tariff_rate:     Optional[float]
+    epa_tariff_rate_pct: Optional[str]   # "0.0%" 表示用
+    epa_agreement:       Optional[str]
     import_restrictions: Optional[dict]
     re_export_control:   Optional[dict]
     trade_stats:         Optional[dict]
@@ -108,6 +128,9 @@ def _to_out(p: ProductCountryProfile) -> CountryProfileOut:
     if p.tariff_rate is not None:
         rate_pct = f"{p.tariff_rate * 100:.1f}%"
 
+    epa_rate = getattr(p, "epa_tariff_rate", None)
+    epa_rate_pct = f"{epa_rate * 100:.1f}%" if epa_rate is not None else None
+
     lr = getattr(p, "license_required", None)
     return CountryProfileOut(
         id=p.id,
@@ -125,6 +148,9 @@ def _to_out(p: ProductCountryProfile) -> CountryProfileOut:
         tariff_rate_pct=rate_pct,
         tariff_type=p.tariff_type,
         tariff_notes=p.tariff_notes,
+        epa_tariff_rate=epa_rate,
+        epa_tariff_rate_pct=epa_rate_pct,
+        epa_agreement=getattr(p, "epa_agreement", None),
         import_restrictions=_j(p.import_restrictions),
         re_export_control=_j(p.re_export_control),
         trade_stats=_j(p.trade_stats),
@@ -205,6 +231,8 @@ def create_profile(product_id: int, body: CountryProfileIn, db: Session = Depend
         tariff_rate=body.tariff_rate,
         tariff_type=body.tariff_type,
         tariff_notes=body.tariff_notes,
+        epa_tariff_rate=body.epa_tariff_rate,
+        epa_agreement=body.epa_agreement,
         import_restrictions=_dump(body.import_restrictions),
         re_export_control=_dump(body.re_export_control),
         trade_stats=_dump(body.trade_stats),
@@ -241,6 +269,8 @@ def update_profile(
     prof.tariff_rate         = body.tariff_rate
     prof.tariff_type         = body.tariff_type
     prof.tariff_notes        = body.tariff_notes
+    prof.epa_tariff_rate     = body.epa_tariff_rate
+    prof.epa_agreement       = body.epa_agreement
     prof.import_restrictions = _dump(body.import_restrictions)
     prof.re_export_control   = _dump(body.re_export_control)
     prof.trade_stats         = _dump(body.trade_stats)

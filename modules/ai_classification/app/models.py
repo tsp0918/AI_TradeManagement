@@ -127,9 +127,11 @@ class ProductCountryProfile(Base):
     license_required     = Column(String(20), nullable=True)   # no_license / nLR / license_required / prohibited
 
     # 関税情報（Ph.3 で自動取得）
-    tariff_rate  = Column(Float,       nullable=True)         # 例: 0.05 = 5%
-    tariff_type  = Column(String(16),  nullable=True)         # MFN / FTA / GSP / 301 ...
-    tariff_notes = Column(Text,        nullable=True)
+    tariff_rate      = Column(Float,       nullable=True)     # 例: 0.05 = 5%（MFN）
+    tariff_type      = Column(String(16),  nullable=True)     # MFN / FTA / GSP / 301 ...
+    tariff_notes     = Column(Text,        nullable=True)
+    epa_tariff_rate  = Column(Float,       nullable=True)     # EPA/FTA優遇税率
+    epa_agreement    = Column(String(64),  nullable=True)     # 協定名 (AJFTA, CPTPP, RCEP...)
 
     # 輸入規制・禁止品目フラグ（Ph.3 で自動取得）
     import_restrictions = Column(Text, nullable=True)         # JSON

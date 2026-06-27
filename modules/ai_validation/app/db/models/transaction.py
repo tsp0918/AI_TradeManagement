@@ -74,6 +74,15 @@ class Transaction(Base, TimestampMixin):
     supply_chain_node_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)    # platform-core plat_supply_chain_node UUID
     de_minimis_result: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)  # 取引審査時点の De Minimis 計算スナップショット
 
+    # リスク分岐型承認ティア（Phase redesign）
+    approval_tier: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)              # 1=自動承認 2=標準 3=輸出許可確認
+    required_steps: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)          # ["screening","ai_run","catchall"] etc.
+    tier_reason: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)            # ティア判定理由
+    tier_determined_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)   # ティア確定日時
+    linked_product_code: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)     # 品目管理の product.code
+    linked_product_eccn: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)     # 品目管理から取得したECCN
+    is_new_product_entry: Mapped[Optional[bool]] = mapped_column(Integer, nullable=True)      # 1=品目同時登録モード
+
     # 輸出審査記録の法的要件（外為法 7年保存・CISTEC様式準拠）
     evaluator_name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)         # 判定者氏名
     evaluator_title: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)        # 判定者役職
@@ -81,7 +90,19 @@ class Transaction(Base, TimestampMixin):
     retention_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)      # 保存期限（+7年）
     destination_country: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)      # 仕向国 ISO alpha-2
     end_user_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)          # 最終需要者名
+    end_user_country: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)         # 最終需要者所在国 ISO alpha-2
     end_use_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)           # 最終用途
+
+    # みなし輸出連携
+    deemed_export_personnel_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)  # rnd_assessment personnel_id
+
+    # ERP 連携フィールド（受注・出荷情報）
+    erp_case_no: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True) # ERP 側の受注番号（case_no と分離）
+    total_value_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)            # 取引総額 (USD)
+    unit_price_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)             # 単価 (USD)
+    quantity: Mapped[Optional[float]] = mapped_column(Float, nullable=True)                   # 数量
+    hs_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)                 # HSコード
+    incoterms: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)               # インコタームズ（CIF/FOB 等）
 
     items: Mapped[List["TransactionItem"]] = relationship(
         back_populates="transaction",

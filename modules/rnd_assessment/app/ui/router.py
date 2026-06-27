@@ -814,6 +814,9 @@ def promote_to_item(
         profile.end_user_requirements_raw or "",
     ])).strip()
 
+    # product_code: ケースの external_project_id があれば優先使用（ERP コード引き継ぎ）
+    product_code = (case.external_project_id or "").strip() or None
+
     try:
         with httpx.Client(timeout=30.0) as client:
             r = client.post(
@@ -823,6 +826,7 @@ def promote_to_item(
                     "case_title":         case.title,
                     "rnd_transaction_id": profile.ai_validation_transaction_id,
                     "usage_summary":      usage,
+                    "product_code":       product_code,
                 },
             )
         if r.status_code not in (200, 201):

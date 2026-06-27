@@ -1,4 +1,4 @@
-// cache-bust: 1746777600
+// cache-bust: 1782000000
 /**
  * DAP Chat Widget v2 — 先輩担当者モード
  *
@@ -17,7 +17,14 @@
   if (window !== window.top) return;
   if (document.getElementById('dap-chat-root')) return;
 
-  const DAP_BASE = 'http://localhost:8010';
+  // 外部アクセス（HTTPS）時は dap.{domain} サブドメインを自動解決、ローカルは localhost:8010
+  const DAP_BASE = (function () {
+    var h = window.location.hostname;
+    if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:8010';
+    var parts = h.split('.');
+    if (parts.length >= 2) return window.location.protocol + '//dap.' + parts.slice(-2).join('.');
+    return 'http://localhost:8010';
+  })();
 
   // ── セッション ID（cookie 経由でポートをまたいで共有）─────────────
   function getOrCreateSessionId() {
@@ -81,9 +88,30 @@
   }
 
   // ── 要素検索 ──────────────────────────────────────────────────────
+  // ── iframe 対応ヘルパー ───────────────────────────────────────────
+  // ポータル表示時は <iframe id="module-frame"> 内の document を返す
+  function getModuleDoc() {
+    try {
+      var frame = document.getElementById('module-frame');
+      return (frame && frame.contentDocument) ? frame.contentDocument : document;
+    } catch(e) { return document; }
+  }
+  // iframe 要素の親フレーム内オフセット（座標補正用）
+  function getIframeOffset() {
+    try {
+      var frame = document.getElementById('module-frame');
+      if (frame && frame.contentDocument) {
+        var r = frame.getBoundingClientRect();
+        return { top: r.top, left: r.left };
+      }
+    } catch(e) {}
+    return { top: 0, left: 0 };
+  }
+
   function findInteractiveElement(label) {
     if (!label) return null;
-    return Array.from(document.querySelectorAll('a[href],button,[role="button"]'))
+    var doc = getModuleDoc();
+    return Array.from(doc.querySelectorAll('a[href],button,[role="button"]'))
       .find(function (el) {
         const t = (el.innerText || '').trim().replace(/\s+/g, ' ');
         return t === label || t.includes(label) || (label.includes(t) && t.length > 2);
@@ -91,11 +119,40 @@
   }
   function findFieldElement(label) {
     if (!label) return null;
-    return Array.from(document.querySelectorAll('input[type=text],input[type=email],input[type=number],textarea,select'))
-      .find(function (el) {
-        return [el.placeholder, el.name, el.id, el.getAttribute('aria-label')]
-          .some(function (v) { return v && v.includes(label); });
-      }) || null;
+    var doc = getModuleDoc();
+    const INPUTS = 'input[type=text],input[type=email],input[type=number],input:not([type]),textarea,select';
+
+    // 1. data-dap-field 属性（明示的マーキング — 最優先）
+    const byAttr = doc.querySelector('[data-dap-field="' + label + '"]');
+    if (byAttr) return byAttr;
+
+    // 2. label[for] → input[id] の紐付け
+    const allLabels = Array.from(doc.querySelectorAll('label'));
+    for (const lbl of allLabels) {
+      if (lbl.textContent.trim().includes(label)) {
+        const forId = lbl.getAttribute('for');
+        if (forId) {
+          const el = doc.getElementById(forId);
+          if (el && el.matches(INPUTS)) return el;
+        }
+        // label が直接 input を包んでいる場合
+        const nested = lbl.querySelector(INPUTS);
+        if (nested) return nested;
+      }
+    }
+
+    // 3. placeholder / name / id / aria-label の部分一致
+    const byAttrMatch = Array.from(doc.querySelectorAll(INPUTS)).find(function (el) {
+      return [el.placeholder, el.name, el.id, el.getAttribute('aria-label')]
+        .some(function (v) { return v && v.includes(label); });
+    });
+    if (byAttrMatch) return byAttrMatch;
+
+    // 4. テキストノードが隣接する input（旧フォールバック）
+    return Array.from(doc.querySelectorAll(INPUTS)).find(function (el) {
+      const prev = el.previousElementSibling;
+      return prev && prev.textContent && prev.textContent.includes(label);
+    }) || null;
   }
 
   // ── API 呼び出し ──────────────────────────────────────────────────
@@ -199,6 +256,20 @@
       sessionStorage.removeItem('dap_pending_guidance');
       return JSON.parse(raw);
     } catch (e) { return null; }
+  }
+
+  // ── ワークフロー状態 sessionStorage 永続化（ページ遷移後も復元）──
+  function _saveWfState() {
+    try {
+      if (_wfState) sessionStorage.setItem('dap_wf_state', JSON.stringify(_wfState));
+      else sessionStorage.removeItem('dap_wf_state');
+    } catch(e) {}
+  }
+  function _restoreWfState() {
+    try {
+      var raw = sessionStorage.getItem('dap_wf_state');
+      return raw ? JSON.parse(raw) : null;
+    } catch(e) { return null; }
   }
 
   // ── CSS ───────────────────────────────────────────────────────────
@@ -561,7 +632,31 @@
     .dap-uc-item:hover { background: rgba(0,212,255,0.06); }
     .dap-uc-item-title { font-size: 12px; font-weight: 600; color: #D0D8EC; }
     .dap-uc-item-persona { font-size: 10px; color: #5A6478; margin-top: 2px; }
+    .dap-uc-item-desc { font-size: 10px; color: #7A8498; margin-top: 3px; line-height: 1.4; }
     .dap-uc-item-steps { font-size: 10px; color: rgba(0,212,255,0.5); margin-top: 2px; }
+    .dap-uc-item-demo { background: linear-gradient(90deg, rgba(0,212,255,0.04), transparent); }
+    .dap-uc-item-demo .dap-uc-item-title { color: #00D4FF; }
+
+    /* ── デモモードインジケーター ── */
+    #dap-workflow-bar.demo-mode {
+      background: linear-gradient(135deg, rgba(0,16,32,0.98), rgba(0,8,20,0.99));
+      border-bottom-color: rgba(0,212,255,0.18);
+    }
+    #dap-workflow-bar.demo-mode .dap-wf-label::before { content: '🎬 '; }
+    #dap-workflow-bar.demo-mode .dap-wf-progress-fill {
+      background: linear-gradient(90deg, #00D4FF 0%, #00FF88 100%);
+    }
+
+    /* ── タイプライターフィル アニメーション ── */
+    @keyframes dap-fill-glow {
+      0%   { box-shadow: 0 0 0 0 rgba(0,212,255,0.7); }
+      50%  { box-shadow: 0 0 0 5px rgba(0,212,255,0.15); }
+      100% { box-shadow: 0 0 0 0 rgba(0,212,255,0); }
+    }
+    .dap-fill-typing {
+      border-color: rgba(0,212,255,0.85) !important;
+      animation: dap-fill-glow 0.7s ease-out infinite !important;
+    }
   `;
   document.head.appendChild(style);
 
@@ -652,9 +747,10 @@
         <div id="dap-uc-list"></div>
       </div>
     </div>
+    <div style="padding:0 12px 3px;text-align:right;font-size:9.5px;color:rgba(255,255,255,0.22);user-select:none;letter-spacing:.01em;">Shift+Enter で送信 &nbsp;·&nbsp; Enter で改行</div>
     <div class="dap-chat-input-wrap">
       <button id="dap-wf-start-btn" title="業務フロー開始" style="width:36px;height:36px;border-radius:9px;flex-shrink:0;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:background 0.15s;" onclick="toggleUcPanel()">📋</button>
-      <textarea id="dap-chat-textarea" rows="1" placeholder="質問・相談をどうぞ… (Shift+Enter で送信)"></textarea>
+      <textarea id="dap-chat-textarea" rows="1" placeholder="質問・相談をどうぞ…"></textarea>
       <button id="dap-chat-send" disabled>
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
@@ -711,12 +807,41 @@
   var ucListEl   = panel.querySelector('#dap-uc-list');
 
   function _updateWfBar() {
-    if (!_wfState) { wfBar.classList.remove('is-visible'); return; }
+    if (!_wfState) {
+      wfBar.classList.remove('is-visible', 'demo-mode');
+      _saveWfState();
+      return;
+    }
     wfBar.classList.add('is-visible');
+    if (_wfState.uc_id && _wfState.uc_id.startsWith('DEMO')) {
+      wfBar.classList.add('demo-mode');
+    } else {
+      wfBar.classList.remove('demo-mode');
+    }
     wfTitle.textContent = _wfState.uc_title;
     wfStepInfo.textContent = _wfState.current_step + '/' + _wfState.total_steps;
     var pct = _wfState.total_steps > 0 ? (_wfState.current_step - 1) / _wfState.total_steps * 100 : 0;
     wfFill.style.width = pct + '%';
+    _saveWfState();
+  }
+
+  // guidance_steps が含まれる場合は executeGuidanceSteps で詳細案内を実行する。
+  // 含まれない場合は旧来の navigate_to / highlight フォールバックを使う。
+  function _runStepGuidance(guidance, delayMs) {
+    if (!guidance) return;
+    setTimeout(function () {
+      if (guidance.guidance_steps && guidance.guidance_steps.length > 0) {
+        executeGuidanceSteps(guidance.guidance_steps, 0);
+      } else {
+        // 後方互換フォールバック
+        appendGuidanceMsg('👉 ' + guidance.title + ': ' + guidance.detail);
+        if (guidance.navigate_to) {
+          waitForUserAck('画面を開く →', 20000).then(function () { _portalNavigate(guidance.navigate_to); });
+        } else if (guidance.highlight) {
+          setTimeout(function () { highlightElementWithTooltip(guidance.highlight, guidance.detail, 8000); }, 600);
+        }
+      }
+    }, delayMs || 400);
   }
 
   async function _startWorkflow(ucId) {
@@ -731,15 +856,7 @@
     };
     _updateWfBar();
     appendMsg('bot', '📋 ' + data.message);
-    // navigate_to があれば自動移動
-    if (data.next_guidance && data.next_guidance.navigate_to) {
-      setTimeout(function () {
-        appendGuidanceMsg('👉 ' + data.next_guidance.title + ': ' + data.next_guidance.detail);
-        if (data.next_guidance.highlight) {
-          setTimeout(function () { highlightElementWithTooltip(data.next_guidance.highlight, data.next_guidance.detail, 8000); }, 600);
-        }
-      }, 400);
-    }
+    _runStepGuidance(data.next_guidance, 400);
   }
 
   async function _advanceWorkflow() {
@@ -760,14 +877,8 @@
     appendMsg('bot', '✅ ステップ完了。次: ' + (data.message || ''));
     if (data.next_guidance) {
       const g = data.next_guidance;
-      setTimeout(function () {
-        appendGuidanceMsg('👉 Step ' + g.step_num + ': ' + g.title + ' — ' + g.detail);
-        if (g.navigate_to) {
-          setTimeout(function () { waitForUserAck('画面を開く →', 20000).then(function () { _portalNavigate(g.navigate_to); }); }, 400);
-        } else if (g.highlight) {
-          setTimeout(function () { highlightElementWithTooltip(g.highlight, g.detail, 8000); }, 600);
-        }
-      }, 300);
+      appendGuidanceMsg('👉 Step ' + g.step_num + ': ' + g.title + ' — ' + g.detail);
+      _runStepGuidance(g, 300);
     }
   }
 
@@ -794,10 +905,12 @@
     _loadUcList().then(function (list) {
       ucListEl.innerHTML = '';
       list.forEach(function (uc) {
+        const isDemo = uc.uc_id && uc.uc_id.startsWith('DEMO');
         const item = document.createElement('div');
-        item.className = 'dap-uc-item';
-        item.innerHTML = '<div class="dap-uc-item-title">' + uc.uc_id + ': ' + uc.title + '</div>'
+        item.className = 'dap-uc-item' + (isDemo ? ' dap-uc-item-demo' : '');
+        item.innerHTML = '<div class="dap-uc-item-title">' + (isDemo ? '🎬 ' : '') + uc.uc_id + ': ' + uc.title + '</div>'
           + '<div class="dap-uc-item-persona">' + uc.persona + '</div>'
+          + (uc.description ? '<div class="dap-uc-item-desc">' + uc.description + '</div>' : '')
           + '<div class="dap-uc-item-steps">' + uc.total_steps + ' ステップ</div>';
         item.addEventListener('click', function () { _startWorkflow(uc.uc_id); });
         ucListEl.appendChild(item);
@@ -811,6 +924,45 @@
 
   wfNextBtn.addEventListener('click', _advanceWorkflow);
   wfStopBtn.addEventListener('click', _stopWorkflow);
+
+  // ── チャットパネル ドラッグ移動 ───────────────────────────────────
+  (function () {
+    var header = panel.querySelector('.dap-chat-header');
+    if (!header) return;
+    header.style.cursor = 'grab';
+    header.title = 'ドラッグで移動できます';
+
+    var _drag = false, _ox = 0, _oy = 0;
+
+    header.addEventListener('mousedown', function (e) {
+      if (e.target.closest('button')) return;
+      _drag = true;
+      var r = panel.getBoundingClientRect();
+      // fixed 座標に切り替え（right/bottom → left/top）
+      panel.style.right  = 'auto';
+      panel.style.bottom = 'auto';
+      panel.style.left   = r.left + 'px';
+      panel.style.top    = r.top  + 'px';
+      _ox = e.clientX - r.left;
+      _oy = e.clientY - r.top;
+      header.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function (e) {
+      if (!_drag) return;
+      var nx = Math.max(0, Math.min(window.innerWidth  - panel.offsetWidth,  e.clientX - _ox));
+      var ny = Math.max(0, Math.min(window.innerHeight - panel.offsetHeight, e.clientY - _oy));
+      panel.style.left = nx + 'px';
+      panel.style.top  = ny + 'px';
+    });
+
+    document.addEventListener('mouseup', function () {
+      if (!_drag) return;
+      _drag = false;
+      header.style.cursor = 'grab';
+    });
+  })();
 
   // ── アラートバナー ────────────────────────────────────────────────
   function showAlertBanner(alert, choices) {
@@ -831,7 +983,19 @@
       b.addEventListener('click', function () {
         dismissAlertBanner();
         openPanel();
-        setTimeout(function () { handleSend(c.message || c.label); }, 200);
+        var msg = c.message || c.label || '';
+        setTimeout(function () {
+          if (msg.startsWith('__')) {
+            handleSend(msg);
+            return;
+          }
+          textarea.value = msg;
+          textarea.style.height = 'auto';
+          textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+          sendBtn.disabled = false;
+          textarea.focus();
+          textarea.setSelectionRange(msg.length, msg.length);
+        }, 200);
       });
       alertChoices.appendChild(b);
     });
@@ -939,91 +1103,121 @@
    * 背景をグレーアウト（Canvas）し、対象要素のみ切り抜いて浮かび上がらせる。
    * @returns {Promise} dismiss ボタン押下 or タイムアウトで resolve
    */
+  // チャットパネルがスポットライト対象と重なる場合に自動退避させる
+  function _avoidSpotlightOverlap(rx, ry, rw, rh) {
+    if (!isOpen) return;
+    var pr = panel.getBoundingClientRect();
+    var overlapH = !(pr.right < rx - 10 || pr.left > rx + rw + 10);
+    var overlapV = !(pr.bottom < ry - 10 || pr.top > ry + rh + 10);
+    if (!overlapH || !overlapV) return;
+    // スポットライト対象が画面左半分 → パネルを右下に保持（現状維持）
+    // スポットライト対象が画面右半分 → パネルを左に退避
+    if (rx + rw / 2 > window.innerWidth * 0.55) {
+      panel.style.right = 'auto';
+      panel.style.left  = '16px';
+      panel.style.bottom = '96px';
+      panel.style.top    = 'auto';
+    } else {
+      // 上方向に退避
+      panel.style.bottom = 'auto';
+      panel.style.top    = '12px';
+      panel.style.right  = '28px';
+      panel.style.left   = 'auto';
+    }
+  }
+
   function highlightElementWithTooltip(target, tooltipText, durationMs) {
-    const el = findInteractiveElement(target);
+    const el = findInteractiveElement(target) || findFieldElement(target);
     if (!el) return Promise.resolve();
 
     return new Promise(function (resolve) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // behavior:'instant' でスクロール完了を確実に待つ（smooth は 300-600ms かかりズレの原因）
+      el.scrollIntoView({ behavior: 'instant', block: 'center' });
 
-      // スクロール完了を待ってから描画
-      setTimeout(function () {
-        var dur = durationMs || 7000;
-        var rect = el.getBoundingClientRect();
-        var pad = 12;
-        var rx = rect.left - pad;
-        var ry = rect.top - pad;
-        var rw = rect.width + pad * 2;
-        var rh = rect.height + pad * 2;
-        var borderR = 10;
+      // 再描画1フレーム後に座標取得
+      requestAnimationFrame(function () {
+        setTimeout(function () {
+          var dur = durationMs || 7000;
+          var rect = el.getBoundingClientRect();
+          var ifrOff = getIframeOffset();
+          var pad = 12;
+          var rx = rect.left - pad + ifrOff.left;
+          var ry = rect.top  - pad + ifrOff.top;
+          var rw = rect.width  + pad * 2;
+          var rh = rect.height + pad * 2;
+          var borderR = 10;
 
-        // Canvas でグレーアウト + 切り抜き穴
-        var cvs = spotlightCanvas;
-        cvs.width  = window.innerWidth;
-        cvs.height = window.innerHeight;
-        var ctx = cvs.getContext('2d');
-        ctx.clearRect(0, 0, cvs.width, cvs.height);
-        ctx.fillStyle = 'rgba(0,0,0,0.62)';
-        ctx.fillRect(0, 0, cvs.width, cvs.height);
-        // 切り抜き（composite destination-out）
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.beginPath();
-        ctx.moveTo(rx + borderR, ry);
-        ctx.lineTo(rx + rw - borderR, ry);
-        ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + borderR);
-        ctx.lineTo(rx + rw, ry + rh - borderR);
-        ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - borderR, ry + rh);
-        ctx.lineTo(rx + borderR, ry + rh);
-        ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - borderR);
-        ctx.lineTo(rx, ry + borderR);
-        ctx.quadraticCurveTo(rx, ry, rx + borderR, ry);
-        ctx.closePath();
-        ctx.fill();
-        ctx.globalCompositeOperation = 'source-over';
-        // 切り抜き周囲にシアンのグロー
-        ctx.strokeStyle = 'rgba(0,212,255,0.85)';
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = '#00D4FF';
-        ctx.shadowBlur = 18;
-        ctx.stroke();
+          // チャットパネルが被る場合は先に退避
+          _avoidSpotlightOverlap(rx, ry, rw, rh);
 
-        // ツールチップ配置（切り抜き枠の下、または上）
-        if (tooltipText) {
-          spotlightTooltip.textContent = tooltipText;
-          var tipTop = ry + rh + 14;
-          if (tipTop + 80 > window.innerHeight) tipTop = ry - 80;
-          var tipLeft = rx;
-          if (tipLeft + 290 > window.innerWidth) tipLeft = window.innerWidth - 295;
-          spotlightTooltip.style.top  = tipTop + 'px';
-          spotlightTooltip.style.left = tipLeft + 'px';
-          spotlightTooltip.style.display = 'block';
-          setTimeout(function () { spotlightTooltip.classList.add('is-visible'); }, 50);
-        }
+          // Canvas でグレーアウト + 切り抜き穴
+          var cvs = spotlightCanvas;
+          cvs.width  = window.innerWidth;
+          cvs.height = window.innerHeight;
+          var ctx = cvs.getContext('2d');
+          ctx.clearRect(0, 0, cvs.width, cvs.height);
+          ctx.fillStyle = 'rgba(0,0,0,0.62)';
+          ctx.fillRect(0, 0, cvs.width, cvs.height);
+          // 切り抜き（composite destination-out）
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.beginPath();
+          ctx.moveTo(rx + borderR, ry);
+          ctx.lineTo(rx + rw - borderR, ry);
+          ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + borderR);
+          ctx.lineTo(rx + rw, ry + rh - borderR);
+          ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - borderR, ry + rh);
+          ctx.lineTo(rx + borderR, ry + rh);
+          ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - borderR);
+          ctx.lineTo(rx, ry + borderR);
+          ctx.quadraticCurveTo(rx, ry, rx + borderR, ry);
+          ctx.closePath();
+          ctx.fill();
+          ctx.globalCompositeOperation = 'source-over';
+          // 切り抜き周囲にシアンのグロー
+          ctx.strokeStyle = 'rgba(0,212,255,0.85)';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = '#00D4FF';
+          ctx.shadowBlur = 18;
+          ctx.stroke();
 
-        // オーバーレイ表示
-        spotlightOverlay.classList.add('is-visible');
-        setTimeout(function () { spotlightDismiss.classList.add('is-visible'); }, 300);
+          // ツールチップ配置（切り抜き枠の下、または上）
+          if (tooltipText) {
+            spotlightTooltip.textContent = tooltipText;
+            var tipTop = ry + rh + 14;
+            if (tipTop + 80 > window.innerHeight) tipTop = ry - 80;
+            var tipLeft = rx;
+            if (tipLeft + 290 > window.innerWidth) tipLeft = window.innerWidth - 295;
+            spotlightTooltip.style.top  = tipTop + 'px';
+            spotlightTooltip.style.left = tipLeft + 'px';
+            spotlightTooltip.style.display = 'block';
+            setTimeout(function () { spotlightTooltip.classList.add('is-visible'); }, 50);
+          }
 
-        var done = false;
-        function dismiss() {
-          if (done) return;
-          done = true;
-          spotlightDismiss.classList.remove('is-visible');
-          spotlightTooltip.classList.remove('is-visible');
-          setTimeout(function () {
-            spotlightOverlay.classList.remove('is-visible');
-            var c = spotlightCanvas.getContext('2d');
-            c.clearRect(0, 0, spotlightCanvas.width, spotlightCanvas.height);
-          }, 350);
-          if (_spotlightTimer) { clearTimeout(_spotlightTimer); _spotlightTimer = null; }
-          resolve();
-        }
+          // オーバーレイ表示
+          spotlightOverlay.classList.add('is-visible');
+          setTimeout(function () { spotlightDismiss.classList.add('is-visible'); }, 300);
 
-        _spotlightTimer = setTimeout(dismiss, dur);
-        spotlightDismiss.onclick = dismiss;
-        // オーバーレイ自体をクリックしても閉じる（ただし切り抜き部分は pass-through）
-        spotlightCanvas.onclick = dismiss;
-      }, 350);
+          var done = false;
+          function dismiss() {
+            if (done) return;
+            done = true;
+            spotlightDismiss.classList.remove('is-visible');
+            spotlightTooltip.classList.remove('is-visible');
+            setTimeout(function () {
+              spotlightOverlay.classList.remove('is-visible');
+              var c = spotlightCanvas.getContext('2d');
+              c.clearRect(0, 0, spotlightCanvas.width, spotlightCanvas.height);
+            }, 350);
+            if (_spotlightTimer) { clearTimeout(_spotlightTimer); _spotlightTimer = null; }
+            resolve();
+          }
+
+          _spotlightTimer = setTimeout(dismiss, dur);
+          spotlightDismiss.onclick = dismiss;
+          // オーバーレイ自体をクリックしても閉じる
+          spotlightCanvas.onclick = dismiss;
+        }, 80);
+      });
     });
   }
 
@@ -1051,13 +1245,37 @@
   // ポート番号 → ポータルのモジュールキー対応表
   var _PORT_TO_MODULE = {
     '8001': 'ai_validation',
+    '8011': 'ai_validation',
     '8002': 'ai_classification',
     '8003': 'rnd_assessment',
     '8004': 'patent_search',
     '8005': 'screening',
     '8006': 'hs_classifier',
     '8010': 'dap',
+    '8012': 'export_license',
+    '8013': 'trade_gate',
+    '8014': 'fta_origin',
   };
+
+  // localhost URL を外部公開 URL に書き換える（外部アクセス時のみ）
+  function _rewriteLocalUrl(url) {
+    if (!url || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return url;
+    if (!/https?:\/\/localhost:\d+/.test(url)) return url;
+    // ポート番号からモジュールキーを取得して /proxy/{key}{path} 形式に書き換え
+    var portMatch = url.match(/https?:\/\/localhost:(\d+)(\/.*)?$/);
+    if (portMatch) {
+      var mPort = portMatch[1];
+      var mPath = portMatch[2] || '/';
+      var mKey  = _PORT_TO_MODULE[mPort];
+      if (mKey) {
+        return window.location.protocol + '//' + window.location.host + '/proxy/' + mKey + mPath;
+      }
+    }
+    // フォールバック: port 8000 等は /proxy/... パスをそのままポータルオリジンで使用
+    var parts = window.location.hostname.split('.');
+    var portalOrigin = window.location.protocol + '//app.' + parts.slice(-2).join('.');
+    return url.replace(/https?:\/\/localhost:\d+/, portalOrigin);
+  }
 
   /**
    * URL に応じてナビゲートする。
@@ -1065,9 +1283,11 @@
    * - スタンドアロン: window.location.href で直接移動
    */
   function _portalNavigate(url) {
+    url = _rewriteLocalUrl(url);
     if (!url) return;
-    // ポータル公開 API が存在する場合はiframe切り替え
-    if (typeof window.__dap_portal_navigate__ === 'function') {
+    var _frame = document.getElementById('module-frame');
+    // ポータル上（iframe あり）の場合はフルページ遷移せず iframe 内で処理
+    if (_frame && typeof window.__dap_portal_navigate__ === 'function') {
       try {
         var parsed = new URL(url, window.location.href);
         var port   = parsed.port;
@@ -1085,6 +1305,12 @@
             subPath = subPath.slice(proxyPrefix.length) || '/';
           }
           window.__dap_portal_navigate__(moduleKey, subPath);
+          return;
+        }
+        // 同一オリジンの /ui/* など platform-core 直提供ページ: iframe に直接ロード
+        // （フルページ遷移するとポータルから離れ DAP ウィジェットが消える）
+        if (parsed.origin === window.location.origin) {
+          _frame.src = parsed.pathname + parsed.search + parsed.hash;
           return;
         }
       } catch (e) { /* URL解析失敗 → フォールバック */ }
@@ -1116,7 +1342,58 @@
             setTimeout(function () { _portalNavigate(action.url); }, 800);
           }
           break;
+        case 'start_workflow':
+          if (action.uc_id) {
+            setTimeout(function () { _startWorkflow(action.uc_id); }, 200);
+          }
+          break;
       }
+    });
+  }
+
+  // ── タイプライターフィル（デモモード用）────────────────────────────
+  function typewriterFill(el, text, speedMs) {
+    return new Promise(function (resolve) {
+      if (!el) { resolve(); return; }
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus();
+      el.value = '';
+      el.classList.add('dap-fill-typing');
+      // checkbox: set checked state
+      if (el.type === 'checkbox') {
+        const shouldCheck = text === '1' || text.toLowerCase() === 'true' || text.toLowerCase() === 'check';
+        el.checked = shouldCheck;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        el.classList.remove('dap-fill-typing');
+        resolve();
+        return;
+      }
+      // number inputs can't append char-by-char (decimal gets sanitized), set all at once
+      if (el.type === 'number') {
+        setTimeout(function () {
+          el.value = text;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          el.classList.remove('dap-fill-typing');
+          resolve();
+        }, 400);
+        return;
+      }
+      var i = 0;
+      var sp = speedMs || 55;
+      function typeNext() {
+        if (i >= text.length) {
+          el.classList.remove('dap-fill-typing');
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          resolve();
+          return;
+        }
+        el.value += text[i++];
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        setTimeout(typeNext, sp);
+      }
+      setTimeout(typeNext, 250);
     });
   }
 
@@ -1132,14 +1409,44 @@
       switch (step.type) {
         case 'navigate':
           if (step.url) {
-            // 残りのステップを保存してからナビゲート
-            savePendingGuidance(steps, i + 1);
             appendGuidanceMsg('📍 ' + (step.message || '次のページに移動します'));
-            await sleep(1800);  // メッセージを読む時間
-            appendGuidanceMsg('移動先でも続きをご案内しますので、慌てなくて大丈夫です 👍');
-            await waitForUserAck('ページを開く →', 30000);  // ユーザーが準備できたら
-            _portalNavigate(step.url);
-            return;  // ページ遷移するのでここで終わり
+            await sleep(1200);
+            var _isDemoNav = _wfState && _wfState.uc_id && _wfState.uc_id.startsWith('DEMO');
+            if (!_isDemoNav) {
+              appendGuidanceMsg('移動先でも続きをご案内しますので、慌てなくて大丈夫です 👍');
+              await waitForUserAck('ページを開く →', 30000);
+            }
+            var _portalFrame = document.getElementById('module-frame');
+            if (_portalFrame && typeof window.__dap_portal_navigate__ === 'function') {
+              // ポータル iframe モード: iframe load を待って同一コンテキストで続行
+              await new Promise(function (resolve) {
+                var _loadDone = false;
+                function _onLoad() {
+                  if (_loadDone) return;
+                  _loadDone = true;
+                  _portalFrame.removeEventListener('load', _onLoad);
+                  resolve();
+                }
+                _portalFrame.addEventListener('load', _onLoad);
+                _portalNavigate(step.url);
+                setTimeout(function () { _onLoad(); }, 8000); // タイムアウト保険
+              });
+              // DEMO はリダイレクト経由が多いため長めに待つ
+              var _navWait = (_wfState && _wfState.uc_id && _wfState.uc_id.startsWith('DEMO')) ? 1600 : 800;
+              await sleep(_navWait); // DOM 安定待ち
+              appendGuidanceMsg('✅ ページに移動しました。続けてご案内します。');
+              await sleep(600);
+              break; // ループを continue（return しない）
+            }
+            // スタンドアロンモード: フルページ遷移（セッションに保存して再開）
+            savePendingGuidance(steps, i + 1);
+            guidanceRunning = false;
+            var _navUrl = step.url;
+            try {
+              _navUrl += (_navUrl.indexOf('?') >= 0 ? '&' : '?') + '_dap_from=' + (i + 1);
+            } catch(e) {}
+            _portalNavigate(_navUrl);
+            return;
           }
           break;
         case 'highlight':
@@ -1164,9 +1471,77 @@
           if (step.target) highlightElementWithTooltip(step.target, step.tooltip, 10000);  // ハイライト延長
           await sleep(4000);  // 操作待ち時間（1500ms → 4000ms）
           break;
+        case 'fill_field_from_context':
+          // クロスモジュール引き継ぎ: セッションの transfer_context から値を取得してフィールドに入力
+          try {
+            const ctxResp = await fetch(DAP_BASE + '/api/chat/transfer-context?session_id=' + encodeURIComponent(SESSION_ID));
+            const ctx = ctxResp.ok ? await ctxResp.json() : {};
+            const val = ctx[step.context_key];
+            if (val) {
+              const fieldEl = findFieldElement(step.target);
+              if (fieldEl) {
+                fieldEl.value = val;
+                fieldEl.dispatchEvent(new Event('input', { bubbles: true }));
+                fieldEl.dispatchEvent(new Event('change', { bubbles: true }));
+                fieldEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                fieldEl.focus();
+                appendGuidanceMsg('✅ ' + step.target + ' に「' + val + '」を入力しました（前の手続きから引き継ぎ）');
+              } else {
+                appendGuidanceMsg('📝 ' + step.target + ' に「' + val + '」を入力してください（前の手続きから引き継ぎ）');
+                if (step.target) showFillHintNear(step.target, val, null);
+              }
+            } else {
+              // 引き継ぎデータがない場合は通常の fill_hint にフォールバック
+              appendGuidanceMsg('📝 ' + (step.message || step.target + ' を入力してください'));
+              if (step.target && step.hint) showFillHintNear(step.target, step.hint, step.example);
+            }
+          } catch (e) {
+            appendGuidanceMsg('📝 ' + (step.message || step.target + ' を入力してください'));
+          }
+          await sleep(2500);
+          break;
+        case 'fill_demo':
+          // デモモード専用: タイプライターアニメーションでフィールドに値を入力
+          appendGuidanceMsg('⌨️ ' + (step.message || (step.target + ' にデモデータを入力します')));
+          await sleep(600);
+          {
+            const demoEl = findFieldElement(step.target);
+            if (demoEl && step.value) {
+              await typewriterFill(demoEl, step.value, 45);
+              appendGuidanceMsg('✅ 「' + step.target + '」に入力しました');
+            } else {
+              appendGuidanceMsg('⚠ フィールド「' + (step.target || '?') + '」が見つかりません。手動で入力してください。');
+            }
+          }
+          await sleep(900);
+          break;
+        case 'api_call':
+          // バックグラウンドAPI呼び出し（デモデータシードなど）
+          try {
+            if (step.message) appendGuidanceMsg('⚙️ ' + step.message);
+            var apiUrl = _rewriteLocalUrl(step.url || '');
+            await fetch(apiUrl, {
+              method: (step.method || 'POST').toUpperCase(),
+              headers: { 'Content-Type': 'application/json' },
+              body: step.body ? JSON.stringify(step.body) : undefined
+            });
+            await sleep(300);
+          } catch(e) {}
+          break;
+        case 'pause':
+          // プレゼンターコントロール: ボタンを押すまで停止（autoMs=0 → 無制限待機）
+          if (step.message) appendGuidanceMsg('⏸ ' + step.message);
+          await waitForUserAck(step.button_label || '次へ →', 0);
+          break;
       }
     }
     guidanceRunning = false;
+    // デモモード: guidance_steps 完了後に自動で次ステップへ進める
+    if (_wfState && _wfState.uc_id && _wfState.uc_id.startsWith('DEMO')) {
+      setTimeout(function () {
+        if (_wfState) _advanceWorkflow();
+      }, 800);
+    }
   }
 
   function sleep(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
@@ -1240,8 +1615,20 @@
         choiceBtn.className = 'dap-choice-btn';
         choiceBtn.textContent = choice.label || '';
         choiceBtn.addEventListener('click', function () {
-          choicesEl.querySelectorAll('.dap-choice-btn').forEach(function (b) { b.disabled = true; });
-          handleSend(choice.message || choice.label);
+          var msg = choice.message || choice.label || '';
+          // __ で始まるシステムコマンドは直接実行
+          if (msg.startsWith('__')) {
+            choicesEl.querySelectorAll('.dap-choice-btn').forEach(function (b) { b.disabled = true; });
+            handleSend(msg);
+            return;
+          }
+          // 通常メッセージは textarea に転記して編集可能にする
+          textarea.value = msg;
+          textarea.style.height = 'auto';
+          textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+          sendBtn.disabled = false;
+          textarea.focus();
+          textarea.setSelectionRange(msg.length, msg.length);
         });
         choicesEl.appendChild(choiceBtn);
       });
@@ -1317,21 +1704,60 @@
   // Step 1: ページ訪問イベント記録
   trackEvent('page_view', { port: window.location.port, page_path: window.location.pathname });
 
+  // Step 1b: ワークフロー状態の復元（ページ遷移後）
+  // _dap_from URL パラメータがあればクロスオリジン遷移（サーバーから再取得）
+  // なければ sessionStorage から復元（同一オリジン遷移）
+  var _urlSearchParams = new URLSearchParams(window.location.search);
+  var _dapFromParam = _urlSearchParams.get('_dap_from');
+  var _crossOriginResume = _dapFromParam !== null;
+  var _crossOriginFromIdx = _crossOriginResume ? parseInt(_dapFromParam, 10) : -1;
+  if (_crossOriginResume) {
+    // URL をクリーンにする
+    try { history.replaceState({}, '', window.location.pathname + window.location.hash); } catch(e) {}
+  } else {
+    // 同一オリジン: sessionStorage から復元
+    var _restoredWfState = _restoreWfState();
+    if (_restoredWfState) { _wfState = _restoredWfState; _updateWfBar(); }
+  }
+
   // Step 2: クロスページ guidance ペンディングチェック
-  const pendingGuidance = loadPendingGuidance();
-  if (pendingGuidance && pendingGuidance.steps) {
-    // ページが落ち着いてから（2.5秒後）チャットを開く
+  var pendingGuidance = null;
+  if (_crossOriginResume && _crossOriginFromIdx >= 0) {
+    // クロスオリジン遷移後: サーバーからセッション状態を取得して再開
     setTimeout(function () {
-      openPanel();
-      appendMsg('bot', '👔 新しいページに移動しました。まずページの内容をざっと確認してみてください。');
-      // 1.5秒後に「続ける」ボタンを表示 — ユーザーが準備できたら案内を再開
+      fetch(DAP_BASE + '/api/workflow/status?session_id=' + encodeURIComponent(SESSION_ID))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.uc_id) return;
+          _wfState = { uc_id: d.uc_id, uc_title: d.uc_title, current_step: d.current_step, total_steps: d.total_steps, guidance: d.next_guidance };
+          _updateWfBar();
+          var gs = d.next_guidance && d.next_guidance.guidance_steps;
+          if (!gs || _crossOriginFromIdx >= gs.length) return;
+          openPanel();
+          appendMsg('bot', '👔 新しいページに移動しました。まずページの内容をざっと確認してみてください。');
+          setTimeout(function () {
+            appendMsg('bot', '準備ができたら下のボタンを押してください。焦らなくて大丈夫です！');
+            waitForUserAck('続ける →', 60000).then(function () {
+              executeGuidanceSteps(gs, _crossOriginFromIdx);
+            });
+          }, 1500);
+        })
+        .catch(function () {});
+    }, 2000);
+  } else {
+    pendingGuidance = loadPendingGuidance();
+    if (pendingGuidance && pendingGuidance.steps) {
       setTimeout(function () {
-        appendMsg('bot', '準備ができたら下のボタンを押してください。焦らなくて大丈夫です！');
-        waitForUserAck('続ける →', 60000).then(function () {
-          executeGuidanceSteps(pendingGuidance.steps, pendingGuidance.from || 0);
-        });
-      }, 1500);
-    }, 2500);
+        openPanel();
+        appendMsg('bot', '👔 新しいページに移動しました。まずページの内容をざっと確認してみてください。');
+        setTimeout(function () {
+          appendMsg('bot', '準備ができたら下のボタンを押してください。焦らなくて大丈夫です！');
+          waitForUserAck('続ける →', 60000).then(function () {
+            executeGuidanceSteps(pendingGuidance.steps, pendingGuidance.from || 0);
+          });
+        }, 1500);
+      }, 2500);
+    }
   }
 
   // Step 3: 既存セッション確認 + greet

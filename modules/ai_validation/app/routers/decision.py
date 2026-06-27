@@ -1,6 +1,8 @@
+import threading
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -10,7 +12,82 @@ from app.db.models.transaction import Transaction, TransactionItem, UsageRequire
 from app.services.two_list import compute_two_lists
 from app.services.pipeline.orchestrator import run_until_matrix_match
 
+import os as _os
+_EXPORT_LICENSE_BASE = _os.environ.get("MODULE_EXPORT_LICENSE_URL", "http://localhost:8012")
+_RND_BASE = _os.environ.get("MODULE_RND_ASSESSMENT_URL", "http://localhost:8003")
+
 router = APIRouter(prefix="/decision", tags=["decision"])
+
+
+def _auto_create_license_draft(tx_id: int, tx_case_no: str, product_code: str | None,
+                                dest_country: str | None, end_use: str | None) -> None:
+    """
+    judgment=requires_permit 確定時に export_license モジュールへドラフトを自動作成する。
+    fire-and-forget スレッドで実行（失敗しても審査フローは止めない）。
+    """
+    def _post():
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                client.post(
+                    f"{_EXPORT_LICENSE_BASE}/api/export-licenses/draft-from-transaction",
+                    json={
+                        "transaction_id": tx_id,
+                        "transaction_ids": [str(tx_id)],
+                        "auto_created": True,
+                        "reason": "requires_permit",
+                    },
+                )
+        except Exception:
+            pass
+    threading.Thread(target=_post, daemon=True).start()
+
+
+def _auto_register_deemed_export(
+    tx_id: int,
+    end_user_name: str | None,
+    nationality: str | None,
+    eccn: str | None,
+    case_no: str | None,
+) -> None:
+    """
+    みなし輸出対象人物を rnd_assessment に自動登録する。
+    登録成功時に personnel_id を transaction.deemed_export_personnel_id へ書き戻す。
+    fire-and-forget — 失敗しても審査フローは止めない。
+    """
+    if not nationality or nationality.upper() == "JP":
+        return
+
+    def _post() -> None:
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                r = client.post(
+                    f"{_RND_BASE}/api/v1/personnel",
+                    json={
+                        "name":            end_user_name or f"EndUser-{case_no}",
+                        "role":            "contractor",
+                        "nationality":     nationality.upper(),
+                        "residence_country": nationality.upper(),
+                        "tech_access_eccn": eccn,
+                        "note":            f"ai_validation 取引審査 {case_no} からの自動登録（みなし輸出判定）",
+                    },
+                )
+            if r.status_code not in (200, 201):
+                return
+            personnel_id = r.json().get("personnel_id")
+            if not personnel_id:
+                return
+            # personnel_id を transaction へ書き戻す
+            from app.db.session import SessionLocal
+            from app.db.models.transaction import Transaction as _Tx
+            with SessionLocal() as db:
+                tx = db.get(_Tx, tx_id)
+                if tx and not tx.deemed_export_personnel_id:
+                    tx.deemed_export_personnel_id = personnel_id
+                    db.commit()
+        except Exception:
+            pass
+
+    threading.Thread(target=_post, daemon=True).start()
 
 
 @router.get("/{transaction_id}/faiss-candidates")
@@ -231,23 +308,63 @@ def run_and_two_lists(
     """
     ① pipeline を matrix_match まで実行
     ② 2リスト集計を返す（intersection / expanded_only）
+    ③ ティア判定を実行し DB に保存（Tier 1 は自動承認）
     """
-    try:
-        # pipeline（thresholdだけ上書きしたいなら orchestrator を引数化するのが綺麗）
-        run_until_matrix_match(db=db, transaction_id=transaction_id)
+    from app.services.tier_determination import determine_tier
 
-        # 省略時は最新runを拾う設計なので run_id は渡さない
+    try:
+        run_until_matrix_match(db=db, transaction_id=transaction_id)
         result = compute_two_lists(db=db, transaction_id=transaction_id, run_id=None)
-        return {
-            "ok": True,
-            "transaction_id": transaction_id,
-            "threshold": threshold,
-            "two_lists": result,
-        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    # ── ティア判定 ───────────────────────────────────────────────────
+    tx = db.get(Transaction, transaction_id)
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    eccn = tx.linked_product_eccn  # 品目管理から引き継いだECCN（なければ None）
+    tier, req_steps, reason = determine_tier(
+        two_list_result=result,
+        eccn=eccn,
+        screening_status=tx.screening_status,
+        destination_country=tx.destination_country,
+    )
+
+    import json as _json
+    tx.approval_tier     = tier
+    tx.required_steps    = req_steps
+    tx.tier_reason       = reason
+    tx.tier_determined_at = datetime.utcnow()
+
+    auto_approved = False
+    if tier == 1 and tx.status != TransactionStatus.approved.value:
+        # Tier 1: 自動承認
+        submitted_at = datetime.utcnow()
+        tx.status              = TransactionStatus.approved.value
+        tx.formal_submitted_at = submitted_at
+        if not tx.retention_until:
+            from datetime import timedelta
+            tx.retention_until = submitted_at + timedelta(days=365 * 7 + 2)
+        if not tx.judgment_no and tx.case_no:
+            tx.judgment_no = f"JDG-{tx.case_no}-{submitted_at.strftime('%Y%m%d')}"
+        auto_approved = True
+
+    db.commit()
+
+    return {
+        "ok": True,
+        "transaction_id": transaction_id,
+        "threshold": threshold,
+        "two_lists": result,
+        "tier": tier,
+        "tier_label": {1: "自動承認", 2: "標準審査", 3: "輸出許可確認"}.get(tier, ""),
+        "tier_reason": reason,
+        "required_steps": req_steps,
+        "auto_approved": auto_approved,
+    }
 
 
 # ── エージェント判定結果の保存 ───────────────────────────────────────────
@@ -279,6 +396,30 @@ def save_agent_judgment(
         tx.status = TransactionStatus.in_review.value
 
     db.commit()
+
+    # requires_permit 確定時: export_license モジュールへドラフトを自動作成
+    if body.overall_status == "requires_permit":
+        _auto_create_license_draft(
+            tx_id=transaction_id,
+            tx_case_no=tx.case_no,
+            product_code=tx.linked_product_code,
+            dest_country=tx.destination_country,
+            end_use=tx.end_use_description,
+        )
+
+    # 規制品 + 外国人エンドユーザー → みなし輸出人物登録
+    _DEEMED_EXPORT_STATUSES = {"controlled", "requires_review", "requires_permit"}
+    if body.overall_status in _DEEMED_EXPORT_STATUSES:
+        nat = (tx.end_user_country or tx.destination_country or "").upper()
+        if nat and nat != "JP":
+            _auto_register_deemed_export(
+                tx_id=transaction_id,
+                end_user_name=tx.end_user_name or tx.counterparty_name,
+                nationality=nat,
+                eccn=tx.linked_product_eccn,
+                case_no=tx.case_no,
+            )
+
     return {
         "ok": True,
         "transaction_id": transaction_id,
@@ -351,16 +492,29 @@ def get_review_checklist(
     ).first() is not None
     is_submitted = tx.status == TransactionStatus.approved.value
 
+    # ティア対応の required_steps
+    tier = tx.approval_tier
+    required_steps = tx.required_steps or (["screening", "ai_run"] if tier is None else [])
+
+    checklist_map = {
+        "screening":        {"done": has_screening,      "label": "スクリーニング"},
+        "ai_run":           {"done": has_ai_run,         "label": "AI判定実行"},
+        "agent_judgment":   {"done": has_agent_judgment, "label": "エージェント判定"},
+        "catchall":         {"done": has_catchall,       "label": "キャッチオール自己判定"},
+        "formal_submitted": {"done": is_submitted,       "label": "正式審査提出"},
+    }
+
+    required_done = all(checklist_map.get(s, {}).get("done", False) for s in required_steps)
+
     return {
         "transaction_id": transaction_id,
         "status": tx.status,
-        "checklist": {
-            "screening":        {"done": has_screening,      "label": "スクリーニング実施"},
-            "ai_run":           {"done": has_ai_run,         "label": "AI判定（FAISS照合）実行"},
-            "agent_judgment":   {"done": has_agent_judgment, "label": "エージェント対話・判定完了"},
-            "catchall":         {"done": has_catchall,       "label": "キャッチオール自己判定"},
-            "formal_submitted": {"done": is_submitted,       "label": "正式審査へ提出"},
-        },
+        "tier": tier,
+        "tier_label": {1: "自動承認", 2: "標準審査", 3: "輸出許可確認"}.get(tier, "") if tier else "",
+        "tier_reason": tx.tier_reason,
+        "required_steps": required_steps,
+        "required_done": required_done,
+        "checklist": checklist_map,
         "agent_judgment_status": tx.agent_judgment_status,
         "formal_submitted_at": tx.formal_submitted_at.isoformat() if tx.formal_submitted_at else None,
     }

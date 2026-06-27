@@ -16,7 +16,9 @@ from app.db.models.transaction import Transaction
 logger = logging.getLogger(__name__)
 
 import os as _os
-SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
+SCREENING_BASE         = _os.environ.get("MODULE_SCREENING_URL",         "http://localhost:8005")
+AI_CLASSIFICATION_BASE = _os.environ.get("MODULE_AI_CLASSIFICATION_URL", "http://localhost:8002")
+EXPORT_LICENSE_BASE    = _os.environ.get("MODULE_EXPORT_LICENSE_URL",    "http://localhost:8012")
 
 
 def _auto_screen(db: Session, tx: Transaction) -> None:
@@ -35,6 +37,20 @@ def _auto_screen(db: Session, tx: Transaction) -> None:
             db.flush()
     except Exception:
         pass
+
+
+def _fetch_product_eccn(product_code: str) -> Optional[str]:
+    """ai_classification から品目コードでECCNを取得する（非致命的）。"""
+    if not product_code:
+        return None
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            r = client.get(f"{AI_CLASSIFICATION_BASE}/api/products/by-code/{product_code}")
+        if r.status_code == 200:
+            return r.json().get("eccn") or None
+    except Exception:
+        pass
+    return None
 
 from app.db.deps import get_db
 
@@ -191,14 +207,36 @@ def transaction_new_form(request: Request):
     )
 
 
+@router.get("/api/products/search")
+def products_search_proxy(q: str = Query(default="")):
+    """ai_classification の品目検索を中継する（transaction_new.html 品目ピッカー用）。"""
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            r = client.get(f"{AI_CLASSIFICATION_BASE}/api/products/json-search",
+                           params={"q": q})
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return []
+
+
 @router.get("/api/transactions/search")
 def transactions_search(
     q: str = Query(default=""),
+    erp_case_no: str = Query(default=""),
     db: Session = Depends(get_db),
 ):
-    """前段審査参照フィールドの検索用。q が空なら直近20件を返す。"""
+    """
+    取引検索。
+    - erp_case_no: ERP 受注番号での完全一致検索（ERP 再審査フロー用）
+    - q: case_no / title のキーワード検索（UI 用）
+    - 両方空の場合は直近 20 件を返す
+    """
     query = db.query(Transaction).order_by(desc(Transaction.id))
-    if q.strip():
+    if erp_case_no.strip():
+        query = query.filter(Transaction.erp_case_no == erp_case_no.strip())
+    elif q.strip():
         keyword = f"%{q.strip()}%"
         from sqlalchemy import or_
         query = query.filter(
@@ -210,7 +248,6 @@ def transactions_search(
     results = query.limit(20).all()
 
     def _infer_source(t: Transaction) -> str:
-        """source_module が未設定の場合、case_no プレフィックスから推定する。"""
         if t.source_module:
             return t.source_module
         cn = (t.case_no or "").upper()
@@ -224,7 +261,9 @@ def transactions_search(
         {
             "id": t.id,
             "case_no": t.case_no,
+            "erp_case_no": t.erp_case_no,
             "title": t.title,
+            "status": t.status,
             "source_module": _infer_source(t),
             "created_at": t.created_at.strftime("%Y-%m-%d") if t.created_at else None,
         }
@@ -248,17 +287,31 @@ def transaction_new_submit(
     destination_country: Optional[str] = Form(None),
     end_user_name: Optional[str] = Form(None),
     end_use_description: Optional[str] = Form(None),
+    linked_product_code: Optional[str] = Form(None),
+    is_new_product_entry: Optional[str] = Form(None),  # checkbox: "1" if checked
 ):
     """手動入力で新規審査を作成（AIパイプラインは実行しない）。"""
     templates = request.app.state.templates
-    if not title.strip() and not product_code.strip() and not description.strip():
-        return templates.TemplateResponse(request, "transaction_new.html", {"error": "品名・品番・用途のいずれかを入力してください。"},
+
+    new_entry = bool(is_new_product_entry)
+    effective_product_code = linked_product_code.strip() if linked_product_code else product_code.strip()
+
+    # 品目未連携かつ同時登録チェックなし → エラー
+    if not new_entry and not effective_product_code:
+        return templates.TemplateResponse(
+            request, "transaction_new.html",
+            {"error": "品目管理から品目を選択するか、「品目同時登録」にチェックして品番を入力してください。"},
         )
+
+    if not title.strip() and not effective_product_code and not description.strip():
+        return templates.TemplateResponse(request, "transaction_new.html",
+                                          {"error": "品名・品番・用途のいずれかを入力してください。"})
+
     try:
         tx = _create_transaction_manual(
             db=db,
             title=title,
-            product_code=product_code,
+            product_code=effective_product_code,
             description=description,
             spec_text=spec_text,
             case_no=case_no.strip() or None,
@@ -270,12 +323,18 @@ def transaction_new_submit(
             end_user_name=end_user_name,
             end_use_description=end_use_description,
         )
+        # 品目連携情報を保存
+        if effective_product_code:
+            tx.linked_product_code  = effective_product_code
+            tx.is_new_product_entry = 1 if new_entry else 0
+            if not new_entry:
+                eccn = _fetch_product_eccn(effective_product_code)
+                tx.linked_product_eccn = eccn
         _auto_screen(db, tx)
         db.commit()
     except Exception as e:
         db.rollback()
-        return templates.TemplateResponse(request, "transaction_new.html", {"error": f"登録エラー: {e}"},
-        )
+        return templates.TemplateResponse(request, "transaction_new.html", {"error": f"登録エラー: {e}"})
     return RedirectResponse(url=f"/ui/transactions/{tx.id}", status_code=303)
 
 
@@ -692,3 +751,99 @@ def run_screening(
         logger.warning("Screening call failed for tx %d: %s", transaction_id, exc)
 
     return RedirectResponse(url=f"/ui/transactions/{transaction_id}", status_code=303)
+
+
+# ──────────────────────────────────────────────
+# 輸出ライセンス管理 UI（export_license モジュール proxy）
+# ──────────────────────────────────────────────
+
+@router.get("/ui/export-licenses", response_class=HTMLResponse)
+def export_licenses_page(request: Request, db: Session = Depends(get_db)):
+    """輸出許可申請管理画面 — export_license モジュール (port 8012) のデータを表示。"""
+    licenses = []
+    stats = {}
+    error_msg = None
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            r_stats = client.get(f"{EXPORT_LICENSE_BASE}/api/export-licenses/stats")
+            r_list  = client.get(f"{EXPORT_LICENSE_BASE}/api/export-licenses?limit=100")
+        if r_stats.status_code == 200:
+            stats = r_stats.json()
+        if r_list.status_code == 200:
+            data = r_list.json()
+            licenses = data if isinstance(data, list) else data.get("items", data.get("licenses", []))
+    except Exception as exc:
+        error_msg = f"輸出ライセンス管理モジュールに接続できませんでした: {exc}"
+    templates = request.app.state.templates
+    return templates.TemplateResponse(
+        request, "export_licenses.html",
+        {"licenses": licenses, "stats": stats, "error_msg": error_msg},
+    )
+
+
+@router.post("/api/export-licenses/draft-from-transaction")
+def create_license_draft_api(
+    body: Dict,
+    db: Session = Depends(get_db),
+):
+    """transaction_detail.html の JS fetch 用 JSON API プロキシ。export_license:8012 に転送する。"""
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.post(
+                f"{EXPORT_LICENSE_BASE}/api/export-licenses/draft-from-transaction",
+                json=body,
+            )
+        if r.status_code not in (200, 201):
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@router.post("/ui/export-licenses/draft", response_class=HTMLResponse)
+def create_license_draft(
+    request: Request,
+    transaction_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    """取引審査案件から輸出許可申請ドラフトを自動生成して一覧ページへ戻す。"""
+    tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="transaction not found")
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.post(
+                f"{EXPORT_LICENSE_BASE}/api/export-licenses/draft-from-transaction",
+                json={"transaction_id": transaction_id},
+            )
+        if r.status_code not in (200, 201):
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    return RedirectResponse(url="/ui/export-licenses", status_code=303)
+
+
+@router.post("/ui/export-licenses/{license_id}/approve")
+def approve_license(
+    license_id: str,
+    license_number: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    """輸出許可申請を承認し許可番号を記録する。"""
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.post(
+                f"{EXPORT_LICENSE_BASE}/api/export-licenses/{license_id}/approve",
+                json={"license_number": license_number},
+            )
+        if r.status_code not in (200, 201):
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    return RedirectResponse(url="/ui/export-licenses", status_code=303)

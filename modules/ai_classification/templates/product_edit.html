@@ -1,1487 +1,1233 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="section">
-  <div class="container">
-    <h1 class="title is-4">品目詳細 / 編集 (ID: {{ product.id }})</h1>
 
-    <div class="mb-4" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-      <a href="/products" class="button is-light">
-        品目一覧に戻る
-      </a>
+  <!-- ================================================================
+       スティッキー保存バー（スクロールしても常時表示）
+       ================================================================ -->
+  <div id="sticky-save-bar" style="
+    position:sticky; top:0; z-index:200;
+    background:rgba(255,255,255,.96); backdrop-filter:blur(6px);
+    border-bottom:2px solid #2563eb; padding:9px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,.08);
+  ">
+    <div style="font-size:.88rem; color:#374151; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+      <span style="font-weight:700; color:#1d4ed8;">{{ product.code or "(コード未設定)" }}</span>
+      <span style="margin:0 6px; color:#9ca3af;">—</span>
+      <span>{{ product.name or "(品目名未設定)" }}</span>
+    </div>
+    <button type="submit" form="main-edit-form"
+            style="padding:7px 20px; background:#2563eb; color:#fff; border:none; border-radius:7px;
+                   font-size:.88rem; font-weight:700; cursor:pointer; white-space:nowrap; font-family:inherit;">
+      💾 基本情報を保存
+    </button>
+  </div>
+
+  <div class="container" style="padding-top:20px;">
+
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+      <h1 class="title is-5" style="margin:0;">品目詳細 / 編集 (ID: {{ product.id }})</h1>
+      <a href="/products" class="btn-action-sm">← 一覧に戻る</a>
+    </div>
+
+    <!-- 連携バッジ -->
+    <div class="mb-3" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
       {% if product.source_rnd_case_id %}
-      <span style="
-        display:inline-flex; align-items:center; gap:8px;
+      <span style="display:inline-flex; align-items:center; gap:8px;
         background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px;
-        padding:6px 12px; font-size:13px; color:#2e7d32;
-      ">
+        padding:5px 12px; font-size:12px; color:#2e7d32;">
         🔬 R&D案件 <strong>RND-{{ product.source_rnd_case_id[:8] }}</strong> から登録
         <a href="/proxy/rnd_assessment/ui/cases/{{ product.source_rnd_case_id }}" target="_blank"
-           style="color:#1565c0; font-size:12px;">R&D詳細 →</a>
+           style="color:#1565c0; font-size:11px;">R&D詳細 →</a>
         {% if product.source_rnd_transaction_id %}
         <a href="/proxy/ai_validation/ui/transactions/{{ product.source_rnd_transaction_id }}" target="_blank"
-           style="color:#1565c0; font-size:12px;">RND審査 →</a>
+           style="color:#1565c0; font-size:11px;">RND審査 →</a>
         {% endif %}
       </span>
       {% endif %}
       {% if product.ui_validation_transaction_id %}
-      <span style="
-        display:inline-flex; align-items:center; gap:8px;
+      <span style="display:inline-flex; align-items:center; gap:8px;
         background:#e3f2fd; border:1px solid #90caf9; border-radius:8px;
-        padding:6px 12px; font-size:13px; color:#1565c0;
-      ">
+        padding:5px 12px; font-size:12px; color:#1565c0;">
         🔍 UI品目審査あり
         <a href="/proxy/ai_validation/ui/transactions/{{ product.ui_validation_transaction_id }}" target="_blank"
            style="color:#1565c0; font-size:12px; font-weight:600;">UI審査を確認 →</a>
         <a href="/proxy/ai_validation/ui/transactions/new?parent_transaction_id={{ product.ui_validation_transaction_id }}&title={{ (product.name ~ ' の輸出取引') | urlencode }}&description={{ (product.usage_summary or '') | urlencode }}"
            target="_blank"
-           style="
-             background:#1565c0; color:#fff; border-radius:5px;
-             padding:3px 10px; font-size:12px; font-weight:600; text-decoration:none;
-           ">＋ 正式取引審査を起案</a>
+           style="background:#1565c0; color:#fff; border-radius:5px; padding:3px 10px; font-size:11px; font-weight:600; text-decoration:none;">
+          ＋ 正式取引審査を起案
+        </a>
       </span>
       {% endif %}
     </div>
 
-    <!-- ===== 輸入品バナー ===== -->
+    <!-- 輸入品バナー -->
     {% if product.item_type in ["PURCHASED_PART", "RAW_MATERIAL", "INTERNAL_TRANSFER"] %}
-    <div style="
-      display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;
       background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px;
-      padding:10px 16px; margin-bottom:16px; font-size:13px; color:#1d4ed8;
-    ">
+      padding:10px 16px; margin-bottom:14px; font-size:13px; color:#1d4ed8;">
       🛒 <strong>輸入品</strong>
       {% if product.item_type == "PURCHASED_PART" %}（外部購入品）{% elif product.item_type == "RAW_MATERIAL" %}（原材料）{% else %}（グループ内移管品）{% endif %}
       <a href="/import-profiles?product_code={{ product.code | urlencode }}"
          style="background:#1d4ed8; color:#fff; border-radius:5px; padding:3px 12px; font-size:12px; font-weight:600; text-decoration:none;">
         🛒 輸入プロファイルを管理
       </a>
-      <a href="/api/import-profiles/product/{{ product.code | urlencode }}"
-         target="_blank"
-         style="color:#1d4ed8; font-size:12px;">API →</a>
     </div>
     {% endif %}
 
-    <!-- ===== 基本情報フォーム ===== -->
-    <div class="box">
-      <form method="post" action="/products/{{ product.id }}/edit">
-        <div class="columns">
-          <div class="column is-half">
-            <div class="field">
-              <label class="label">品目コード</label>
-              <div class="control">
-                <input class="input" type="text" name="code" value="{{ product.code }}">
-              </div>
-            </div>
+    <!-- ================================================================
+         [1] 基本情報
+         ================================================================ -->
+    <div class="box" style="margin-bottom:16px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+        <h2 class="subtitle is-5" style="margin:0;">📋 基本情報</h2>
+        <button type="submit" form="main-edit-form"
+                style="padding:8px 22px; background:#2563eb; color:#fff; border:none; border-radius:7px;
+                       font-size:.9rem; font-weight:700; cursor:pointer; font-family:inherit;">
+          💾 保存
+        </button>
+      </div>
 
-            <div class="field">
-              <label class="label">品目名</label>
-              <div class="control">
-                <input class="input" type="text" name="name" value="{{ product.name }}">
-              </div>
-            </div>
+      <form id="main-edit-form" method="post" action="/products/{{ product.id }}/edit">
 
-            <div class="field">
-              <label class="label">説明</label>
-              <div class="control">
-                <textarea class="textarea" name="description" rows="3">{{ product.description or "" }}</textarea>
-              </div>
-            </div>
+        <!-- Row 1: 品目コード + 品目名 -->
+        <div style="display:grid; grid-template-columns:200px 1fr; gap:12px; margin-bottom:12px;">
+          <div>
+            <label class="label" style="font-size:.82rem; margin-bottom:3px;">品目コード</label>
+            <input class="input" type="text" name="code" value="{{ product.code }}"
+                   style="font-family:monospace; font-weight:700;">
+          </div>
+          <div>
+            <label class="label" style="font-size:.82rem; margin-bottom:3px;">品目名 <span style="color:#dc2626;">*</span></label>
+            <input class="input" type="text" name="name" value="{{ product.name }}" required>
+          </div>
+        </div>
 
-            <!-- ── 品目管理ステータス ── -->
-            <div class="field is-horizontal">
-              <div class="field-body">
-                <div class="field">
-                  <label class="label">登録元</label>
-                  <div class="control">
-                    {% if product.source == "ERP" %}
-                      <span class="tag is-warning is-medium">ERP</span>
-                    {% elif product.source == "RND" %}
-                      <span class="tag is-info is-medium">R&amp;D</span>
-                    {% else %}
-                      <span class="tag is-success is-medium">AI_TM</span>
-                    {% endif %}
-                  </div>
-                </div>
-                <div class="field">
-                  <label class="label">品目種別</label>
-                  <div class="control">
-                    <div class="select">
-                      <select name="item_type">
-                        <option value="">— 未設定 —</option>
-                        <optgroup label="輸出品">
-                          <option value="FINISHED_GOODS"    {% if product.item_type == "FINISHED_GOODS"    %}selected{% endif %}>📦 完成品</option>
-                          <option value="BOM_COMPONENT"     {% if product.item_type == "BOM_COMPONENT"     %}selected{% endif %}>🔩 BOM構成品</option>
-                          <option value="SOFTWARE"          {% if product.item_type == "SOFTWARE"          %}selected{% endif %}>💻 ソフトウェア・技術</option>
-                        </optgroup>
-                        <optgroup label="輸入品">
-                          <option value="PURCHASED_PART"    {% if product.item_type == "PURCHASED_PART"    %}selected{% endif %}>🛒 購入品</option>
-                          <option value="RAW_MATERIAL"      {% if product.item_type == "RAW_MATERIAL"      %}selected{% endif %}>⚗️ 原材料</option>
-                          <option value="INTERNAL_TRANSFER" {% if product.item_type == "INTERNAL_TRANSFER" %}selected{% endif %}>🏭 グループ内移管品</option>
-                        </optgroup>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div class="field">
-                  <label class="label">確認ステータス</label>
-                  <div class="control">
-                    {% if product.is_unconfirmed %}
-                      <span class="tag is-warning">未確認 (ERP受信)</span>
-                      <button class="button is-small is-success" type="button"
-                              onclick="document.getElementById('confirm-form').submit();"
-                              style="margin-left:6px;">確認済みにする</button>
-                    {% else %}
-                      <span class="tag is-success is-light">確認済</span>
-                    {% endif %}
-                  </div>
-                </div>
-              </div>
-            </div>
+        <!-- Row 2: 説明 -->
+        <div style="margin-bottom:12px;">
+          <label class="label" style="font-size:.82rem; margin-bottom:3px;">説明</label>
+          <textarea class="textarea" name="description" rows="3"
+                    placeholder="素材・用途・製造工程・性能パラメータなどを入力してください（HS/ECCN判定精度に影響します）">{{ product.description or "" }}</textarea>
+        </div>
 
-            <div class="field is-horizontal">
-              <div class="field-body">
-                <div class="field">
-                  <label class="label">HSコード</label>
-                  <div style="display:flex; gap:0;">
-                    <input id="hs-code-input" type="text" name="hs_code"
-                           value="{{ product.hs_code or '' }}" placeholder="例: 852580"
-                           style="flex:1; border-radius:8px 0 0 8px; border-right:none;">
-                    <button type="button" id="hs-ai-btn"
-                            onclick="openHsModal()"
-                            title="品目名・説明を元にAIがHSコードを提案します"
-                            style="padding:8px 14px; background:#3273dc; color:#fff; border:1.5px solid #2366d1; border-radius:0 8px 8px 0; font-size:.85rem; font-weight:700; cursor:pointer; white-space:nowrap; font-family:inherit;">
-                      🏷️ AI判定
-                    </button>
-                  </div>
-                </div>
-                <div class="field">
-                  <label class="label">ECCN</label>
-                  <div class="control">
-                    <input class="input" type="text" name="eccn" value="{{ product.eccn or '' }}">
-                  </div>
-                </div>
-              </div>
+        <!-- Row 3: HSコード + ECCN -->
+        <div style="display:grid; grid-template-columns:1fr 180px; gap:12px; margin-bottom:12px;">
+          <div>
+            <label class="label" style="font-size:.82rem; margin-bottom:3px;">HSコード</label>
+            <div style="display:flex; gap:0;">
+              <input id="hs-code-input" type="text" name="hs_code"
+                     value="{{ product.hs_code or '' }}" placeholder="例: 9031809090"
+                     class="input" style="border-radius:8px 0 0 8px; border-right:none; font-family:monospace;">
+              <button type="button" id="hs-ai-btn" onclick="openHsModal()"
+                      style="padding:8px 14px; background:#3273dc; color:#fff; border:1.5px solid #2366d1;
+                             border-radius:0 8px 8px 0; font-size:.82rem; font-weight:700; cursor:pointer;
+                             white-space:nowrap; font-family:inherit;">
+                🏷️ AI判定
+              </button>
             </div>
+            {% if product.hs_classification_status %}
+            <p style="font-size:.75rem; margin-top:4px; color:#6b7280;">
+              直前のHS判定:
+              {% if product.hs_classification_status == "completed" %}<span style="color:#16a34a;">✅ 完了</span>{% elif product.hs_classification_status == "pending" %}<span style="color:#2563eb;">⏳ 処理中</span>{% elif product.hs_classification_status == "failed" %}<span style="color:#dc2626;">❌ 失敗</span>{% else %}{{ product.hs_classification_status }}{% endif %}
+              {% if product.hs_classified_at %} — {{ product.hs_classified_at }}{% endif %}
+              {% if hs_candidates %}
+              <button type="button" onclick="showLastCandidates()"
+                      style="margin-left:6px; padding:1px 8px; font-size:.75rem; background:#eff5fb; color:#2366d1;
+                             border:1px solid #b5d0f5; border-radius:4px; cursor:pointer; font-family:inherit;">
+                前回候補を見る
+              </button>
+              {% endif %}
+            </p>
+            {% endif %}
+          </div>
+          <div>
+            <label class="label" style="font-size:.82rem; margin-bottom:3px;">ECCN</label>
+            <input class="input" type="text" name="eccn" value="{{ product.eccn or '' }}"
+                   placeholder="例: 3A002" style="font-family:monospace;">
+          </div>
+        </div>
 
-            <div class="field is-horizontal">
-              <div class="field-body">
-                <div class="field">
-                  <label class="label">品目クラス</label>
-                  <div class="control">
-                    <input class="input" type="text" name="item_class" placeholder="Finished Goods / Raw Material など" value="{{ product.item_class or '' }}">
-                  </div>
-                </div>
-                <div class="field" style="max-width:120px;">
-                  <label class="label" title="原産地（再輸出規制・De Minimis 計算用）">原産地 (COO)</label>
-                  <div class="control">
-                    <input class="input" type="text" name="country_of_origin"
-                           maxlength="2" placeholder="JP"
-                           style="text-transform:uppercase; font-family:monospace;"
-                           value="{{ product.country_of_origin or '' }}">
-                  </div>
-                  <p class="help">ISO 3166-1 alpha-2</p>
-                </div>
-                <div class="field">
-                  <label class="label">標準価格</label>
-                  <div class="control has-icons-right">
-                    <input class="input" type="number" step="0.01" name="std_price" value="{{ product.std_price if product.std_price is not none else '' }}">
-                    <span class="icon is-small is-right">¥</span>
-                  </div>
-                  <p class="help">BOMアップロード時に自動計算されますが、手入力も可能です。</p>
-                </div>
-              </div>
+        <!-- Row 4: 品目種別 + 品目クラス + COO + 標準価格 -->
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+          <div style="flex:0 0 auto;">
+            <label class="label" style="font-size:.82rem; margin-bottom:3px;">品目種別</label>
+            <div class="select">
+              <select name="item_type">
+                <option value="">— 未設定 —</option>
+                <optgroup label="輸出品">
+                  <option value="FINISHED_GOODS"    {% if product.item_type == "FINISHED_GOODS"    %}selected{% endif %}>📦 完成品</option>
+                  <option value="BOM_COMPONENT"     {% if product.item_type == "BOM_COMPONENT"     %}selected{% endif %}>🔩 BOM構成品</option>
+                  <option value="SOFTWARE"          {% if product.item_type == "SOFTWARE"          %}selected{% endif %}>💻 ソフトウェア・技術</option>
+                </optgroup>
+                <optgroup label="輸入品">
+                  <option value="PURCHASED_PART"    {% if product.item_type == "PURCHASED_PART"    %}selected{% endif %}>🛒 購入品</option>
+                  <option value="RAW_MATERIAL"      {% if product.item_type == "RAW_MATERIAL"      %}selected{% endif %}>⚗️ 原材料</option>
+                  <option value="INTERNAL_TRANSFER" {% if product.item_type == "INTERNAL_TRANSFER" %}selected{% endif %}>🏭 グループ内移管品</option>
+                </optgroup>
+              </select>
             </div>
           </div>
+          <div style="flex:1; min-width:150px;">
+            <label class="label" style="font-size:.82rem; margin-bottom:3px;">品目クラス</label>
+            <input class="input" type="text" name="item_class"
+                   placeholder="Finished Goods / Raw Material 等" value="{{ product.item_class or '' }}">
+          </div>
+          <div style="flex:0 0 90px;">
+            <label class="label" style="font-size:.82rem; margin-bottom:3px;" title="原産地（ISO 3166-1 alpha-2）">原産地 COO</label>
+            <input class="input" type="text" name="country_of_origin" maxlength="2" placeholder="JP"
+                   style="text-transform:uppercase; font-family:monospace; text-align:center;"
+                   value="{{ product.country_of_origin or '' }}">
+          </div>
+          <div style="flex:0 0 140px;">
+            <label class="label" style="font-size:.82rem; margin-bottom:3px;">標準価格 (¥)</label>
+            <input class="input" type="number" step="0.01" name="std_price"
+                   value="{{ product.std_price if product.std_price is not none else '' }}">
+          </div>
+        </div>
 
-          <div class="column is-half">
-            <h2 class="subtitle is-6">GHS / 国内規制フラグ</h2>
+        <!-- Row 5: 登録元 + 確認ステータス -->
+        <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:20px;
+                    padding:10px 14px; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;">
+          <div>
+            <span style="font-size:.78rem; color:#6b7280; font-weight:600;">登録元:</span>
+            <span style="margin-left:6px;">
+              {% if product.source == "ERP" %}<span class="tag is-warning is-small">ERP</span>
+              {% elif product.source == "RND" %}<span class="tag is-info is-small">R&D</span>
+              {% else %}<span class="tag is-success is-small">AI_TM</span>{% endif %}
+            </span>
+          </div>
+          <div>
+            <span style="font-size:.78rem; color:#6b7280; font-weight:600;">確認ステータス:</span>
+            <span style="margin-left:6px;">
+              {% if product.is_unconfirmed %}
+                <span class="tag is-warning is-small">未確認</span>
+                <button class="btn-action-sm" type="button"
+                        onclick="document.getElementById('confirm-form').submit();"
+                        style="margin-left:6px;">確認済みにする</button>
+              {% else %}
+                <span class="tag is-success is-small is-light">確認済</span>
+              {% endif %}
+            </span>
+          </div>
+        </div>
 
-            <!-- SDS / 規制情報（GHS h2 直下に移動） -->
-            <div style="margin-bottom:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-              <a href="/products/{{ product.id }}/sds" class="btn btn-sm">
-                SDS PDF アップロード &amp; AI解析
-              </a>
+        <!-- GHS/国内規制フラグ（折りたたみ・ページ下部から移動）-->
+        <details id="ghs-details" style="border:1px solid #e5e7eb; border-radius:8px; padding:0;">
+          <summary style="padding:12px 16px; cursor:pointer; font-size:.88rem; font-weight:600;
+                          color:#6b7280; display:flex; align-items:center; gap:8px;">
+            <span class="summary-arrow">▶</span>
+            <span>🧪 GHS / 国内規制フラグ</span>
+            <span style="font-size:.75rem; font-weight:400; color:#9ca3af;">（化学品・SDS情報 — 必要な場合のみ展開）</span>
+          </summary>
+          <div style="padding:16px; border-top:1px solid #e5e7eb;">
+            <div style="margin-bottom:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <a href="/products/{{ product.id }}/sds" class="btn btn-sm">📄 SDS PDF アップロード &amp; AI解析</a>
               {% if product.sds_file_path %}
                 <span style="background:#effaf5; color:#257953; border:1px solid #b5e8d0; border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:700;">SDS 登録済み</span>
               {% endif %}
             </div>
-
-            <div class="field">
-              <label class="label">GHS シグナルワード</label>
-              <div class="control">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="field">
+                <label class="label" style="font-size:.82rem;">GHS シグナルワード</label>
                 <input class="input" type="text" name="ghs_signal_word" value="{{ product.ghs_signal_word or '' }}">
               </div>
-            </div>
-
-            <div class="field">
-              <label class="label">GHS 絵表示 (カンマ区切り)</label>
-              <div class="control">
+              <div class="field">
+                <label class="label" style="font-size:.82rem;">GHS 絵表示（カンマ区切り）</label>
                 <input class="input" type="text" name="ghs_pictograms" value="{{ product.ghs_pictograms or '' }}">
               </div>
             </div>
-
-            <div class="field">
-              <label class="label">H ステートメント</label>
-              <div class="control">
-                <textarea class="textarea" name="ghs_h_statements" rows="2">{{ product.ghs_h_statements or "" }}</textarea>
-              </div>
+            <div class="field" style="margin-top:8px;">
+              <label class="label" style="font-size:.82rem;">H ステートメント</label>
+              <textarea class="textarea" name="ghs_h_statements" rows="2">{{ product.ghs_h_statements or "" }}</textarea>
             </div>
-
             <div class="field">
-              <label class="label">P ステートメント</label>
-              <div class="control">
-                <textarea class="textarea" name="ghs_p_statements" rows="2">{{ product.ghs_p_statements or "" }}</textarea>
-              </div>
+              <label class="label" style="font-size:.82rem;">P ステートメント</label>
+              <textarea class="textarea" name="ghs_p_statements" rows="2">{{ product.ghs_p_statements or "" }}</textarea>
             </div>
-
             <div class="field">
-              <label class="label">GHS 分類クラス</label>
-              <div class="control">
-                <textarea class="textarea" name="ghs_classes" rows="2">{{ product.ghs_classes or "" }}</textarea>
-              </div>
+              <label class="label" style="font-size:.82rem;">GHS 分類クラス</label>
+              <textarea class="textarea" name="ghs_classes" rows="2">{{ product.ghs_classes or "" }}</textarea>
             </div>
-
-            <div class="field is-grouped is-grouped-multiline">
-              <div class="control">
-                <label class="checkbox">
-                  <input type="checkbox" name="is_poison" {% if product.is_poison %}checked{% endif %}>
-                  毒物
-                </label>
-              </div>
-              <div class="control">
-                <label class="checkbox">
-                  <input type="checkbox" name="is_deleterious" {% if product.is_deleterious %}checked{% endif %}>
-                  劇物
-                </label>
-              </div>
-              <div class="control">
-                <label class="checkbox">
-                  <input type="checkbox" name="is_kashinho" {% if product.is_kashinho %}checked{% endif %}>
-                  火薬類
-                </label>
-              </div>
-              <div class="control">
-                <label class="checkbox">
-                  <input type="checkbox" name="is_kashinho_class_I" {% if product.is_kashinho_class_I %}checked{% endif %}>
-                  火薬類Ⅰ種
-                </label>
-              </div>
-              <div class="control">
-                <label class="checkbox">
-                  <input type="checkbox" name="is_kashinho_class_II" {% if product.is_kashinho_class_II %}checked{% endif %}>
-                  火薬類Ⅱ種
-                </label>
-              </div>
-              <div class="control">
-                <label class="checkbox">
-                  <input type="checkbox" name="is_roudou_anzen_eisei" {% if product.is_roudou_anzen_eisei %}checked{% endif %}>
-                  労安法
-                </label>
-              </div>
-              <div class="control">
-                <label class="checkbox">
-                  <input type="checkbox" name="is_prtr" {% if product.is_prtr %}checked{% endif %}>
-                  PRTR
-                </label>
-              </div>
-              <div class="control">
-                <label class="checkbox">
-                  <input type="checkbox" name="is_shoubouho" {% if product.is_shoubouho %}checked{% endif %}>
-                  消防法
-                </label>
-              </div>
-              <div class="control">
-                <label class="checkbox">
-                  <input type="checkbox" name="is_high_pressure_gas" {% if product.is_high_pressure_gas %}checked{% endif %}>
-                  高圧ガス
-                </label>
-              </div>
+            <div style="display:flex; flex-wrap:wrap; gap:14px; margin:10px 0;">
+              {% for field, label in [("is_poison","毒物"),("is_deleterious","劇物"),("is_kashinho","火薬類"),("is_kashinho_class_I","火薬類Ⅰ種"),("is_kashinho_class_II","火薬類Ⅱ種"),("is_roudou_anzen_eisei","労安法"),("is_prtr","PRTR"),("is_shoubouho","消防法"),("is_high_pressure_gas","高圧ガス")] %}
+              <label style="display:flex; align-items:center; gap:5px; font-size:.85rem; cursor:pointer;">
+                <input type="checkbox" name="{{ field }}" {% if product[field] %}checked{% endif %}> {{ label }}
+              </label>
+              {% endfor %}
             </div>
-
             <div class="field">
-              <label class="label">AI規制解析 生JSON（任意）</label>
-              <div class="control">
-                <textarea class="textarea" name="regulation_ai_raw" rows="4" placeholder="SDS解析の生JSONを保存">{{ product.regulation_ai_raw or "" }}</textarea>
-              </div>
+              <label class="label" style="font-size:.82rem;">AI規制解析 生JSON（任意）</label>
+              <textarea class="textarea" name="regulation_ai_raw" rows="3"
+                        placeholder="SDS解析の生JSONを保存">{{ product.regulation_ai_raw or "" }}</textarea>
             </div>
           </div>
-        </div>
+        </details>
 
-        <div class="field is-grouped">
-          <div class="control">
-            <button class="button is-primary" type="submit">保存</button>
-          </div>
-          <div class="control">
-            <a class="button is-light" href="/products">一覧に戻る</a>
-          </div>
+        <!-- 保存ボタン（フォーム下部） -->
+        <div style="display:flex; gap:10px; margin-top:20px; padding-top:16px; border-top:1px solid #e5e7eb;">
+          <button class="button is-primary" type="submit">💾 基本情報を保存</button>
+          <a class="button is-light" href="/products">一覧に戻る</a>
         </div>
       </form>
     </div>
 
-    <!-- ===== BOM 構成表示（輸出管理の前に移動） ===== -->
-    <div class="box">
-      <div class="level">
-        <div class="level-left">
-          <h2 class="subtitle is-5">BOM構成 / 原価内訳</h2>
+    <!-- ================================================================
+         [2] 輸出管理 該非判定（上部に移動）
+         ================================================================ -->
+    <div class="box" style="margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+        <h2 class="subtitle is-5" style="margin:0;">⚖️ 輸出管理 該非判定</h2>
+        <div>
+          {% if product.export_control_status == "controlled" %}
+            <span class="tag is-danger">該当</span>
+          {% elif product.export_control_status == "non_controlled" %}
+            <span class="tag is-success is-light">非該当</span>
+          {% elif product.export_control_status == "needs_attention" %}
+            <span class="tag is-warning">要注意</span>
+          {% elif product.export_control_status == "to_be_checked" %}
+            <span class="tag is-info is-light">要確認</span>
+          {% else %}
+            <span class="tag is-light">未評価</span>
+          {% endif %}
         </div>
-        <div class="level-right">
-          <a class="btn btn-sm" href="/products/{{ product.id }}/bom">BOM CSV アップロード</a>
-          <a class="btn btn-sm" href="/products/{{ product.id }}/bom/history" style="margin-left:6px;">BOM 履歴</a>
-          <a class="btn btn-sm is-success is-light" href="/products/{{ product.id }}/bom/graph" style="margin-left:6px;">📊 グラフ</a>
-          <button class="btn btn-sm is-info is-light" style="margin-left:6px;" id="bom-sync-btn"
-                  onclick="syncBomToSC({{ product.id }})" title="bom_json → plat_supply_chain_node 同期">
-            🔄 SC同期
-          </button>
-        </div>
+        {% if product.export_control_checked_at %}
+        <span style="font-size:.78rem; color:#9ca3af;">判定日時: {{ product.export_control_checked_at }}</span>
+        {% endif %}
       </div>
 
-      {% if bom_components %}
-        <table class="table is-fullwidth is-striped is-hoverable">
-          <thead>
-            <tr>
-              <th>種別</th>
-              <th>コード</th>
-              <th>名称</th>
-              <th>クラス</th>
-              <th class="has-text-right">構成比 (%)</th>
-              <th class="has-text-right">単価</th>
-              <th class="has-text-right">金額</th>
-              <th title="原産地 (ISO 3166-1 alpha-2)">原産地</th>
-              <th class="has-text-right" title="単価 USD（De Minimis 計算用）">単価USD</th>
-              <th>メモ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for c in bom_components %}
-              <tr>
-                <td>
-                  {% if c.kind == "material" %}
-                    <span class="tag is-info is-light">Material</span>
-                  {% else %}
-                    <span class="tag is-dark is-light">Overhead</span>
-                  {% endif %}
-                </td>
-                <td>{{ c.code }}</td>
-                <td>{{ c.name }}</td>
-                <td>{{ c.item_class }}</td>
-                <td class="has-text-right">
-                  {% if c.ratio is not none %}
-                    {{ "%.2f"|format(c.ratio * 100) }}
-                  {% else %}
-                    -
-                  {% endif %}
-                </td>
-                <td class="has-text-right">
-                  {% if c.std_price is not none %}
-                    {{ "%.2f"|format(c.std_price) }}
-                  {% else %}
-                    -
-                  {% endif %}
-                </td>
-                <td class="has-text-right">
-                  {% if c.cost is not none %}
-                    {{ "%.2f"|format(c.cost) }}
-                  {% else %}
-                    -
-                  {% endif %}
-                </td>
-                <td>
-                  {% if c.coo %}
-                    <span class="tag is-light" style="font-family:monospace;">{{ c.coo }}</span>
-                  {% else %}
-                    <span class="has-text-grey">-</span>
-                  {% endif %}
-                </td>
-                <td class="has-text-right">
-                  {% if c.unit_value is not none %}
-                    ${{ "%.2f"|format(c.unit_value) }}
-                  {% else %}
-                    <span class="has-text-grey">-</span>
-                  {% endif %}
-                </td>
-                <td>{{ c.note }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-          <tfoot>
-            <tr>
-              <th colspan="4" class="has-text-right">合計</th>
-              <th class="has-text-right">{{ "%.2f"|format(bom_total_ratio * 100) }} %</th>
-              <th></th>
-              <th class="has-text-right">{{ "%.2f"|format(bom_total_cost) }}</th>
-              <th colspan="3"></th>
-            </tr>
-          </tfoot>
-        </table>
-        <p class="is-size-7 has-text-grey">
-          ※ 構成比は 0〜100% 表記。標準価格は Material + Overhead の合計コストです。
-        </p>
-      {% else %}
-        <p class="has-text-grey">BOMが登録されていません。Finished Goods の場合はBOM CSVをアップロードしてください。</p>
-      {% endif %}
-    </div>
+      <!-- 用途概要（外部AI判定の入力テキスト）-->
+      <div style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:8px; padding:14px 16px; margin-bottom:16px;">
+        <form method="post" action="/products/{{ product.id }}/usage-summary">
+          <label class="label" style="font-size:.85rem; color:#0369a1; margin-bottom:6px;">
+            📝 用途概要（AI判定テキスト）
+          </label>
+          <textarea id="usage-summary-field" class="textarea" name="usage_summary" rows="3"
+            style="border-color:#bae6fd;"
+            placeholder="例: 半導体製造ラインの表面検査工程で使用するレーザー変位センサー（波長650nm）。最終使用地: 台湾TSMC。民間半導体製造専用、軍事転用なし。">{{ product.usage_summary or "" }}</textarea>
+          <p class="help" style="color:#0284c7; margin-top:4px;">工程・装置・性能・最終使用地の4要素を含めると外部AI判定の精度が向上します。この内容が外部AI判定リクエストに使用されます。</p>
+          <div style="margin-top:8px;">
+            <button class="btn-action-sm" type="submit">📄 用途概要を保存</button>
+          </div>
+        </form>
+      </div>
 
-    <!-- ===== 輸出管理 該非判定（リデザイン） ===== -->
-    <div class="box">
-      <h2 class="subtitle is-5">輸出管理 該非判定</h2>
-
+      <!-- 判定フォーム -->
       <form method="post" action="/products/{{ product.id }}/export/items"
             id="ecForm" onsubmit="collectItemsJson()">
 
-        <!-- 全体判定結果 + 判定日時 -->
-        <div style="display:flex; gap:20px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px;">
+        <!-- 判定結果 + 理由 -->
+        <div style="display:grid; grid-template-columns:220px 1fr; gap:12px; margin-bottom:14px;">
           <div>
-            <label class="label" style="margin-bottom:4px;">該非判定結果</label>
-            <div class="select">
+            <label class="label" style="font-size:.82rem; margin-bottom:4px;">該非判定結果</label>
+            <div class="select is-fullwidth">
               <select name="status" id="ecStatus">
                 <option value="not_evaluated" {% if product.export_control_status == "not_evaluated" or not product.export_control_status %}selected{% endif %}>未評価</option>
                 <option value="non_controlled" {% if product.export_control_status == "non_controlled" %}selected{% endif %}>非該当と推定</option>
-                <option value="needs_attention" {% if product.export_control_status == "needs_attention" %}selected{% endif %}>要注意（該非要確認）</option>
+                <option value="needs_attention" {% if product.export_control_status == "needs_attention" %}selected{% endif %}>要注意（要確認）</option>
                 <option value="to_be_checked" {% if product.export_control_status == "to_be_checked" %}selected{% endif %}>要確認（情報不足）</option>
                 <option value="controlled" {% if product.export_control_status == "controlled" %}selected{% endif %}>該当（要専門家レビュー）</option>
               </select>
             </div>
           </div>
-          {% if product.export_control_checked_at %}
-          <div style="font-size:.82rem; color:var(--muted); padding-bottom:8px;">
-            判定日時: {{ product.export_control_checked_at }}
-          </div>
-          {% endif %}
-        </div>
-
-        <!-- 判定理由・コメント -->
-        <div class="field" style="margin-bottom:16px;">
-          <label class="label" style="margin-bottom:4px;">判定理由・コメント</label>
-          <div class="control">
+          <div>
+            <label class="label" style="font-size:.82rem; margin-bottom:4px;">判定理由・コメント</label>
             <textarea class="textarea" name="export_reason" rows="2"
               placeholder="規制条文、根拠、確認内容などを記録">{{ product.export_control_reason or "" }}</textarea>
           </div>
         </div>
 
         <!-- 判定明細テーブル -->
-        <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <span class="label" style="margin:0;">判定明細</span>
-          <button type="button" class="btn btn-sm" onclick="transferFromAI()"
-                  title="外部AI判定の matrix_matches_top を行に転記します">
-            外部AI判定から転記
-          </button>
-          <button type="button" class="btn btn-sm" onclick="addEcRow()"
-                  title="行を追加します">
-            ＋ 行を追加
-          </button>
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+          <span class="label" style="margin:0; font-size:.82rem;">判定明細</span>
+          <button type="button" class="btn-transfer" onclick="transferFromAI()"
+                  title="外部AI判定の matrix_matches_top を転記">🤖 外部AI判定から転記</button>
+          <button type="button" class="btn-action-sm" onclick="addEcRow()">＋ 行を追加</button>
         </div>
 
-        <div style="overflow-x:auto; margin-bottom:16px;">
+        <div style="overflow-x:auto; margin-bottom:14px;">
           <table style="width:100%; border-collapse:collapse; font-size:.85rem;">
             <thead>
               <tr style="border-bottom:2px solid var(--border); background:var(--bg);">
-                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.78rem; white-space:nowrap; width:140px;">該当項番</th>
-                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.78rem; white-space:nowrap; width:160px;">判定結果</th>
-                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.78rem;">コメント</th>
-                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.78rem; white-space:nowrap; width:130px;">日時</th>
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem; width:140px;">該当項番</th>
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem; width:160px;">判定結果</th>
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem;">コメント</th>
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem; width:130px;">日時</th>
                 <th style="padding:8px 6px; width:36px;"></th>
               </tr>
             </thead>
-            <tbody id="ecItemsBody">
-              <!-- JS で描画 -->
-            </tbody>
+            <tbody id="ecItemsBody"></tbody>
           </table>
         </div>
 
         <input type="hidden" name="items_json" id="ecItemsJson">
 
-        <div style="display:flex; gap:8px; margin-top:16px; margin-bottom:32px;">
-          <button type="submit" class="btn btn-primary">判定記録を保存</button>
+        <div style="display:flex; gap:8px;">
+          <button type="submit" class="btn-action-primary">⚖️ 判定記録を保存</button>
         </div>
       </form>
 
-      <!-- ===== 外部AI判定 ===== -->
-      <hr style="margin: 0 0 28px 0;">
-
-      <h3 class="subtitle is-6" id="ext-eval-heading" style="margin-bottom:16px;">外部AI判定（Webhook連携）</h3>
-
-      <div class="columns">
-        <div class="column is-half">
-          <p class="mb-2">
-            <strong>外部AIステータス:</strong>
+      <!-- 外部AI判定（折りたたみ、クリーンデザイン）-->
+      <details style="margin-top:20px; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden;"
+               {% if product.external_eval_status and product.external_eval_status not in ['', null] %}open{% endif %}>
+        <summary style="padding:12px 16px; cursor:pointer; background:#f9fafb; font-size:.88rem;
+                        font-weight:600; display:flex; align-items:center; gap:10px;
+                        border-bottom:1px solid #e5e7eb;">
+          <span class="summary-arrow">▶</span>
+          <span>🤖 外部AI判定（Webhook連携）</span>
+          <span id="ext-status-badge-summary">
             {% if product.external_eval_status == "controlled" %}
-              <span class="tag is-danger">controlled</span>
+              <span class="tag is-danger is-small">controlled</span>
             {% elif product.external_eval_status == "non_controlled" %}
-              <span class="tag is-success is-light">non_controlled</span>
+              <span class="tag is-success is-light is-small">non_controlled</span>
             {% elif product.external_eval_status == "needs_review" %}
-              <span class="tag is-warning">needs_review</span>
+              <span class="tag is-warning is-small">needs_review</span>
             {% elif product.external_eval_status == "running" %}
-              <span class="tag is-link is-light">running</span>
+              <span class="tag is-link is-light is-small">running</span>
             {% elif product.external_eval_status == "queued" %}
-              <span class="tag is-light">queued</span>
+              <span class="tag is-light is-small">queued</span>
             {% elif product.external_eval_status == "error" %}
-              <span class="tag is-danger is-light">error</span>
+              <span class="tag is-danger is-light is-small">error</span>
             {% else %}
-              <span class="tag is-light">未受信</span>
+              <span class="tag is-light is-small">未受信</span>
             {% endif %}
-          </p>
-
+          </span>
           {% if product.external_eval_requested_at %}
-            <p class="is-size-7 has-text-grey">
-              依頼日時: {{ product.external_eval_requested_at }}
-            </p>
+          <span style="font-size:.75rem; color:#9ca3af; font-weight:400;">依頼: {{ product.external_eval_requested_at }}</span>
           {% endif %}
-          {% if product.external_eval_received_at %}
-            <p class="is-size-7 has-text-grey">
-              受信日時(Webhook): {{ product.external_eval_received_at }}
-            </p>
-          {% endif %}
+        </summary>
 
-          {% if product.external_eval_reason %}
-            <div class="content mt-3">
-              <p class="is-size-7"><strong>理由・コメント（外部AI）:</strong></p>
-              <pre style="white-space: pre-wrap; font-size: 0.8rem;">{{ product.external_eval_reason }}</pre>
-            </div>
-          {% endif %}
+        <div style="padding:16px;">
+          <div style="display:grid; grid-template-columns:1fr 200px; gap:16px; align-items:start;">
 
-          {% if external_ai_summary %}
-            <div class="content mt-3">
-
-              {% if external_ai_summary.top %}
-                <p class="is-size-7"><strong>根拠（上位ヒット）:</strong></p>
-
-                <div class="box" style="padding: 0.75rem;">
-                  <p class="is-size-7">
-                    <strong>rule_item_no:</strong> {{ external_ai_summary.top.rule_item_no or "-" }}<br>
-                    <strong>title:</strong> {{ external_ai_summary.top.rule_title or "-" }}<br>
-                    <strong>score:</strong>
-                    {% if external_ai_summary.top.match_score is not none %}
-                      {{ "%.3f"|format(external_ai_summary.top.match_score) }}
-                    {% else %}
-                      -
-                    {% endif %}
-                    <br>
-                    <strong>decision:</strong> {{ external_ai_summary.top.decision or "-" }}
-                  </p>
-
-                  {% if external_ai_summary.top.usage_text %}
-                    <p class="is-size-7 mt-2">
-                      <strong>対象用途:</strong><br>
-                      {{ external_ai_summary.top.usage_text }}
-                    </p>
-                  {% endif %}
-
-                  {% if external_ai_summary.top.matched_tokens and external_ai_summary.top.matched_tokens|length > 0 %}
-                    <p class="is-size-7 mt-2">
-                      <strong>一致トークン:</strong>
-                      {{ external_ai_summary.top.matched_tokens|join(", ") }}
-                    </p>
-                  {% endif %}
-                </div>
+            <!-- 左: 判定結果サマリー -->
+            <div>
+              {% if product.external_eval_reason %}
+              <div style="background:#f9fafb; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:.85rem;">
+                <strong>理由・コメント:</strong><br>
+                <span style="color:#374151;">{{ product.external_eval_reason }}</span>
+              </div>
               {% endif %}
 
-              {% if external_ai_summary.followup_questions and external_ai_summary.followup_questions|length > 0 %}
-                <p class="is-size-7"><strong>次に確認したいこと（AIの質問）:</strong></p>
-                <ul class="is-size-7">
+              {% if external_ai_summary and external_ai_summary.top %}
+              <div style="background:#f0f7ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 14px; margin-bottom:12px;">
+                <div style="font-size:.78rem; font-weight:700; color:#1e40af; margin-bottom:8px;">📌 根拠（上位ヒット）</div>
+                <div style="display:grid; grid-template-columns:110px 1fr; gap:4px 12px; font-size:.82rem;">
+                  <span style="color:#6b7280;">項番</span>
+                  <span style="font-family:monospace; font-weight:700;">{{ external_ai_summary.top.rule_item_no or "—" }}</span>
+                  <span style="color:#6b7280;">品目名</span>
+                  <span>{{ external_ai_summary.top.rule_title or "—" }}</span>
+                  <span style="color:#6b7280;">類似度スコア</span>
+                  <span>
+                    {% if external_ai_summary.top.match_score is not none %}
+                      {% set score = external_ai_summary.top.match_score %}
+                      <span style="font-weight:700; color:{% if score >= 0.7 %}#16a34a{% elif score >= 0.5 %}#d97706{% else %}#dc2626{% endif %};">
+                        {{ "%.3f"|format(score) }}
+                      </span>
+                    {% else %}—{% endif %}
+                  </span>
+                  <span style="color:#6b7280;">判定</span>
+                  <span style="font-weight:700;">{{ external_ai_summary.top.decision or "—" }}</span>
+                </div>
+                {% if external_ai_summary.top.usage_text %}
+                <div style="margin-top:8px; padding-top:8px; border-top:1px solid #dbeafe; font-size:.78rem; color:#374151;">
+                  <strong>対象用途:</strong> {{ external_ai_summary.top.usage_text }}
+                </div>
+                {% endif %}
+                {% if external_ai_summary.top.matched_tokens %}
+                <div style="margin-top:6px; font-size:.76rem; color:#6b7280;">
+                  一致トークン: {{ external_ai_summary.top.matched_tokens|join(", ") }}
+                </div>
+                {% endif %}
+              </div>
+              {% endif %}
+
+              {% if external_ai_summary and external_ai_summary.followup_questions %}
+              <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:10px 14px; font-size:.82rem;">
+                <strong style="color:#92400e;">💬 次に確認すべき事項（AI提案）:</strong>
+                <ul style="margin:6px 0 0 16px; color:#374151;">
                   {% for q in external_ai_summary.followup_questions %}
-                    <li>{{ q }}</li>
+                  <li>{{ q }}</li>
                   {% endfor %}
                 </ul>
-              {% elif not external_ai_summary.top %}
-                <p class="is-size-7 has-text-grey">
-                  ※ まだ根拠（マトリクス突合ヒット）がありません。用途や成分などの追加情報が必要です。
-                </p>
+              </div>
+              {% elif not (external_ai_summary and external_ai_summary.top) %}
+              <p style="font-size:.82rem; color:#9ca3af; font-style:italic;">
+                まだ判定結果がありません。「外部AIへ判定依頼」を実行してください。
+              </p>
+              {% endif %}
+            </div>
+
+            <!-- 右: アクションボタン -->
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <form method="post" action="/products/{{ product.id }}/external/request">
+                <button class="btn-action-primary" type="submit" style="width:100%; justify-content:center;">
+                  🚀 外部AIへ判定依頼
+                </button>
+              </form>
+              <button class="btn-action-sm" type="button" onclick="location.reload();" style="width:100%; justify-content:center;">
+                🔄 最新結果を更新
+              </button>
+              {% if product.external_eval_received_at %}
+              <p style="font-size:.73rem; color:#9ca3af; text-align:center;">受信: {{ product.external_eval_received_at }}</p>
               {% endif %}
 
-            </div>
-          {% endif %}
-        </div>
-
-        <div class="column is-half">
-
-          <!-- 用途概要（外部AI判定用）入力欄 -->
-          <form method="post" action="/products/{{ product.id }}/usage-summary" style="margin-bottom: 16px;">
-            <div class="field">
-              <label class="label">用途概要（外部AI判定用）</label>
-              <div class="control">
-                <textarea id="usage-summary-field" class="textarea" name="usage_summary" rows="4"
-                  placeholder="例: エチレングリコールと水酸化ナトリウムを主原料とした冷却液。半導体製造工程の熱交換器向けに使用。">{{ product.usage_summary or "" }}</textarea>
-              </div>
-              <p class="help">この内容が外部AI判定リクエストに含まれ、2リスト解析の照合テキストとして使用されます。具体的に記入してください。</p>
-            </div>
-            <div class="field">
-              <div class="control">
-                <button class="btn btn-primary" type="submit">用途概要を保存</button>
-              </div>
-            </div>
-          </form>
-
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-            <form method="post" action="/products/{{ product.id }}/external/request">
-              <button class="btn btn-primary" type="submit">外部AIへ判定依頼</button>
-            </form>
-            <button class="btn" type="button" onclick="location.reload();">最新結果を更新</button>
-          </div>
-
-          <form method="post" action="/products/{{ product.id }}/external/manual">
-            <div class="field">
-              <label class="label">外部AIステータスを手動で更新</label>
-              <div class="control">
-                <div class="select">
-                  <select name="status">
-                    <option value="" {% if not product.external_eval_status %}selected{% endif %}>（未設定）</option>
-                    <option value="queued" {% if product.external_eval_status == "queued" %}selected{% endif %}>queued</option>
-                    <option value="running" {% if product.external_eval_status == "running" %}selected{% endif %}>running</option>
-                    <option value="controlled" {% if product.external_eval_status == "controlled" %}selected{% endif %}>controlled</option>
-                    <option value="non_controlled" {% if product.external_eval_status == "non_controlled" %}selected{% endif %}>non_controlled</option>
-                    <option value="needs_review" {% if product.external_eval_status == "needs_review" %}selected{% endif %}>needs_review</option>
-                    <option value="error" {% if product.external_eval_status == "error" %}selected{% endif %}>error</option>
-                  </select>
+              <!-- 手動更新（折りたたみ）-->
+              <details style="margin-top:8px; border:1px solid #e5e7eb; border-radius:6px;">
+                <summary style="padding:6px 10px; cursor:pointer; font-size:.78rem; color:#6b7280; font-weight:600; display:flex; align-items:center; gap:6px;">
+                  <span class="summary-arrow" style="font-size:.6rem;">▶</span>
+                  🔧 手動でステータス更新...
+                </summary>
+                <div style="padding:10px;">
+                  <form method="post" action="/products/{{ product.id }}/external/manual">
+                    <div class="field" style="margin-bottom:8px;">
+                      <div class="select is-small is-fullwidth">
+                        <select name="status">
+                          <option value="" {% if not product.external_eval_status %}selected{% endif %}>（未設定）</option>
+                          <option value="queued"         {% if product.external_eval_status == "queued" %}selected{% endif %}>queued</option>
+                          <option value="running"        {% if product.external_eval_status == "running" %}selected{% endif %}>running</option>
+                          <option value="controlled"     {% if product.external_eval_status == "controlled" %}selected{% endif %}>controlled</option>
+                          <option value="non_controlled" {% if product.external_eval_status == "non_controlled" %}selected{% endif %}>non_controlled</option>
+                          <option value="needs_review"   {% if product.external_eval_status == "needs_review" %}selected{% endif %}>needs_review</option>
+                          <option value="error"          {% if product.external_eval_status == "error" %}selected{% endif %}>error</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="field" style="margin-bottom:8px;">
+                      <textarea class="textarea is-small" name="reason" rows="2"
+                                placeholder="理由・コメント">{{ product.external_eval_reason or "" }}</textarea>
+                    </div>
+                    <div class="field" style="margin-bottom:8px;">
+                      <textarea class="textarea is-small" name="payload" rows="4"
+                                placeholder="Webhook payload（JSON）">{{ product.external_eval_payload or "" }}</textarea>
+                    </div>
+                    <button class="btn-action-sm" type="submit" style="width:100%; justify-content:center;">保存</button>
+                  </form>
                 </div>
-              </div>
+              </details>
             </div>
 
-            <div class="field">
-              <label class="label">理由・コメント（外部AIのreason想定）</label>
-              <div class="control">
-                <textarea class="textarea" name="reason" rows="3" placeholder="外部AIが返す reason / 手動メモ">{{ product.external_eval_reason or "" }}</textarea>
-              </div>
-            </div>
-
-            <div class="field">
-              <label class="label">外部判定結果（JSON）</label>
-              <div class="control">
-                <textarea class="textarea" name="payload" rows="6" placeholder="Webhookの payload（JSON全文）を保存 / 必要に応じて手動編集">{{ product.external_eval_payload or "" }}</textarea>
-              </div>
-              <p class="help">DBには文字列として保存します（JSONでなくても保存可）。</p>
-            </div>
-
-            <div class="field">
-              <div class="control">
-                <button class="btn" type="submit">外部AI結果を手動保存</button>
-              </div>
-            </div>
-          </form>
+          </div>
         </div>
-      </div>
-      <!-- ===== /外部AI判定 ===== -->
+      </details>
     </div>
 
-    <!-- HS転記フラッシュメッセージ -->
-    <div id="hs-apply-flash" style="display:none; background:#effaf5; border:1px solid #b5e8d0; border-radius:8px; padding:10px 16px; margin-bottom:12px; font-size:.85rem; color:#257953;"></div>
-
-    <!-- HSコード判定ステータス（直前の判定結果サマリー） -->
-    {% if product.hs_classification_status %}
-    <div class="card" style="padding:12px 20px;">
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <span style="font-size:.8rem; color:var(--muted);">🏷️ 直前のHS判定:</span>
-        {% if product.hs_classification_status == "completed" %}
-          <span style="background:#effaf5; color:#257953; border:1px solid #b5e8d0; border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:700;">完了</span>
-        {% elif product.hs_classification_status == "pending" %}
-          <span style="background:#eff5fb; color:#2366d1; border:1px solid #b5d0f5; border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:700;">処理中</span>
-        {% elif product.hs_classification_status == "failed" %}
-          <span style="background:#fff5f7; color:#cc0f35; border:1px solid #f9b8c3; border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:700;">失敗</span>
-        {% else %}
-          <span style="background:#f5f5f5; color:#555; border:1px solid #ddd; border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:700;">{{ product.hs_classification_status }}</span>
-        {% endif %}
-        {% if product.hs_classified_at %}
-          <span style="font-size:.76rem; color:var(--muted);">{{ product.hs_classified_at }}</span>
-        {% endif %}
-        {% if hs_candidates %}
-          <span style="font-size:.76rem; color:var(--muted);">— 候補{{ hs_candidates|length }}件あり</span>
-          <button type="button" onclick="showLastCandidates()"
-                  style="padding:4px 12px; font-size:.78rem; font-weight:700; background:#eff5fb; color:#2366d1; border:1px solid #b5d0f5; border-radius:6px; cursor:pointer; font-family:inherit;">
-            前回の候補を見る
-          </button>
-        {% endif %}
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- HS判定モーダル（Bulma非依存・インラインスタイル） -->
-    <div id="hs-modal" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center;">
-      <!-- 背景オーバーレイ -->
-      <div onclick="closeHsModal()"
-           style="position:absolute; inset:0; background:rgba(10,10,10,.55);"></div>
-      <!-- モーダル本体 -->
-      <div style="position:relative; background:#fff; border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,.28); width:90%; min-width:320px; max-width:720px; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;">
-        <!-- ヘッダー -->
-        <div style="padding:14px 20px; background:#f0f7ff; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #d4e5ff; flex-shrink:0;">
-          <span style="font-size:.95rem; font-weight:800; color:#1a1a1a;">🏷️ HSコード AI判定</span>
-          <button type="button" onclick="closeHsModal()"
-                  style="background:none; border:none; font-size:1.3rem; line-height:1; cursor:pointer; color:#888; padding:2px 6px;">✕</button>
-        </div>
-        <!-- ボディ -->
-        <div id="hs-modal-body" style="padding:20px; overflow-y:auto; flex:1; min-height:140px;"></div>
-        <!-- フッター -->
-        <div style="padding:12px 20px; background:#f9f9f9; border-top:1px solid #eee; display:flex; justify-content:flex-end; flex-shrink:0;">
-          <button type="button" onclick="closeHsModal()" class="btn">閉じる</button>
+    <!-- ================================================================
+         [3] BOM 構成 / 原価内訳
+         ================================================================ -->
+    <div class="box" style="margin-bottom:16px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+        <h2 class="subtitle is-5" style="margin:0;">🔩 BOM構成 / 原価内訳</h2>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <a class="btn-action-sm" href="/products/{{ product.id }}/bom" data-dap-field="BOM CSVアップロード">BOM CSV アップロード</a>
+          <a class="btn-action-sm" href="/products/{{ product.id }}/bom/history">BOM 履歴</a>
+          <a class="btn-action-sm" href="/products/{{ product.id }}/bom/graph" data-dap-field="BOMグラフ">📊 グラフ</a>
+          <button class="btn-action-sm" id="bom-sync-btn"
+                  onclick="syncBomToSC({{ product.id }})" data-dap-field="SC同期">🔄 SC同期</button>
         </div>
       </div>
+
+      {% if bom_components %}
+      <div style="overflow-x:auto;">
+        <table class="table is-fullwidth is-striped is-hoverable" style="font-size:.85rem;">
+          <thead>
+            <tr>
+              <th>種別</th><th>コード</th><th>名称</th><th>クラス</th>
+              <th class="has-text-right">構成比</th><th class="has-text-right">単価</th>
+              <th class="has-text-right">金額</th><th>原産地</th>
+              <th class="has-text-right">単価USD</th><th>メモ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in bom_components %}
+            <tr>
+              <td>{% if c.kind == "material" %}<span class="tag is-info is-light is-small">Material</span>{% else %}<span class="tag is-dark is-light is-small">OH</span>{% endif %}</td>
+              <td style="font-family:monospace; font-size:.82rem;">{{ c.code }}</td>
+              <td>{{ c.name }}</td>
+              <td>{{ c.item_class }}</td>
+              <td class="has-text-right">{% if c.ratio is not none %}{{ "%.2f"|format(c.ratio * 100) }}%{% else %}—{% endif %}</td>
+              <td class="has-text-right">{% if c.std_price is not none %}{{ "%.2f"|format(c.std_price) }}{% else %}—{% endif %}</td>
+              <td class="has-text-right">{% if c.cost is not none %}{{ "%.2f"|format(c.cost) }}{% else %}—{% endif %}</td>
+              <td>{% if c.coo %}<span class="tag is-light is-small" style="font-family:monospace;">{{ c.coo }}</span>{% else %}<span style="color:#aaa;">—</span>{% endif %}</td>
+              <td class="has-text-right">{% if c.unit_value is not none %}${{ "%.2f"|format(c.unit_value) }}{% else %}<span style="color:#aaa;">—</span>{% endif %}</td>
+              <td style="font-size:.78rem; color:#6b7280;">{{ c.note }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th colspan="4" class="has-text-right">合計</th>
+              <th class="has-text-right">{{ "%.2f"|format(bom_total_ratio * 100) }}%</th>
+              <th></th>
+              <th class="has-text-right">{{ "%.2f"|format(bom_total_cost) }}</th>
+              <th colspan="3"></th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+      <p style="color:#9ca3af; font-size:.88rem;">BOMが登録されていません。BOM CSVをアップロードするか、下のフォームで直接追加してください。</p>
+      {% endif %}
+
+      <!-- BOM直接追加フォーム -->
+      <div style="border-top:1px solid #e5e7eb; margin-top:14px; padding-top:12px;">
+        <p style="font-size:.78rem; font-weight:700; color:#555; margin-bottom:8px;">🔩 BOM構成品を直接追加（未登録の構成品は自動登録）</p>
+        <form method="post" action="/products/{{ product.id }}/bom-add-item"
+              style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end;">
+          <div>
+            <label class="label is-small" style="margin-bottom:2px;">構成品コード *</label>
+            <input class="input is-small" name="component_code" type="text"
+                   placeholder="例: PCB-001" required style="width:160px;" data-dap-field="BOM構成品コード">
+          </div>
+          <div>
+            <label class="label is-small" style="margin-bottom:2px;">構成品名</label>
+            <input class="input is-small" name="component_name" type="text"
+                   placeholder="例: 制御基板" style="width:180px;" data-dap-field="BOM構成品名">
+          </div>
+          <div>
+            <label class="label is-small" style="margin-bottom:2px;">原産地COO</label>
+            <input class="input is-small" name="coo" type="text"
+                   placeholder="US" maxlength="2" style="width:56px;" data-dap-field="BOM原産地">
+          </div>
+          <div>
+            <label class="label is-small" style="margin-bottom:2px;">構成比(0〜1)</label>
+            <input class="input is-small" name="ratio" type="number"
+                   step="0.001" min="0" max="1" placeholder="0.479" style="width:90px;" data-dap-field="BOM構成比">
+          </div>
+          <div>
+            <label class="label is-small" style="margin-bottom:2px;">単価USD</label>
+            <input class="input is-small" name="unit_value" type="number"
+                   step="0.01" min="0" placeholder="620.00" style="width:100px;" data-dap-field="BOM単価USD">
+          </div>
+          <div>
+            <button type="submit" class="btn-action-primary" data-dap-field="BOM構成品追加">
+              ＋ 構成品を追加
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
-    <script>
-    // =====================================================================
-    // 輸出管理 判定明細テーブル
-    // =====================================================================
-    (function() {
-      const SAVED_ITEMS   = {{ (export_control_items | default([])) | tojson }};
-      const EXT_PAYLOAD   = {{ (product.external_eval_payload or 'null') | tojson }};
-      const ROW_COUNT     = 10;
-
-      const DECISION_OPTIONS = [
-        { value: "",            label: "（未判定）" },
-        { value: "controlled",  label: "該当" },
-        { value: "non_controlled", label: "非該当" },
-        { value: "needs_review",label: "要確認" },
-        { value: "exempted",    label: "適用除外" },
-      ];
-
-      function buildSelectHtml(selected) {
-        return DECISION_OPTIONS.map(function(o) {
-          var sel = (o.value === selected) ? ' selected' : '';
-          return '<option value="' + o.value + '"' + sel + '>' + o.label + '</option>';
-        }).join('');
-      }
-
-      function renderRows(items) {
-        var tbody = document.getElementById('ecItemsBody');
-        var rows = [];
-        var total = Math.max(ROW_COUNT, items.length);
-        for (var i = 0; i < total; i++) {
-          var it = items[i] || { rule_item_no: '', decision: '', comment: '', recorded_at: '' };
-          var dt = it.recorded_at || '';
-          rows.push(
-            '<tr style="border-bottom:1px solid var(--border);">'
-            + '<td style="padding:6px 8px;">'
-            +   '<input type="text" class="ec-item-no" value="' + _esc(it.rule_item_no) + '" placeholder="EL-7-19"'
-            +   ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;">'
-            + '</td>'
-            + '<td style="padding:6px 8px;">'
-            +   '<select class="ec-decision" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:.82rem; font-family:inherit;">'
-            +   buildSelectHtml(it.decision)
-            +   '</select>'
-            + '</td>'
-            + '<td style="padding:6px 8px;">'
-            +   '<input type="text" class="ec-comment" value="' + _esc(it.comment || '') + '" placeholder="メモ"'
-            +   ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;">'
-            + '</td>'
-            + '<td style="padding:6px 8px; width:130px;">'
-            +   '<span class="ec-datetime" data-value="' + _esc(dt) + '"'
-            +   ' style="display:block; font-size:.75rem; color:var(--muted); white-space:nowrap;">'
-            +   (dt || '—') + '</span>'
-            + '</td>'
-            + '<td style="padding:6px 4px; text-align:center;">'
-            +   '<button type="button" onclick="removeEcRow(this)" title="削除"'
-            +   ' style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1rem; line-height:1; padding:2px 4px;">&times;</button>'
-            + '</td>'
-            + '</tr>'
-          );
-        }
-        tbody.innerHTML = rows.join('');
-      }
-
-      function _esc(s) {
-        return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-      }
-
-      window.addEcRow = function() {
-        var tbody = document.getElementById('ecItemsBody');
-        var tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid var(--border)';
-        tr.innerHTML = '<td style="padding:6px 8px;">'
-          + '<input type="text" class="ec-item-no" placeholder="EL-7-19"'
-          + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;">'
-          + '</td>'
-          + '<td style="padding:6px 8px;">'
-          + '<select class="ec-decision" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:.82rem; font-family:inherit;">'
-          + buildSelectHtml('')
-          + '</select>'
-          + '</td>'
-          + '<td style="padding:6px 8px;">'
-          + '<input type="text" class="ec-comment" placeholder="メモ"'
-          + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;">'
-          + '</td>'
-          + '<td style="padding:6px 8px; width:130px;">'
-          + '<span class="ec-datetime" data-value=""'
-          + ' style="display:block; font-size:.75rem; color:var(--muted); white-space:nowrap;">—</span>'
-          + '</td>'
-          + '<td style="padding:6px 4px; text-align:center;">'
-          + '<button type="button" onclick="removeEcRow(this)" title="削除"'
-          + ' style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1rem; line-height:1; padding:2px 4px;">&times;</button>'
-          + '</td>';
-        tbody.appendChild(tr);
-      };
-
-      window.removeEcRow = function(btn) {
-        var tr = btn.closest('tr');
-        if (tr) tr.remove();
-      };
-
-      // 外部AI判定から転記
-      window.transferFromAI = function() {
-        var payload = null;
-        try { payload = JSON.parse(EXT_PAYLOAD); } catch(e) {}
-        if (!payload) {
-          alert('外部AI判定の結果がまだ保存されていません。先に外部AIへ判定依頼を行ってください。');
-          return;
-        }
-
-        // payload が {payload: {...}} の場合もある
-        var inner = payload;
-        if (payload.payload && typeof payload.payload === 'object') {
-          inner = payload.payload;
-        }
-
-        var mm = inner.matrix_matches_top;
-        if (!Array.isArray(mm) || mm.length === 0) {
-          alert('外部AI判定結果に matrix_matches_top が見つかりませんでした。');
-          return;
-        }
-
-        // decision マッピング
-        var decisionMap = {
-          'intersection': 'controlled',
-          'core_only':    'needs_review',
-          'list2_only':   'needs_review',
-          'not_matched':  'non_controlled',
-        };
-
-        var items = mm.map(function(m) {
-          var ev = (m.evidence && typeof m.evidence === 'object') ? m.evidence : {};
-          var ruleNo = ev.rule_item_no || m.rule_item_no || '';
-          var rawDec = m.decision || ev.decision || '';
-          var mappedDec = decisionMap[rawDec] || '';
-          return { rule_item_no: ruleNo, decision: mappedDec, comment: rawDec, recorded_at: '' };
-        });
-
-        if (confirm('外部AI判定の ' + items.length + ' 件を転記します。現在の入力内容は上書きされます。よろしいですか？')) {
-          renderRows(items);
-        }
-      };
-
-      // フォーム送信前に items_json を収集（内容のある行に現在日時をスタンプ）
-      window.collectItemsJson = function() {
-        var now = new Date();
-        var nowStr = now.getFullYear() + '-'
-          + String(now.getMonth() + 1).padStart(2, '0') + '-'
-          + String(now.getDate()).padStart(2, '0') + ' '
-          + String(now.getHours()).padStart(2, '0') + ':'
-          + String(now.getMinutes()).padStart(2, '0');
-
-        var rows = document.querySelectorAll('#ecItemsBody tr');
-        var items = [];
-        rows.forEach(function(tr) {
-          var no   = (tr.querySelector('.ec-item-no')  || {}).value || '';
-          var dec  = (tr.querySelector('.ec-decision') || {}).value || '';
-          var cmt  = (tr.querySelector('.ec-comment')  || {}).value || '';
-          var dtEl = tr.querySelector('.ec-datetime');
-          var dt   = '';
-
-          if (no.trim() || dec) {
-            // 内容がある行 → 現在日時で上書き
-            dt = nowStr;
-            if (dtEl) {
-              dtEl.setAttribute('data-value', dt);
-              dtEl.textContent = dt;
-            }
-          } else {
-            // 空行 → 既存の日時を保持
-            dt = dtEl ? (dtEl.getAttribute('data-value') || '') : '';
-          }
-
-          items.push({ rule_item_no: no.trim(), decision: dec, comment: cmt.trim(), recorded_at: dt });
-        });
-        document.getElementById('ecItemsJson').value = JSON.stringify(items);
-        return true;
-      };
-
-      // 初期描画
-      renderRows(SAVED_ITEMS);
-    })();
-
-    // =====================================================================
-    // HS判定モーダル
-    // =====================================================================
-    (function() {
-      const PRODUCT_ID      = {{ product.id }};
-      const LAST_CANDIDATES = {{ hs_candidates | tojson }};
-      let pollingTimer = null;
-
-      function _getFormValues() {
-        return {
-          name:        (document.querySelector('input[name="name"]')?.value       || '').trim(),
-          description: (document.querySelector('textarea[name="description"]')?.value || '').trim(),
-          item_class:  (document.querySelector('input[name="item_class"]')?.value  || '').trim(),
-        };
-      }
-
-      function openHsModal() {
-        const modal = document.getElementById('hs-modal');
-        const body  = document.getElementById('hs-modal-body');
-        modal.style.display = 'flex';
-        body.innerHTML = _spinnerHtml('🏷️ HSコード判定を依頼しています...');
-
-        var fv = _getFormValues();
-
-        fetch('/integrations/hs-classifier/request/' + PRODUCT_ID, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(fv),
-        })
-          .then(function(r) { return r.json(); })
-          .then(function(data) {
-            if (!data.ok) {
-              body.innerHTML = _alertHtml('danger', '⚠️ ' + (data.detail || '依頼に失敗しました'));
-              return;
-            }
-            body.innerHTML = _spinnerHtml('⏳ 結果を取得しています...');
-            _startPolling();
-          })
-          .catch(function(err) {
-            body.innerHTML = _alertHtml('danger', 'ネットワークエラー: ' + err);
-          });
-      }
-
-      function _startPolling() {
-        var elapsed = 0;
-        pollingTimer = setInterval(function() {
-          elapsed += 1;
-          fetch('/products/' + PRODUCT_ID + '/hs/status')
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-              if (data.status === 'completed') {
-                clearInterval(pollingTimer);
-                _showCandidates(data.candidates);
-              } else if (data.status === 'failed') {
-                clearInterval(pollingTimer);
-                document.getElementById('hs-modal-body').innerHTML =
-                  _alertHtml('danger', '⚠️ HS判定に失敗しました。品目名・説明を確認してください。');
-              } else if (elapsed >= 40) {
-                clearInterval(pollingTimer);
-                document.getElementById('hs-modal-body').innerHTML =
-                  _alertHtml('warning', '⏱ タイムアウトしました。ページを更新して結果をご確認ください。');
-              }
-            })
-            .catch(function() {});
-        }, 1000);
-      }
-
-      function showLastCandidates() {
-        document.getElementById('hs-modal').style.display = 'flex';
-        _showCandidates(LAST_CANDIDATES);
-      }
-
-      function _showCandidates(candidates) {
-        var body = document.getElementById('hs-modal-body');
-        if (!candidates || candidates.length === 0) {
-          body.innerHTML = _alertHtml('warning', '候補が見つかりませんでした。品目名・説明をより詳しく入力してください。')
-            + _hintsHtml(0)
-            + _disclaimerHtml();
-          return;
-        }
-        var rows = candidates.map(function(c, i) {
-          var pct   = Math.min(100, Math.round((c.similarity_score || 0) * 100));
-          var color = c.similarity_score >= 0.7 ? '#23d160'
-                    : c.similarity_score >= 0.5 ? '#f0ad00' : '#ff3860';
-          var rank  = c.rank != null ? c.rank : i + 1;
-          var desc  = (c.description_en || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-          var code  = (c.hs_code || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-          var score = (c.similarity_score || 0).toFixed(3);
-          var eccn  = (c.eccn || 'EAR99');
-          var fefta = (c.fefta_ref || '—');
-          var eccnBg = eccn === 'EAR99' ? '#f0f0f0' : eccn === 'USML' ? '#fee2e2' : '#fef3c7';
-          var eccnCl = eccn === 'EAR99' ? '#666'    : eccn === 'USML' ? '#991b1b' : '#92400e';
-          var safeHs = code.replace(/'/g, "\\'");
-          var safeEccn = eccn.replace(/'/g, "\\'");
-          var safeFefta = fefta.replace(/'/g, "\\'");
-          return '<tr style="border-bottom:1px solid var(--border);">'
-               + '<td style="padding:8px 6px;text-align:center;"><strong style="color:var(--muted);">' + rank + '</strong></td>'
-               + '<td style="padding:8px 8px;white-space:nowrap;">'
-               +   '<code style="background:#f0f4ff;padding:2px 6px;border-radius:4px;font-size:.88rem;font-weight:700;">' + code + '</code>'
-               + '</td>'
-               + '<td style="padding:8px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;" title="' + desc + '">' + desc + '</td>'
-               + '<td style="padding:8px 6px;white-space:nowrap;">'
-               +   '<span style="display:inline-block;background:' + eccnBg + ';color:' + eccnCl + ';border-radius:4px;padding:2px 7px;font-size:.78rem;font-weight:700;font-family:monospace;">' + eccn + '</span>'
-               + '</td>'
-               + '<td style="padding:8px 6px;font-size:.75rem;color:#666;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="' + fefta + '">' + fefta + '</td>'
-               + '<td style="padding:8px 6px;white-space:nowrap;">'
-               +   '<div style="background:#e8e8e8;border-radius:4px;width:52px;height:6px;display:inline-block;vertical-align:middle;">'
-               +   '<div style="background:' + color + ';width:' + pct + '%;height:100%;border-radius:4px;"></div></div>'
-               +   '<span style="font-size:.74rem;margin-left:5px;color:#555;">' + score + '</span>'
-               + '</td>'
-               + '<td style="padding:8px 8px;">'
-               +   '<button type="button" onclick="_applyBoth(\'' + safeHs + '\',\'' + safeEccn + '\',\'' + safeFefta + '\')" '
-               +   'style="padding:4px 12px;font-size:.78rem;font-weight:700;background:#3273dc;color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;font-family:inherit;">反映</button>'
-               + '</td>'
-               + '</tr>';
-        }).join('');
-
-        var topScore = candidates[0] ? (candidates[0].similarity_score || 0) : 0;
-
-        body.innerHTML = '<p style="font-size:.78rem;color:var(--muted);margin-bottom:10px;">「反映」ボタンでHSコードとECCNを品目フォームに転記します。保存ボタンで確定してください。</p>'
-          + '<div style="overflow-x:auto;">'
-          + '<table style="width:100%;border-collapse:collapse;font-size:.83rem;">'
-          + '<thead><tr style="background:#f7f9ff;border-bottom:2px solid var(--border);">'
-          + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:center;">#</th>'
-          + '<th style="padding:7px 8px;color:var(--muted);font-size:.74rem;text-align:left;">HSコード</th>'
-          + '<th style="padding:7px 8px;color:var(--muted);font-size:.74rem;text-align:left;">説明（英語）</th>'
-          + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:left;">推定ECCN</th>'
-          + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:left;">外為法項番</th>'
-          + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:left;">類似度</th>'
-          + '<th style="padding:7px 8px;"></th>'
-          + '</tr></thead>'
-          + '<tbody>' + rows + '</tbody>'
-          + '</table>'
-          + '</div>'
-          + _hintsHtml(topScore)
-          + _disclaimerHtml();
-      }
-
-      function _hintsHtml(topScore) {
-        var fv = _getFormValues();
-        var hasDesc  = fv.description.length > 0;
-        var longDesc = fv.description.length >= 30;
-        var hasClass = fv.item_class.length > 0;
-        var lowScore = topScore < 0.55;
-
-        var scoreMsg = '';
-        if (topScore >= 0.7) {
-          scoreMsg = '✅ 上位候補の類似度が高く、信頼性が高い結果です。';
-        } else if (topScore >= 0.5) {
-          scoreMsg = '🟡 類似度がやや低めです。情報を追加すると精度が向上する可能性があります。';
-        } else {
-          scoreMsg = '🔴 類似度が低めです（最高 ' + topScore.toFixed(3) + '）。品目情報を充実させてください。';
-        }
-
-        function ci(ok, label, hint) {
-          var icon = ok ? '✅' : '⬜';
-          var col  = ok ? '#257953' : '#888';
-          var row  = '<div style="display:flex;gap:8px;align-items:baseline;margin-bottom:5px;">'
-                   + '<span style="flex-shrink:0;">' + icon + '</span>'
-                   + '<span style="color:' + col + ';font-size:.8rem;">' + label + '</span>';
-          if (!ok && hint) row += '<span style="color:#b08000;font-size:.75rem;">← ' + hint + '</span>';
-          return row + '</div>';
-        }
-
-        var checklist = ci(hasDesc,  '説明（description）が入力済み',
-                                      '素材・用途・製造工程などを入力してください')
-          + ci(longDesc, '説明が30文字以上の詳細な記述',
-                         '短すぎる説明は精度低下の主な原因です')
-          + ci(hasClass, '品目クラス（item_class）が設定済み',
-                         '"Finished Goods" / "Raw Material" などを設定してください');
-
-        var tips = '<div style="margin-top:6px;font-size:.78rem;color:#555;line-height:1.7;">'
-          + '<strong>精度向上のポイント：</strong><br>'
-          + '・英語の技術用語・材質・規格（JIS/ASTMなど）を含める<br>'
-          + '・化学品ならCAS番号や主成分名を記述する<br>'
-          + '・加工品なら形状・製造工程（押出/鋳造/圧延 など）を記述する<br>'
-          + '・用途（半導体製造用、自動車部品 など）を具体的に書く'
-          + '</div>';
-
-        return '<div style="margin-top:16px;background:#fafbff;border:1px solid #dde8ff;border-radius:8px;padding:14px 16px;">'
-          + '<div style="font-size:.82rem;font-weight:700;color:#2a3a6a;margin-bottom:10px;">💡 判定精度について</div>'
-          + '<div style="font-size:.82rem;margin-bottom:10px;">' + scoreMsg + '</div>'
-          + checklist
-          + (lowScore ? tips : '')
-          + '</div>';
-      }
-
-      function _disclaimerHtml() {
-        return '<div style="margin-top:10px;background:#fffbeb;border:1px solid #f5e1a0;border-radius:8px;padding:10px 14px;font-size:.76rem;color:#7a5c00;line-height:1.6;">'
-          + '⚠️ <strong>免責事項：</strong>AIによる判定は参考情報であり、正確性を保証するものではありません。<br>'
-          + '正式なHSコードは通関士・税関窓口にてご確認ください。<br>'
-          + '<strong>推定ECCN</strong> はHSコードとの公知対応表に基づく参考値です。EAR99 = 輸出規制対象外の可能性が高い品目。'
-          + '正確なECCNはBIS CCLまたは輸出管理専門家にご確認ください。'
-          + '</div>';
-      }
-
-      function _applyBoth(hsCode, eccn, fefta) {
-        // HSコード欄に転記
-        var hsInput = document.getElementById('hs-code-input');
-        if (hsInput) hsInput.value = hsCode;
-        // ECCN欄に転記（EAR99 は基本的に規制外なのでクリアしない）
-        var eccnInput = document.querySelector('input[name="eccn"]');
-        if (eccnInput && eccn && eccn !== 'EAR99') eccnInput.value = eccn;
-        // 転記完了フラッシュ
-        var flashDiv = document.getElementById('hs-apply-flash');
-        if (flashDiv) {
-          flashDiv.innerHTML = '✅ HSコード <strong>' + hsCode + '</strong>'
-            + (eccn && eccn !== 'EAR99' ? ' ／ ECCN <strong>' + eccn + '</strong>' : '')
-            + ' を転記しました。フォームを保存してください。';
-          flashDiv.style.display = 'block';
-          setTimeout(function() { flashDiv.style.display = 'none'; }, 5000);
-        }
-        closeHsModal();
-      }
-
-      // 後方互換: 行クリック用（現在は使用しないが残す）
-      function _applyCode(code) { _applyBoth(code, '', ''); }
-
-      function closeHsModal() {
-        document.getElementById('hs-modal').style.display = 'none';
-        if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
-      }
-
-      function _spinnerHtml(msg) {
-        return '<div style="text-align:center;padding:40px 20px;">'
-          + '<p style="color:var(--muted);margin-bottom:16px;">' + msg + '</p>'
-          + '<div style="width:200px;height:6px;background:#e8e8e8;border-radius:4px;margin:0 auto;overflow:hidden;">'
-          + '<div style="height:100%;width:60%;background:#3273dc;border-radius:4px;animation:hsSweep 1.4s ease-in-out infinite;"></div>'
-          + '</div></div>';
-      }
-
-      function _alertHtml(type, msg) {
-        var bg  = type === 'danger'  ? '#fff5f7' : type === 'warning' ? '#fffbeb' : '#effaf5';
-        var col = type === 'danger'  ? '#cc0f35' : type === 'warning' ? '#946c00' : '#257953';
-        var br  = type === 'danger'  ? '#f9b8c3' : type === 'warning' ? '#f5e1a0' : '#b5e8d0';
-        return '<div style="background:' + bg + ';color:' + col + ';border:1px solid ' + br + ';border-radius:8px;padding:14px 18px;font-size:.88rem;">'
-          + msg + '</div>';
-      }
-
-      window.openHsModal        = openHsModal;
-      window.showLastCandidates = showLastCandidates;
-      window.closeHsModal       = closeHsModal;
-      window._applyCode         = _applyCode;
-      window._applyBoth         = _applyBoth;
-    })();
-    </script>
-    <style>
-    @keyframes hsSweep {
-      0%   { transform: translateX(-100%); }
-      50%  { transform: translateX(150%); }
-      100% { transform: translateX(150%); }
-    }
-    #hs-modal table tr:hover { background: #f0f7ff; }
-    </style>
-
-  </div><!-- /container -->
-
-  <!-- ===================================================================
-       国別規制プロファイル（仕出国 / 仕向国）
-       =================================================================== -->
-  <div class="container" style="margin-top:32px;">
-    <div class="box" id="country-profiles-section">
+    <!-- ================================================================
+         [4] 国別規制プロファイル（拡張版：HSサマリーテーブル新設）
+         ================================================================ -->
+    <div class="box" id="country-profiles-section" style="margin-bottom:16px;">
       <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
         <div>
-          <h2 class="subtitle is-5" style="margin-bottom:2px;">🌏 国別規制プロファイル</h2>
-          <p class="help">仕出国・仕向国ごとのローカルHSコード・関税・輸入規制を管理します。</p>
+          <h2 class="subtitle is-5" style="margin-bottom:2px;">🌏 国別規制プロファイル / HSコード・関税テーブル</h2>
+          <p class="help">仕出国・仕向国ごとのローカルHSコード・MFN関税・EPA/FTA優遇税率・輸出規制を管理します。</p>
         </div>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <button type="button" id="cp-fetch-all-btn" class="button is-info is-small is-outlined"
-                  onclick="cpFetchTariffAll()"
-                  title="全プロファイルの関税率を WTO API で一括取得">
-            🌐 関税率を一括取得
-          </button>
-          <button type="button" id="cp-fetch-stats-all-btn" class="button is-success is-small is-outlined"
-                  onclick="cpFetchTradeStatsAll()"
-                  title="全プロファイルの貿易統計を UN Comtrade API で一括取得">
-            📊 統計を一括取得
-          </button>
-          <button type="button" id="cp-reexport-all-btn" class="button is-warning is-small is-outlined"
-                  onclick="cpReexportAssessAll()"
-                  title="全プロファイルを EAR Country Chart で一括判定">
-            ⚖️ 再輸出を一括判定
-          </button>
-          <button type="button" class="button is-primary is-small"
-                  onclick="cpOpenAdd()">＋ 国を追加</button>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button type="button" id="cp-fetch-all-btn" class="btn-action-sm"
+                  onclick="cpFetchTariffAll()" title="WTO APIで関税率を一括取得">🌐 関税率一括取得</button>
+          <button type="button" id="cp-fetch-stats-all-btn" class="btn-action-sm"
+                  onclick="cpFetchTradeStatsAll()" title="UN Comtrade APIで貿易統計を一括取得">📊 統計一括取得</button>
+          <button type="button" id="cp-reexport-all-btn" class="btn-action-sm"
+                  onclick="cpReexportAssessAll()" title="EAR Country Chartで再輸出を一括判定">⚖️ 再輸出一括判定</button>
+          <button type="button" class="btn-action-primary" onclick="cpOpenAdd()">＋ 国を追加</button>
         </div>
       </div>
 
-      <!-- プロファイル一覧 -->
+      <!-- HS コード・関税率サマリーテーブル（新設）-->
+      <div id="hs-summary-wrap" style="display:none; margin-bottom:20px;">
+        <div style="font-size:.8rem; font-weight:700; color:#374151; margin-bottom:8px;">
+          📊 国別HSコード・関税率サマリー
+          <span style="font-size:.72rem; font-weight:400; color:#9ca3af; margin-left:8px;">
+            グローバルHS: <code style="background:#f0f4ff; padding:1px 6px; border-radius:3px;">{{ product.hs_code or "未設定" }}</code>
+          </span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:.82rem; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden;">
+            <thead>
+              <tr style="background:#f8fafc; border-bottom:2px solid #e5e7eb;">
+                <th style="padding:9px 12px; text-align:left; color:#6b7280; font-size:.75rem; white-space:nowrap;">国</th>
+                <th style="padding:9px 12px; text-align:left; color:#6b7280; font-size:.75rem; white-space:nowrap;">役割</th>
+                <th style="padding:9px 12px; text-align:left; color:#6b7280; font-size:.75rem; white-space:nowrap;">ローカルHSコード</th>
+                <th style="padding:9px 12px; text-align:left; color:#6b7280; font-size:.75rem; max-width:200px;">品目説明（現地語）</th>
+                <th style="padding:9px 12px; text-align:center; color:#6b7280; font-size:.75rem; white-space:nowrap;">MFN関税率</th>
+                <th style="padding:9px 12px; text-align:center; color:#6b7280; font-size:.75rem; white-space:nowrap;">EPA/FTA優遇</th>
+                <th style="padding:9px 12px; text-align:left; color:#6b7280; font-size:.75rem; white-space:nowrap;">協定名</th>
+                <th style="padding:9px 12px; text-align:center; color:#6b7280; font-size:.75rem; white-space:nowrap;">輸出許可</th>
+              </tr>
+            </thead>
+            <tbody id="hs-summary-tbody"></tbody>
+          </table>
+        </div>
+        <p style="font-size:.73rem; color:#9ca3af; margin-top:6px;">
+          ※ MFN関税率は「🌐 関税率一括取得」で自動入力できます。EPA/FTA優遇税率は国別プロファイルの編集から手動入力してください。
+        </p>
+      </div>
+
+      <!-- プロファイルカードリスト -->
       <div id="cp-list">
-        <div class="has-text-grey" style="padding:24px; text-align:center; font-size:.88rem;">読み込み中…</div>
+        <div style="padding:24px; text-align:center; color:#aaa; font-size:.88rem;">読み込み中…</div>
       </div>
 
       <!-- 凡例 -->
-      <div style="margin-top:14px; font-size:.75rem; color:#888; display:flex; gap:16px; flex-wrap:wrap;">
+      <div style="margin-top:12px; font-size:.73rem; color:#9ca3af; display:flex; gap:16px; flex-wrap:wrap;">
         <span>🟦 仕出国（Origin）</span>
         <span>🟧 仕向国（Destination）</span>
         <span>🟩 兼用（Both）</span>
       </div>
     </div>
-  </div>
 
-  <!-- 追加 / 編集モーダル -->
-  <div id="cp-modal" style="display:none; position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center;">
-    <div style="background:#fff; border-radius:10px; width:540px; max-width:96vw; max-height:90vh; overflow-y:auto; box-shadow:0 8px 40px rgba(0,0,0,.25);">
-      <div style="padding:16px 20px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between;">
-        <strong id="cp-modal-title">国別規制プロファイルを追加</strong>
-        <button type="button" onclick="cpCloseModal()" style="background:none; border:none; font-size:1.3rem; cursor:pointer; color:#888;">×</button>
+  </div><!-- /container -->
+
+  <!-- ================================================================
+       国別プロファイル 追加 / 編集モーダル（EPA/FTA フィールド追加）
+       ================================================================ -->
+  <div id="cp-modal" style="display:none; position:fixed; inset:0; z-index:9000;
+       background:rgba(0,0,0,.45); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:10px; width:580px; max-width:96vw;
+                max-height:92vh; overflow-y:auto; box-shadow:0 8px 40px rgba(0,0,0,.25);">
+      <div style="padding:14px 20px; border-bottom:1px solid #eee;
+                  display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; background:#fff; z-index:1;">
+        <strong id="cp-modal-title" style="font-size:.95rem;">国別規制プロファイルを追加</strong>
+        <button type="button" onclick="cpCloseModal()"
+                style="background:none; border:none; font-size:1.3rem; cursor:pointer; color:#888;">×</button>
       </div>
       <div style="padding:20px 24px;">
         <input type="hidden" id="cp-edit-id" value="">
 
-        <div class="field is-horizontal" style="margin-bottom:14px;">
-          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">国 / 地域</label></div>
-          <div class="field-body">
-            <div class="field">
-              <div class="control">
-                <div class="select is-fullwidth">
-                  <select id="cp-country-code" onchange="cpOnCountryChange()">
-                    <option value="JP">🇯🇵 JP — 日本</option>
-                    <option value="US">🇺🇸 US — 米国</option>
-                    <option value="CN">🇨🇳 CN — 中国</option>
-                    <option value="EU">🇪🇺 EU — EU（欧州連合）</option>
-                    <option value="KR">🇰🇷 KR — 韓国</option>
-                  </select>
-                </div>
-              </div>
+        <!-- 国 + 役割 -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+          <div>
+            <label class="label is-small">国 / 地域</label>
+            <div class="select is-fullwidth is-small">
+              <select id="cp-country-code" onchange="cpOnCountryChange()">
+                <option value="JP">🇯🇵 JP — 日本</option>
+                <option value="US">🇺🇸 US — 米国</option>
+                <option value="CN">🇨🇳 CN — 中国</option>
+                <option value="EU">🇪🇺 EU — EU（欧州連合）</option>
+                <option value="KR">🇰🇷 KR — 韓国</option>
+                <option value="TW">🇹🇼 TW — 台湾</option>
+                <option value="ID">🇮🇩 ID — インドネシア</option>
+                <option value="SG">🇸🇬 SG — シンガポール</option>
+                <option value="TH">🇹🇭 TH — タイ</option>
+                <option value="VN">🇻🇳 VN — ベトナム</option>
+                <option value="IN">🇮🇳 IN — インド</option>
+                <option value="DE">🇩🇪 DE — ドイツ</option>
+                <option value="GB">🇬🇧 GB — 英国</option>
+                <option value="AU">🇦🇺 AU — オーストラリア</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="label is-small">役割</label>
+            <div class="select is-fullwidth is-small">
+              <select id="cp-role">
+                <option value="origin">🟦 仕出国（Origin）</option>
+                <option value="destination">🟧 仕向国（Destination）</option>
+                <option value="both">🟩 仕出国 / 仕向国（Both）</option>
+              </select>
             </div>
           </div>
         </div>
 
-        <div class="field is-horizontal" style="margin-bottom:14px;">
-          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">役割</label></div>
-          <div class="field-body">
-            <div class="field">
-              <div class="control">
-                <div class="select is-fullwidth">
-                  <select id="cp-role">
-                    <option value="origin">🟦 仕出国（Origin）</option>
-                    <option value="destination">🟧 仕向国（Destination）</option>
-                    <option value="both">🟩 仕出国 / 仕向国（Both）</option>
-                  </select>
-                </div>
-              </div>
+        <!-- ローカルHSコード -->
+        <div style="margin-bottom:14px;">
+          <label class="label is-small">ローカル HSコード</label>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <input class="input is-small" type="text" id="cp-local-hs"
+                   list="cp-jp-hs-list" placeholder="例: 8504401000（9〜10桁）" maxlength="12"
+                   style="font-family:monospace; flex:1;" oninput="cpOnLocalHsInput(this.value)">
+            <datalist id="cp-jp-hs-list"></datalist>
+            <button type="button" id="cp-jp-suggest-btn"
+                    onclick="cpFetchJpSuggest()"
+                    style="display:none; padding:4px 10px; font-size:.75rem; white-space:nowrap;
+                           background:#eff6ff; border:1px solid #93c5fd; color:#1d4ed8;
+                           border-radius:5px; cursor:pointer; font-family:inherit;">
+              🔍 JP候補取得
+            </button>
+          </div>
+          <p class="help" id="cp-local-hs-help" style="margin-top:3px;">JP: 9桁 / US: 10桁 / CN: 10桁 / EU: 8桁 / KR: 10桁</p>
+          <div id="cp-jp-suggest-list" style="display:none; margin-top:6px; max-height:200px;
+               overflow-y:auto; border:1px solid #bfdbfe; border-radius:6px; background:#fff;
+               box-shadow:0 4px 12px rgba(0,0,0,.08);"></div>
+        </div>
+
+        <!-- HS品目説明 + ローカルECCN -->
+        <div style="display:grid; grid-template-columns:1fr 160px; gap:12px; margin-bottom:14px;">
+          <div>
+            <label class="label is-small">品目説明（現地語）</label>
+            <input class="input is-small" type="text" id="cp-local-hs-desc"
+                   placeholder="例: 変圧器（定格電力 1kVA 超）">
+          </div>
+          <div>
+            <label class="label is-small">ローカル ECCN</label>
+            <input class="input is-small" type="text" id="cp-local-eccn"
+                   placeholder="例: 3E001, EAR99" style="font-family:monospace;">
+          </div>
+        </div>
+
+        <!-- 輸出許可要否 -->
+        <div style="margin-bottom:14px;">
+          <label class="label is-small">輸出許可要否</label>
+          <div class="select is-small">
+            <select id="cp-license-required">
+              <option value="">未設定</option>
+              <option value="nLR">NLR（許可不要）</option>
+              <option value="no_license">許可不要</option>
+              <option value="license_required">許可証必要</option>
+              <option value="prohibited">禁輸</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 区切り -->
+        <div style="margin:16px 0 12px; font-size:.78rem; font-weight:700; color:#6b7280;
+                    text-transform:uppercase; letter-spacing:.06em; padding-bottom:6px;
+                    border-bottom:1px solid #e5e7eb;">
+          関税率
+        </div>
+
+        <!-- MFN関税率 -->
+        <div style="display:grid; grid-template-columns:120px 1fr; gap:12px; margin-bottom:10px; align-items:end;">
+          <div>
+            <label class="label is-small">MFN関税率 (%)</label>
+            <div class="control has-icons-right">
+              <input class="input is-small" type="number" id="cp-tariff-rate"
+                     placeholder="0.0" min="0" max="500" step="0.1" style="font-family:monospace;">
+              <span class="icon is-small is-right" style="font-size:.75rem;">%</span>
+            </div>
+          </div>
+          <div>
+            <label class="label is-small">WTO タリフ種別</label>
+            <div class="select is-small is-fullwidth">
+              <select id="cp-tariff-type">
+                <option value="">種別</option>
+                <option value="MFN">MFN（最恵国）</option>
+                <option value="FTA">FTA（特恵）</option>
+                <option value="GSP">GSP（一般特恵）</option>
+                <option value="301">301条（対中制裁）</option>
+                <option value="OTHER">その他</option>
+              </select>
             </div>
           </div>
         </div>
 
-        <div class="field is-horizontal" style="margin-bottom:14px;">
-          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">ローカル HS</label></div>
-          <div class="field-body">
-            <div class="field" style="margin-right:8px; flex:1;">
-              <div class="control" style="display:flex; gap:6px; align-items:center;">
-                <input class="input is-small" type="text" id="cp-local-hs"
-                       list="cp-jp-hs-list"
-                       placeholder="例: 8504401000（9〜10桁）" maxlength="12"
-                       style="font-family:monospace; flex:1;"
-                       oninput="cpOnLocalHsInput(this.value)">
-                <datalist id="cp-jp-hs-list"></datalist>
-                <button type="button" id="cp-jp-suggest-btn"
-                        onclick="cpFetchJpSuggest()"
-                        style="display:none; padding:4px 10px; font-size:.75rem; white-space:nowrap;
-                               background:#eff6ff; border:1px solid #93c5fd; color:#1d4ed8;
-                               border-radius:5px; cursor:pointer;">
-                  🔍 JP候補を取得
-                </button>
-              </div>
-              <p class="help" id="cp-local-hs-help">JP: 9桁 / US: 10桁 / CN: 10桁 / EU: 8桁 / KR: 10桁</p>
-              <!-- JP サジェスト候補ドロップダウン -->
-              <div id="cp-jp-suggest-list" style="display:none; margin-top:6px; max-height:200px;
-                   overflow-y:auto; border:1px solid #bfdbfe; border-radius:6px; background:#fff;
-                   box-shadow:0 4px 12px rgba(0,0,0,.08);"></div>
-            </div>
+        <!-- EPA/FTA優遇税率（新設）-->
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:7px;
+                    padding:12px 14px; margin-bottom:14px;">
+          <div style="font-size:.78rem; font-weight:700; color:#166534; margin-bottom:8px;">
+            🤝 EPA / FTA 優遇税率（参考値）
           </div>
-        </div>
-
-        <div class="field is-horizontal" style="margin-bottom:14px;">
-          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">品目説明（現地語）</label></div>
-          <div class="field-body">
-            <div class="field">
-              <div class="control">
-                <input class="input is-small" type="text" id="cp-local-hs-desc"
-                       placeholder="例: 変圧器（定格電力 1kVA 超）">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="field is-horizontal" style="margin-bottom:14px;">
-          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">ローカル ECCN</label></div>
-          <div class="field-body">
-            <div class="field">
-              <div class="control">
-                <input class="input is-small" type="text" id="cp-local-eccn"
-                       placeholder="例: 3E001, EAR99, 該当なし" style="font-family:monospace;">
-              </div>
-              <p class="help">仕向国における輸出管理分類（米国以外の場合は現地規制コードを入力）</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="field is-horizontal" style="margin-bottom:14px;">
-          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">輸出許可要否</label></div>
-          <div class="field-body">
-            <div class="field">
-              <div class="control">
-                <div class="select is-small is-fullwidth">
-                  <select id="cp-license-required">
-                    <option value="">未設定</option>
-                    <option value="nLR">NLR（許可不要）</option>
-                    <option value="no_license">許可不要</option>
-                    <option value="license_required">許可証必要</option>
-                    <option value="prohibited">禁輸</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="field is-horizontal" style="margin-bottom:14px;">
-          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">関税率</label></div>
-          <div class="field-body">
-            <div class="field" style="max-width:120px; margin-right:8px;">
+          <div style="display:grid; grid-template-columns:120px 1fr; gap:12px; align-items:end;">
+            <div>
+              <label class="label is-small" style="font-size:.78rem;">優遇税率 (%)</label>
               <div class="control has-icons-right">
-                <input class="input is-small" type="number" id="cp-tariff-rate"
+                <input class="input is-small" type="number" id="cp-epa-tariff-rate"
                        placeholder="0.0" min="0" max="500" step="0.1" style="font-family:monospace;">
-                <span class="icon is-small is-right" style="font-size:.8rem;">%</span>
+                <span class="icon is-small is-right" style="font-size:.75rem;">%</span>
               </div>
             </div>
-            <div class="field" style="max-width:120px;">
-              <div class="control">
-                <div class="select is-small is-fullwidth">
-                  <select id="cp-tariff-type">
-                    <option value="">種別</option>
-                    <option value="MFN">MFN（最恵国）</option>
-                    <option value="FTA">FTA（特恵）</option>
-                    <option value="GSP">GSP（一般特恵）</option>
-                    <option value="301">301条（対中制裁）</option>
-                    <option value="OTHER">その他</option>
-                  </select>
-                </div>
-              </div>
+            <div>
+              <label class="label is-small" style="font-size:.78rem;">協定名</label>
+              <input class="input is-small" type="text" id="cp-epa-agreement"
+                     placeholder="例: AJFTA, CPTPP, RCEP, EU-Japan EPA">
             </div>
           </div>
+          <p class="help" style="margin-top:6px; color:#166534;">EPA/FTA が適用可能な場合の優遇税率を参考値として入力してください（原産地証明が必要な場合があります）。</p>
         </div>
 
-        <div class="field is-horizontal" style="margin-bottom:14px;">
-          <div class="field-label is-small" style="flex:0 0 120px; text-align:left;"><label class="label">メモ</label></div>
-          <div class="field-body">
-            <div class="field">
-              <div class="control">
-                <textarea class="textarea is-small" id="cp-notes" rows="2"
-                          placeholder="輸入規制・再輸出規制・その他備考など"></textarea>
-              </div>
-            </div>
-          </div>
+        <!-- メモ -->
+        <div style="margin-bottom:6px;">
+          <label class="label is-small">メモ</label>
+          <textarea class="textarea is-small" id="cp-notes" rows="2"
+                    placeholder="輸入規制・再輸出規制・その他備考"></textarea>
         </div>
       </div>
-      <div style="padding:14px 24px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end;">
-        <button type="button" class="button is-light is-small" onclick="cpCloseModal()">キャンセル</button>
-        <button type="button" class="button is-primary is-small" onclick="cpSave()">保存</button>
+      <div style="padding:12px 24px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" class="btn-action-sm" onclick="cpCloseModal()">キャンセル</button>
+        <button type="button" class="btn-action-primary" onclick="cpSave()">保存</button>
       </div>
     </div>
   </div>
 
+  <!-- HS転記フラッシュ -->
+  <div id="hs-apply-flash" style="display:none; position:fixed; bottom:24px; left:50%;
+       transform:translateX(-50%); background:#0d7040; color:#fff; padding:10px 22px;
+       border-radius:8px; font-size:.85rem; z-index:99999; box-shadow:0 4px 12px rgba(0,0,0,.2);
+       max-width:90vw; text-align:center;"></div>
+
+  <!-- HS判定モーダル -->
+  <div id="hs-modal" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center;">
+    <div onclick="closeHsModal()" style="position:absolute; inset:0; background:rgba(10,10,10,.55);"></div>
+    <div style="position:relative; background:#fff; border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,.28);
+                width:90%; min-width:320px; max-width:720px; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;">
+      <div style="padding:14px 20px; background:#f0f7ff; display:flex; align-items:center; justify-content:space-between;
+                  border-bottom:1px solid #d4e5ff; flex-shrink:0;">
+        <span style="font-size:.95rem; font-weight:800; color:#1a1a1a;">🏷️ HSコード AI判定</span>
+        <button type="button" onclick="closeHsModal()"
+                style="background:none; border:none; font-size:1.3rem; line-height:1; cursor:pointer; color:#888;">✕</button>
+      </div>
+      <div id="hs-modal-body" style="padding:20px; overflow-y:auto; flex:1; min-height:140px;"></div>
+      <div style="padding:12px 20px; background:#f9f9f9; border-top:1px solid #eee; display:flex; justify-content:flex-end; flex-shrink:0;">
+        <button type="button" onclick="closeHsModal()" class="btn">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 確認済みフォーム -->
+  {% if product.is_unconfirmed %}
+  <form id="confirm-form" action="/products/{{ product.id }}/confirm" method="post" style="display:none;">
+    <input type="hidden" name="redirect_to" value="/products/{{ product.id }}/edit">
+  </form>
+  {% endif %}
+
+  <style>
+  @keyframes hsSweep {
+    0%   { transform: translateX(-100%); }
+    50%  { transform: translateX(150%); }
+    100% { transform: translateX(150%); }
+  }
+  #hs-modal table tr:hover { background: #f0f7ff; }
+  details > summary { user-select: none; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  /* ▶ 専用矢印アイコンのみ回転（テキストは回転しない） */
+  details[open] > summary .summary-arrow { transform: rotate(90deg); }
+  .summary-arrow { display:inline-block; transition:transform .2s; font-size:.7rem; color:#9ca3af; margin-right:4px; }
+
+  /* ─── デザインシステム ボタン ─────────────────── */
+  .btn-action {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:6px 14px; border-radius:8px;
+    font-size:.82rem; font-weight:600; font-family:inherit;
+    cursor:pointer; text-decoration:none; white-space:nowrap;
+    transition:background .15s, border-color .15s, color .15s;
+    border:1.5px solid #e8d5c0; background:#fff8f3; color:#7a4010;
+  }
+  .btn-action:hover { background:#fff0e6; border-color:#E8833A; color:#c2410c; }
+  .btn-action-primary {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:7px 18px; border-radius:8px;
+    font-size:.84rem; font-weight:700; font-family:inherit;
+    cursor:pointer; white-space:nowrap;
+    border:none; background:#2563eb; color:#fff;
+    transition:background .15s;
+  }
+  .btn-action-primary:hover { background:#1d4ed8; }
+  .btn-action-primary.orange { background:#E8833A; }
+  .btn-action-primary.orange:hover { background:#c2410c; }
+  .btn-action-sm {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:4px 11px; border-radius:7px;
+    font-size:.78rem; font-weight:600; font-family:inherit;
+    cursor:pointer; white-space:nowrap;
+    border:1.5px solid #e8d5c0; background:#fff8f3; color:#7a4010;
+    transition:background .15s;
+  }
+  .btn-action-sm:hover { background:#fff0e6; border-color:#E8833A; }
+  .btn-transfer {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:5px 14px; border-radius:8px;
+    font-size:.80rem; font-weight:700; font-family:inherit;
+    cursor:pointer; white-space:nowrap;
+    border:1.5px solid #2563eb; background:#eff6ff; color:#1d4ed8;
+    transition:background .15s;
+  }
+  .btn-transfer:hover { background:#dbeafe; border-color:#1d4ed8; }
+  .btn-danger-sm {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:4px 11px; border-radius:7px;
+    font-size:.78rem; font-weight:600; font-family:inherit;
+    cursor:pointer; white-space:nowrap;
+    border:1.5px solid #fca5a5; background:#fff5f5; color:#dc2626;
+    transition:background .15s;
+  }
+  .btn-danger-sm:hover { background:#fee2e2; }
+  </style>
+
   <script>
+  // =====================================================================
+  // 輸出管理 判定明細テーブル
+  // =====================================================================
+  (function() {
+    const SAVED_ITEMS   = {{ (export_control_items | default([])) | tojson }};
+    const EXT_PAYLOAD   = {{ (product.external_eval_payload or 'null') | tojson }};
+    const DECISION_OPTIONS = [
+      { value: "",               label: "（未判定）" },
+      { value: "controlled",     label: "該当" },
+      { value: "non_controlled", label: "非該当" },
+      { value: "needs_review",   label: "要確認" },
+      { value: "exempted",       label: "適用除外" },
+    ];
+
+    function buildSelectHtml(selected) {
+      return DECISION_OPTIONS.map(function(o) {
+        var sel = (o.value === selected) ? ' selected' : '';
+        return '<option value="' + o.value + '"' + sel + '>' + o.label + '</option>';
+      }).join('');
+    }
+
+    function renderRows(items) {
+      var tbody = document.getElementById('ecItemsBody');
+      var rows = [];
+      var total = items.length;
+      for (var i = 0; i < total; i++) {
+        var it = items[i] || { rule_item_no: '', decision: '', comment: '', recorded_at: '' };
+        var dt = it.recorded_at || '';
+        rows.push(
+          '<tr style="border-bottom:1px solid var(--border);">'
+          + '<td style="padding:6px 8px;"><input type="text" class="ec-item-no" value="' + _esc(it.rule_item_no) + '" placeholder="EL-7-19"'
+          + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;"></td>'
+          + '<td style="padding:6px 8px;"><select class="ec-decision" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:.82rem; font-family:inherit;">'
+          + buildSelectHtml(it.decision) + '</select></td>'
+          + '<td style="padding:6px 8px;"><input type="text" class="ec-comment" value="' + _esc(it.comment || '') + '" placeholder="メモ"'
+          + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;"></td>'
+          + '<td style="padding:6px 8px; width:130px;"><span class="ec-datetime" data-value="' + _esc(dt) + '"'
+          + ' style="display:block; font-size:.75rem; color:var(--muted); white-space:nowrap;">' + (dt || '—') + '</span></td>'
+          + '<td style="padding:6px 4px; text-align:center;"><button type="button" onclick="removeEcRow(this)"'
+          + ' style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1rem;">&times;</button></td>'
+          + '</tr>'
+        );
+      }
+      tbody.innerHTML = rows.join('');
+    }
+
+    function _esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    }
+
+    window.addEcRow = function() {
+      var tbody = document.getElementById('ecItemsBody');
+      var tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid var(--border)';
+      tr.innerHTML = '<td style="padding:6px 8px;"><input type="text" class="ec-item-no" placeholder="EL-7-19"'
+        + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;"></td>'
+        + '<td style="padding:6px 8px;"><select class="ec-decision" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:.82rem; font-family:inherit;">'
+        + buildSelectHtml('') + '</select></td>'
+        + '<td style="padding:6px 8px;"><input type="text" class="ec-comment" placeholder="メモ"'
+        + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;"></td>'
+        + '<td style="padding:6px 8px; width:130px;"><span class="ec-datetime" data-value="" style="display:block; font-size:.75rem; color:var(--muted); white-space:nowrap;">—</span></td>'
+        + '<td style="padding:6px 4px; text-align:center;"><button type="button" onclick="removeEcRow(this)"'
+        + ' style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1rem;">&times;</button></td>';
+      tbody.appendChild(tr);
+    };
+
+    window.removeEcRow = function(btn) {
+      var tr = btn.closest('tr');
+      if (tr) tr.remove();
+    };
+
+    window.transferFromAI = function() {
+      var payload = null;
+      try { payload = JSON.parse(EXT_PAYLOAD); } catch(e) {}
+      if (!payload) { alert('外部AI判定の結果がまだ保存されていません。先に外部AIへ判定依頼を行ってください。'); return; }
+      var inner = payload;
+      if (payload.payload && typeof payload.payload === 'object') inner = payload.payload;
+      var mm = inner.matrix_matches_top;
+      if (!Array.isArray(mm) || mm.length === 0) { alert('外部AI判定結果に matrix_matches_top が見つかりませんでした。'); return; }
+      var decisionMap = { 'hit':'controlled', 'intersection':'controlled', 'core_only':'needs_review', 'list2_only':'needs_review' };
+      var items = mm
+        .filter(function(m) { var d = m.decision || ''; return d !== 'not_matched'; })
+        .map(function(m) {
+          var ev = (m.evidence && typeof m.evidence === 'object') ? m.evidence : {};
+          var itemNo = ev.rule_item_no || m.rule_item_no || '';
+          var dec = m.decision || ev.decision || '';
+          var mapped = decisionMap[dec] || '';
+          var score = (typeof m.match_score === 'number') ? ' score=' + m.match_score.toFixed(3) : '';
+          var comment = itemNo ? (itemNo + ' [' + dec + ']' + score) : (dec + score);
+          return { rule_item_no: itemNo, decision: mapped, comment: comment, recorded_at: '' };
+        });
+      if (items.length === 0) { alert('転記対象の規制合致項目（hit/intersection/core_only/list2_only）が見つかりませんでした。'); return; }
+      if (confirm('外部AI判定の ' + items.length + ' 件を転記します。現在の入力内容は上書きされます。よろしいですか？')) {
+        renderRows(items);
+      }
+    };
+
+    window.collectItemsJson = function() {
+      var now = new Date();
+      var nowStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0')
+        + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+      var rows = document.querySelectorAll('#ecItemsBody tr');
+      var items = [];
+      rows.forEach(function(tr) {
+        var no  = (tr.querySelector('.ec-item-no')  || {}).value || '';
+        var dec = (tr.querySelector('.ec-decision') || {}).value || '';
+        var cmt = (tr.querySelector('.ec-comment')  || {}).value || '';
+        var dtEl = tr.querySelector('.ec-datetime');
+        var dt = '';
+        if (no.trim() || dec) {
+          dt = nowStr;
+          if (dtEl) { dtEl.setAttribute('data-value', dt); dtEl.textContent = dt; }
+        } else {
+          dt = dtEl ? (dtEl.getAttribute('data-value') || '') : '';
+        }
+        if (no.trim() || dec) {
+          items.push({ rule_item_no: no.trim(), decision: dec, comment: cmt.trim(), recorded_at: dt });
+        }
+      });
+      document.getElementById('ecItemsJson').value = JSON.stringify(items);
+      return true;
+    };
+
+    renderRows(SAVED_ITEMS);
+  })();
+
+  // =====================================================================
+  // HS判定モーダル
+  // =====================================================================
+  (function() {
+    const PRODUCT_ID      = {{ product.id }};
+    const LAST_CANDIDATES = {{ hs_candidates | tojson }};
+    let pollingTimer = null;
+
+    function _getFormValues() {
+      return {
+        name:        (document.querySelector('input[name="name"]')?.value       || '').trim(),
+        description: (document.querySelector('textarea[name="description"]')?.value || '').trim(),
+        item_class:  (document.querySelector('input[name="item_class"]')?.value  || '').trim(),
+      };
+    }
+
+    function openHsModal() {
+      const modal = document.getElementById('hs-modal');
+      const body  = document.getElementById('hs-modal-body');
+      modal.style.display = 'flex';
+      body.innerHTML = _spinnerHtml('🏷️ HSコード判定を依頼しています...');
+      var fv = _getFormValues();
+      fetch('/integrations/hs-classifier/request/' + PRODUCT_ID, {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(fv),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.ok) { body.innerHTML = _alertHtml('danger', '⚠️ ' + (data.detail || '依頼に失敗しました')); return; }
+          body.innerHTML = _spinnerHtml('⏳ 結果を取得しています...');
+          _startPolling();
+        })
+        .catch(function(err) { body.innerHTML = _alertHtml('danger', 'ネットワークエラー: ' + err); });
+    }
+
+    function _startPolling() {
+      var elapsed = 0;
+      pollingTimer = setInterval(function() {
+        elapsed += 1;
+        fetch('/products/' + PRODUCT_ID + '/hs/status')
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.status === 'completed') { clearInterval(pollingTimer); _showCandidates(data.candidates); }
+            else if (data.status === 'failed') { clearInterval(pollingTimer); document.getElementById('hs-modal-body').innerHTML = _alertHtml('danger', '⚠️ HS判定に失敗しました。'); }
+            else if (elapsed >= 40) { clearInterval(pollingTimer); document.getElementById('hs-modal-body').innerHTML = _alertHtml('warning', '⏱ タイムアウトしました。'); }
+          }).catch(function() {});
+      }, 1000);
+    }
+
+    function showLastCandidates() { document.getElementById('hs-modal').style.display = 'flex'; _showCandidates(LAST_CANDIDATES); }
+
+    function _showCandidates(candidates) {
+      var body = document.getElementById('hs-modal-body');
+      if (!candidates || candidates.length === 0) {
+        body.innerHTML = _alertHtml('warning', '候補が見つかりませんでした。品目名・説明をより詳しく入力してください。') + _hintsHtml(0) + _disclaimerHtml();
+        return;
+      }
+      var rows = candidates.map(function(c, i) {
+        var pct   = Math.min(100, Math.round((c.similarity_score || 0) * 100));
+        var color = c.similarity_score >= 0.7 ? '#23d160' : c.similarity_score >= 0.5 ? '#f0ad00' : '#ff3860';
+        var rank  = c.rank != null ? c.rank : i + 1;
+        var desc  = (c.description_en || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        var code  = (c.hs_code || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        var score = (c.similarity_score || 0).toFixed(3);
+        var eccn  = (c.eccn || 'EAR99');
+        var fefta = (c.fefta_ref || '—');
+        var eccnBg = eccn === 'EAR99' ? '#f0f0f0' : eccn === 'USML' ? '#fee2e2' : '#fef3c7';
+        var eccnCl = eccn === 'EAR99' ? '#666'    : eccn === 'USML' ? '#991b1b' : '#92400e';
+        var safeHs = code.replace(/'/g, "\\'");
+        var safeEccn = eccn.replace(/'/g, "\\'");
+        var safeFefta = fefta.replace(/'/g, "\\'");
+        return '<tr style="border-bottom:1px solid var(--border);">'
+             + '<td style="padding:8px 6px;text-align:center;"><strong style="color:var(--muted);">' + rank + '</strong></td>'
+             + '<td style="padding:8px 8px;white-space:nowrap;"><code style="background:#f0f4ff;padding:2px 6px;border-radius:4px;font-size:.88rem;font-weight:700;">' + code + '</code></td>'
+             + '<td style="padding:8px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;" title="' + desc + '">' + desc + '</td>'
+             + '<td style="padding:8px 6px;"><span style="display:inline-block;background:' + eccnBg + ';color:' + eccnCl + ';border-radius:4px;padding:2px 7px;font-size:.78rem;font-weight:700;font-family:monospace;">' + eccn + '</span></td>'
+             + '<td style="padding:8px 6px;font-size:.75rem;color:#666;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="' + fefta + '">' + fefta + '</td>'
+             + '<td style="padding:8px 6px;white-space:nowrap;"><div style="background:#e8e8e8;border-radius:4px;width:52px;height:6px;display:inline-block;vertical-align:middle;"><div style="background:' + color + ';width:' + pct + '%;height:100%;border-radius:4px;"></div></div><span style="font-size:.74rem;margin-left:5px;color:#555;">' + score + '</span></td>'
+             + '<td style="padding:8px 8px;"><button type="button" onclick="_applyBoth(\'' + safeHs + '\',\'' + safeEccn + '\',\'' + safeFefta + '\')" style="padding:4px 12px;font-size:.78rem;font-weight:700;background:#3273dc;color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;font-family:inherit;">反映</button></td>'
+             + '</tr>';
+      }).join('');
+      var topScore = candidates[0] ? (candidates[0].similarity_score || 0) : 0;
+      body.innerHTML = '<p style="font-size:.78rem;color:var(--muted);margin-bottom:10px;">「反映」ボタンでHSコードとECCNを品目フォームに転記します。保存ボタンで確定してください。</p>'
+        + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:.83rem;">'
+        + '<thead><tr style="background:#f7f9ff;border-bottom:2px solid var(--border);">'
+        + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:center;">#</th>'
+        + '<th style="padding:7px 8px;color:var(--muted);font-size:.74rem;text-align:left;">HSコード</th>'
+        + '<th style="padding:7px 8px;color:var(--muted);font-size:.74rem;text-align:left;">説明（英語）</th>'
+        + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:left;">推定ECCN</th>'
+        + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:left;">外為法項番</th>'
+        + '<th style="padding:7px 6px;color:var(--muted);font-size:.74rem;text-align:left;">類似度</th>'
+        + '<th style="padding:7px 8px;"></th>'
+        + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+        + _hintsHtml(topScore) + _disclaimerHtml();
+    }
+
+    function _hintsHtml(topScore) {
+      var fv = _getFormValues();
+      var scoreMsg = topScore >= 0.7 ? '✅ 上位候補の類似度が高く信頼性が高い結果です。'
+        : topScore >= 0.5 ? '🟡 類似度がやや低めです。情報を追加すると精度が向上します。'
+        : '🔴 類似度が低めです（最高 ' + topScore.toFixed(3) + '）。品目情報を充実させてください。';
+      return '<div style="margin-top:16px;background:#fafbff;border:1px solid #dde8ff;border-radius:8px;padding:14px 16px;">'
+        + '<div style="font-size:.82rem;font-weight:700;color:#2a3a6a;margin-bottom:8px;">💡 判定精度について</div>'
+        + '<div style="font-size:.82rem;">' + scoreMsg + '</div>'
+        + '</div>';
+    }
+
+    function _disclaimerHtml() {
+      return '<div style="margin-top:10px;background:#fffbeb;border:1px solid #f5e1a0;border-radius:8px;padding:10px 14px;font-size:.76rem;color:#7a5c00;line-height:1.6;">'
+        + '⚠️ <strong>免責:</strong> AIによる判定は参考情報です。正式なHSコードは通関士・税関窓口にてご確認ください。'
+        + '</div>';
+    }
+
+    function _applyBoth(hsCode, eccn, fefta) {
+      var hsInput = document.getElementById('hs-code-input');
+      if (hsInput) hsInput.value = hsCode;
+      var eccnInput = document.querySelector('input[name="eccn"]');
+      if (eccnInput && eccn && eccn !== 'EAR99') eccnInput.value = eccn;
+      var flashDiv = document.getElementById('hs-apply-flash');
+      if (flashDiv) {
+        flashDiv.innerHTML = '✅ HSコード <strong>' + hsCode + '</strong>'
+          + (eccn && eccn !== 'EAR99' ? ' ／ ECCN <strong>' + eccn + '</strong>' : '')
+          + ' を転記しました。フォームを保存してください。';
+        flashDiv.style.display = 'block';
+        setTimeout(function() { flashDiv.style.display = 'none'; }, 5000);
+      }
+      closeHsModal();
+    }
+
+    function closeHsModal() {
+      document.getElementById('hs-modal').style.display = 'none';
+      if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+    }
+
+    function _spinnerHtml(msg) {
+      return '<div style="text-align:center;padding:40px 20px;">'
+        + '<p style="color:var(--muted);margin-bottom:16px;">' + msg + '</p>'
+        + '<div style="width:200px;height:6px;background:#e8e8e8;border-radius:4px;margin:0 auto;overflow:hidden;">'
+        + '<div style="height:100%;width:60%;background:#3273dc;border-radius:4px;animation:hsSweep 1.4s ease-in-out infinite;"></div>'
+        + '</div></div>';
+    }
+
+    function _alertHtml(type, msg) {
+      var bg  = type === 'danger' ? '#fff5f7' : type === 'warning' ? '#fffbeb' : '#effaf5';
+      var col = type === 'danger' ? '#cc0f35' : type === 'warning' ? '#946c00' : '#257953';
+      var br  = type === 'danger' ? '#f9b8c3' : type === 'warning' ? '#f5e1a0' : '#b5e8d0';
+      return '<div style="background:' + bg + ';color:' + col + ';border:1px solid ' + br + ';border-radius:8px;padding:14px 18px;font-size:.88rem;">' + msg + '</div>';
+    }
+
+    window.openHsModal        = openHsModal;
+    window.showLastCandidates = showLastCandidates;
+    window.closeHsModal       = closeHsModal;
+    window._applyBoth         = _applyBoth;
+  })();
+
+  // =====================================================================
+  // 国別規制プロファイル（HSサマリーテーブル含む）
+  // =====================================================================
   (function() {
     var _pid = {{ product.id }};
     var _proxyMatch = window.location.pathname.match(/^(\/proxy\/[^/]+)/);
     var _base = _proxyMatch ? _proxyMatch[1] : '';
-
-    // 品目のグローバル 6桁 HSコード（JP サジェスト用）
     var _globalHs6 = '{{ (product.hs_code or "")[:6] }}';
-
-    // JP サジェスト: jp_code → description マップ
     var _jpSuggestMap = {};
-
-    // ── JP 候補取得 ────────────────────────────────────────────────────
-    window.cpFetchJpSuggest = async function() {
-      var btn  = document.getElementById('cp-jp-suggest-btn');
-      var drop = document.getElementById('cp-jp-suggest-list');
-      var dl   = document.getElementById('cp-jp-hs-list');
-      var help = document.getElementById('cp-local-hs-help');
-      var q    = document.getElementById('cp-local-hs').value.trim();
-
-      // 検索クエリ: 入力値の先頭6桁、なければ品目の hs_code
-      var hs6 = q.replace(/\D/g,'').substring(0,6) || _globalHs6;
-      if (!hs6) { alert('品目にグローバルHSコード（6桁）が未設定です'); return; }
-
-      btn.textContent = '…取得中';
-      btn.disabled = true;
-      try {
-        // hs6完全一致で候補取得、なければdescription検索にフォールバック
-        var url = _base + '/api/hs-local/jp/suggest?hs6=' + encodeURIComponent(hs6) + '&limit=30';
-        var r = await fetch(url);
-        var data = await r.json();
-
-        if (!data.length && _globalHs6) {
-          // 品名キーワードで再検索
-          var name = document.querySelector('[name="name"]');
-          if (name && name.value) {
-            var r2 = await fetch(_base + '/api/hs-local/jp/search?q='
-              + encodeURIComponent(name.value.substring(0,10)) + '&limit=20');
-            data = await r2.json();
-          }
-        }
-
-        // datalist 更新
-        _jpSuggestMap = {};
-        dl.innerHTML = '';
-        data.forEach(function(rec) {
-          _jpSuggestMap[rec.jp_code] = rec;
-          var opt = document.createElement('option');
-          opt.value = rec.jp_code;
-          opt.label = rec.jp_code + '  ' + (rec.description || '').substring(0,50);
-          dl.appendChild(opt);
-        });
-
-        // ビジュアルドロップダウン
-        if (data.length) {
-          drop.innerHTML = data.map(function(rec) {
-            var rate = rec.tariff_rate != null ? (rec.tariff_rate*100).toFixed(1)+'%' : '−';
-            return '<div onclick="cpSelectJpCode(\'' + _esc(rec.jp_code) + '\')" '
-              + 'style="padding:7px 12px; cursor:pointer; border-bottom:1px solid #e5e7eb; '
-              + 'font-size:.82rem; display:flex; gap:8px; align-items:baseline;">'
-              + '<code style="font-weight:700; color:#1d4ed8; flex-shrink:0;">' + _esc(rec.jp_code) + '</code>'
-              + '<span style="color:#555; flex:1;">' + _esc((rec.description||'').substring(0,60)) + '</span>'
-              + '<span style="color:#888; flex-shrink:0; font-size:.75rem;">MFN: ' + rate + '</span>'
-              + '</div>';
-          }).join('');
-          drop.style.display = 'block';
-          help.textContent = data.length + '件の候補が見つかりました。クリックで選択。';
-        } else {
-          drop.innerHTML = '<div style="padding:10px 14px; color:#999; font-size:.82rem;">候補が見つかりません。手動入力してください。</div>';
-          drop.style.display = 'block';
-          help.textContent = 'JP: 9桁 / US: 10桁 / CN: 10桁 / EU: 8桁 / KR: 10桁';
-        }
-      } catch(e) {
-        help.textContent = 'サジェスト取得エラー: ' + e.message;
-      } finally {
-        btn.textContent = '🔍 JP候補を取得';
-        btn.disabled = false;
-      }
-    };
-
-    window.cpSelectJpCode = function(jpCode) {
-      document.getElementById('cp-local-hs').value = jpCode;
-      var rec = _jpSuggestMap[jpCode];
-      if (rec && rec.description) {
-        document.getElementById('cp-local-hs-desc').value = rec.description;
-      }
-      if (rec && rec.tariff_rate != null) {
-        document.getElementById('cp-tariff-rate').value = (rec.tariff_rate * 100).toFixed(1);
-        if (!document.getElementById('cp-tariff-type').value) {
-          document.getElementById('cp-tariff-type').value = rec.tariff_type || 'MFN';
-        }
-      }
-      document.getElementById('cp-jp-suggest-list').style.display = 'none';
-    };
-
-    window.cpOnCountryChange = function() {
-      var cc  = document.getElementById('cp-country-code').value;
-      var btn = document.getElementById('cp-jp-suggest-btn');
-      var drop = document.getElementById('cp-jp-suggest-list');
-      if (cc === 'JP') {
-        btn.style.display = 'inline-block';
-        // 品目に hs_code があれば自動フェッチ
-        if (_globalHs6) cpFetchJpSuggest();
-      } else {
-        btn.style.display = 'none';
-        drop.style.display = 'none';
-        document.getElementById('cp-local-hs-help').textContent =
-          'JP: 9桁 / US: 10桁 / CN: 10桁 / EU: 8桁 / KR: 10桁';
-      }
-    };
-
-    window.cpOnLocalHsInput = function(val) {
-      // datalist 選択時に説明を自動補完
-      var rec = _jpSuggestMap[val];
-      if (rec) {
-        if (rec.description && !document.getElementById('cp-local-hs-desc').value) {
-          document.getElementById('cp-local-hs-desc').value = rec.description;
-        }
-        document.getElementById('cp-jp-suggest-list').style.display = 'none';
-      }
-    };
 
     var ROLE_STYLE = {
       origin:      { bg:'#eff6ff', border:'#93c5fd', text:'#1d4ed8', label:'仕出国' },
@@ -1490,119 +1236,104 @@
     };
     var FLAG = { JP:'🇯🇵', US:'🇺🇸', CN:'🇨🇳', EU:'🇪🇺', KR:'🇰🇷' };
 
-    // ── 一覧取得 ───────────────────────────────────────────────────────
+    function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function _fmtNum(n) {
+      if (n == null) return '−';
+      if (n >= 1e9) return (n/1e9).toFixed(1)+'B';
+      if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+      if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+      return String(Math.round(n));
+    }
+
+    // ── HSサマリーテーブル ────────────────────────────────────────────
+    function _renderHsSummary(profiles) {
+      var wrap = document.getElementById('hs-summary-wrap');
+      var tbody = document.getElementById('hs-summary-tbody');
+      var hasData = profiles.some(function(p) { return p.local_hs_code || p.tariff_rate != null; });
+      if (!hasData) { wrap.style.display = 'none'; return; }
+      wrap.style.display = 'block';
+
+      var licLabel = { 'no_license':'NLR', 'nLR':'NLR', 'license_required':'許可証必要', 'prohibited':'禁輸', '':'—' };
+      var rows = profiles.map(function(p) {
+        var flag = FLAG[p.country_code] || '🌐';
+        var rs   = ROLE_STYLE[p.role] || ROLE_STYLE.destination;
+        var hs   = p.local_hs_code ? '<code style="background:#f0f4ff;padding:1px 7px;border-radius:4px;font-size:.82rem;font-weight:700;font-family:monospace;">' + _esc(p.local_hs_code) + '</code>' : '<span style="color:#9ca3af;font-size:.75rem;">未設定</span>';
+        var mfn  = p.tariff_rate != null ? '<span style="font-weight:700; color:#1d4ed8;">' + p.tariff_rate_pct + '</span>' : '<span style="color:#9ca3af;">—</span>';
+        var epa  = p.epa_tariff_rate != null ? '<span style="font-weight:700; color:#166534;">' + p.epa_tariff_rate_pct + '</span>' : '<span style="color:#9ca3af;">—</span>';
+        var agr  = p.epa_agreement ? '<span style="font-size:.75rem; background:#dcfce7; color:#166534; border-radius:4px; padding:1px 6px;">' + _esc(p.epa_agreement) + '</span>' : '<span style="color:#9ca3af;font-size:.75rem;">—</span>';
+        var lic  = licLabel[p.license_required || ''] || (p.license_required_label || '未設定');
+        var licColor = p.license_required === 'license_required' ? '#dc2626' : p.license_required === 'prohibited' ? '#7c3aed' : p.license_required === 'no_license' || p.license_required === 'nLR' ? '#16a34a' : '#6b7280';
+        return '<tr style="border-bottom:1px solid #f0f0f0;">'
+          + '<td style="padding:9px 12px; white-space:nowrap;">' + flag + ' <strong>' + _esc(p.country_code) + '</strong></td>'
+          + '<td style="padding:9px 12px; white-space:nowrap;"><span style="font-size:.72rem; font-weight:700; background:' + rs.bg + '; color:' + rs.text + '; border:1px solid ' + rs.border + '; border-radius:999px; padding:1px 8px;">' + rs.label + '</span></td>'
+          + '<td style="padding:9px 12px;">' + hs + '</td>'
+          + '<td style="padding:9px 12px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.78rem; color:#374151;">' + _esc(p.local_hs_description || '') + '</td>'
+          + '<td style="padding:9px 12px; text-align:center;">' + mfn + '</td>'
+          + '<td style="padding:9px 12px; text-align:center;">' + epa + '</td>'
+          + '<td style="padding:9px 12px;">' + agr + '</td>'
+          + '<td style="padding:9px 12px; text-align:center;"><span style="font-size:.75rem; font-weight:700; color:' + licColor + ';">' + _esc(lic) + '</span></td>'
+          + '</tr>';
+      }).join('');
+      tbody.innerHTML = rows || '<tr><td colspan="8" style="padding:12px; text-align:center; color:#9ca3af; font-size:.82rem;">ローカルHSコードまたは関税率が設定されていません。「＋ 国を追加」から登録してください。</td></tr>';
+    }
+
+    // ── プロファイルカード一覧 ────────────────────────────────────────
     async function cpLoad() {
       var list = document.getElementById('cp-list');
       try {
         var r = await fetch(_base + '/products/' + _pid + '/country-profiles');
         var data = await r.json();
+        _renderHsSummary(data);
         if (!data.length) {
-          list.innerHTML = '<div style="padding:20px; text-align:center; color:#aaa; font-size:.88rem;">'
-            + '国別規制プロファイルはまだ登録されていません。「＋ 国を追加」から登録してください。</div>';
+          list.innerHTML = '<div style="padding:20px; text-align:center; color:#aaa; font-size:.88rem;">国別規制プロファイルはまだ登録されていません。「＋ 国を追加」から登録してください。</div>';
           return;
         }
         list.innerHTML = data.map(function(p) {
-          var rs = ROLE_STYLE[p.role] || ROLE_STYLE.destination;
+          var rs   = ROLE_STYLE[p.role] || ROLE_STYLE.destination;
           var flag = FLAG[p.country_code] || '🌐';
-          var tariff = p.tariff_rate_pct
-            ? '<span style="font-size:.78rem;color:#555;">関税: <strong>' + p.tariff_rate_pct + '</strong>'
-              + (p.tariff_type ? ' (' + _esc(p.tariff_type) + ')' : '') + '</span>'
-            : '<span style="font-size:.78rem;color:#aaa;">関税: 未登録</span>';
+          var tariff = p.tariff_rate != null
+            ? '<span style="font-size:.78rem;color:#555;">MFN: <strong>' + p.tariff_rate_pct + '</strong>' + (p.tariff_type ? ' (' + _esc(p.tariff_type) + ')' : '') + '</span>'
+            : '<span style="font-size:.78rem;color:#aaa;">MFN: 未登録</span>';
+          var epaBadge = p.epa_tariff_rate != null
+            ? '<span style="font-size:.75rem;background:#dcfce7;color:#166534;border-radius:4px;padding:1px 7px;margin-left:6px;">EPA/FTA: <strong>' + p.epa_tariff_rate_pct + '</strong>' + (p.epa_agreement ? ' ' + _esc(p.epa_agreement) : '') + '</span>'
+            : '';
           var hs = p.local_hs_code
-            ? '<code style="background:#f0f4ff;padding:1px 7px;border-radius:4px;font-size:.85rem;font-weight:700;">'
-              + _esc(p.local_hs_code) + '</code>'
+            ? '<code style="background:#f0f4ff;padding:1px 7px;border-radius:4px;font-size:.85rem;font-weight:700;">' + _esc(p.local_hs_code) + '</code>'
               + (p.local_hs_description ? '<span style="font-size:.78rem;color:#555;margin-left:6px;">' + _esc(p.local_hs_description) + '</span>' : '')
             : '<span style="font-size:.78rem;color:#aaa;">ローカルHS: 未登録</span>';
-          // ECCN バッジ
-          var eccnBadge = '';
-          if (p.local_eccn) {
-            var eb = p.local_eccn === 'EAR99' ? {bg:'#f5f5f5',cl:'#555'} : {bg:'#fef3c7',cl:'#92400e'};
-            eccnBadge = '<span style="font-size:.72rem;font-weight:700;font-family:monospace;background:'
-              + eb.bg + ';color:' + eb.cl + ';border-radius:4px;padding:1px 7px;margin-left:8px;">'
-              + _esc(p.local_eccn) + '</span>';
-          }
-          // 許可要否バッジ
-          var licBadge = '';
-          if (p.license_required) {
-            var licColor = p.license_required === 'license_required' ? '#dc2626'
-              : p.license_required === 'prohibited' ? '#7c3aed'
-              : '#16a34a';
-            licBadge = '<span style="font-size:.72rem;font-weight:700;background:' + licColor + '1a;color:' + licColor
-              + ';border:1px solid ' + licColor + '55;border-radius:999px;padding:1px 9px;margin-left:6px;">'
-              + _esc(p.license_required_label || p.license_required) + '</span>';
-          }
-          // 貿易統計
+          var eccnBadge = p.local_eccn
+            ? '<span style="font-size:.72rem;font-weight:700;font-family:monospace;background:' + (p.local_eccn==='EAR99'?'#f5f5f5':'#fef3c7') + ';color:' + (p.local_eccn==='EAR99'?'#555':'#92400e') + ';border-radius:4px;padding:1px 7px;margin-left:8px;">' + _esc(p.local_eccn) + '</span>' : '';
+          var licBadge = p.license_required
+            ? '<span style="font-size:.72rem;font-weight:700;border-radius:999px;padding:1px 9px;margin-left:6px;background:' + (p.license_required==='license_required'?'#dc26261a':p.license_required==='prohibited'?'#7c3aed1a':'#16a34a1a') + ';color:' + (p.license_required==='license_required'?'#dc2626':p.license_required==='prohibited'?'#7c3aed':'#16a34a') + ';border:1px solid ' + (p.license_required==='license_required'?'#dc262655':p.license_required==='prohibited'?'#7c3aed55':'#16a34a55') + ';">' + _esc(p.license_required_label || p.license_required) + '</span>' : '';
           var ts = p.trade_stats || {};
-          var tsHtml = '';
-          if (ts.exports || ts.imports) {
-            var expVal = ts.exports && ts.exports.value_usd != null
-              ? '輸出: $' + _fmtNum(ts.exports.value_usd) : '';
-            var impVal = ts.imports && ts.imports.value_usd != null
-              ? '輸入: $' + _fmtNum(ts.imports.value_usd) : '';
-            var tsYear = ts.year ? ts.year + '年' : '';
-            tsHtml = '<div style="margin-top:4px;font-size:.75rem;color:#555;display:flex;gap:10px;flex-wrap:wrap;">'
-              + '<span style="color:#888;">📊 ' + tsYear + '</span>'
-              + (expVal ? '<span>' + expVal + '</span>' : '')
-              + (impVal ? '<span>' + impVal + '</span>' : '')
-              + '</div>';
-          }
-          // 再輸出規制バッジ
+          var tsHtml = (ts.exports || ts.imports)
+            ? '<div style="margin-top:4px;font-size:.75rem;color:#555;display:flex;gap:10px;flex-wrap:wrap;">'
+              + '<span style="color:#888;">📊 ' + (ts.year||'') + '年</span>'
+              + (ts.exports&&ts.exports.value_usd!=null ? '<span>輸出: $'+_fmtNum(ts.exports.value_usd)+'</span>' : '')
+              + (ts.imports&&ts.imports.value_usd!=null ? '<span>輸入: $'+_fmtNum(ts.imports.value_usd)+'</span>' : '')
+              + '</div>' : '';
           var rec = p.re_export_control || {};
-          var reHtml = '';
-          if (rec.verdict) {
-            var reColor = {
-              'no_license_required': '#16a34a',
-              'at1_only':            '#d97706',
-              'license_required':    '#dc2626',
-              'ear99':               '#6b7280',
-              'unknown':             '#9ca3af',
-            }[rec.verdict] || '#9ca3af';
-            reHtml = '<div style="margin-top:4px;">'
-              + '<span style="display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;'
-              + 'background:' + reColor + '1a;color:' + reColor + ';border:1px solid ' + reColor + '55;'
-              + 'border-radius:999px;padding:1px 9px;" title="' + _esc((rec.notes||[])[0]||'') + '">'
-              + '⚖️ ' + _esc(rec.verdict_label || rec.verdict) + '</span>'
-              + (rec.eccn ? '<span style="font-size:.72rem;color:#888;margin-left:6px;">ECCN: ' + _esc(rec.eccn) + '</span>' : '')
-              + '</div>';
-          }
-          var notes = p.notes
-            ? '<div style="margin-top:5px;font-size:.75rem;color:#666;background:#fafafa;border-radius:4px;padding:4px 8px;">' + _esc(p.notes) + '</div>'
-            : '';
-          return '<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;'
-            + 'border:1px solid ' + rs.border + ';border-radius:8px;background:' + rs.bg + ';margin-bottom:8px;">'
+          var reHtml = rec.verdict
+            ? '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;background:' + ({'no_license_required':'#16a34a','at1_only':'#d97706','license_required':'#dc2626','ear99':'#6b7280'}[rec.verdict]||'#9ca3af') + '1a;color:' + ({'no_license_required':'#16a34a','at1_only':'#d97706','license_required':'#dc2626','ear99':'#6b7280'}[rec.verdict]||'#9ca3af') + ';border:1px solid ' + ({'no_license_required':'#16a34a','at1_only':'#d97706','license_required':'#dc2626','ear99':'#6b7280'}[rec.verdict]||'#9ca3af') + '55;border-radius:999px;padding:1px 9px;" title="' + _esc((rec.notes||[])[0]||'') + '">⚖️ ' + _esc(rec.verdict_label||rec.verdict) + '</span></div>' : '';
+          var notes = p.notes ? '<div style="margin-top:5px;font-size:.75rem;color:#666;background:#fafafa;border-radius:4px;padding:4px 8px;">' + _esc(p.notes) + '</div>' : '';
+          return '<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border:1px solid ' + rs.border + ';border-radius:8px;background:' + rs.bg + ';margin-bottom:8px;">'
             + '<div style="font-size:1.6rem;line-height:1;">' + flag + '</div>'
             + '<div style="flex:1;min-width:0;">'
             +   '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
-            +     '<strong style="font-size:.93rem;">' + _esc(p.country_code) + ' — ' + _esc(p.country_name || '') + '</strong>'
-            +     '<span style="background:' + rs.bg + ';color:' + rs.text + ';border:1px solid ' + rs.border + ';'
-            +       'border-radius:999px;padding:1px 9px;font-size:.72rem;font-weight:700;">' + rs.label + '</span>'
+            +     '<strong style="font-size:.93rem;">' + _esc(p.country_code) + ' — ' + _esc(p.country_name||'') + '</strong>'
+            +     '<span style="background:' + rs.bg + ';color:' + rs.text + ';border:1px solid ' + rs.border + ';border-radius:999px;padding:1px 9px;font-size:.72rem;font-weight:700;">' + rs.label + '</span>'
             +   '</div>'
-            +   '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">'
-            +     hs + tariff
-            +   '</div>'
-            +   '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">'
-            +     eccnBadge + licBadge
-            +   '</div>'
-            +   tsHtml
-            +   reHtml
-            +   notes
+            +   '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">' + hs + '</div>'
+            +   '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">' + tariff + epaBadge + '</div>'
+            +   '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">' + eccnBadge + licBadge + '</div>'
+            +   tsHtml + reHtml + notes
             + '</div>'
             + '<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">'
-            +   '<button type="button" onclick="cpOpenEdit(' + p.id + ')" '
-            +     'style="padding:3px 12px;font-size:.75rem;background:#f5f5f5;border:1px solid #ddd;'
-            +     'border-radius:4px;cursor:pointer;">編集</button>'
-            +   '<button type="button" onclick="cpFetchTariff(' + p.id + ')" '
-            +     'style="padding:3px 12px;font-size:.75rem;background:#eff6ff;border:1px solid #93c5fd;'
-            +     'color:#1d4ed8;border-radius:4px;cursor:pointer;" title="WTO APIで関税率を自動取得">🌐 関税率</button>'
-            +   '<button type="button" onclick="cpFetchTradeStats(' + p.id + ')" '
-            +     'style="padding:3px 12px;font-size:.75rem;background:#f0fdf4;border:1px solid #86efac;'
-            +     'color:#166534;border-radius:4px;cursor:pointer;" title="UN Comtrade APIで貿易統計を自動取得">📊 統計</button>'
-            +   '<button type="button" onclick="cpReexportAssess(' + p.id + ')" '
-            +     'style="padding:3px 12px;font-size:.75rem;background:#fffbeb;border:1px solid #fcd34d;'
-            +     'color:#92400e;border-radius:4px;cursor:pointer;" title="EAR Country Chartで再輸出規制を判定">⚖️ 再輸出</button>'
-            +   '<button type="button" onclick="cpDelete(' + p.id + ')" '
-            +     'style="padding:3px 12px;font-size:.75rem;background:#fff5f5;border:1px solid #fca5a5;'
-            +     'color:#dc2626;border-radius:4px;cursor:pointer;">削除</button>'
+            +   '<button type="button" class="btn-action-sm" onclick="cpOpenEdit(' + p.id + ')">編集</button>'
+            +   '<button type="button" class="btn-action-sm" onclick="cpFetchTariff(' + p.id + ')">🌐 関税率</button>'
+            +   '<button type="button" class="btn-action-sm" onclick="cpFetchTradeStats(' + p.id + ')">📊 統計</button>'
+            +   '<button type="button" class="btn-action-sm" onclick="cpReexportAssess(' + p.id + ')">⚖️ 再輸出</button>'
+            +   '<button type="button" class="btn-danger-sm" onclick="cpDelete(' + p.id + ')">削除</button>'
             + '</div>'
             + '</div>';
         }).join('');
@@ -1611,12 +1342,12 @@
       }
     }
 
-    // ── モーダル操作 ───────────────────────────────────────────────────
+    // ── モーダル操作 ─────────────────────────────────────────────────────
     function cpOpenAdd() {
       document.getElementById('cp-modal-title').textContent = '国別規制プロファイルを追加';
       document.getElementById('cp-edit-id').value = '';
       _cpReset();
-      cpOnCountryChange();  // JP なら自動フェッチ
+      cpOnCountryChange();
       _cpShow();
     }
 
@@ -1628,294 +1359,253 @@
         var data = await r.json();
         var p = data.find(function(x) { return x.id === profileId; });
         if (!p) return;
-        document.getElementById('cp-country-code').value = p.country_code || 'JP';
-        document.getElementById('cp-role').value         = p.role || 'destination';
-        document.getElementById('cp-local-hs').value     = p.local_hs_code || '';
-        document.getElementById('cp-local-hs-desc').value  = p.local_hs_description || '';
-        document.getElementById('cp-local-eccn').value     = p.local_eccn || '';
+        document.getElementById('cp-country-code').value     = p.country_code || 'JP';
+        document.getElementById('cp-role').value             = p.role || 'destination';
+        document.getElementById('cp-local-hs').value         = p.local_hs_code || '';
+        document.getElementById('cp-local-hs-desc').value    = p.local_hs_description || '';
+        document.getElementById('cp-local-eccn').value       = p.local_eccn || '';
         document.getElementById('cp-license-required').value = p.license_required || '';
-        document.getElementById('cp-tariff-rate').value    = p.tariff_rate != null ? (p.tariff_rate * 100).toFixed(1) : '';
-        document.getElementById('cp-tariff-type').value    = p.tariff_type || '';
-        document.getElementById('cp-notes').value          = p.notes || '';
+        document.getElementById('cp-tariff-rate').value      = p.tariff_rate != null ? (p.tariff_rate * 100).toFixed(1) : '';
+        document.getElementById('cp-tariff-type').value      = p.tariff_type || '';
+        document.getElementById('cp-epa-tariff-rate').value  = p.epa_tariff_rate != null ? (p.epa_tariff_rate * 100).toFixed(1) : '';
+        document.getElementById('cp-epa-agreement').value    = p.epa_agreement || '';
+        document.getElementById('cp-notes').value            = p.notes || '';
       } catch(e) {}
-      cpOnCountryChange();  // ボタン表示を国に合わせる
+      cpOnCountryChange();
       _cpShow();
     };
 
-    window.cpCloseModal = function() {
-      document.getElementById('cp-modal').style.display = 'none';
-    };
+    window.cpCloseModal = function() { document.getElementById('cp-modal').style.display = 'none'; };
 
-    function _cpShow() {
-      var m = document.getElementById('cp-modal');
-      m.style.display = 'flex';
-    }
+    function _cpShow() { document.getElementById('cp-modal').style.display = 'flex'; }
 
     function _cpReset() {
-      ['cp-country-code','cp-role','cp-local-hs','cp-local-hs-desc',
-       'cp-local-eccn','cp-license-required',
-       'cp-tariff-rate','cp-tariff-type','cp-notes'].forEach(function(id) {
+      ['cp-country-code','cp-role','cp-local-hs','cp-local-hs-desc','cp-local-eccn',
+       'cp-license-required','cp-tariff-rate','cp-tariff-type',
+       'cp-epa-tariff-rate','cp-epa-agreement','cp-notes'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.value = id === 'cp-country-code' ? 'JP' : id === 'cp-role' ? 'destination' : '';
       });
     }
 
-    // ── 保存 ──────────────────────────────────────────────────────────
+    // ── 保存 ────────────────────────────────────────────────────────────
     window.cpSave = async function() {
-      var editId = document.getElementById('cp-edit-id').value;
-      var rateVal = document.getElementById('cp-tariff-rate').value;
+      var editId   = document.getElementById('cp-edit-id').value;
+      var rateVal  = document.getElementById('cp-tariff-rate').value;
+      var epaVal   = document.getElementById('cp-epa-tariff-rate').value;
       var body = {
-        country_code:        document.getElementById('cp-country-code').value,
-        role:                document.getElementById('cp-role').value,
-        local_hs_code:       document.getElementById('cp-local-hs').value.trim() || null,
-        local_hs_description:document.getElementById('cp-local-hs-desc').value.trim() || null,
-        local_eccn:          document.getElementById('cp-local-eccn').value.trim() || null,
-        license_required:    document.getElementById('cp-license-required').value || null,
-        tariff_rate:         rateVal !== '' ? parseFloat(rateVal) / 100 : null,
-        tariff_type:         document.getElementById('cp-tariff-type').value || null,
-        notes:               document.getElementById('cp-notes').value.trim() || null,
+        country_code:         document.getElementById('cp-country-code').value,
+        role:                 document.getElementById('cp-role').value,
+        local_hs_code:        document.getElementById('cp-local-hs').value.trim() || null,
+        local_hs_description: document.getElementById('cp-local-hs-desc').value.trim() || null,
+        local_eccn:           document.getElementById('cp-local-eccn').value.trim() || null,
+        license_required:     document.getElementById('cp-license-required').value || null,
+        tariff_rate:          rateVal !== '' ? parseFloat(rateVal) / 100 : null,
+        tariff_type:          document.getElementById('cp-tariff-type').value || null,
+        epa_tariff_rate:      epaVal !== '' ? parseFloat(epaVal) / 100 : null,
+        epa_agreement:        document.getElementById('cp-epa-agreement').value.trim() || null,
+        notes:                document.getElementById('cp-notes').value.trim() || null,
       };
       var url    = _base + '/products/' + _pid + '/country-profiles' + (editId ? '/' + editId : '');
       var method = editId ? 'PUT' : 'POST';
       try {
-        var r = await fetch(url, {
-          method: method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        if (!r.ok) {
-          var err = await r.json().catch(function() { return {}; });
-          alert('保存エラー: ' + (err.detail || r.status));
-          return;
-        }
+        var r = await fetch(url, { method: method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if (!r.ok) { var err = await r.json().catch(function(){return{};}); alert('保存エラー: ' + (err.detail || r.status)); return; }
         cpCloseModal();
         cpLoad();
-      } catch(e) {
-        alert('通信エラー: ' + e.message);
-      }
+      } catch(e) { alert('通信エラー: ' + e.message); }
     };
 
-    // ── 関税率自動取得（単体） ─────────────────────────────────────────
-    window.cpFetchTariff = async function(profileId) {
-      var url = _base + '/products/' + _pid + '/country-profiles/' + profileId + '/fetch-tariff';
+    // ── JP候補取得 ──────────────────────────────────────────────────────
+    window.cpFetchJpSuggest = async function() {
+      var btn  = document.getElementById('cp-jp-suggest-btn');
+      var drop = document.getElementById('cp-jp-suggest-list');
+      var dl   = document.getElementById('cp-jp-hs-list');
+      var help = document.getElementById('cp-local-hs-help');
+      var q    = document.getElementById('cp-local-hs').value.trim();
+      var hs6  = q.replace(/\D/g,'').substring(0,6) || _globalHs6;
+      if (!hs6) { alert('品目にグローバルHSコード（6桁）が未設定です'); return; }
+      btn.textContent = '…取得中'; btn.disabled = true;
       try {
-        var r = await fetch(url, { method: 'POST' });
+        var url = _base + '/api/hs-local/jp/suggest?hs6=' + encodeURIComponent(hs6) + '&limit=30';
+        var r = await fetch(url);
         var data = await r.json();
-        if (!r.ok) {
-          alert('取得エラー: ' + (data.detail || r.status));
-          return;
+        if (!data.length && _globalHs6) {
+          var name = document.querySelector('[name="name"]');
+          if (name && name.value) {
+            var r2 = await fetch(_base + '/api/hs-local/jp/search?q=' + encodeURIComponent(name.value.substring(0,10)) + '&limit=20');
+            data = await r2.json();
+          }
         }
-        // カード上のメッセージ表示
-        var msg = data.tariff_rate_pct
-          ? '✅ ' + data.tariff_rate_pct + ' (' + (data.tariff_type || 'MFN') + ') を取得しました'
-          : '⚠️ データなし: ' + (data.tariff_notes || '');
-        _cpToast(msg, data.tariff_rate_pct ? '#166534' : '#92400e');
-        cpLoad();
-      } catch(e) {
-        alert('通信エラー: ' + e.message);
+        _jpSuggestMap = {};
+        dl.innerHTML = '';
+        data.forEach(function(rec) {
+          _jpSuggestMap[rec.jp_code] = rec;
+          var opt = document.createElement('option');
+          opt.value = rec.jp_code;
+          opt.label = rec.jp_code + '  ' + (rec.description||'').substring(0,50);
+          dl.appendChild(opt);
+        });
+        if (data.length) {
+          drop.innerHTML = data.map(function(rec) {
+            var rate = rec.tariff_rate != null ? (rec.tariff_rate*100).toFixed(1)+'%' : '−';
+            return '<div onclick="cpSelectJpCode(\'' + _esc(rec.jp_code) + '\')" '
+              + 'style="padding:7px 12px; cursor:pointer; border-bottom:1px solid #e5e7eb; font-size:.82rem; display:flex; gap:8px; align-items:baseline;">'
+              + '<code style="font-weight:700; color:#1d4ed8; flex-shrink:0;">' + _esc(rec.jp_code) + '</code>'
+              + '<span style="color:#555; flex:1;">' + _esc((rec.description||'').substring(0,60)) + '</span>'
+              + '<span style="color:#888; flex-shrink:0; font-size:.75rem;">MFN: ' + rate + '</span>'
+              + '</div>';
+          }).join('');
+          drop.style.display = 'block';
+          help.textContent = data.length + '件の候補が見つかりました。クリックで選択。';
+        } else {
+          drop.innerHTML = '<div style="padding:10px 14px; color:#999; font-size:.82rem;">候補が見つかりません。手動入力してください。</div>';
+          drop.style.display = 'block';
+        }
+      } catch(e) { help.textContent = 'サジェスト取得エラー: ' + e.message; }
+      finally { btn.textContent = '🔍 JP候補取得'; btn.disabled = false; }
+    };
+
+    window.cpSelectJpCode = function(jpCode) {
+      document.getElementById('cp-local-hs').value = jpCode;
+      var rec = _jpSuggestMap[jpCode];
+      if (rec && rec.description) document.getElementById('cp-local-hs-desc').value = rec.description;
+      if (rec && rec.tariff_rate != null) {
+        document.getElementById('cp-tariff-rate').value = (rec.tariff_rate * 100).toFixed(1);
+        if (!document.getElementById('cp-tariff-type').value) document.getElementById('cp-tariff-type').value = rec.tariff_type || 'MFN';
+      }
+      document.getElementById('cp-jp-suggest-list').style.display = 'none';
+    };
+
+    window.cpOnCountryChange = function() {
+      var cc  = document.getElementById('cp-country-code').value;
+      var btn = document.getElementById('cp-jp-suggest-btn');
+      var drop = document.getElementById('cp-jp-suggest-list');
+      if (cc === 'JP') { btn.style.display = 'inline-block'; if (_globalHs6) cpFetchJpSuggest(); }
+      else { btn.style.display = 'none'; drop.style.display = 'none'; }
+    };
+
+    window.cpOnLocalHsInput = function(val) {
+      var rec = _jpSuggestMap[val];
+      if (rec) {
+        if (rec.description && !document.getElementById('cp-local-hs-desc').value) document.getElementById('cp-local-hs-desc').value = rec.description;
+        document.getElementById('cp-jp-suggest-list').style.display = 'none';
       }
     };
 
-    // ── 関税率自動取得（一括） ─────────────────────────────────────────
+    // ── 関税率取得・統計・再輸出（単体）────────────────────────────────
+    window.cpFetchTariff = async function(profileId) {
+      try {
+        var r = await fetch(_base + '/products/' + _pid + '/country-profiles/' + profileId + '/fetch-tariff', { method:'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert('取得エラー: ' + (data.detail || r.status)); return; }
+        _cpToast(data.tariff_rate_pct ? '✅ ' + data.tariff_rate_pct + ' (' + (data.tariff_type||'MFN') + ') を取得しました' : '⚠️ データなし: ' + (data.tariff_notes||''), data.tariff_rate_pct ? '#166534' : '#92400e');
+        cpLoad();
+      } catch(e) { alert('通信エラー: ' + e.message); }
+    };
+
+    window.cpFetchTradeStats = async function(profileId) {
+      try {
+        var r = await fetch(_base + '/products/' + _pid + '/country-profiles/' + profileId + '/fetch-trade-stats', { method:'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert('取得エラー: ' + (data.detail || r.status)); return; }
+        if (data.fetch_status === 'updated') {
+          _cpToast('✅ 貿易統計を取得しました (' + (data.year||'') + '年)', '#166534');
+        } else { _cpToast('⚠️ ' + (data.fetch_message||'統計データなし'), '#92400e'); }
+        cpLoad();
+      } catch(e) { alert('通信エラー: ' + e.message); }
+    };
+
+    window.cpReexportAssess = async function(profileId) {
+      try {
+        var r = await fetch(_base + '/products/' + _pid + '/country-profiles/' + profileId + '/reexport-assess', { method:'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert('判定エラー: ' + (data.detail || r.status)); return; }
+        var colorMap = {'no_license_required':'#16a34a','at1_only':'#d97706','license_required':'#dc2626','ear99':'#6b7280'};
+        _cpToast('⚖️ ' + data.verdict_label + ' (ECCN: ' + data.eccn + ')', colorMap[data.verdict]||'#9ca3af');
+        cpLoad();
+      } catch(e) { alert('通信エラー: ' + e.message); }
+    };
+
+    window.cpDelete = async function(profileId) {
+      if (!confirm('このプロファイルを削除しますか？')) return;
+      try {
+        var r = await fetch(_base + '/products/' + _pid + '/country-profiles/' + profileId, { method:'DELETE' });
+        if (!r.ok) { alert('削除エラー: ' + r.status); return; }
+        cpLoad();
+      } catch(e) { alert('通信エラー: ' + e.message); }
+    };
+
+    // ── 一括操作 ────────────────────────────────────────────────────────
     window.cpFetchTariffAll = async function() {
       var btn = document.getElementById('cp-fetch-all-btn');
-      if (!btn) return;
-      btn.textContent = '…取得中';
-      btn.disabled = true;
+      btn.textContent = '…取得中'; btn.disabled = true;
       try {
-        var url = _base + '/products/' + _pid + '/country-profiles/fetch-tariff/all';
-        var r = await fetch(url, { method: 'POST' });
+        var r = await fetch(_base + '/products/' + _pid + '/country-profiles/fetch-tariff/all', { method:'POST' });
         var data = await r.json();
         if (!r.ok) { alert('一括取得エラー: ' + r.status); return; }
-        var updated = data.filter(function(d){ return d.fetch_status === 'updated'; }).length;
-        var noData  = data.filter(function(d){ return d.fetch_status === 'no_data'; }).length;
-        var noHs    = data.filter(function(d){ return d.fetch_status === 'no_hs'; }).length;
-        _cpToast(
-          '一括取得完了: 更新 ' + updated + '件 / データなし ' + noData + '件 / HS未設定 ' + noHs + '件',
-          '#1d4ed8'
-        );
+        var updated = data.filter(function(d){ return d.fetch_status==='updated'; }).length;
+        _cpToast('一括取得完了: 更新 ' + updated + '件 / 計 ' + data.length + '件', '#1d4ed8');
         cpLoad();
-      } catch(e) {
-        alert('通信エラー: ' + e.message);
-      } finally {
-        btn.textContent = '🌐 関税率を一括取得';
-        btn.disabled = false;
-      }
+      } catch(e) { alert('通信エラー: ' + e.message); }
+      finally { btn.textContent = '🌐 関税率一括取得'; btn.disabled = false; }
     };
 
-    // ── トースト通知 ───────────────────────────────────────────────────
+    window.cpFetchTradeStatsAll = async function() {
+      var btn = document.getElementById('cp-fetch-stats-all-btn');
+      btn.textContent = '…取得中'; btn.disabled = true;
+      try {
+        var r = await fetch(_base + '/products/' + _pid + '/country-profiles/fetch-trade-stats/all', { method:'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert('一括取得エラー: ' + r.status); return; }
+        var updated = data.filter(function(d){ return d.fetch_status==='updated'; }).length;
+        _cpToast('一括取得完了: 更新 ' + updated + '件', '#166534');
+        cpLoad();
+      } catch(e) { alert('通信エラー: ' + e.message); }
+      finally { btn.textContent = '📊 統計一括取得'; btn.disabled = false; }
+    };
+
+    window.cpReexportAssessAll = async function() {
+      var btn = document.getElementById('cp-reexport-all-btn');
+      btn.textContent = '…判定中'; btn.disabled = true;
+      try {
+        var r = await fetch(_base + '/products/' + _pid + '/country-profiles/reexport-assess/all', { method:'POST' });
+        var data = await r.json();
+        if (!r.ok) { alert('一括判定エラー: ' + r.status); return; }
+        var required = data.filter(function(d){ return d.verdict==='license_required'; }).length;
+        _cpToast('一括判定完了: 要許可 ' + required + '件 / 計 ' + data.length + '件', required > 0 ? '#dc2626' : '#166534');
+        cpLoad();
+      } catch(e) { alert('通信エラー: ' + e.message); }
+      finally { btn.textContent = '⚖️ 再輸出一括判定'; btn.disabled = false; }
+    };
+
+    // ── トースト ─────────────────────────────────────────────────────────
     function _cpToast(msg, color) {
       var t = document.createElement('div');
       t.textContent = msg;
-      t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);'
-        + 'background:' + (color||'#1d4ed8') + ';color:#fff;padding:10px 22px;border-radius:8px;'
-        + 'font-size:.85rem;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2);'
-        + 'max-width:90vw;text-align:center;';
+      t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' + (color||'#1d4ed8') + ';color:#fff;padding:10px 22px;border-radius:8px;font-size:.85rem;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2);max-width:90vw;text-align:center;';
       document.body.appendChild(t);
       setTimeout(function(){ t.remove(); }, 4000);
     }
 
-    // ── 削除 ──────────────────────────────────────────────────────────
-    window.cpDelete = async function(profileId) {
-      if (!confirm('このプロファイルを削除しますか？')) return;
-      try {
-        var r = await fetch(_base + '/products/' + _pid + '/country-profiles/' + profileId, { method: 'DELETE' });
-        if (!r.ok) { alert('削除エラー: ' + r.status); return; }
-        cpLoad();
-      } catch(e) {
-        alert('通信エラー: ' + e.message);
-      }
-    };
-
-    // ── 貿易統計自動取得（単体） ───────────────────────────────────────
-    window.cpFetchTradeStats = async function(profileId) {
-      var url = _base + '/products/' + _pid + '/country-profiles/' + profileId + '/fetch-trade-stats';
-      try {
-        var r = await fetch(url, { method: 'POST' });
-        var data = await r.json();
-        if (!r.ok) { alert('取得エラー: ' + (data.detail || r.status)); return; }
-        var msg;
-        if (data.fetch_status === 'updated') {
-          var exp = data.exports ? '輸出: $' + _fmtNum(data.exports.value_usd) : '';
-          var imp = data.imports ? '輸入: $' + _fmtNum(data.imports.value_usd) : '';
-          msg = '✅ 貿易統計を取得しました (' + (data.year||'') + '年) ' + [exp, imp].filter(Boolean).join(' / ');
-          _cpToast(msg, '#166534');
-        } else {
-          _cpToast('⚠️ ' + (data.fetch_message || '統計データなし'), '#92400e');
-        }
-        cpLoad();
-      } catch(e) {
-        alert('通信エラー: ' + e.message);
-      }
-    };
-
-    // ── 貿易統計自動取得（一括） ───────────────────────────────────────
-    window.cpFetchTradeStatsAll = async function() {
-      var btn = document.getElementById('cp-fetch-stats-all-btn');
-      if (!btn) return;
-      btn.textContent = '…取得中';
-      btn.disabled = true;
-      try {
-        var url = _base + '/products/' + _pid + '/country-profiles/fetch-trade-stats/all';
-        var r = await fetch(url, { method: 'POST' });
-        var data = await r.json();
-        if (!r.ok) { alert('一括取得エラー: ' + r.status); return; }
-        var updated = data.filter(function(d){ return d.fetch_status === 'updated'; }).length;
-        var noData  = data.filter(function(d){ return d.fetch_status === 'no_data'; }).length;
-        var noKey   = data.filter(function(d){ return d.fetch_status === 'no_key'; }).length;
-        var noHs    = data.filter(function(d){ return d.fetch_status === 'no_hs'; }).length;
-        var summary = '一括取得完了: 更新 ' + updated + '件';
-        if (noKey)  summary += ' / APIキー未設定 ' + noKey + '件';
-        if (noData) summary += ' / データなし ' + noData + '件';
-        if (noHs)   summary += ' / HS未設定 ' + noHs + '件';
-        _cpToast(summary, noKey ? '#92400e' : '#166534');
-        cpLoad();
-      } catch(e) {
-        alert('通信エラー: ' + e.message);
-      } finally {
-        btn.textContent = '📊 統計を一括取得';
-        btn.disabled = false;
-      }
-    };
-
-    // ── 再輸出規制判定（単体） ────────────────────────────────────────
-    window.cpReexportAssess = async function(profileId) {
-      var url = _base + '/products/' + _pid + '/country-profiles/' + profileId + '/reexport-assess';
-      try {
-        var r = await fetch(url, { method: 'POST' });
-        var data = await r.json();
-        if (!r.ok) { alert('判定エラー: ' + (data.detail || r.status)); return; }
-        var colorMap = {
-          'no_license_required': '#16a34a',
-          'at1_only':            '#d97706',
-          'license_required':    '#dc2626',
-          'ear99':               '#6b7280',
-          'unknown':             '#9ca3af',
-        };
-        var color = colorMap[data.verdict] || '#9ca3af';
-        _cpToast('⚖️ ' + data.verdict_label + ' (ECCN: ' + data.eccn + ')', color);
-        cpLoad();
-      } catch(e) {
-        alert('通信エラー: ' + e.message);
-      }
-    };
-
-    // ── 再輸出規制判定（一括） ────────────────────────────────────────
-    window.cpReexportAssessAll = async function() {
-      var btn = document.getElementById('cp-reexport-all-btn');
-      if (!btn) return;
-      btn.textContent = '…判定中';
-      btn.disabled = true;
-      try {
-        var url = _base + '/products/' + _pid + '/country-profiles/reexport-assess/all';
-        var r = await fetch(url, { method: 'POST' });
-        var data = await r.json();
-        if (!r.ok) { alert('一括判定エラー: ' + r.status); return; }
-        var required = data.filter(function(d){ return d.verdict === 'license_required'; }).length;
-        var at1      = data.filter(function(d){ return d.verdict === 'at1_only'; }).length;
-        var nlr      = data.filter(function(d){ return d.verdict === 'no_license_required'; }).length;
-        var msg = '一括判定完了: 要許可 ' + required + '件 / AT1のみ ' + at1 + '件 / NLR ' + nlr + '件';
-        _cpToast(msg, required > 0 ? '#dc2626' : '#166534');
-        cpLoad();
-      } catch(e) {
-        alert('通信エラー: ' + e.message);
-      } finally {
-        btn.textContent = '⚖️ 再輸出を一括判定';
-        btn.disabled = false;
-      }
-    };
-
-    // ── 数値フォーマット ──────────────────────────────────────────────
-    function _fmtNum(n) {
-      if (n == null) return '−';
-      if (n >= 1e9)  return (n / 1e9).toFixed(1) + 'B';
-      if (n >= 1e6)  return (n / 1e6).toFixed(1) + 'M';
-      if (n >= 1e3)  return (n / 1e3).toFixed(1) + 'K';
-      return String(Math.round(n));
-    }
-
-    function _esc(s) {
-      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-
     // モーダル外クリックで閉じる
-    document.getElementById('cp-modal').addEventListener('click', function(e) {
-      if (e.target === this) cpCloseModal();
-    });
-
-    // 追加ボタンをグローバルに公開
+    document.getElementById('cp-modal').addEventListener('click', function(e) { if (e.target === this) cpCloseModal(); });
     window.cpOpenAdd = cpOpenAdd;
-
-    // 初回ロード
     cpLoad();
   })();
-  </script>
 
-  <!-- 確認済みフォーム（メイン編集フォームの外側に置く必要がある） -->
-  {% if product.is_unconfirmed %}
-  <form id="confirm-form" action="/products/{{ product.id }}/confirm" method="post" style="display:none;">
-    <input type="hidden" name="redirect_to" value="/products/{{ product.id }}/edit">
-  </form>
-  {% endif %}
-
-  <script>
+  // =====================================================================
+  // BOM SC同期
+  // =====================================================================
   async function syncBomToSC(productId) {
     const btn = document.getElementById("bom-sync-btn");
-    btn.disabled = true;
-    btn.textContent = "⏳ 同期中...";
+    btn.disabled = true; btn.textContent = "⏳ 同期中...";
     try {
       const res = await fetch(`/api/supply-chain/sync-from-bom/${productId}`, { method: "POST" });
       const data = await res.json();
-      if (res.ok) {
-        btn.textContent = `✅ 同期完了 (${data.synced_components}件)`;
-      } else {
-        btn.textContent = "❌ 同期失敗";
-        console.error(data);
-      }
-    } catch (e) {
-      btn.textContent = "❌ エラー";
-      console.error(e);
-    }
+      if (res.ok) { btn.textContent = `✅ 同期完了 (${data.synced_components}件)`; }
+      else { btn.textContent = "❌ 同期失敗"; console.error(data); }
+    } catch (e) { btn.textContent = "❌ エラー"; }
     setTimeout(() => { btn.textContent = "🔄 SC同期"; btn.disabled = false; }, 4000);
   }
   </script>

@@ -1158,6 +1158,8 @@ function setActiveTab(tabId) {
 
   if (tabId === "tab-analytics") loadAnalytics();
   if (tabId === "tab-chat-widget") loadChatWidgetConfigs();
+
+  document.dispatchEvent(new CustomEvent("dap:tab-changed", { detail: tabId }));
 }
 
 // ============================================================

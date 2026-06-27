@@ -342,6 +342,7 @@ async def portal_submit(request: Request, token_str: str, db: AsyncSession = Dep
         supplier_name=t.supplier_name,
         supplier_contact=_fv("supplier_contact") or t.supplier_email,
         claimed_eccn=_fv("claimed_eccn"),
+        claimed_hs_code=_fv("claimed_hs_code"),
         claimed_country_of_origin=_fv("claimed_country_of_origin"),
         claimed_us_content_pct=_ff("claimed_us_content_pct"),
         is_us_origin_claimed=form.get("is_us_origin_claimed") == "on",
@@ -350,6 +351,12 @@ async def portal_submit(request: Request, token_str: str, db: AsyncSession = Dep
         expiry_date=_parse_date(_fv("expiry_date")),
         notes=_fv("notes"),
         status="pending",
+        history=[{
+            "action": "submitted",
+            "actor": f"supplier:{t.supplier_name}",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "note": f"HS申告: {_fv('claimed_hs_code') or '未入力'} / ECCN申告: {_fv('claimed_eccn') or '未入力'} / 原産国: {_fv('claimed_country_of_origin') or '未入力'}",
+        }],
     )
     db.add(attest)
     await db.flush()
@@ -398,7 +405,7 @@ async def portal_submit(request: Request, token_str: str, db: AsyncSession = Dep
                 f"ノード種別: {node.node_type}",
                 f"原産国（申告）: {attest.claimed_country_of_origin or node.country_of_origin or '不明'}",
                 f"ECCN（申告）: {attest.claimed_eccn or '未申告'}",
-                f"HSコード: {node.hs_code or '不明'}",
+                f"HSコード（申告）: {attest.claimed_hs_code or node.hs_code or '不明'}",
                 f"サプライヤー: {t.supplier_name}",
             ]
             if attest.notes:
@@ -428,8 +435,17 @@ async def portal_submit(request: Request, token_str: str, db: AsyncSession = Dep
                 "tx_url": tx_url,
                 "requested_at": datetime.now(timezone.utc).isoformat(),
                 "supplier_claimed_eccn": attest.claimed_eccn,
+                "supplier_claimed_hs_code": attest.claimed_hs_code,
                 "attestation_id": str(attest.id),
             }
+            # 履歴にAI判定トリガーを記録
+            ai_hist_entry = {
+                "action": "ai_judged",
+                "actor": "system:ai_validation",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "note": f"取引審査案件番号: {tx_case_no or tx_id}",
+            }
+            attest.history = (attest.history or []) + [ai_hist_entry]
             await db.commit()
 
             # ── supply_chain_node_id を Transaction に紐付け（De Minimis・BOM文脈表示用）
@@ -460,6 +476,7 @@ async def portal_submit(request: Request, token_str: str, db: AsyncSession = Dep
             "supplier_name": t.supplier_name,
             "node_name": t.node_name,
             "claimed_eccn": attest.claimed_eccn or "—",
+            "claimed_hs_code": attest.claimed_hs_code or "—",
             "claimed_country": attest.claimed_country_of_origin or "—",
             "attestation_id": str(attest.id),
             "tx_id": tx_id,

@@ -56,7 +56,8 @@
   .action-btns { display: flex; gap: 3px; flex-wrap: wrap; }
   .empty { text-align: center; color: #aaa; padding: 36px; }
   /* BOM tree */
-  .tree-area { max-height: 500px; overflow-y: auto; font-size: 0.85rem; }
+  .tree-area { min-height: 360px; font-size: 0.85rem; }
+  #cy-bom { width:100%; height:360px; background:#f9fafb; border-radius:6px; }
   .tree-node { margin-left: 16px; border-left: 2px solid #e0e0e0; padding-left: 10px; margin-top: 4px; }
   .tree-node-root { margin-left: 0; border-left: none; padding-left: 0; }
   .tree-node-label { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; cursor: pointer; }
@@ -141,11 +142,11 @@
       <div class="card">
         <div class="card-header">
           <h2>部品・製品ノード一覧</h2>
-          <button class="btn btn-primary btn-sm" onclick="openNodeModal()">＋ ノード追加</button>
+          <button class="btn btn-primary btn-sm" onclick="openNodeModal()" data-dap-field="ノード追加">＋ ノード追加</button>
         </div>
         <div class="card-body">
           <div class="toolbar">
-            <input id="searchInput" type="text" placeholder="品名・部品番号で検索..." oninput="debounce()">
+            <input id="searchInput" type="text" placeholder="品名・部品番号で検索..." oninput="debounce()" data-dap-field="品名部品番号検索">
             <select id="filterType" onchange="loadNodes()">
               <option value="">種別（全）</option>
               <option value="product">製品</option>
@@ -180,9 +181,9 @@
     <div>
       <div class="card">
         <div class="tabs">
-          <div class="tab active" id="tabBom" onclick="switchTab('bom')">🌳 BOM ツリー</div>
-          <div class="tab" id="tabDm" onclick="switchTab('dm')">📐 De Minimis</div>
-          <div class="tab" id="tabAttest" onclick="switchTab('attest')">📋 証明管理</div>
+          <div class="tab active" id="tabBom" onclick="switchTab('bom')" data-dap-field="BOMツリータブ">🌳 BOM ツリー</div>
+          <div class="tab" id="tabDm" onclick="switchTab('dm')" data-dap-field="De Minimisタブ">📐 De Minimis</div>
+          <div class="tab" id="tabAttest" onclick="switchTab('attest')" data-dap-field="証明管理タブ">📋 証明管理</div>
         </div>
 
         <!-- BOM ツリー -->
@@ -218,9 +219,9 @@
           <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
             <div class="form-group" style="flex:1;min-width:120px;">
               <label>仕向地国コード（ISO 2文字）</label>
-              <input id="dmCountry" type="text" placeholder="例: CN, US, KP" maxlength="3">
-            </div>
-            <button class="btn btn-deminimis btn-sm" onclick="runDeMinimis()" style="margin-bottom:1px;">計算実行</button>
+              <input id="dmCountry" type="text" placeholder="例: CN, US, KP" maxlength="3" data-dap-field="仕向地国コード">
+</div>
+            <button class="btn btn-deminimis btn-sm" onclick="runDeMinimis()" style="margin-bottom:1px;" data-dap-field="De Minimis計算実行">計算実行</button>
           </div>
           <div id="dmResult"></div>
           <!-- 証明カバレッジ -->
@@ -233,7 +234,8 @@
             <p id="attestNodeLabel" style="font-size:.82rem;color:#888;">ツリーを表示すると証明を管理できます</p>
             <div style="display:flex;gap:6px;">
               <button class="btn btn-primary btn-sm" onclick="openAttestModal()" id="btnAddAttest" disabled>＋ 申告登録</button>
-              <button class="btn btn-sm" style="background:#0e9f6e;color:#fff;" onclick="openPortalTokenModal()" id="btnPortalToken" disabled>🔗 招待URL発行</button>
+              <button class="btn btn-sm" style="background:#f59e0b;color:#fff;" onclick="openManualCertModal()" id="btnManualCert" disabled title="サプライヤーがポータルを使えない場合：社内で証明書を手動登録">📎 手動証明書登録</button>
+              <button class="btn btn-sm" style="background:#0e9f6e;color:#fff;" onclick="openPortalTokenModal()" id="btnPortalToken" disabled data-dap-field="招待URL発行">🔗 招待URL発行</button>
             </div>
           </div>
           <div id="attestList"><p class="empty">未選択</p></div>
@@ -255,6 +257,10 @@
       <div class="form-group full">
         <label>担当者・連絡先</label>
         <input id="aContact" type="text" placeholder="例: export@acme.com">
+      </div>
+      <div class="form-group">
+        <label>申告 HS コード</label>
+        <input id="aHsCode" type="text" placeholder="例: 8543.70">
       </div>
       <div class="form-group">
         <label>申告 ECCN</label>
@@ -294,6 +300,74 @@
     </div>
   </div>
 </div>
+</div>
+
+<!-- Manual Certificate Registration Modal -->
+<div class="modal-overlay" id="manualCertModal">
+  <div class="modal" style="width:560px;">
+    <h2>📎 手動証明書登録</h2>
+    <p style="font-size:.82rem;color:#6b7280;margin-bottom:12px;">
+      サプライヤーがポータルを使用できない場合、メール等で受領した証明書を社内担当者が手動で登録します。<br>
+      <strong style="color:#92400e;">責任所在：</strong>証明内容の正確性はサプライヤー責任です。担当者はその旨を確認の上登録してください。
+    </p>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>サプライヤー名 *</label>
+        <input id="mcSupplier" type="text" placeholder="例: Acme Semiconductor Inc.">
+      </div>
+      <div class="form-group full">
+        <label>担当者・連絡先</label>
+        <input id="mcContact" type="text" placeholder="例: export@acme.com">
+      </div>
+      <div class="form-group">
+        <label>申告 HS コード</label>
+        <input id="mcHsCode" type="text" placeholder="例: 8543.70">
+      </div>
+      <div class="form-group">
+        <label>申告 ECCN</label>
+        <input id="mcECCN" type="text" placeholder="例: 3A001, EAR99">
+      </div>
+      <div class="form-group">
+        <label>申告原産国（ISO 2文字）</label>
+        <input id="mcCountry" type="text" placeholder="例: US, JP, CN">
+      </div>
+      <div class="form-group">
+        <label>US コンテンツ比率（%）</label>
+        <input id="mcUSPct" type="number" step="any" min="0" max="100" placeholder="例: 85">
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:6px;">
+        <label><input id="mcIsUS" type="checkbox"> US 原産申告</label>
+      </div>
+      <div class="form-group">
+        <label>証明書参照番号 *</label>
+        <input id="mcCertRef" type="text" placeholder="例: COO-2026-001">
+      </div>
+      <div class="form-group">
+        <label>証明日</label>
+        <input id="mcAttestDate" type="date">
+      </div>
+      <div class="form-group">
+        <label>有効期限</label>
+        <input id="mcExpiry" type="date">
+      </div>
+      <div class="form-group full">
+        <label>証明書ファイル（PDF/Excel/画像）</label>
+        <input id="mcFile" type="file" accept=".pdf,.xlsx,.xls,.jpg,.jpeg,.png" style="padding:6px 0;">
+        <div style="font-size:.75rem;color:#6b7280;margin-top:3px;">メール等で受領した証明書ファイルを添付してください（20MB以下）</div>
+      </div>
+      <div class="form-group full">
+        <label>備考・受領経緯</label>
+        <textarea id="mcNotes" placeholder="例: 2026-05-31 メールにて受領。担当: 佐藤" style="height:50px;"></textarea>
+      </div>
+    </div>
+    <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:10px 12px;margin-top:8px;font-size:.8rem;color:#92400e;">
+      ⚠️ この登録は自社担当者の手動入力です。証明内容の正確性はサプライヤー責任ですが、入力誤りが生じた場合は登録者の確認責任が問われる可能性があります。
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal('manualCertModal')">キャンセル</button>
+      <button class="btn btn-primary" style="background:#f59e0b;" onclick="submitManualCert()" id="mcSubmitBtn">登録</button>
+    </div>
+  </div>
 </div>
 
 <!-- Supplier Portal Token Modal -->
@@ -401,7 +475,9 @@ let _total = 0;
 let _searchTimer = null;
 let _editNodeId = null;
 let _currentTreeNodeId = null;
+let _currentTreeNodeName = null;
 let _selectedChildNodeId = null;
+let _cyBom = null;
 
 const TYPE_LABEL = { product:'製品', subassembly:'サブアッセンブリ', component:'部品', material:'素材' };
 const TYPE_CLASS = { product:'product', subassembly:'subassembly', component:'component', material:'material' };
@@ -437,6 +513,9 @@ async function loadNodes() {
     _total = d.total;
     renderNodeTable(d.items);
     updatePagination();
+    if (d.items.length === 1) {
+      loadTree(d.items[0].id, d.items[0].name);
+    }
   } catch(e) {
     document.getElementById('nodeTableBody').innerHTML = '<tr><td colspan="6" class="empty">エラー</td></tr>';
   }
@@ -460,7 +539,7 @@ function renderNodeTable(items) {
       <td>${eccnBadge}</td>
       <td>${n.unit_value_usd!=null?'$'+n.unit_value_usd.toFixed(2):'—'}</td>
       <td class="action-btns">
-        <button class="btn btn-sm btn-tree" onclick="loadTree('${n.id}','${esc(n.name)}')">ツリー</button>
+        <button class="btn btn-sm btn-tree" onclick="loadTree('${n.id}','${esc(n.name)}')" data-dap-field="ツリー表示">ツリー</button>
         <button class="btn btn-sm btn-edit" onclick="openEditNode(${JSON.stringify(n).replace(/"/g,'&quot;')})">編集</button>
         <button class="btn btn-sm btn-del" onclick="deleteNode('${n.id}','${esc(n.name)}')">削除</button>
       </td>
@@ -486,64 +565,165 @@ function debounce() {
 // ── BOM Tree ────────────────────────────────────────────────────
 async function loadTree(nodeId, nodeName) {
   _currentTreeNodeId = nodeId;
-  document.getElementById('treeTitle').textContent = `BOM ツリー: ${nodeName}`;
-  document.getElementById('treeArea').innerHTML = '<p class="empty">読み込み中...</p>';
+  _currentTreeNodeName = nodeName;
+  const _tt = document.getElementById('treeTitle');
+  if (_tt) _tt.textContent = `BOM ツリー: ${nodeName}`;
+  if (_cyBom) { _cyBom.destroy(); _cyBom = null; }
+  document.getElementById('treeArea').innerHTML =
+    `<div id="cy-bom" style="width:100%;height:360px;background:#f9fafb;border-radius:6px;"></div>
+     <div id="treeNodeInfoBox" style="display:none;margin-top:6px;padding:6px 10px;background:#fff;border:1px solid #e8e8e8;border-radius:5px;font-size:.8rem;"><div id="treeNodeInfo"></div></div>
+     <div id="edgeBomList"></div>`;
   document.getElementById('edgeParentId').value = nodeId;
   document.getElementById('edgeForm') && (document.getElementById('edgeForm').style.display = '');
   document.getElementById('dmResult').innerHTML = '';
   try {
     const r = await fetch(`/api/supply-chain/nodes/${nodeId}/tree`);
     const tree = await r.json();
-    document.getElementById('treeArea').innerHTML = renderTree(tree, true);
+    _renderCyBom(tree);
   } catch(e) {
     document.getElementById('treeArea').innerHTML = '<p class="empty">読み込みエラー</p>';
   }
 }
 
-function renderTree(node, isRoot) {
-  if (!node || !node.id) return '';
-  const eccn = node.eccn ? `<span class="tree-eccn">[${esc(node.eccn)}]</span>` : '';
-  const us = node.is_us_origin ? '<span class="tree-us">🇺🇸US</span>' : '';
-  const val = node.unit_value_usd != null ? `<span style="font-size:.72rem;color:#888">$${node.unit_value_usd}</span>` : '';
-  const label = `<div class="tree-node-label">
-    <span style="font-size:.8rem;">${typeIcon(node.node_type)}</span>
-    <span><strong>${esc(node.name)}</strong>${node.part_number?` <small style="color:#aaa">${esc(node.part_number)}</small>`:''}</span>
-    ${eccn}${us}${val}
-  </div>`;
-  const children = (node.children||[]).map(c => {
-    const qty = `<span class="tree-qty">×${c.quantity} ${c.unit}</span>`;
-    return `<div class="tree-node">
-      <div class="tree-node-label">
-        <span style="font-size:.8rem;">${typeIcon(c.node_type)}</span>
-        ${qty}
-        <span><strong>${esc(c.name)}</strong>${c.part_number?` <small style="color:#aaa">${esc(c.part_number)}</small>`:''}</span>
-        ${c.eccn?`<span class="tree-eccn">[${esc(c.eccn)}]</span>`:''}
-        ${c.is_us_origin?'<span class="tree-us">🇺🇸US</span>':''}
-        ${c.unit_value_usd!=null?`<span style="font-size:.72rem;color:#888">$${c.unit_value_usd}</span>`:''}
-        <button class="btn btn-del btn-sm" style="margin-left:auto;padding:1px 6px;font-size:.7rem;" onclick="removeEdge(${c.edge_id})">×</button>
-      </div>
-      ${renderSubTree(c)}
-    </div>`;
-  }).join('');
-  return `<div class="${isRoot?'tree-node-root':'tree-node'}">${label}${children}</div>`;
+// ── BOM Cytoscape グラフ ─────────────────────────────────────────
+const _CY_RISK_STYLE = {
+  product: { bg: '#2563eb', border: '#1d4ed8', glow: null },
+  high:    { bg: '#dc2626', border: '#7f1d1d', glow: '#dc2626' },
+  medium:  { bg: '#f97316', border: '#9a3412', glow: null },
+  safe:    { bg: '#059669', border: '#064e3b', glow: null },
+};
+const _CY_EDGE_COLOR = { product:'#9ca3af', high:'#dc2626', medium:'#f97316', safe:'#9ca3af' };
+const _CY_RISK_LABEL = { product:'完成品', high:'🇺🇸 EAR規制品', medium:'🇺🇸 US原産', safe:'一般構成品' };
+
+function _scRisk(n) {
+  if (n.node_type === 'product') return 'product';
+  const eccn = (n.eccn || '').toUpperCase();
+  if (n.is_us_origin && eccn && eccn !== 'EAR99') return 'high';
+  if (n.is_us_origin) return 'medium';
+  return 'safe';
 }
 
-function renderSubTree(node) {
-  if (!node.children || !node.children.length) return '';
-  return node.children.map(c => `<div class="tree-node">
-    <div class="tree-node-label">
-      <span style="font-size:.8rem;">${typeIcon(c.node_type)}</span>
-      <span class="tree-qty">×${c.quantity} ${c.unit}</span>
-      <strong>${esc(c.name)}</strong>
-      ${c.eccn?`<span class="tree-eccn">[${esc(c.eccn)}]</span>`:''}
-      ${c.is_us_origin?'<span class="tree-us">🇺🇸US</span>':''}
-    </div>
-    ${renderSubTree(c)}
-  </div>`).join('');
+function _scLabel(n) {
+  const code = (n.product_code || n.name || '').slice(0, 16);
+  const eccnLine = n.eccn ? `\n${n.eccn}` : '';
+  const us = n.is_us_origin ? '\n🇺🇸' : '';
+  return code + eccnLine + us;
 }
 
-function typeIcon(t) {
-  return {product:'📦', subassembly:'🔩', component:'⚙️', material:'🧱'}[t] || '📎';
+function _flatBom(node, els, visited) {
+  if (!node || !node.id || visited.has(node.id)) return;
+  visited.add(node.id);
+  const r  = _scRisk(node);
+  const st = _CY_RISK_STYLE[r];
+  els.push({ data: {
+    id: node.id, label: _scLabel(node), risk: r,
+    bg: st.bg, border: st.border, bw: r === 'high' ? 4 : 2,
+    node,
+  }});
+  for (const c of (node.children || [])) {
+    const rc = _scRisk(c);
+    const lbl = c.unit === 'ratio' ? `${(c.quantity * 100).toFixed(0)}%` : `×${c.quantity}`;
+    els.push({ data: {
+      id: `eCy${c.edge_id}`, source: node.id, target: c.id,
+      label: lbl, ec: _CY_EDGE_COLOR[rc], ew: rc === 'high' ? 3 : 1.5,
+    }});
+    _flatBom(c, els, visited);
+  }
+}
+
+function _collectEdges(node, list) {
+  for (const c of (node.children || [])) {
+    list.push({ edge_id: c.edge_id, parent_name: node.product_code || node.name, child_name: c.product_code || c.name, qty: c.quantity, unit: c.unit });
+    _collectEdges(c, list);
+  }
+}
+
+function _renderCyBom(tree) {
+  const container = document.getElementById('cy-bom');
+  if (!container) return;
+
+  const els = [];
+  _flatBom(tree, els, new Set());
+
+  const layoutName = (typeof cytoscapeDagre !== 'undefined') ? 'dagre' : 'breadthfirst';
+  const cyStyle = [
+    { selector: 'node', style: {
+      'background-color': 'data(bg)', 'border-color': 'data(border)', 'border-width': 'data(bw)',
+      'shape': 'roundrectangle', 'label': 'data(label)',
+      'color': '#fff', 'font-size': '11px', 'font-weight': 'bold',
+      'font-family': '-apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif',
+      'text-valign': 'center', 'text-halign': 'center', 'text-wrap': 'wrap',
+      'text-max-width': '110px', 'width': 130, 'height': 54,
+    }},
+    { selector: "node[risk='high']", style: {
+      'shadow-blur': 14, 'shadow-color': '#dc2626',
+      'shadow-opacity': 0.6, 'shadow-offset-x': 0, 'shadow-offset-y': 0,
+    }},
+    { selector: 'edge', style: {
+      'width': 'data(ew)', 'line-color': 'data(ec)',
+      'target-arrow-color': 'data(ec)', 'target-arrow-shape': 'triangle',
+      'curve-style': 'taxi', 'taxi-direction': 'downward',
+      'label': 'data(label)', 'font-size': '10px', 'color': '#374151',
+      'text-background-color': '#fff', 'text-background-opacity': 0.9, 'text-background-padding': '2px',
+    }},
+    { selector: ':selected', style: { 'border-width': 4, 'border-color': '#fbbf24' }},
+  ];
+  const cyLayout = layoutName === 'dagre'
+    ? { name: 'dagre', rankDir: 'TB', nodeSep: 55, rankSep: 90, padding: 24, ranker: 'tight-tree' }
+    : { name: 'breadthfirst', directed: true, padding: 24, spacingFactor: 1.4 };
+
+  _cyBom = cytoscape({ container, elements: els, style: cyStyle, layout: cyLayout });
+
+  _cyBom.on('tap', 'node', function(e) {
+    const n = e.target.data('node') || {};
+    const r = e.target.data('risk');
+    const infoEl = document.getElementById('treeNodeInfo');
+    const boxEl  = document.getElementById('treeNodeInfoBox');
+    if (!infoEl || !boxEl) return;
+    const badges = [
+      n.eccn ? `ECCN: <span style="color:#e65100;font-weight:700;">${esc(n.eccn)}</span>` : '<span style="color:#aaa">ECCN未設定</span>',
+      n.hs_code ? `HS: <span style="color:#1d4ed8;font-weight:700;">${esc(n.hs_code)}</span>` : '<span style="color:#aaa">HS未付番</span>',
+      n.country_of_origin ? `原産国: <strong>${esc(n.country_of_origin)}</strong>` : '',
+      n.is_us_origin ? '🇺🇸 US原産' : '',
+      n.unit_value_usd != null ? `単価: $${n.unit_value_usd.toLocaleString()}` : '',
+      `<span style="background:${_CY_RISK_STYLE[r]?.bg||'#555'};color:#fff;padding:1px 8px;border-radius:9px;font-size:.78rem;">${_CY_RISK_LABEL[r]||r}</span>`,
+    ].filter(Boolean).join('&nbsp; ');
+    const productLink = n.product_code && r === 'product'
+      ? `<div style="margin-top:6px;"><a href="/ui/product-by-code/${encodeURIComponent(n.product_code)}" target="_blank"
+           style="font-size:.78rem;color:#2563eb;text-decoration:none;">📦 品目管理で編集 →</a></div>`
+      : n.product_code
+        ? `<div style="margin-top:6px;display:flex;gap:8px;align-items:center;">
+             <a href="/ui/product-by-code/${encodeURIComponent(n.product_code)}" target="_blank"
+                style="font-size:.78rem;color:#2563eb;text-decoration:none;">📦 品目管理で確認 →</a>
+             <button onclick="openPortalTokenModal()" style="font-size:.74rem;padding:2px 8px;background:#0e9f6e;color:#fff;border:none;border-radius:4px;cursor:pointer;">🔗 サプライヤー招待</button>
+           </div>`
+        : '';
+    infoEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">${badges}</div>${productLink}`;
+    boxEl.style.display = 'block';
+  });
+  _cyBom.on('tap', function(e) {
+    if (e.target === _cyBom) {
+      const b = document.getElementById('treeNodeInfoBox');
+      if (b) b.style.display = 'none';
+    }
+  });
+
+  // エッジ削除リスト
+  const edgeList = [];
+  _collectEdges(tree, edgeList);
+  const edgeBomList = document.getElementById('edgeBomList');
+  if (edgeBomList && edgeList.length) {
+    edgeBomList.innerHTML = `
+      <div style="margin-top:10px; font-size:.78rem;">
+        <span style="font-weight:700; color:#555;">BOM エッジ一覧</span>
+        ${edgeList.map(e => `
+          <div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f0f0f0;">
+            <span style="flex:1;">${esc(e.parent_name)} → ${esc(e.child_name)}</span>
+            <span style="color:#888;font-size:.74rem;">${e.unit==='ratio'?(e.qty*100).toFixed(0)+'%':'×'+e.qty}</span>
+            <button class="btn btn-del btn-sm" style="padding:1px 6px;font-size:.7rem;" onclick="removeEdge(${e.edge_id})">×</button>
+          </div>`).join('')}
+      </div>`;
+  }
 }
 
 // ── Edge Search ─────────────────────────────────────────────────
@@ -591,7 +771,7 @@ async function addEdge() {
     document.getElementById('edgeChildSearch').value = '';
     document.getElementById('edgeChildResults').innerHTML = '';
     _selectedChildNodeId = null;
-    await loadTree(_currentTreeNodeId, document.getElementById('treeTitle').textContent.replace('BOM ツリー: ',''));
+    await loadTree(_currentTreeNodeId, _currentTreeNodeName);
     loadStats();
   } catch(e) { alert('エッジ追加エラー: ' + e.message); }
 }
@@ -600,7 +780,7 @@ async function removeEdge(edgeId) {
   if (!confirm('このBOMリンクを削除しますか？')) return;
   try {
     await fetch(`/api/supply-chain/edges/${edgeId}`, { method: 'DELETE' });
-    await loadTree(_currentTreeNodeId, document.getElementById('treeTitle').textContent.replace('BOM ツリー: ',''));
+    await loadTree(_currentTreeNodeId, _currentTreeNodeName);
     loadStats();
   } catch(e) { alert('削除エラー: ' + e.message); }
 }
@@ -714,8 +894,9 @@ async function deleteNode(id, name) {
     if (!r.ok) throw new Error(await r.text());
     if (_currentTreeNodeId === id) {
       _currentTreeNodeId = null;
+      _currentTreeNodeName = null;
+      if (_cyBom) { _cyBom.destroy(); _cyBom = null; }
       document.getElementById('treeArea').innerHTML = '<p class="empty">未選択</p>';
-      document.getElementById('treeTitle').textContent = 'BOM ツリー';
     }
     loadNodes();
     loadStats();
@@ -723,6 +904,20 @@ async function deleteNode(id, name) {
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── Cytoscape CDN 動的ロード ──────────────────────────────────────
+(function() {
+  function _loadScript(src, cb) {
+    const s = document.createElement('script'); s.src = src; s.onload = cb; document.head.appendChild(s);
+  }
+  _loadScript('https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js', function() {
+    _loadScript('https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js', function() {
+      _loadScript('https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js', function() {
+        if (typeof cytoscapeDagre !== 'undefined') cytoscape.use(cytoscapeDagre);
+      });
+    });
+  });
+})();
 
 // init
 loadStats();
@@ -756,6 +951,7 @@ loadTree = async function(nodeId, nodeName) {
   await _origLoadTree(nodeId, nodeName);
   document.getElementById('attestNodeLabel').textContent = `ノード: ${nodeName}`;
   document.getElementById('btnAddAttest').disabled = false;
+  document.getElementById('btnManualCert').disabled = false;
   document.getElementById('btnPortalToken').disabled = false;
   if (document.getElementById('panelAttest').classList.contains('active')) {
     loadAttestations(nodeId);
@@ -789,13 +985,17 @@ function renderAttestations(items) {
     const vClass = a.ai_verdict ? VERDICT_CLASS[a.ai_verdict]||'' : '';
     const conf = a.ai_confidence != null ? ` (${(a.ai_confidence*100).toFixed(0)}%)` : '';
     const expiry = a.expiry_date ? `<span style="font-size:.75rem;color:${new Date(a.expiry_date)<new Date()?'#c62828':'#888'}">期限: ${a.expiry_date}</span>` : '';
+    const isManual = (a.history||[]).some(h => h.action === 'manual_submitted');
+    const manualBadge = isManual ? `<span style="font-size:.72rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;padding:1px 6px;">📋 社内手動登録</span>` : '';
     return `<div class="attest-card">
       <div class="attest-header">
         <span class="attest-name">${esc(a.supplier_name)}</span>
         <span class="status-${a.status}">${statusLabel(a.status)}</span>
+        ${manualBadge}
         ${expiry}
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:.82rem;margin-bottom:4px;">
+        ${a.claimed_hs_code?`<span>申告HS: <strong style="color:#1d4ed8;">${esc(a.claimed_hs_code)}</strong></span>`:'<span style="color:#aaa;font-size:.78rem;">HS未申告</span>'}
         <span>申告ECCN: <strong>${esc(a.claimed_eccn||'—')}</strong></span>
         <span>原産国: <strong>${a.claimed_country_of_origin||'—'}</strong></span>
         ${a.claimed_us_content_pct!=null?`<span>USコンテンツ: <strong>${a.claimed_us_content_pct}%</strong></span>`:''}
@@ -806,9 +1006,10 @@ function renderAttestations(items) {
       ${renderSupportingDocs(a.supporting_docs, a.id)}
       <div class="attest-actions">
         <button class="btn btn-sm btn-validate" onclick="runAiValidate('${a.id}')">🤖 AI検証</button>
-        ${a.status!=='accepted'?`<button class="btn btn-sm btn-accept" onclick="reviewAttest('${a.id}','accept')">✅ 承認</button>`:''}
-        ${a.status!=='rejected'?`<button class="btn btn-sm btn-reject" onclick="reviewAttest('${a.id}','reject')">❌ 却下</button>`:''}
+        ${a.status!=='accepted'?`<button class="btn btn-sm btn-accept" onclick="reviewAttest('${a.id}','accept')">✅ アクセプト</button>`:''}
+        ${a.status!=='rejected'?`<button class="btn btn-sm btn-reject" onclick="reviewAttest('${a.id}','reject')">↩️ 差し戻し</button>`:''}
         <button class="btn btn-sm btn-del" onclick="deleteAttest('${a.id}')">削除</button>
+        ${renderAttestHistory(a.history)}
       </div>
     </div>`;
   }).join('');
@@ -816,7 +1017,7 @@ function renderAttestations(items) {
 }
 
 function statusLabel(s) {
-  return { pending:'未審査', ai_reviewed:'AI検証済', accepted:'承認済', rejected:'却下', expired:'期限切' }[s] || s;
+  return { pending:'申告受付中', ai_reviewed:'AI判定完了', accepted:'アクセプト済', rejected:'差し戻し', expired:'期限切' }[s] || s;
 }
 
 function renderSupportingDocs(docs, attestId) {
@@ -833,7 +1034,7 @@ function renderSupportingDocs(docs, attestId) {
 
 function openAttestModal() {
   if (!_currentTreeNodeId) { alert('ノードを選択してください'); return; }
-  ['aSupplier','aContact','aECCN','aCountry','aUSPct','aCertRef','aNotes'].forEach(id => document.getElementById(id).value='');
+  ['aSupplier','aContact','aHsCode','aECCN','aCountry','aUSPct','aCertRef','aNotes'].forEach(id => document.getElementById(id).value='');
   document.getElementById('aIsUS').checked = false;
   document.getElementById('aAttestDate').value = new Date().toISOString().slice(0,10);
   document.getElementById('aExpiry').value = '';
@@ -848,6 +1049,7 @@ async function submitAttestation() {
     node_id: _currentTreeNodeId,
     supplier_name: supplier,
     supplier_contact: document.getElementById('aContact').value.trim()||null,
+    claimed_hs_code: document.getElementById('aHsCode').value.trim()||null,
     claimed_eccn: document.getElementById('aECCN').value.trim()||null,
     claimed_country_of_origin: document.getElementById('aCountry').value.trim()||null,
     claimed_us_content_pct: usPct!==''?parseFloat(usPct):null,
@@ -878,8 +1080,28 @@ async function runAiValidate(attestId) {
   finally { btn.disabled = false; btn.textContent = '🤖 AI検証'; }
 }
 
+function renderAttestHistory(history) {
+  if (!history || !history.length) return '';
+  const ACTION_ICON = { submitted:'📤', manual_submitted:'📋', ai_judged:'🤖', accepted:'✅', returned:'↩️', ai_validate_requested:'🔍', doc_uploaded:'📎' };
+  const ACTION_LABEL = { submitted:'申告提出（ポータル）', manual_submitted:'手動登録（社内）', ai_judged:'AI判定実行', accepted:'アクセプト', returned:'差し戻し', ai_validate_requested:'AI検証依頼', doc_uploaded:'証明書添付' };
+  const rows = history.map(h => {
+    const icon = ACTION_ICON[h.action] || '•';
+    const label = ACTION_LABEL[h.action] || h.action;
+    const ts = h.timestamp ? new Date(h.timestamp).toLocaleString('ja-JP', {timeZone:'Asia/Tokyo', year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}) : '—';
+    return `<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;border-bottom:1px solid #f0f0f0;font-size:.75rem;">
+      <span style="min-width:80px;color:#64748b;">${ts}</span>
+      <span style="min-width:90px;font-weight:600;">${icon} ${label}</span>
+      <span style="color:#374151;flex:1;">${esc(h.note||'')}</span>
+    </div>`;
+  }).join('');
+  return `<div style="margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:5px;border:1px solid #e2e8f0;">
+    <div style="font-size:.74rem;font-weight:700;color:#64748b;margin-bottom:4px;">📋 証明履歴</div>
+    ${rows}
+  </div>`;
+}
+
 async function reviewAttest(attestId, action) {
-  const comment = prompt(action==='accept'?'承認コメント（任意）:':'却下理由:','') ;
+  const comment = prompt(action==='accept'?'アクセプトコメント（任意）:':'差し戻し理由:','') ;
   if (comment === null) return;
   try {
     const r = await fetch(`/api/supplier-attestations/${attestId}/${action}`, {
@@ -897,6 +1119,73 @@ async function deleteAttest(attestId) {
     await fetch(`/api/supplier-attestations/${attestId}`, { method:'DELETE' });
     loadAttestations(_currentTreeNodeId);
   } catch(e) { alert('削除エラー: '+e.message); }
+}
+
+// ── 手動証明書登録 ────────────────────────────────────────────────
+function openManualCertModal() {
+  if (!_currentTreeNodeId) { alert('ノードを選択してください'); return; }
+  ['mcSupplier','mcContact','mcHsCode','mcECCN','mcCountry','mcUSPct','mcCertRef','mcNotes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('mcIsUS').checked = false;
+  document.getElementById('mcAttestDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('mcExpiry').value = '';
+  document.getElementById('mcFile').value = '';
+  document.getElementById('mcSubmitBtn').disabled = false;
+  document.getElementById('manualCertModal').classList.add('open');
+}
+
+async function submitManualCert() {
+  const supplier = document.getElementById('mcSupplier').value.trim();
+  if (!supplier) { alert('サプライヤー名は必須です'); return; }
+  const certRef = document.getElementById('mcCertRef').value.trim();
+  if (!certRef) { alert('証明書参照番号は必須です'); return; }
+
+  document.getElementById('mcSubmitBtn').disabled = true;
+  try {
+    const usPct = document.getElementById('mcUSPct').value;
+    const body = {
+      node_id: _currentTreeNodeId,
+      supplier_name: supplier,
+      supplier_contact: document.getElementById('mcContact').value.trim() || null,
+      claimed_hs_code: document.getElementById('mcHsCode').value.trim() || null,
+      claimed_eccn: document.getElementById('mcECCN').value.trim() || null,
+      claimed_country_of_origin: document.getElementById('mcCountry').value.trim() || null,
+      claimed_us_content_pct: usPct !== '' ? parseFloat(usPct) : null,
+      is_us_origin_claimed: document.getElementById('mcIsUS').checked,
+      certificate_reference: certRef,
+      attestation_date: document.getElementById('mcAttestDate').value || null,
+      expiry_date: document.getElementById('mcExpiry').value || null,
+      notes: document.getElementById('mcNotes').value.trim() || null,
+      is_manual_registration: true,
+    };
+    const r = await fetch('/api/supplier-attestations', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const attest = await r.json();
+
+    // ファイルが選択されていればアップロード
+    const fileInput = document.getElementById('mcFile');
+    if (fileInput.files && fileInput.files[0]) {
+      const fd = new FormData();
+      fd.append('file', fileInput.files[0]);
+      const ur = await fetch(`/api/supplier-attestations/${attest.id}/upload-doc`, {
+        method: 'POST', body: fd
+      });
+      if (!ur.ok) {
+        const errText = await ur.text();
+        alert(`証明書登録は完了しましたが、ファイルアップロードに失敗しました: ${errText}`);
+      }
+    }
+    closeModal('manualCertModal');
+    loadAttestations(_currentTreeNodeId);
+  } catch(e) {
+    alert('登録エラー: ' + e.message);
+  } finally {
+    document.getElementById('mcSubmitBtn').disabled = false;
+  }
 }
 
 // ── サプライヤーポータル 招待URL発行 ────────────────────────────
@@ -972,6 +1261,76 @@ renderDmResult = async function(d) {
     } catch(e) {}
   }
 };
+
+// ── ハイパーAdminモード（?superadmin=1） ────────────────────────
+// サプライヤーにはBOM構造は一切見せない（ポータルURLはnode単体のみ）。
+// このモードは社内検証用で、BOM内部の生データ・全エッジ・技術詳細を開示する。
+const _IS_SUPER_ADMIN = new URLSearchParams(location.search).get('superadmin') === '1';
+
+if (_IS_SUPER_ADMIN) {
+  // ページ上部に目立つAdmin帯を表示
+  const adminBanner = document.createElement('div');
+  adminBanner.id = 'superAdminBanner';
+  adminBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#7c3aed;color:#fff;text-align:center;padding:4px 12px;font-size:.8rem;font-weight:700;letter-spacing:.05em;';
+  adminBanner.textContent = '⚡ HYPER-ADMIN MODE — BOM内部詳細開示中 | このウィンドウのURLをサプライヤーに共有しないこと';
+  document.body.prepend(adminBanner);
+  document.body.style.paddingTop = '26px';
+}
+
+// ノードtap時にAdmin詳細を追加表示
+const _origShowNodeInfo = typeof _showNodeInfo !== 'undefined' ? _showNodeInfo : null;
+function _adminShowNodeInfo(nodeData) {
+  if (!_IS_SUPER_ADMIN) return '';
+  return `
+    <div style="margin-top:8px;padding:8px 10px;background:#f5f3ff;border:1px solid #c4b5fd;border-radius:5px;font-size:.74rem;">
+      <div style="font-weight:700;color:#7c3aed;margin-bottom:4px;">⚡ Admin: ノード生データ</div>
+      <div style="white-space:pre-wrap;overflow-x:auto;font-family:monospace;color:#374151;max-height:200px;overflow-y:auto;">${esc(JSON.stringify(nodeData, null, 2))}</div>
+    </div>`;
+}
+
+// Cytoscape ノードtapに Admin詳細パネルを挿入
+document.addEventListener('DOMContentLoaded', () => {
+  const _patchCyAdmin = () => {
+    if (typeof _cyBom !== 'undefined' && _cyBom) {
+      _cyBom.on('tap', 'node', evt => {
+        if (!_IS_SUPER_ADMIN) return;
+        const infoBox = document.getElementById('treeNodeInfoBox');
+        if (!infoBox) return;
+        const d = evt.target.data();
+        const adminSection = document.getElementById('_adminNodeDetail');
+        if (adminSection) adminSection.remove();
+        const div = document.createElement('div');
+        div.id = '_adminNodeDetail';
+        div.innerHTML = _adminShowNodeInfo(d);
+        infoBox.appendChild(div);
+      });
+    }
+  };
+  // _cyBom が生成された後にパッチ（loadTree 完了後）
+  const _origLoadTree2 = loadTree;
+  loadTree = async function(nodeId, nodeName) {
+    await _origLoadTree2(nodeId, nodeName);
+    setTimeout(_patchCyAdmin, 500);
+  };
+});
+
+// Admin: ノード一覧生データをコンソールに出力するショートカット
+if (_IS_SUPER_ADMIN) {
+  window._adminDumpNodes = async () => {
+    const r = await fetch('/api/supply-chain/nodes?limit=500');
+    const d = await r.json();
+    console.table(d.items || d);
+    return d;
+  };
+  window._adminDumpEdges = async () => {
+    const r = await fetch('/api/supply-chain/edges?limit=500');
+    const d = await r.json();
+    console.table(d.items || d);
+    return d;
+  };
+  console.info('%c⚡ Hyper-Admin Mode Active', 'color:#7c3aed;font-weight:bold;font-size:14px');
+  console.info('Available: _adminDumpNodes(), _adminDumpEdges()');
+}
 </script>
 </body>
 </html>

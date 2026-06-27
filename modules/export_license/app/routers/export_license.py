@@ -491,12 +491,15 @@ async def draft_from_transaction(body: DraftFromTransaction, db: AsyncSession = 
     except Exception:
         pass
 
+    # Transaction API は items: [{item_name, spec_text}] のリスト構造
+    _items = tx_data.get("items") or []
+    _first = _items[0] if _items else {}
     params = {
-        "item_description": tx_data.get("item_name") or tx_data.get("item_description") or "",
+        "item_description": _first.get("item_name") or tx_data.get("title") or "",
         "eccn": tx_data.get("eccn") or "",
         "destination_country": tx_data.get("destination_country") or "",
-        "consignee_name": tx_data.get("consignee_name") or tx_data.get("end_user") or "",
-        "end_use_description": tx_data.get("end_use") or tx_data.get("transaction_purpose") or "",
+        "consignee_name": tx_data.get("counterparty_name") or tx_data.get("consignee_name") or "",
+        "end_use_description": _first.get("spec_text") or tx_data.get("end_use") or "",
         "value_usd": tx_data.get("value_usd") or None,
     }
     form_type = "BIS748P" if body.license_type == "EAR" else "FEFTA_FORM"

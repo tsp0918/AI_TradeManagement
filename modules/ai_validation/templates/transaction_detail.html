@@ -89,7 +89,7 @@ async function createExportLicense(txId) {
   if (!r.ok) { alert('作成エラー: ' + r.status); return; }
   const d = await r.json();
   alert('✅ 輸出許可申請ドラフトを作成しました\nID: ' + d.id.slice(0,8));
-  window.open('/ui/export-license', '_blank');
+  window.open('/ui/export-licenses', '_blank');
 }
 </script>
 </div>
@@ -100,47 +100,124 @@ async function createExportLicense(txId) {
   <div class="muted small">ID: {{ tx.id }}{% if tx.case_no %} / case_no: {{ tx.case_no }}{% endif %} / {{ tx.status or "-" }}</div>
 </div>
 
-<!-- ===== Section 1.2: 審査完了チェックリスト ===== -->
+<!-- ===== Section 1.2: 審査完了チェックリスト（ティア対応） ===== -->
 {% set has_screening    = tx.screening_status is not none and tx.screening_status != "" %}
 {% set has_ai_run       = latest_matrix_match is not none %}
 {% set has_agent        = tx.agent_judged_at is not none %}
 {% set has_catchall     = latest_catchall is not none %}
 {% set is_approved      = tx.status == "approved" %}
-{% set all_done         = has_screening and has_ai_run and has_agent %}
+{% set tier             = tx.approval_tier %}
+
+{# ティア別の必須ステップが全て揃っているか判定 #}
+{% if tier == 1 %}
+  {% set all_done = has_screening and has_ai_run %}
+{% elif tier == 2 %}
+  {% set all_done = has_screening and has_ai_run and has_catchall %}
+{% elif tier == 3 %}
+  {% set all_done = has_screening and has_ai_run and has_catchall %}
+{% else %}
+  {# ティア未判定: AI判定完了で提出可能 #}
+  {% set all_done = has_screening and has_ai_run %}
+{% endif %}
+
+{# Tier 1 自動承認後のバナー #}
+{% if tier == 1 and is_approved %}
+<div style="
+  background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #22c55e;
+  border-radius:10px; padding:16px 20px; margin-bottom:16px;
+  display:flex; align-items:center; gap:14px;">
+  <span style="font-size:2rem;">✅</span>
+  <div>
+    <div style="font-weight:800; font-size:1rem; color:#15803d;">自動承認完了（Tier 1）</div>
+    <div style="font-size:.84rem; color:#166534; margin-top:3px;">{{ tx.tier_reason or "外為法非該当・EAR99・スクリーニングクリア" }}</div>
+    {% if tx.formal_submitted_at %}
+    <div style="font-size:.78rem; color:#6b7280; margin-top:4px;">
+      承認日時: {{ tx.formal_submitted_at.strftime('%Y-%m-%d %H:%M') }} ／ 判定書: {{ tx.judgment_no or "-" }}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% elif tier and not is_approved %}
+{# Tier 2/3: ティアバナー表示 #}
+<div style="
+  background:{% if tier == 3 %}#fef3c7{% else %}#eff6ff{% endif %};
+  border:1.5px solid {% if tier == 3 %}#f59e0b{% else %}#60a5fa{% endif %};
+  border-radius:8px; padding:10px 16px; margin-bottom:12px;
+  display:flex; align-items:center; gap:10px; font-size:.85rem;">
+  <span>{% if tier == 3 %}⚠️{% else %}📋{% endif %}</span>
+  <div>
+    <span style="font-weight:700; color:{% if tier == 3 %}#92400e{% else %}#1e40af{% endif %};">
+      {{ "標準審査（Tier 2）" if tier == 2 else "輸出許可確認（Tier 3）" }}
+    </span>
+    {% if tx.tier_reason %}
+    <span style="color:#6b7280; margin-left:8px;">{{ tx.tier_reason }}</span>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
 <div id="review-checklist-card" class="card" style="margin-bottom:16px; padding:14px 18px;
   border-left: 4px solid {% if is_approved %}#22863a{% elif all_done %}#1a73e8{% else %}#e0a800{% endif %};">
   <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
     <div>
       <div style="font-size:13px; font-weight:700; color:var(--fg,#222); margin-bottom:10px;">
-        {% if is_approved %}✅ 審査完了{% elif all_done %}📋 審査チェックリスト — 提出準備完了{% else %}📋 審査チェックリスト{% endif %}
+        {% if is_approved and tier == 1 %}✅ 自動承認済み
+        {% elif is_approved %}✅ 審査完了
+        {% elif all_done %}📋 審査チェックリスト — 提出準備完了
+        {% else %}📋 審査チェックリスト
+        {% endif %}
       </div>
       <div style="display:flex; flex-wrap:wrap; gap:8px;">
-        {% macro step(done, label, note="") %}
+        {% macro step(done, label, note="", required=false) %}
         <div style="display:flex; align-items:center; gap:5px; font-size:.83rem;
-          color:{% if done %}#166534{% else %}#6b7280{% endif %};">
-          <span style="font-size:1rem;">{% if done %}✅{% else %}⬜{% endif %}</span>
+          color:{% if done %}#166534{% elif required %}#b45309{% else %}#9ca3af{% endif %};">
+          <span data-cl="{{ label | lower | replace(' ', '_') }}" style="font-size:1rem;">
+            {% if done %}✅{% elif required %}⬜{% else %}○{% endif %}
+          </span>
           <span>{{ label }}</span>
           {% if note %}<span style="font-size:.75rem; color:#9ca3af;">({{ note }})</span>{% endif %}
+          {% if required and not done %}
+          <span style="font-size:.7rem; background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:3px;">必須</span>
+          {% endif %}
         </div>
         {% endmacro %}
-        {{ step(has_screening, "スクリーニング", tx.screening_status if has_screening else "") }}
+
+        {{ step(has_screening, "スクリーニング", tx.screening_status if has_screening else "", required=true) }}
         <span style="color:#d1d5db;">│</span>
-        {{ step(has_ai_run, "AI判定実行") }}
+        {{ step(has_ai_run, "AI判定実行", "", required=true) }}
+
+        {% if tier is none or tier == 2 or tier == 3 %}
+        <span style="color:#d1d5db;">│</span>
+        {{ step(has_catchall, "キャッチオール判定", "",
+                required=(tier == 2 or tier == 3)) }}
+        {% endif %}
+
+        {% if tier is none or tier %}
         <span style="color:#d1d5db;">│</span>
         {{ step(has_agent, "エージェント判定",
-          {"controlled":"規制対象","not_controlled":"非規制","requires_review":"要確認"}.get(tx.agent_judgment_status or "", "")) }}
-        <span style="color:#d1d5db;">│</span>
-        {{ step(has_catchall, "キャッチオール判定") }}
+          {"controlled":"規制対象","not_controlled":"非規制","requires_review":"要確認"}.get(tx.agent_judgment_status or "", ""),
+          required=false) }}
+        {% endif %}
+
         <span style="color:#d1d5db;">│</span>
         {{ step(is_approved, "正式審査提出",
           tx.formal_submitted_at.strftime('%m/%d %H:%M') if tx.formal_submitted_at else "") }}
       </div>
+
+      {# Tier 3 輸出許可申請の促し #}
+      {% if tier == 3 and not is_approved %}
+      <div style="margin-top:8px; font-size:.8rem; color:#92400e; background:#fef3c7; border-radius:5px; padding:5px 10px;">
+        ⚠️ このケースでは輸出許可申請が必要な可能性があります。
+        「📋 輸出許可申請」ボタンでドラフトを作成してください。
+      </div>
+      {% endif %}
     </div>
+
     {% if not is_approved %}
     <button id="submit-formal-btn"
       onclick="submitFormalReview()"
-      {% if not all_done %}disabled title="エージェント判定が完了するまで提出できません"{% endif %}
+      {% if not all_done %}disabled title="必須ステップが未完了です"{% endif %}
       style="
         padding:8px 18px; border-radius:8px; font-size:.88rem; font-weight:700; cursor:pointer; border:none;
         background:{% if all_done %}#1a73e8{% else %}#e5e7eb{% endif %};
@@ -148,7 +225,7 @@ async function createExportLicense(txId) {
         {% if not all_done %}cursor:not-allowed;{% endif %}">
       📨 正式審査へ提出
     </button>
-    {% else %}
+    {% elif not (tier == 1) %}
     <div style="font-size:.88rem; color:#166534; font-weight:700;">
       🏁 提出済み: {{ tx.formal_submitted_at.strftime('%Y-%m-%d %H:%M') if tx.formal_submitted_at else "-" }}
     </div>
@@ -731,25 +808,37 @@ async function createExportLicense(txId) {
     }
   };
 
-  // ── チェックリスト更新 ────────────────────────────────────────────────
+  // ── チェックリスト更新（ティア対応） ────────────────────────────────
   async function refreshChecklist() {
     try {
       const r = await fetch(`/decision/${txId}/review-checklist`);
       if (!r.ok) return;
       const data = await r.json();
       const cl = data.checklist;
-      const keys = ["screening", "ai_run", "agent_judgment", "catchall", "formal_submitted"];
-      const icons = { screening: "⬜", ai_run: "⬜", agent_judgment: "⬜", catchall: "⬜", formal_submitted: "⬜" };
-      // チェックリストの各ステップアイコンを更新
-      keys.forEach(k => {
+
+      // アイコン更新（required_steps ベースで必須/任意を区別）
+      const requiredSet = new Set(data.required_steps || []);
+      Object.keys(cl).forEach(k => {
         document.querySelectorAll(`[data-cl="${k}"]`).forEach(el => {
-          el.textContent = cl[k]?.done ? "✅" : "⬜";
-          el.style.color = cl[k]?.done ? "#166534" : "#6b7280";
+          if (cl[k]?.done) {
+            el.textContent = "✅";
+            el.style.color = "#166534";
+          } else {
+            el.textContent = "⬜";
+            el.style.color = requiredSet.has(k) ? "#b45309" : "#9ca3af";
+          }
         });
       });
+
+      // Tier 1 自動承認: ページリロード
+      if (data.tier === 1 && data.status === "approved") {
+        location.reload();
+        return;
+      }
+
       // 正式審査ボタンの有効化
       const submitBtn = document.getElementById("submit-formal-btn");
-      if (submitBtn && data.checklist.agent_judgment?.done) {
+      if (submitBtn && data.required_done) {
         submitBtn.disabled = false;
         submitBtn.style.background = "#1a73e8";
         submitBtn.style.color = "#fff";
@@ -2483,9 +2572,84 @@ details[open] > .detail-summary::before { transform: rotate(90deg); }
           }
         }
       }
+      // ④ BOM 構成品サプライヤー申告サマリー
+      if (node.product_code) {
+        try {
+          const attResp = await fetch(`${PLAT}/api/supply-chain/bom-attestation-summary/${encodeURIComponent(node.product_code)}`);
+          if (attResp.ok) {
+            const attData = await attResp.json();
+            _renderBomAttestationSummary(attData, compEl);
+          }
+        } catch(e2) { /* silent */ }
+      }
+
     } catch(e) {
       document.getElementById('bom-node-detail').innerHTML = '<span style="color:#94a3b8; font-size:.8rem;">BOM情報の取得に失敗しました</span>';
     }
+  }
+
+  function _renderBomAttestationSummary(data, compEl) {
+    if (!data || !data.components || !data.components.length) return;
+    const comps = data.components;
+    const hasAny = comps.some(c => c.attestation_count > 0);
+
+    const VERDICT_STYLE = {
+      match:        { icon:'✅', color:'#16a34a', label:'一致' },
+      warning:      { icon:'⚠️', color:'#d97706', label:'要注意' },
+      mismatch:     { icon:'❌', color:'#dc2626', label:'不一致' },
+      unverifiable: { icon:'—',  color:'#9ca3af', label:'検証不可' },
+    };
+
+    const usRatio = data.us_controlled_pct;
+    const usBar = usRatio != null ? `
+      <div style="margin-bottom:10px;padding:8px 12px;background:#fef3c7;border-radius:6px;border-left:3px solid #d97706;font-size:.82rem;">
+        <strong style="color:#92400e;">🇺🇸 US管理品 構成比（承認済申告から算出）:</strong>
+        <span style="font-size:1rem;font-weight:800;color:${usRatio>=25?'#dc2626':usRatio>=10?'#d97706':'#16a34a'};margin-left:8px;">${usRatio.toFixed(1)}%</span>
+        ${usRatio>=25?'<span style="color:#dc2626;font-size:.75rem;margin-left:6px;">⚠️ De Minimis 超過可能性あり</span>':''}
+      </div>` : '';
+
+    const rows = comps.map(c => {
+      const a = c.best_attestation;
+      if (!a) return `<tr>
+        <td style="padding:5px 8px;">${c.name || c.product_code || '—'}</td>
+        <td style="padding:5px 8px;color:#9ca3af;" colspan="5">申告なし</td>
+      </tr>`;
+      const vs = VERDICT_STYLE[a.ai_verdict] || { icon:'—', color:'#9ca3af', label:'未検証' };
+      const statusBadge = a.status === 'accepted'
+        ? '<span style="background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:8px;font-size:.72rem;">✅ 承認</span>'
+        : '<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;font-size:.72rem;">⏳ 未承認</span>';
+      return `<tr>
+        <td style="padding:5px 8px;"><strong>${c.product_code||'—'}</strong><br><span style="color:#94a3b8;font-size:.74rem;">${a.supplier_name}</span></td>
+        <td style="padding:5px 8px;font-family:monospace;color:#1d4ed8;">${a.claimed_hs_code||'—'}</td>
+        <td style="padding:5px 8px;font-family:monospace;color:#e65100;">${a.claimed_eccn||'—'}</td>
+        <td style="padding:5px 8px;">${a.claimed_country_of_origin||'—'}${a.is_us_origin_claimed?'&nbsp;🇺🇸':''}</td>
+        <td style="padding:5px 8px;font-weight:700;color:${vs.color};">${vs.icon} ${vs.label}</td>
+        <td style="padding:5px 8px;">${statusBadge}</td>
+      </tr>`;
+    }).join('');
+
+    const summary = document.createElement('div');
+    summary.style.cssText = 'margin-top:14px;';
+    summary.innerHTML = `
+      <div style="font-weight:700;font-size:.84rem;color:#1e40af;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+        📋 BOM 構成品 — サプライヤー申告サマリー
+        ${hasAny ? '' : '<span style="font-size:.75rem;color:#9ca3af;font-weight:400;">（承認済み申告なし）</span>'}
+      </div>
+      ${usBar}
+      <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem;background:#fff;border-radius:6px;overflow:hidden;border:1px solid #dbeafe;">
+        <thead><tr style="background:#dbeafe;color:#1e40af;">
+          <th style="padding:5px 8px;text-align:left;">品目 / サプライヤー</th>
+          <th style="padding:5px 8px;text-align:left;">申告HS</th>
+          <th style="padding:5px 8px;text-align:left;">申告ECCN</th>
+          <th style="padding:5px 8px;text-align:left;">原産国</th>
+          <th style="padding:5px 8px;text-align:left;">AI判定</th>
+          <th style="padding:5px 8px;text-align:left;">ステータス</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>`;
+    compEl.appendChild(summary);
   }
 
   document.addEventListener('DOMContentLoaded', loadBomContext);

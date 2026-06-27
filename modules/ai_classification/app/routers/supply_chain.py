@@ -508,6 +508,131 @@ async def get_by_product_code(product_code: str, db: AsyncSession = Depends(get_
     }
 
 
+@router.get("/by-product-code/{product_code}/bom-attestation-summary")
+async def bom_attestation_summary(product_code: str, db: AsyncSession = Depends(get_pg_db)):
+    """
+    製品コードの BOM 構成品ごとに承認済み Attestation の最保守的な値を集約して返す。
+    取引審査時の BOM リスク参照用。
+
+    レスポンス:
+      {
+        "product_code": "LS-500",
+        "has_accepted_attestations": true,
+        "us_controlled_ratio": 0.354,  // 米国管理品の構成比合計
+        "components": [
+          {
+            "product_code": "US-LASER-DM650",
+            "node_id": "...",
+            "quantity": 0.354,
+            "unit": "ratio",
+            "attestation_count": 1,
+            "best_attestation": { "supplier_name": "...", "claimed_hs_code": "...",
+              "claimed_eccn": "...", "claimed_country_of_origin": "...",
+              "is_us_origin_claimed": true, "status": "accepted", "attestation_id": "..." }
+          }
+        ]
+      }
+    """
+    from platform_core.models.supplier_attestation import SupplierAttestation
+
+    result = await db.execute(
+        select(SupplyChainNode).where(SupplyChainNode.product_code == product_code)
+    )
+    parent = result.scalar_one_or_none()
+    if parent is None:
+        return {"product_code": product_code, "has_accepted_attestations": False, "us_controlled_ratio": 0.0, "components": []}
+
+    edges_result = await db.execute(
+        select(SupplyChainEdge).where(SupplyChainEdge.parent_node_id == parent.id)
+    )
+    edges = edges_result.scalars().all()
+
+    components = []
+    total_value = 0.0
+    us_controlled_value = 0.0
+
+    for edge in edges:
+        child_r = await db.execute(
+            select(SupplyChainNode).where(SupplyChainNode.id == edge.child_node_id)
+        )
+        child = child_r.scalar_one_or_none()
+        if not child:
+            continue
+
+        # 承認済み Attestation を最新順に取得
+        att_r = await db.execute(
+            select(SupplierAttestation)
+            .where(
+                SupplierAttestation.node_id == child.id,
+                SupplierAttestation.status == "accepted",
+            )
+            .order_by(SupplierAttestation.reviewed_at.desc())
+        )
+        accepted_atts = att_r.scalars().all()
+
+        # 最保守的な值: is_us_origin が true のものを優先
+        best = None
+        for a in accepted_atts:
+            if best is None:
+                best = a
+            elif a.is_us_origin_claimed and not best.is_us_origin_claimed:
+                best = a
+
+        comp_info = {
+            "product_code": child.product_code,
+            "node_id": str(child.id),
+            "name": child.name,
+            "quantity": edge.quantity,
+            "unit": edge.unit,
+            "eccn": child.eccn,
+            "hs_code": child.hs_code,
+            "is_us_origin": child.is_us_origin,
+            "attestation_count": len(accepted_atts),
+            "best_attestation": None,
+        }
+
+        # 金額加重で US 管理品比率を計算（unit_value_usd がある場合）
+        node_value = child.unit_value_usd or 0.0
+        total_value += node_value
+
+        if best:
+            comp_info["best_attestation"] = {
+                "attestation_id": str(best.id),
+                "supplier_name": best.supplier_name,
+                "claimed_hs_code": best.claimed_hs_code,
+                "claimed_eccn": best.claimed_eccn,
+                "claimed_country_of_origin": best.claimed_country_of_origin,
+                "claimed_us_content_pct": best.claimed_us_content_pct,
+                "is_us_origin_claimed": best.is_us_origin_claimed,
+                "ai_verdict": best.ai_verdict,
+                "ai_suggested_eccn": best.ai_suggested_eccn,
+                "status": best.status,
+                "reviewed_at": best.reviewed_at.isoformat() if best.reviewed_at else None,
+            }
+            is_us_ctrl = best.is_us_origin_claimed and best.claimed_eccn and best.claimed_eccn.upper() not in ("EAR99", "")
+            if is_us_ctrl:
+                us_controlled_value += node_value
+
+        components.append(comp_info)
+
+    has_accepted = any(c["attestation_count"] > 0 for c in components)
+    if total_value > 0:
+        us_controlled_pct = round(us_controlled_value / total_value * 100, 2)
+        us_controlled_ratio = round(us_controlled_value / total_value, 4)
+    else:
+        us_controlled_pct = 0.0
+        us_controlled_ratio = 0.0
+    return {
+        "product_code": product_code,
+        "has_accepted_attestations": has_accepted,
+        "us_controlled_ratio": us_controlled_ratio,
+        "us_controlled_pct": us_controlled_pct,
+        "us_controlled_value_usd": round(us_controlled_value, 2),
+        "total_component_value_usd": round(total_value, 2),
+        "components": components,
+    }
+
+
 @router.get("/nodes/{node_id}/product-link")
 async def get_product_link(node_id: str, db: AsyncSession = Depends(get_pg_db)):
     """SC ノードから ai_classification の品目 ID・BOM グラフ URL を返す（transaction_detail 連携用）。"""
@@ -554,7 +679,7 @@ def sync_from_bom(product_id: int):
             raise HTTPException(status_code=404, detail="Product not found")
         pg = get_pg_db_sync()
         try:
-            result = _sync_bom(product, pg)
+            result = _sync_bom(product, pg, sqlite_db=sqlite_db)
         finally:
             pg.close()
         return {"product_id": product_id, "product_code": product.code, **result}

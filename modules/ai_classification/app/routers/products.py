@@ -36,8 +36,88 @@ from .bom_sync import sync_bom_to_supply_chain
 from ..services.external_app_client import ExternalAppClient
 
 from urllib.parse import quote_plus as _quote_plus
+import threading
+import os as _os
 
 router = APIRouter(tags=["products"])
+
+_SELF_BASE = _os.environ.get("MODULE_AI_CLASSIFICATION_URL", "http://localhost:8002")
+_AI_VALIDATION_BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+
+
+def _trigger_coo_change_rescreening(
+    product_code: str,
+    old_country: Optional[str],
+    new_country: str,
+) -> None:
+    """
+    原産国（COO）変更時に ai_validation へ通知し、関連取引を再審査キューに戻す。
+    fire-and-forget — 失敗しても品目更新フローは止めない。
+    """
+    if not product_code or not new_country:
+        return
+    if (old_country or "").upper() == new_country.upper():
+        return  # 変更なし
+
+    def _post() -> None:
+        try:
+            with httpx.Client(timeout=8.0) as client:
+                client.post(
+                    f"{_AI_VALIDATION_BASE}/api/transactions/coo-changed",
+                    json={
+                        "product_code": product_code,
+                        "old_country":  old_country,
+                        "new_country":  new_country,
+                    },
+                )
+        except Exception:
+            pass
+
+    threading.Thread(target=_post, daemon=True).start()
+
+
+def _trigger_supplier_change_event(
+    product_code: str,
+    product_name: str,
+    old_component_codes: list[str],
+    new_component_codes: list[str],
+) -> None:
+    """BOM のサプライヤー（構成品）変化を item_version に非同期で通知する。
+
+    fire-and-forget — 失敗してもメインフローには影響しない。
+    """
+    added   = [c for c in new_component_codes if c not in old_component_codes]
+    removed = [c for c in old_component_codes if c not in new_component_codes]
+    if not added and not removed:
+        return
+
+    def _post():
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                # Step 1: Item を upsert して item_id を取得
+                r1 = client.post(
+                    f"{_SELF_BASE}/api/item-versions/items",
+                    json={"item_code": product_code, "name": product_name},
+                )
+                if r1.status_code not in (200, 201):
+                    return
+                item_id = r1.json().get("id")
+                if not item_id:
+                    return
+                # Step 2: 新バージョンを作成（supplier_ids 変化として記録）
+                client.post(
+                    f"{_SELF_BASE}/api/item-versions/items/{item_id}/versions",
+                    json={
+                        "supplier_ids":    new_component_codes,
+                        "change_category": "supplier_change",
+                        "change_reason":   f"BOM 更新: 追加={added}, 削除={removed}",
+                        "source_system":   "bom_sync",
+                    },
+                )
+        except Exception:
+            pass  # 非同期通知は silent fail
+
+    threading.Thread(target=_post, daemon=True).start()
 templates = Jinja2Templates(directory="templates")
 templates.env.filters["urlencode"] = lambda s: _quote_plus(str(s) if s is not None else "")
 
@@ -565,6 +645,36 @@ def quadrant_map_page(request: Request):
     return templates.TemplateResponse(request, "quadrant_map.html", {})
 
 
+@router.get("/api/products/by-code/{code}")
+def get_product_by_code(code: str, db: Session = Depends(get_db)):
+    """品目コードで品目を検索してIDを返す（プラットフォーム連携・デモ用）。"""
+    product = db.query(Product).filter(Product.code == code).first()
+    if not product:
+        raise HTTPException(status_code=404, detail=f"Product not found: {code}")
+    return {"id": product.id, "code": product.code, "name": product.name,
+            "eccn": product.eccn or "", "hs_code": getattr(product, "hs_code", "") or ""}
+
+
+@router.get("/api/products/json-search")
+def json_search_products(q: str = Query(default=""), db: Session = Depends(get_db)):
+    """品目コード・品名で絞り込んで JSON リストを返す（ai_validation 品目連携ピッカー用）。"""
+    query = db.query(Product).order_by(Product.updated_at.desc())
+    if q.strip():
+        like = f"%{q.strip()}%"
+        query = query.filter(or_(Product.code.ilike(like), Product.name.ilike(like)))
+    products = query.limit(30).all()
+    return [
+        {
+            "id": p.id,
+            "code": p.code or "",
+            "name": p.name or "",
+            "eccn": p.eccn or "",
+            "item_type": p.item_type or "",
+        }
+        for p in products
+    ]
+
+
 @router.get("/api/products/quadrant-data")
 def quadrant_data(db: Session = Depends(get_db)):
     """Chart.js 用の全品目スコアデータを返す。"""
@@ -743,18 +853,62 @@ def create_product(
     item_type: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    product = db.query(Product).filter(Product.code == code).first()
+    if product:
+        product.name = name
+        if description:
+            product.description = description
+        if item_type:
+            product.item_type = item_type
+    else:
+        product = Product(
+            code=code,
+            name=name,
+            description=description or None,
+            item_type=item_type or None,
+            source="AI_TM",
+            is_unconfirmed=False,
+        )
+        db.add(product)
+    db.commit()
+    db.refresh(product)
+    return RedirectResponse(url="/products", status_code=303)
+
+
+# ── DAP Intake 品目作成 JSON API ──────────────────────────────────────────────
+
+class _ApiProductCreateRequest(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+    item_type: Optional[str] = None
+    usage_summary: Optional[str] = None
+    eccn: Optional[str] = None
+    hs_code: Optional[str] = None
+
+
+@router.post("/api/products")
+def api_create_product(body: _ApiProductCreateRequest, db: Session = Depends(get_db)):
+    """DAP Intake などからの品目 JSON 新規作成。code 重複時は 409。"""
+    existing = db.query(Product).filter(Product.code == body.code).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Product code '{body.code}' already exists (id={existing.id})")
     product = Product(
-        code=code,
-        name=name,
-        description=description or None,
-        item_type=item_type or None,
+        code=body.code,
+        name=body.name,
+        description=body.description or None,
+        item_type=body.item_type or None,
+        usage_summary=body.usage_summary or None,
+        eccn=body.eccn or None,
+        hs_code=body.hs_code or None,
         source="AI_TM",
         is_unconfirmed=False,
     )
     db.add(product)
     db.commit()
     db.refresh(product)
-    return RedirectResponse(url="/products", status_code=303)
+    return {"id": product.id, "code": product.code, "name": product.name,
+            "item_type": product.item_type, "edit_url": f"/products/{product.id}/edit"}
 
 
 # ── ERP MDM 同期 ──────────────────────────────────────────────────────────────
@@ -788,6 +942,7 @@ def erp_sync_product(body: _ErpSyncRequest, db: Session = Depends(get_db)):
         product.hs_code = body.hs_code
     if body.eccn is not None:
         product.eccn = body.eccn
+    _old_erp_coo = product.country_of_origin
     if body.country_of_origin is not None:
         coo = body.country_of_origin.strip().upper()
         product.country_of_origin = coo[:2] if coo else None
@@ -802,6 +957,13 @@ def erp_sync_product(body: _ErpSyncRequest, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(product)
+
+    # COO 変更があれば ai_validation へ通知
+    if body.country_of_origin is not None:
+        _new_erp_coo = product.country_of_origin or ""
+        if _new_erp_coo != (_old_erp_coo or "").upper():
+            _trigger_coo_change_rescreening(product.code, _old_erp_coo, _new_erp_coo)
+
     return {"ok": True, "id": product.id, "code": product.code, "created": is_new}
 
 
@@ -975,7 +1137,9 @@ def update_product(
     product.hs_code = hs_code or None
     product.eccn = eccn or None
     coo_val = country_of_origin.strip().upper()
-    product.country_of_origin = coo_val[:2] if coo_val else None
+    _old_coo = product.country_of_origin
+    _new_coo = coo_val[:2] if coo_val else None
+    product.country_of_origin = _new_coo
     product.ghs_signal_word = ghs_signal_word or None
     product.ghs_pictograms = ghs_pictograms or None
     product.ghs_h_statements = ghs_h_statements or None
@@ -1002,6 +1166,10 @@ def update_product(
     product.regulation_score = calculate_regulation_score(product, db)
 
     db.commit()
+
+    # COO 変更があれば ai_validation へ通知
+    if _new_coo != (_old_coo or "").upper():
+        _trigger_coo_change_rescreening(product.code, _old_coo, _new_coo or "")
 
     return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
 
@@ -1191,7 +1359,22 @@ def bom_upload(
 
             comp = db.query(Product).filter(Product.code == comp_code).first()
             if not comp:
-                raise HTTPException(status_code=400, detail=f"構成品目コードが未登録です: {comp_code}")
+                coo_for_comp = coo  # already cleaned above
+                comp = Product(
+                    code=comp_code,
+                    name=description or comp_code,
+                    country_of_origin=coo_for_comp,
+                    std_price=unit_value,
+                    source="BOM_AUTO",
+                    is_unconfirmed=True,
+                )
+                db.add(comp)
+                db.flush()
+            else:
+                if coo:
+                    comp.country_of_origin = coo
+                if unit_value is not None:
+                    comp.std_price = unit_value
 
             comp_price = float(comp.std_price or 0.0)
             cost = comp_price * ratio
@@ -1233,8 +1416,20 @@ def bom_upload(
 
     bom_json_str = json.dumps(bom_items, ensure_ascii=False)
 
+    # サプライヤー変更検知: 更新前の構成品コード一覧
+    old_bom_items: list[dict] = []
+    if product.bom_json:
+        try:
+            old_bom_items = json.loads(product.bom_json)
+        except Exception:
+            pass
+    old_component_codes_csv = [
+        i.get("component_code", "") for i in old_bom_items if i.get("kind") == "material"
+    ]
+
     product.bom_json = bom_json_str
-    product.std_price = total_cost
+    if not product.std_price:
+        product.std_price = total_cost
 
     max_version = (
         db.query(func.max(BomHistory.version))
@@ -1255,16 +1450,123 @@ def bom_upload(
 
     db.commit()
 
-    # BOM を plat_supply_chain_node/edge に同期
+    # サプライヤー変更を item_version に非同期通知
+    new_component_codes_csv = [
+        i.get("component_code", "") for i in bom_items if i.get("kind") == "material"
+    ]
+    _trigger_supplier_change_event(
+        product_code=product.code or str(product.id),
+        product_name=product.name or "",
+        old_component_codes=old_component_codes_csv,
+        new_component_codes=new_component_codes_csv,
+    )
+
+    # BOM を plat_supply_chain_node/edge に同期（sqlite_db を渡してECCNを品目マスタから引き継ぎ）
     try:
         pg = get_pg_db_sync()
         try:
             db.refresh(product)
-            sync_bom_to_supply_chain(product, pg)
+            sync_bom_to_supply_chain(product, pg, sqlite_db=db)
         finally:
             pg.close()
     except Exception as e:
         logger.warning("BOM sync to supply chain failed (non-fatal): %s", e)
+
+    return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
+
+
+@router.post("/products/{product_id}/bom-add-item")
+def bom_add_item(
+    product_id: int,
+    component_code: str = Form(...),
+    component_name: str = Form(""),
+    coo: str = Form(""),
+    ratio: float = Form(1.0),
+    unit_value: Optional[float] = Form(None),
+    db: Session = Depends(get_db),
+):
+    """BOM構成品をインラインフォームで追加。未登録の構成品は自動登録、既存は更新。"""
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    coo_clean = coo.strip().upper()[:2] if coo.strip() else None
+
+    # 構成品を upsert
+    comp = db.query(Product).filter(Product.code == component_code).first()
+    if not comp:
+        comp = Product(
+            code=component_code,
+            name=component_name or component_code,
+            country_of_origin=coo_clean,
+            std_price=unit_value,
+            source="BOM_AUTO",
+            is_unconfirmed=True,
+        )
+        db.add(comp)
+        db.flush()
+    else:
+        if coo_clean:
+            comp.country_of_origin = coo_clean
+        if unit_value is not None:
+            comp.std_price = unit_value
+        if component_name:
+            comp.name = component_name
+
+    # bom_json に upsert（同じ code は上書き）
+    items: list[dict] = []
+    if product.bom_json:
+        try:
+            items = json.loads(product.bom_json)
+        except Exception:
+            items = []
+
+    # サプライヤー変更検知用: 更新前の構成品コード一覧を保持
+    old_component_codes = [
+        i.get("component_code", "")
+        for i in items if i.get("kind") == "material"
+    ]
+
+    new_item: dict = {
+        "kind": "material",
+        "component_id": comp.id,
+        "component_code": comp.code,
+        "component_name": comp.name,
+        "ratio": ratio,
+    }
+    if coo_clean:
+        new_item["coo"] = coo_clean
+    if unit_value is not None:
+        new_item["unit_value"] = unit_value
+
+    items = [i for i in items if i.get("component_code") != component_code]
+    items.append(new_item)
+
+    product.bom_json = json.dumps(items, ensure_ascii=False)
+    db.commit()
+
+    # サプライヤー変更を item_version に非同期通知
+    new_component_codes = [
+        i.get("component_code", "")
+        for i in items if i.get("kind") == "material"
+    ]
+    _trigger_supplier_change_event(
+        product_code=product.code or str(product.id),
+        product_name=product.name or "",
+        old_component_codes=old_component_codes,
+        new_component_codes=new_component_codes,
+    )
+
+    # SC 同期（非同期化しない — デモで即時反映が必要）
+    try:
+        pg = get_pg_db_sync()
+        try:
+            db.refresh(product)
+            sync_bom_to_supply_chain(product, pg, sqlite_db=db)
+        finally:
+            pg.close()
+    except Exception as e:
+        logger.warning("bom-add-item SC sync failed (non-fatal): %s", e)
 
     return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
 

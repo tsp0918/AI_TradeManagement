@@ -172,6 +172,24 @@ async def _ensure_columns() -> None:
                 # サプライチェーン連携
                 ("supply_chain_node_id", "VARCHAR(36)"),    # plat_supply_chain_node UUID
                 ("de_minimis_result",    "TEXT"),           # De Minimis 計算スナップショット JSON
+                # リスク分岐型承認フロー（Phase redesign）
+                ("approval_tier",        "INTEGER"),        # 1=自動承認 2=標準 3=輸出許可確認
+                ("required_steps",       "TEXT"),           # JSON: ["screening","ai_run","catchall"] etc.
+                ("tier_reason",          "TEXT"),           # ティア判定理由
+                ("tier_determined_at",   "DATETIME"),       # ティア確定日時
+                ("linked_product_code",  "VARCHAR(64)"),    # 品目管理の product.code
+                ("linked_product_eccn",  "VARCHAR(32)"),    # 品目管理から取得したECCN
+                ("is_new_product_entry", "INTEGER"),        # 1=品目同時登録モード
+                # みなし輸出連携
+                ("deemed_export_personnel_id", "VARCHAR(36)"),  # rnd_assessment personnel_id
+                # ERP 連携フィールド
+                ("end_user_country",     "VARCHAR(8)"),     # 最終需要者所在国 ISO alpha-2
+                ("erp_case_no",          "VARCHAR(64)"),    # ERP 側受注番号（case_no は内部管理番号）
+                ("total_value_usd",      "REAL"),           # 取引総額 (USD)
+                ("unit_price_usd",       "REAL"),           # 単価 (USD)
+                ("quantity",             "REAL"),           # 数量
+                ("hs_code",              "VARCHAR(20)"),    # HSコード
+                ("incoterms",            "VARCHAR(10)"),    # インコタームズ
             ]:
                 if col_name not in existing_tx:
                     conn.execute(text(f"ALTER TABLE transactions ADD COLUMN {col_name} {col_type}"))

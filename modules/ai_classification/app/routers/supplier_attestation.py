@@ -3,12 +3,13 @@
 Phase 6A-2: platform-core から移管。データは plat_supplier_attestation テーブル（共有 PostgreSQL）。
 """
 
+import pathlib
 import uuid
 from datetime import date, datetime, timezone
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..pg_session import get_pg_db
 from platform_core.models.supplier_attestation import SupplierAttestation
 from platform_core.models.supply_chain import SupplyChainNode
+
+_UPLOADS_DIR = pathlib.Path(__file__).parent.parent.parent / "uploads" / "supplier"
+_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+_MAX_FILE_BYTES = 20 * 1024 * 1024  # 20MB
 
 router = APIRouter(tags=["supplier_attestation"])
 
@@ -49,6 +54,7 @@ def _serialize(a: SupplierAttestation) -> dict:
         "supplier_name": a.supplier_name,
         "supplier_contact": a.supplier_contact,
         "claimed_eccn": a.claimed_eccn,
+        "claimed_hs_code": a.claimed_hs_code,
         "claimed_country_of_origin": a.claimed_country_of_origin,
         "claimed_us_content_pct": a.claimed_us_content_pct,
         "is_us_origin_claimed": a.is_us_origin_claimed,
@@ -66,6 +72,7 @@ def _serialize(a: SupplierAttestation) -> dict:
         "reviewed_by_user_id": str(a.reviewed_by_user_id) if a.reviewed_by_user_id else None,
         "reviewed_at": a.reviewed_at.isoformat() if a.reviewed_at else None,
         "review_comment": a.review_comment,
+        "history": a.history or [],
         "created_at": a.created_at.isoformat(),
         "updated_at": a.updated_at.isoformat(),
     }
@@ -77,6 +84,7 @@ class AttestationCreate(BaseModel):
     node_id: str
     supplier_name: str
     supplier_contact: str | None = None
+    claimed_hs_code: str | None = None
     claimed_eccn: str | None = None
     claimed_country_of_origin: str | None = None
     claimed_us_content_pct: float | None = None
@@ -85,11 +93,13 @@ class AttestationCreate(BaseModel):
     attestation_date: str | None = None  # YYYY-MM-DD
     expiry_date: str | None = None
     notes: str | None = None
+    is_manual_registration: bool = False  # True = 社内担当者による手動登録（証明書メール受領等）
 
 
 class AttestationUpdate(BaseModel):
     supplier_name: str | None = None
     supplier_contact: str | None = None
+    claimed_hs_code: str | None = None
     claimed_eccn: str | None = None
     claimed_country_of_origin: str | None = None
     claimed_us_content_pct: float | None = None
@@ -156,10 +166,23 @@ async def create_attestation(body: AttestationCreate, db: AsyncSession = Depends
     if r.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="SupplyChainNode not found")
 
+    now = datetime.now(tz=timezone.utc)
+    init_history = [{
+        "action": "manual_submitted",
+        "actor": "company:staff",
+        "timestamp": now.isoformat(),
+        "note": (
+            f"社内手動登録 / 証明書参照: {body.certificate_reference or '未入力'}"
+            f" / ECCN: {body.claimed_eccn or '未入力'}"
+            f" / 原産国: {body.claimed_country_of_origin or '未入力'}"
+        ),
+    }] if body.is_manual_registration else []
+
     attest = SupplierAttestation(
         node_id=node_id,
         supplier_name=body.supplier_name,
         supplier_contact=body.supplier_contact,
+        claimed_hs_code=body.claimed_hs_code,
         claimed_eccn=body.claimed_eccn,
         claimed_country_of_origin=body.claimed_country_of_origin,
         claimed_us_content_pct=body.claimed_us_content_pct,
@@ -169,6 +192,7 @@ async def create_attestation(body: AttestationCreate, db: AsyncSession = Depends
         expiry_date=_parse_date(body.expiry_date),
         notes=body.notes,
         status="pending",
+        history=init_history or [],
     )
     db.add(attest)
     await db.commit()
@@ -201,8 +225,9 @@ async def update_attestation(
     a = r.scalar_one_or_none()
     if a is None:
         raise HTTPException(status_code=404, detail="Not found")
-    for f in ("supplier_name", "supplier_contact", "claimed_eccn", "claimed_country_of_origin",
-              "claimed_us_content_pct", "is_us_origin_claimed", "certificate_reference", "notes"):
+    for f in ("supplier_name", "supplier_contact", "claimed_hs_code", "claimed_eccn",
+              "claimed_country_of_origin", "claimed_us_content_pct", "is_us_origin_claimed",
+              "certificate_reference", "notes"):
         val = getattr(body, f)
         if val is not None:
             setattr(a, f, val)
@@ -298,6 +323,51 @@ async def ai_validate(attest_id: str, db: AsyncSession = Depends(get_pg_db)):
     return _serialize(a)
 
 
+# ── 証明書ファイルアップロード ────────────────────────────────────
+
+@router.post("/api/supplier-attestations/{attest_id}/upload-doc")
+async def upload_document(
+    attest_id: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_pg_db),
+):
+    """社内担当者が受領した証明書ファイルを添付する。"""
+    r = await db.execute(
+        select(SupplierAttestation).where(SupplierAttestation.id == uuid.UUID(attest_id))
+    )
+    a = r.scalar_one_or_none()
+    if a is None:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    content = await file.read(_MAX_FILE_BYTES + 1)
+    if len(content) > _MAX_FILE_BYTES:
+        raise HTTPException(status_code=413, detail="ファイルサイズが20MBを超えています")
+
+    now_str = datetime.now(tz=timezone.utc).strftime("%Y%m%d%H%M%S")
+    safe_name = f"{now_str}_{(file.filename or 'document').replace('/', '_').replace('..', '_')}"
+    attest_dir = _UPLOADS_DIR / attest_id
+    attest_dir.mkdir(parents=True, exist_ok=True)
+    (attest_dir / safe_name).write_bytes(content)
+
+    doc_entry = {
+        "filename": safe_name,
+        "original": file.filename,
+        "size": len(content),
+        "uploaded_at": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
+        "source": "manual_upload",
+    }
+    a.supporting_docs = (a.supporting_docs or []) + [doc_entry]
+    a.history = (a.history or []) + [{
+        "action": "doc_uploaded",
+        "actor": "company:staff",
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "note": f"証明書アップロード: {file.filename}",
+    }]
+    await db.commit()
+    await db.refresh(a)
+    return _serialize(a)
+
+
 # ── 承認 / 却下 ───────────────────────────────────────────────────
 
 @router.post("/api/supplier-attestations/{attest_id}/accept")
@@ -308,9 +378,33 @@ async def accept_attestation(attest_id: str, body: ReviewBody, db: AsyncSession 
     a = r.scalar_one_or_none()
     if a is None:
         raise HTTPException(status_code=404, detail="Not found")
+    now = datetime.now(tz=timezone.utc)
     a.status = "accepted"
-    a.reviewed_at = datetime.now(tz=timezone.utc)
+    a.reviewed_at = now
     a.review_comment = body.review_comment
+    # 不変タイムスタンプ履歴に追記（既存エントリは変更しない）
+    a.history = (a.history or []) + [{
+        "action": "accepted",
+        "actor": "company:reviewer",
+        "timestamp": now.isoformat(),
+        "note": body.review_comment or "サプライヤー申告をアクセプトしました",
+    }]
+
+    # アクセプト時に SC ノードへ申告値を反映（サプライヤー責任の証明書として登録）
+    from platform_core.models.supply_chain import SupplyChainNode
+    nr = await db.execute(select(SupplyChainNode).where(SupplyChainNode.id == a.node_id))
+    node = nr.scalar_one_or_none()
+    if node:
+        if a.claimed_hs_code:
+            node.hs_code = a.claimed_hs_code
+        if a.claimed_eccn:
+            node.eccn = a.claimed_eccn
+            node.eccn_source = "supplier_attestation"
+        if a.claimed_country_of_origin:
+            node.country_of_origin = a.claimed_country_of_origin
+        if a.is_us_origin_claimed:
+            node.is_us_origin = True
+
     await db.commit()
     await db.refresh(a)
     return _serialize(a)
@@ -324,9 +418,16 @@ async def reject_attestation(attest_id: str, body: ReviewBody, db: AsyncSession 
     a = r.scalar_one_or_none()
     if a is None:
         raise HTTPException(status_code=404, detail="Not found")
+    now = datetime.now(tz=timezone.utc)
     a.status = "rejected"
-    a.reviewed_at = datetime.now(tz=timezone.utc)
+    a.reviewed_at = now
     a.review_comment = body.review_comment
+    a.history = (a.history or []) + [{
+        "action": "returned",
+        "actor": "company:reviewer",
+        "timestamp": now.isoformat(),
+        "note": body.review_comment or "差し戻し",
+    }]
     await db.commit()
     await db.refresh(a)
     return _serialize(a)
