@@ -3,9 +3,10 @@
 # start.sh — AI Trade Management プラットフォーム起動スクリプト
 #
 # 使い方:
-#   ./start.sh            # 通常起動
-#   ./start.sh --dev      # ホットリロード付き開発モード
-#   ./start.sh --stop     # 起動中のプロセスをすべて停止
+#   ./start.sh                # 通常起動
+#   ./start.sh --dev          # ホットリロード付き開発モード
+#   ./start.sh --stop         # 起動中のプロセスをすべて停止
+#   ./start.sh --verify-demos # 全 DEMO シナリオを検証して結果を表示
 # =============================================================================
 set -euo pipefail
 
@@ -75,6 +76,17 @@ if [[ "${1:-}" == "--tunnel-status" ]]; then
 fi
 
 # ── トンネル単体再起動 ──────────────────────────────────────────────
+if [[ "${1:-}" == "--verify-demos" ]]; then
+  info "DEMO 検証スクリプトを実行します…"
+  cd "$SCRIPT_DIR"
+  if [[ ! -f "$VENV/python" ]]; then
+    error "仮想環境が見つかりません: $VENV"
+    exit 1
+  fi
+  "$VENV/python" scripts/verify_demos.py "${@:2}"
+  exit $?
+fi
+
 if [[ "${1:-}" == "--restart-tunnel" ]]; then
   _CF_PID=$(pgrep -f "cloudflared tunnel run" 2>/dev/null || true)
   if [[ -n "$_CF_PID" ]]; then

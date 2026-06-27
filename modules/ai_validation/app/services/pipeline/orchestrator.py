@@ -12,7 +12,19 @@ from app.services.pipeline.steps.matrix_match import step_matrix_match
 from app.services.pipeline.steps.hs_suggest import step_hs_suggest
 
 
-def run_until_matrix_match(db: Session, transaction_id: int, threshold: float = 0.75) -> Dict[str, Any]:
+def _get_setting(db: Session, key: str, default: str) -> str:
+    from sqlalchemy import text
+    try:
+        row = db.execute(text("SELECT value FROM system_settings WHERE key=:k"), {"k": key}).fetchone()
+        return row[0] if row else default
+    except Exception:
+        return default
+
+
+def run_until_matrix_match(db: Session, transaction_id: int, threshold: float | None = None) -> Dict[str, Any]:
+    if threshold is None:
+        threshold = float(_get_setting(db, "matrix_match_threshold", "0.82"))
+    top_k = int(_get_setting(db, "matrix_match_top_k", "10"))
     r1 = execute_step(
         db=db,
         transaction_id=transaction_id,
@@ -48,7 +60,7 @@ def run_until_matrix_match(db: Session, transaction_id: int, threshold: float = 
         transaction_id=transaction_id,
         run_type=RunType.matrix_match,
         step_fn=step_matrix_match,
-        params={"threshold": threshold, "regime": "JP_FX", "top_k_per_usage": 10},
+        params={"threshold": threshold, "regime": "JP_FX", "top_k_per_usage": top_k},
         model_name="local",
         prompt_version="matrix_match_v2_fx",
     )

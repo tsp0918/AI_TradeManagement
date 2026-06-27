@@ -51,6 +51,61 @@
   </form>
 </div>
 
+<!-- バッチスクリーニング -->
+<div class="card" style="margin-top:0;">
+  <div class="card-title">CSV 一括スクリーニング</div>
+  <div style="font-size:.82rem; color:var(--muted); margin-bottom:12px;">
+    複数の企業名・個人名を CSV で一括照合します。1 行目はヘッダー行（name, country, address）。最大 200 行。
+    <a href="#" id="csv-sample-link" style="margin-left:8px; font-size:.78rem;">サンプルCSVをダウンロード</a>
+  </div>
+  <form id="batch-form" style="display:flex; flex-direction:column; gap:10px; max-width:520px;">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+      <div class="field" style="flex:1;">
+        <label for="batch-file">CSV ファイル</label>
+        <input type="file" id="batch-file" accept=".csv" required
+               style="padding:7px 10px; border:1.5px solid var(--border); border-radius:8px;">
+      </div>
+      <div class="field" style="max-width:120px;">
+        <label>閾値</label>
+        <div style="display:flex; align-items:center; gap:6px; font-size:.82rem;">
+          <input type="range" id="batch-threshold-range" min="50" max="99" value="75"
+                 style="width:70px;" oninput="document.getElementById('batch-threshold-val').textContent=this.value+'%'">
+          <span id="batch-threshold-val">75%</span>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" id="batch-btn">一括照合</button>
+    </div>
+  </form>
+
+  <div id="batch-progress" style="display:none; margin-top:12px;">
+    <div style="display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--muted);">
+      <span style="font-size:1rem;">⏳</span> <span id="batch-progress-msg">処理中…</span>
+    </div>
+  </div>
+
+  <div id="batch-result" style="display:none; margin-top:14px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+      <div id="batch-summary" style="display:flex; gap:12px; flex-wrap:wrap;"></div>
+      <button id="batch-export-btn" onclick="_exportBatchCSV()" class="btn" style="font-size:.78rem;">⬇ CSVエクスポート</button>
+    </div>
+    <div class="highlight-scroll" style="max-height:320px;">
+      <table class="table highlight-table">
+        <thead>
+          <tr>
+            <th style="width:36px;">#</th>
+            <th>名称</th>
+            <th style="width:60px;">国</th>
+            <th style="width:80px;">判定</th>
+            <th style="width:80px; text-align:right;">スコア</th>
+            <th style="width:50px; text-align:center;">詳細</th>
+          </tr>
+        </thead>
+        <tbody id="batch-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- 結果エリア -->
 <div id="result-area" style="display:none; margin-top:0;">
 
@@ -234,6 +289,107 @@ function _scoreColor(score) {
   if (score >= 0.9) return "#ef4444";
   if (score >= 0.75) return "#f59e0b";
   return "#22c55e";
+}
+
+// CSV サンプルダウンロード
+document.getElementById("csv-sample-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  const csv = "name,country,address\nBeijing Acme Technology Co. Ltd,CN,\nIran Air,IR,Tehran\nHuawei Technologies,CN,Shenzhen\n";
+  const url = URL.createObjectURL(new Blob(["﻿" + csv], {type: "text/csv"}));
+  const a = document.createElement("a"); a.href = url; a.download = "screening_sample.csv";
+  a.click(); URL.revokeObjectURL(url);
+});
+
+// バッチスクリーニング
+document.getElementById("batch-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("batch-btn");
+  btn.disabled = true;
+  btn.textContent = "⏳ 処理中…";
+  document.getElementById("batch-progress").style.display = "";
+  document.getElementById("batch-result").style.display = "none";
+
+  const file = document.getElementById("batch-file").files[0];
+  const threshold = parseInt(document.getElementById("batch-threshold-range").value, 10) / 100;
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("threshold", threshold);
+
+  try {
+    const res = await fetch("/api/screen/batch", { method: "POST", body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({detail: "エラーが発生しました"}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    _renderBatchResult(data);
+  } catch (err) {
+    alert("バッチエラー: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "一括照合";
+    document.getElementById("batch-progress").style.display = "none";
+  }
+});
+
+let _lastBatchData = null;
+
+function _renderBatchResult(data) {
+  _lastBatchData = data;
+  document.getElementById("batch-result").style.display = "";
+  const summary = document.getElementById("batch-summary");
+  summary.innerHTML = `
+    <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:8px 14px; font-size:.85rem;">
+      合計 <strong>${data.total}</strong> 件
+    </div>
+    <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:8px 14px; font-size:.85rem; color:#be123c;">
+      🚨 ヒット <strong>${data.hits}</strong> 件
+    </div>
+    <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:8px 14px; font-size:.85rem; color:#166534;">
+      ✓ クリア <strong>${data.clean}</strong> 件
+    </div>`;
+
+  const tbody = document.getElementById("batch-tbody");
+  tbody.innerHTML = (data.results || []).map(r => {
+    const isHit = r.status === "match";
+    const isPoss = r.status === "possible_match";
+    const isErr = r.status === "error";
+    let badge = isHit ? '<span class="badge badge-match">🚨 ヒット</span>'
+              : isPoss ? '<span class="badge badge-possible">⚠ 要確認</span>'
+              : isErr  ? '<span class="badge" style="background:#fef9c3;color:#713f12;">エラー</span>'
+              : '<span class="badge badge-clear">✓ クリア</span>';
+    const scoreStr = r.max_score != null ? Math.round(r.max_score * 1000) / 10 + "%" : "—";
+    const scoreColor = r.max_score >= 0.9 ? "#ef4444" : r.max_score >= 0.75 ? "#f59e0b" : "#22c55e";
+    const detail = r.result_id ? `<a href="/ui/results" class="btn" style="font-size:.72rem; padding:2px 8px;">詳細</a>` : "";
+    return `<tr style="${(isHit||isPoss) ? 'background:#fffbeb;' : ''}">
+      <td style="font-size:.75rem; color:var(--muted);">${r.row}</td>
+      <td style="font-size:.85rem; font-weight:600;">${r.name}<br><span style="font-weight:400; color:var(--muted); font-size:.75rem;">${r.country||""}</span></td>
+      <td style="font-size:.78rem; color:var(--muted);">${r.country||"—"}</td>
+      <td>${badge}</td>
+      <td style="text-align:right; font-size:.85rem; font-weight:700; color:${r.max_score ? scoreColor : 'var(--muted)'};">${scoreStr}</td>
+      <td style="text-align:center;">${detail}</td>
+    </tr>`;
+  }).join("");
+}
+
+function _exportBatchCSV() {
+  if (!_lastBatchData) return;
+  const BOM = "﻿";
+  const header = "行番号,名称,国,判定,スコア(%),マッチ件数,結果ID\n";
+  const rows = (_lastBatchData.results || []).map(r => {
+    const score = r.max_score != null ? Math.round(r.max_score * 1000) / 10 : "";
+    const statusMap = { match: "ヒット", possible_match: "要確認", clear: "クリア", error: "エラー" };
+    const status = statusMap[r.status] || r.status || "";
+    const esc = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    return [r.row, esc(r.name), esc(r.country || ""), esc(status), score, r.matches ?? 0, esc(r.result_id || "")].join(",");
+  }).join("\n");
+  const now = new Date();
+  const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}`;
+  const url = URL.createObjectURL(new Blob([BOM + header + rows], { type: "text/csv;charset=utf-8;" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = `screening_batch_${ts}.csv`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
 function _renderResult(data) {

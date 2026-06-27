@@ -55,6 +55,8 @@ _WA_ML_JSON     = _STAGING / "wassenaar_ml_entries.json"
 _ECCN_TERMS_JSON = _ACADEMIC / "eccn_tech_terms.json"
 _OUT_INDEX      = _STAGING / "layer_a.index"
 _OUT_META       = _STAGING / "layer_a_meta.json"
+# ai_validation SQLite DB (matrix_rules 2025年改正分)
+_VALIDATION_DB  = _ROOT / "modules" / "ai_validation" / "app.db"
 
 # entity_list は制裁スクリーニング用途であり、品目規制判定には不要なため除外
 _SKIP_SOURCE_TYPES = frozenset({"entity_list"})
@@ -288,6 +290,51 @@ def _load_records() -> list[dict]:
                 "full_text":   full,
                 "embed_text":  et,
             })
+
+    # ── matrix_rules 2025年改正（ai_validation SQLite から自動取込） ────────
+    if not _VALIDATION_DB.exists():
+        logger.warning("ai_validation DB not found: %s", _VALIDATION_DB)
+    else:
+        import sqlite3
+        conn = sqlite3.connect(str(_VALIDATION_DB))
+        conn.row_factory = sqlite3.Row
+        # effective_date が 2025-04-01 以降の改正追加分のみ取込
+        rows = conn.execute(
+            "SELECT item_no, list_name, title, requirement_text, usage_criteria_text, "
+            "tech_criteria_text, effective_date FROM matrix_rules "
+            "WHERE regime='JP_FX' AND effective_date >= '2025-04-01' "
+            "ORDER BY item_no, id"
+        ).fetchall()
+        conn.close()
+        # item_no 単位で最新1件のみ（同 item_no 重複回避）
+        seen: set[str] = set()
+        for row in rows:
+            item_no = row["item_no"]
+            if item_no in seen:
+                continue
+            seen.add(item_no)
+            parts = [
+                f"外為法輸出令別表第一 {item_no}（{row['list_name']}）: {row['title']}",
+                row["requirement_text"] or "",
+                row["usage_criteria_text"] or "",
+                row["tech_criteria_text"] or "",
+            ]
+            full = " ".join(p for p in parts if p).strip()
+            et = _PASSAGE_PREFIX + full[:1200]
+            records.append({
+                "source_type": "jp_fx_2025",
+                "source_name": "jp_fx_amendment_2025",
+                "article_no":  item_no,
+                "title":       row["title"] or "",
+                "item_no":     item_no,
+                "item_label":  row["list_name"] or "",
+                "chunk_level": "amendment",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
+                "embed_text":  et,
+            })
+        logger.info("JP_FX 2025 amendments from DB: %d", len(seen))
 
     logger.info("Total build records: %d", len(records))
     return records

@@ -535,7 +535,8 @@ def build_external_ai_items(product: Product) -> list[dict]:
         if not isinstance(ev, dict):
             ev = {}
         items.append({
-            "rule_item_no": ev.get("rule_item_no") or m.get("rule_item_no") or "",
+            # rule_item_no（旧形式）と item_no（新形式FAISS）の両方に対応
+            "rule_item_no": ev.get("rule_item_no") or ev.get("item_no") or m.get("rule_item_no") or "",
             "decision": m.get("decision") or ev.get("decision") or "",
             "match_score": m.get("match_score"),
         })

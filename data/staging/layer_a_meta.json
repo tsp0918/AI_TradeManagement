@@ -1,8 +1,8 @@
 {
-  "total": 2184,
+  "total": 2192,
   "dim": 1024,
   "model": "intfloat/multilingual-e5-large",
-  "built_at": "2026-05-09T15:20:52+00:00",
+  "built_at": "2026-06-26T02:52:23+00:00",
   "source_breakdown": {
     "law": 1014,
     "tsutatsu": 54,
@@ -11,7 +11,8 @@
     "usml_itar": 21,
     "eu_dual_use": 10,
     "wassenaar_ml": 22,
-    "eccn_tech": 20
+    "eccn_tech": 25,
+    "jp_fx_2025": 3
   },
   "records": [
     {
@@ -30334,8 +30335,8 @@
       "chunk_level": "keywords",
       "value_mm": null,
       "value_unit": null,
-      "full_text": "ECCN 3A002 電子試験・測定機器: high speed oscilloscope; signal generator microwave; spectrum analyzer millimeter wave; vector network analyzer; arbitrary waveform generator; pulse generator nanosecond (IPC: G01R 13/00, G01R 23/00, H03B 1/00)",
-      "embed_text": "passage: ECCN 3A002 電子試験・測定機器: high speed oscilloscope; signal generator microwave; spectrum analyzer millimeter wave; vector network analyzer; arbitrary waveform generator; pulse generator nanosecond (IPC: G01R 13/00, G01R 23/00, H03B 1/00)",
+      "full_text": "ECCN 3A002 電子試験・測定機器: high speed oscilloscope digital; microwave signal generator; spectrum analyzer millimeter wave; vector network analyzer VNA; arbitrary waveform generator AWG; pulse generator nanosecond; RF measurement instrument; time domain reflectometry; electromagnetic compatibility testing (IPC: G01R 13/00, G01R 23/00, H03B 1/00)",
+      "embed_text": "passage: ECCN 3A002 電子試験・測定機器: high speed oscilloscope digital; microwave signal generator; spectrum analyzer millimeter wave; vector network analyzer VNA; arbitrary waveform generator AWG; pulse generator nanosecond; RF measurement instrument; time domain reflectometry; electromagnetic compatibility testing (IPC: G01R 13/00, G01R 23/00, H03B 1/00)",
       "faiss_id": 2165
     },
     {
@@ -30362,8 +30363,8 @@
       "chunk_level": "keywords",
       "value_mm": null,
       "value_unit": null,
-      "full_text": "ECCN 5A001 電気通信機器: software defined radio cognitive; phased array antenna beamforming; millimeter wave communication 5G; terahertz communication; spread spectrum low probability intercept; anti-jam communication waveform; electronic warfare receiver (IPC: H04B 1/00, H01Q 3/26, H04K 3/00)",
-      "embed_text": "passage: ECCN 5A001 電気通信機器: software defined radio cognitive; phased array antenna beamforming; millimeter wave communication 5G; terahertz communication; spread spectrum low probability intercept; anti-jam communication waveform; electronic warfare receiver (IPC: H04B 1/00, H01Q 3/26, H04K 3/00)",
+      "full_text": "ECCN 5A001 電気通信機器: software defined radio; cognitive radio dynamic spectrum; phased array antenna beamforming; millimeter wave 5G communication; terahertz THz communication; spread spectrum anti-jam; electronic warfare jamming; satellite communication secure; MIMO antenna system (IPC: H04B 1/00, H01Q 3/26, H04K 3/00)",
+      "embed_text": "passage: ECCN 5A001 電気通信機器: software defined radio; cognitive radio dynamic spectrum; phased array antenna beamforming; millimeter wave 5G communication; terahertz THz communication; spread spectrum anti-jam; electronic warfare jamming; satellite communication secure; MIMO antenna system (IPC: H04B 1/00, H01Q 3/26, H04K 3/00)",
       "faiss_id": 2167
     },
     {
@@ -30390,8 +30391,8 @@
       "chunk_level": "keywords",
       "value_mm": null,
       "value_unit": null,
-      "full_text": "ECCN 6A001 音響センサー（ソナー）: underwater acoustic array; sonar signal processing; hydrophone array beamforming; acoustic vector sensor; passive sonar detection; acoustic emission sensor (IPC: G01S 15/00, H04R 1/44, G01H 3/00)",
-      "embed_text": "passage: ECCN 6A001 音響センサー（ソナー）: underwater acoustic array; sonar signal processing; hydrophone array beamforming; acoustic vector sensor; passive sonar detection; acoustic emission sensor (IPC: G01S 15/00, H04R 1/44, G01H 3/00)",
+      "full_text": "ECCN 6A001 音響センサー（ソナー）: underwater acoustic sonar; sonar array signal processing; hydrophone array; acoustic vector sensor; passive sonar detection; ultrasonic transducer array; underwater sound propagation; acoustic emission monitoring (IPC: G01S 15/00, H04R 1/44, G01H 3/00)",
+      "embed_text": "passage: ECCN 6A001 音響センサー（ソナー）: underwater acoustic sonar; sonar array signal processing; hydrophone array; acoustic vector sensor; passive sonar detection; ultrasonic transducer array; underwater sound propagation; acoustic emission monitoring (IPC: G01S 15/00, H04R 1/44, G01H 3/00)",
       "faiss_id": 2169
     },
     {
@@ -30418,8 +30419,8 @@
       "chunk_level": "keywords",
       "value_mm": null,
       "value_unit": null,
-      "full_text": "ECCN 7A001 航法・慣性装置: inertial navigation system MEMS; ring laser gyroscope; fiber optic gyroscope; accelerometer MEMS navigation; GPS anti-spoofing; inertial measurement unit high accuracy; atom interferometry inertial sensor (IPC: G01C 19/56, G01C 21/16, G01P 15/08)",
-      "embed_text": "passage: ECCN 7A001 航法・慣性装置: inertial navigation system MEMS; ring laser gyroscope; fiber optic gyroscope; accelerometer MEMS navigation; GPS anti-spoofing; inertial measurement unit high accuracy; atom interferometry inertial sensor (IPC: G01C 19/56, G01C 21/16, G01P 15/08)",
+      "full_text": "ECCN 7A001 航法・慣性装置: inertial navigation system; ring laser gyroscope; fiber optic gyroscope FOG; MEMS gyroscope inertial; GPS anti-spoofing secure; inertial measurement unit IMU; atom interferometry gravimeter; navigation grade sensor (IPC: G01C 19/56, G01C 21/16, G01P 15/08)",
+      "embed_text": "passage: ECCN 7A001 航法・慣性装置: inertial navigation system; ring laser gyroscope; fiber optic gyroscope FOG; MEMS gyroscope inertial; GPS anti-spoofing secure; inertial measurement unit IMU; atom interferometry gravimeter; navigation grade sensor (IPC: G01C 19/56, G01C 21/16, G01P 15/08)",
       "faiss_id": 2171
     },
     {
@@ -30432,8 +30433,8 @@
       "chunk_level": "keywords",
       "value_mm": null,
       "value_unit": null,
-      "full_text": "ECCN 7A002 航法加速度計: quartz accelerometer navigation grade; pendulous integrating gyroscopic accelerometer; PIGA accelerometer; MEMS accelerometer inertial grade (IPC: G01P 15/09, G01C 19/02)",
-      "embed_text": "passage: ECCN 7A002 航法加速度計: quartz accelerometer navigation grade; pendulous integrating gyroscopic accelerometer; PIGA accelerometer; MEMS accelerometer inertial grade (IPC: G01P 15/09, G01C 19/02)",
+      "full_text": "ECCN 7A002 航法加速度計: quartz accelerometer high precision; MEMS accelerometer navigation grade; pendulous accelerometer; seismic accelerometer geophysical; vibration isolation precision (IPC: G01P 15/09, G01C 19/02)",
+      "embed_text": "passage: ECCN 7A002 航法加速度計: quartz accelerometer high precision; MEMS accelerometer navigation grade; pendulous accelerometer; seismic accelerometer geophysical; vibration isolation precision (IPC: G01P 15/09, G01C 19/02)",
       "faiss_id": 2172
     },
     {
@@ -30446,8 +30447,8 @@
       "chunk_level": "keywords",
       "value_mm": null,
       "value_unit": null,
-      "full_text": "ECCN 9A001 航空エンジン: turbofan engine thrust-to-weight ratio; high bypass ratio turbofan; turbine blade cooling; single crystal turbine blade; turbofan compressor aerodynamics; jet engine afterburner; hypersonic propulsion scramjet (IPC: F02K 3/00, F02C 3/00, F02C 7/12)",
-      "embed_text": "passage: ECCN 9A001 航空エンジン: turbofan engine thrust-to-weight ratio; high bypass ratio turbofan; turbine blade cooling; single crystal turbine blade; turbofan compressor aerodynamics; jet engine afterburner; hypersonic propulsion scramjet (IPC: F02K 3/00, F02C 3/00, F02C 7/12)",
+      "full_text": "ECCN 9A001 航空エンジン: gas turbine engine performance; turbofan engine design; turbine blade cooling film; single crystal superalloy blade; compressor aerodynamics jet; scramjet hypersonic propulsion; jet engine thermal efficiency (IPC: F02K 3/00, F02C 3/00, F02C 7/12)",
+      "embed_text": "passage: ECCN 9A001 航空エンジン: gas turbine engine performance; turbofan engine design; turbine blade cooling film; single crystal superalloy blade; compressor aerodynamics jet; scramjet hypersonic propulsion; jet engine thermal efficiency (IPC: F02K 3/00, F02C 3/00, F02C 7/12)",
       "faiss_id": 2173
     },
     {
@@ -30586,9 +30587,121 @@
       "chunk_level": "keywords",
       "value_mm": null,
       "value_unit": null,
-      "full_text": "ECCN 9A610 軍用航空機システム: radar cross section reduction stealth; electronic countermeasure aircraft; infrared signature suppression; fly-by-wire flight control system; unmanned aerial vehicle autonomous; UAV swarm coordination; directed energy weapon aircraft (IPC: B64C 39/02, H01Q 17/00, G05D 1/10)",
-      "embed_text": "passage: ECCN 9A610 軍用航空機システム: radar cross section reduction stealth; electronic countermeasure aircraft; infrared signature suppression; fly-by-wire flight control system; unmanned aerial vehicle autonomous; UAV swarm coordination; directed energy weapon aircraft (IPC: B64C 39/02, H01Q 17/00, G05D 1/10)",
+      "full_text": "ECCN 9A610 軍用航空機システム: radar cross section stealth aircraft; electronic countermeasure ECM; infrared signature reduction; fly-by-wire flight control; unmanned aerial vehicle UAV; drone swarm autonomous; directed energy weapon laser (IPC: B64C 39/02, H01Q 17/00, G05D 1/10)",
+      "embed_text": "passage: ECCN 9A610 軍用航空機システム: radar cross section stealth aircraft; electronic countermeasure ECM; infrared signature reduction; fly-by-wire flight control; unmanned aerial vehicle UAV; drone swarm autonomous; directed energy weapon laser (IPC: B64C 39/02, H01Q 17/00, G05D 1/10)",
       "faiss_id": 2183
+    },
+    {
+      "source_type": "eccn_tech",
+      "source_name": "eccn_tech_terms",
+      "article_no": "3B001",
+      "title": "半導体製造装置",
+      "item_no": "3B001",
+      "item_label": "半導体製造装置",
+      "chunk_level": "keywords",
+      "value_mm": null,
+      "value_unit": null,
+      "full_text": "ECCN 3B001 半導体製造装置: EUV lithography extreme ultraviolet; semiconductor etching plasma; CVD chemical vapor deposition thin film; atomic layer deposition ALD; ion implantation semiconductor; CMP chemical mechanical planarization; electron beam lithography; photolithography immersion; semiconductor wafer inspection (IPC: H01L 21/027, H01L 21/302, C23C 16/00, B81C 1/00)",
+      "embed_text": "passage: ECCN 3B001 半導体製造装置: EUV lithography extreme ultraviolet; semiconductor etching plasma; CVD chemical vapor deposition thin film; atomic layer deposition ALD; ion implantation semiconductor; CMP chemical mechanical planarization; electron beam lithography; photolithography immersion; semiconductor wafer inspection (IPC: H01L 21/027, H01L 21/302, C23C 16/00, B81C 1/00)",
+      "faiss_id": 2184
+    },
+    {
+      "source_type": "eccn_tech",
+      "source_name": "eccn_tech_terms",
+      "article_no": "3C001",
+      "title": "半導体材料（基板・ウェーハ）",
+      "item_no": "3C001",
+      "item_label": "半導体材料（基板・ウェーハ）",
+      "chunk_level": "keywords",
+      "value_mm": null,
+      "value_unit": null,
+      "full_text": "ECCN 3C001 半導体材料（基板・ウェーハ）: silicon carbide SiC substrate; gallium nitride GaN epitaxial; silicon wafer crystal growth; compound semiconductor substrate; diamond semiconductor substrate; gallium oxide Ga2O3 semiconductor; indium phosphide InP wafer (IPC: C30B 29/36, H01L 21/20, C30B 23/00)",
+      "embed_text": "passage: ECCN 3C001 半導体材料（基板・ウェーハ）: silicon carbide SiC substrate; gallium nitride GaN epitaxial; silicon wafer crystal growth; compound semiconductor substrate; diamond semiconductor substrate; gallium oxide Ga2O3 semiconductor; indium phosphide InP wafer (IPC: C30B 29/36, H01L 21/20, C30B 23/00)",
+      "faiss_id": 2185
+    },
+    {
+      "source_type": "eccn_tech",
+      "source_name": "eccn_tech_terms",
+      "article_no": "5E001",
+      "title": "電気通信技術（ソフトウェア）",
+      "item_no": "5E001",
+      "item_label": "電気通信技術（ソフトウェア）",
+      "chunk_level": "keywords",
+      "value_mm": null,
+      "value_unit": null,
+      "full_text": "ECCN 5E001 電気通信技術（ソフトウェア）: software defined networking SDN; network function virtualization NFV; 5G network slicing; low latency communication protocol; secure communication protocol design; frequency hopping spread spectrum (IPC: H04L 12/00, H04W 28/00, H04B 7/00)",
+      "embed_text": "passage: ECCN 5E001 電気通信技術（ソフトウェア）: software defined networking SDN; network function virtualization NFV; 5G network slicing; low latency communication protocol; secure communication protocol design; frequency hopping spread spectrum (IPC: H04L 12/00, H04W 28/00, H04B 7/00)",
+      "faiss_id": 2186
+    },
+    {
+      "source_type": "eccn_tech",
+      "source_name": "eccn_tech_terms",
+      "article_no": "5E002",
+      "title": "情報セキュリティ技術",
+      "item_no": "5E002",
+      "item_label": "情報セキュリティ技術",
+      "chunk_level": "keywords",
+      "value_mm": null,
+      "value_unit": null,
+      "full_text": "ECCN 5E002 情報セキュリティ技術: cryptographic algorithm implementation; zero knowledge proof cryptography; fully homomorphic encryption FHE; secure boot trusted platform; side channel analysis power; cryptographic hardware accelerator; post-quantum algorithm CRYSTALS (IPC: G06F 21/00, H04L 9/30, G09C 1/00)",
+      "embed_text": "passage: ECCN 5E002 情報セキュリティ技術: cryptographic algorithm implementation; zero knowledge proof cryptography; fully homomorphic encryption FHE; secure boot trusted platform; side channel analysis power; cryptographic hardware accelerator; post-quantum algorithm CRYSTALS (IPC: G06F 21/00, H04L 9/30, G09C 1/00)",
+      "faiss_id": 2187
+    },
+    {
+      "source_type": "eccn_tech",
+      "source_name": "eccn_tech_terms",
+      "article_no": "9E001",
+      "title": "航空宇宙技術",
+      "item_no": "9E001",
+      "item_label": "航空宇宙技術",
+      "chunk_level": "keywords",
+      "value_mm": null,
+      "value_unit": null,
+      "full_text": "ECCN 9E001 航空宇宙技術: aerospace structural material fatigue; reentry vehicle heat shield ablative; hypersonic vehicle aerodynamics; aircraft composite structure; aero engine turbine material; space launch vehicle propulsion (IPC: B64C 1/00, B64G 1/00, F02K 9/00)",
+      "embed_text": "passage: ECCN 9E001 航空宇宙技術: aerospace structural material fatigue; reentry vehicle heat shield ablative; hypersonic vehicle aerodynamics; aircraft composite structure; aero engine turbine material; space launch vehicle propulsion (IPC: B64C 1/00, B64G 1/00, F02K 9/00)",
+      "faiss_id": 2188
+    },
+    {
+      "source_type": "jp_fx_2025",
+      "source_name": "jp_fx_amendment_2025",
+      "article_no": "EL-7-24",
+      "title": "EUVリソグラフィ用フォトレジスト",
+      "item_no": "EL-7-24",
+      "item_label": "外為法輸出令別表第一",
+      "chunk_level": "amendment",
+      "value_mm": null,
+      "value_unit": null,
+      "full_text": "外為法輸出令別表第一 EL-7-24（外為法輸出令別表第一）: EUVリソグラフィ用フォトレジスト ArF・EUV露光プロセスに使用されるフォトレジスト材料及びその前駆体であって、解像度10nm以下のパターニングに対応するもの 半導体製造（10nm以下プロセスノード）・EUVリソグラフィシステムへの供給 解像度閾値 ≤10nm、感度≤10mJ/cm²、または経済産業省告示の技術パラメータ基準を満たすもの",
+      "embed_text": "passage: 外為法輸出令別表第一 EL-7-24（外為法輸出令別表第一）: EUVリソグラフィ用フォトレジスト ArF・EUV露光プロセスに使用されるフォトレジスト材料及びその前駆体であって、解像度10nm以下のパターニングに対応するもの 半導体製造（10nm以下プロセスノード）・EUVリソグラフィシステムへの供給 解像度閾値 ≤10nm、感度≤10mJ/cm²、または経済産業省告示の技術パラメータ基準を満たすもの",
+      "faiss_id": 2189
+    },
+    {
+      "source_type": "jp_fx_2025",
+      "source_name": "jp_fx_amendment_2025",
+      "article_no": "EL-7-25",
+      "title": "先端AI演算用半導体（GPU/NPU/TPU）",
+      "item_no": "EL-7-25",
+      "item_label": "外為法輸出令別表第一",
+      "chunk_level": "amendment",
+      "value_mm": null,
+      "value_unit": null,
+      "full_text": "外為法輸出令別表第一 EL-7-25（外為法輸出令別表第一）: 先端AI演算用半導体（GPU/NPU/TPU） 演算性能300TOPS以上の人工知能演算専用集積回路（GPU、NPU、TPUその他の演算加速器）及びその製造技術 人工知能学習・推論、自律型システム、兵器システム制御への転用可能性を考慮 演算性能≥300TOPS（INT8精度）、またはメモリ帯域幅≥2TB/s、または輸出令技術パラメータ基準",
+      "embed_text": "passage: 外為法輸出令別表第一 EL-7-25（外為法輸出令別表第一）: 先端AI演算用半導体（GPU/NPU/TPU） 演算性能300TOPS以上の人工知能演算専用集積回路（GPU、NPU、TPUその他の演算加速器）及びその製造技術 人工知能学習・推論、自律型システム、兵器システム制御への転用可能性を考慮 演算性能≥300TOPS（INT8精度）、またはメモリ帯域幅≥2TB/s、または輸出令技術パラメータ基準",
+      "faiss_id": 2190
+    },
+    {
+      "source_type": "jp_fx_2025",
+      "source_name": "jp_fx_amendment_2025",
+      "article_no": "EL-7-26",
+      "title": "高帯域幅メモリ（HBM）及び先端DRAMスタック",
+      "item_no": "EL-7-26",
+      "item_label": "外為法輸出令別表第一",
+      "chunk_level": "amendment",
+      "value_mm": null,
+      "value_unit": null,
+      "full_text": "外為法輸出令別表第一 EL-7-26（外為法輸出令別表第一）: 高帯域幅メモリ（HBM）及び先端DRAMスタック HBM3以降またはこれに相当する帯域幅を有する高帯域幅メモリスタック及びその製造技術 AI演算加速器、先端GPU、量子コンピューターへの搭載用途 メモリ帯域幅≥1.2TB/s（単一パッケージ）または積層数8段以上のHBMスタック",
+      "embed_text": "passage: 外為法輸出令別表第一 EL-7-26（外為法輸出令別表第一）: 高帯域幅メモリ（HBM）及び先端DRAMスタック HBM3以降またはこれに相当する帯域幅を有する高帯域幅メモリスタック及びその製造技術 AI演算加速器、先端GPU、量子コンピューターへの搭載用途 メモリ帯域幅≥1.2TB/s（単一パッケージ）または積層数8段以上のHBMスタック",
+      "faiss_id": 2191
     }
   ]
 }

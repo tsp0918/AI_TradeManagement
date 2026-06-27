@@ -190,6 +190,9 @@ async def _ensure_columns() -> None:
                 ("quantity",             "REAL"),           # 数量
                 ("hs_code",              "VARCHAR(20)"),    # HSコード
                 ("incoterms",            "VARCHAR(10)"),    # インコタームズ
+                # 輸出許可申請連携
+                ("linked_license_id",    "VARCHAR(36)"),    # export_license application UUID
+                ("linked_license_status","VARCHAR(32)"),    # draft/submitted/approved/rejected
             ]:
                 if col_name not in existing_tx:
                     conn.execute(text(f"ALTER TABLE transactions ADD COLUMN {col_name} {col_type}"))
@@ -234,6 +237,22 @@ async def _ensure_columns() -> None:
                 "CREATE UNIQUE INDEX IF NOT EXISTS ix_service_tx_case_no "
                 "ON service_transactions(case_no)"
             ))
+
+        # ── system_settings テーブル作成（管理者設定 KV ストア）──────────────
+        if not insp.has_table("system_settings"):
+            conn.execute(text("""
+                CREATE TABLE system_settings (
+                    key   VARCHAR(64) PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+                )
+            """))
+            # デフォルト値を投入
+            conn.execute(text("""
+                INSERT INTO system_settings (key, value) VALUES
+                  ('matrix_match_threshold', '0.82'),
+                  ('matrix_match_top_k',     '10')
+            """))
 
         conn.commit()
 

@@ -297,7 +297,7 @@ def _build_module_entry(m: ModuleRegistry) -> dict:
         "name":             m.name,
         "description":      m.description or "",
         "base_url":         m.base_url,
-        "iframe_url":       f"/proxy/{m.key}/",
+        "iframe_url":       known.get("iframe_url", f"/proxy/{m.key}/"),
         "icon":             _MODULE_ICONS.get(m.key, "📌"),
         "health_check_path": m.health_check_path,
         "nav_section":      known.get("nav_section", "process"),
@@ -530,6 +530,42 @@ async def platform_dashboard(request: Request, db: AsyncSession = Depends(get_db
         request, "platform_dashboard.html",
         {"registered_modules": registered, "version": "0.1.0"},
     )
+
+
+@router.get("/health-status", include_in_schema=False)
+async def all_module_health():
+    """全既知モジュールのヘルス状態を一括取得する（ポーリング用）。"""
+    # platform-core 自身 + 全既知モジュール
+    targets = [
+        {"key": "platform-core", "name": "プラットフォーム管理", "url": None},
+    ] + [
+        {
+            "key": m["key"],
+            "name": m["name"],
+            "url": (m["base_url"].rstrip("/") + m["health_check_path"])
+                    if m.get("base_url") and m.get("health_check_path") else None,
+        }
+        for m in _KNOWN_MODULES
+    ]
+
+    async def _check(t: dict) -> dict:
+        if t["url"] is None:
+            return {**t, "status": "online", "latency_ms": None}
+        import time
+        t0 = time.monotonic()
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(t["url"])
+            ms = round((time.monotonic() - t0) * 1000)
+            if resp.status_code == 200:
+                return {**t, "status": "online", "latency_ms": ms}
+            return {**t, "status": "offline", "latency_ms": None, "code": resp.status_code}
+        except Exception:
+            return {**t, "status": "offline", "latency_ms": None}
+
+    results = await asyncio.gather(*[_check(t) for t in targets])
+    online = sum(1 for r in results if r["status"] == "online")
+    return {"modules": results, "online": online, "total": len(results)}
 
 
 @router.get("/health/{module_key}", include_in_schema=False)

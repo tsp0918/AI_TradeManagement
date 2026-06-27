@@ -1,7 +1,9 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-05-31 更新（品目管理UI全面リデザイン・EPA/FTA優遇税率・国別HSサマリーテーブル・DAP DEMO3完成）
+# 2026-06-26 更新（Phase 5 完了: FAISS再ビルド・CSVエクスポート・CI連携・輸出許可双方向連携・ERP Bearer認証・Red Flag詳細入力UI）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
+> 2026-06-26（2回目）追加: **Phase 5 完了** — ①Layer A FAISS 再ビルド（2,184→2,192vec、jp_fx_2025:3件 EL-7-24/25/26 EUVフォトレジスト/先端AI GPU/HBM反映）②Screeningバッチ結果 CSV エクスポート（クライアントサイド BOM付、タイムスタンプファイル名）③`./start.sh --verify-demos` CI連携（ワンコマンドDEMO全6本検証）④輸出許可申請双方向連携強化（linked_license_id書戻し・license-status PATCH エンドポイント・承認/却下コールバック・Transaction Detail ステータスパネル）⑤ERP Webhook Bearer認証完全適用（pull_review.py 4エンドポイント＋AITM_WEBHOOK_SECRET環境変数）⑥Red Flag 詳細入力UI（「該当」選択時テキストエリア展開・note値送信・判定結果にRF内容/根拠表示）
+> 2026-06-26 追加: **Phase 4 完了** — ①export_licenses.html Undefined.format()修正（防御的Jinja2）②役務取引UIフロー完成・テストデータ投入③DEMO全6本自動検証スクリプト（verify_demos.py）④FTA/EPA実データ拡充（15協定・61税率）⑤rd_case_items テストデータ6件⑥DEMO6新設（みなし輸出サービス取引審査）⑦２リスト閾値調整UI（system_settings + /ui/admin/settings）⑧screeningバッチ機能（POST /api/screen/batch・CSV最大200行）⑨Cloudflare Tunnel launchd自動復旧（com.tsp.cloudflared.plist）⑩ヘルスダッシュボードリアルタイム化（/ui/health-status + 30秒ポーリンググリッド）⑪SQLite alembic_version_validation スタンプ（g4h5i6j7k8l9）⑫matrix_rules バージョン更新（JP_FX_2025）+ 2025年改正3件追加（EUVフォトレジスト・先端AI演算GPU・HBM）
 > 2026-05-31（2回目）追加: ①品目管理 UI 全面リデザイン（sticky セーブバー・ブロック順序最適化・GHS折り畳み・外部AI判定2カラム整理）②国別HSコードサマリーテーブル追加（国|役割|ローカルHS|品目説明|MFN関税率|EPA/FTA優遇|協定名|輸出許可）③EPA/FTA優遇税率（epa_tariff_rate）+ 協定名（epa_agreement）をDB・API・UIに追加④DAP DEMO3（OMEGA-300輸出審査フロー）完成・DEMO1/DEMO2の品番入力前「品目同時登録」チェック追加
 > 2026-05-31（1回目）追加: ①サプライヤー申告フォームに HS コード必須フィールド追加・cert_confirmed チェックボックス（責任確認）追加・送信ボタン disabled 制御 ②社内手動証明書登録ルート（is_manual_registration フラグ・upload-doc エンドポイント・📎手動証明書登録モーダル）③サプライヤーは単一ノードのみ参照（BOM構造非公開）・?superadmin=1 でハイパーADMINモード（紫バナー・全ノード生JSON・コンソールヘルパー）④bom_attestation_summary の us_controlled_pct 104%バグ修正（edge.quantity直和 → unit_value_usd 金額加重計算）⑤フルDryRun完了: FG-001 OMEGA-300 → BOM 4品目 → SC sync → ポータル申告 → AI判定 → アクセプト → AI取引審査（API-20260531-1646、catchall_recommended:true）
 > 2026-05-25（2回目）追加: ①BOMグラフノードパネルに ECCN同期・AI判定依頼ボタン追加（ワンクリックで sync-eccn / request-eccn、グラフリアルタイム更新）②サプライヤーポータル招待メール自動送信（smtplib STARTTLS、SMTP_HOST等env var設定で有効化）③R&D→AI判定フロー修正（form POST→JSON API統一、end_user_name counterparty_name引き継ぎ、FAISS自動起動）④取引先情報 GET /api/transactions/{id} に counterparty_name 追加⑤transaction_detail.html BOMコンテキストカード強化（JS動的取得: HSコード/ECCN/EARリスク/BOM構成品テーブル/BOMグラフリンク）⑥R&Dコンテキストカード追加（rnd_assessment起案時）⑦item_version再判定: item_code→SCノード逆引きでsupply_chain_node_id自動リンク。
@@ -264,6 +266,38 @@ search.py (GET /status):
 | P2-4: J-PlatPatフォールバック | BigQuery未設定時の特許検索フォールバック | 2026-03-21 |
 | HSコードAI判定強化 | ECCN付加・再ランキング・モーダルUI・反映ボタン | 2026-03-21 |
 | HS同期エンドポイント | /classify/sync（webhook不要） | 2026-03-21 |
+
+---
+
+### ✅ Phase 4 完了（2026-06-26）
+
+| タスク | 内容 | 完了日 |
+|--------|------|--------|
+| Phase 4-A① | export_licenses.html Undefined.format() 防御修正（`| default(none)` + `| float` ガード） | 2026-06-26 |
+| Phase 4-A② | 役務取引UIフロー完成（service_transactions テストデータ2件）・rd_case_items テストデータ6件投入 | 2026-06-26 |
+| Phase 4-A③ | DEMO全6本自動検証スクリプト（scripts/verify_demos.py）作成。DEMO2/DEMO3のhighlight修正 | 2026-06-26 |
+| Phase 4-B① | FTA/EPA実データ拡充（10→15協定、23→61税率）。PH/ID/MN/AE/KR追加、HS8486/8541/8542/9031系追加 | 2026-06-26 |
+| Phase 4-B② | rnd_assessment rd_case_items テストデータ6件投入（ArFフォトレジスト/EUV/CVD/AI化学合成） | 2026-06-26 |
+| Phase 4-B③ | DEMO6新設（みなし輸出サービス取引審査フロー・5ステップ）uc_definitions.json に追加 | 2026-06-26 |
+| Phase 4-B④ | ２リスト閾値調整UI実装（system_settingsテーブル・/ui/admin/settings・orchestrator DB読込） | 2026-06-26 |
+| Phase 4-B⑤ | screeningバッチ機能（POST /api/screen/batch、CSV最大200行、サンプルCSVダウンロード） | 2026-06-26 |
+| Phase 4-C① | Cloudflare Tunnel launchd自動復旧（~/Library/LaunchAgents/com.tsp.cloudflared.plist、KeepAlive=true） | 2026-06-26 |
+| Phase 4-C② | ヘルスダッシュボードリアルタイム化（/ui/health-status 一括チェック・platform_dashboard 30秒ポーリング） | 2026-06-26 |
+| Phase 4-C③ | alembic_version_validation スタンプ（SQLite app.db にg4h5i6j7k8l9 記録） | 2026-06-26 |
+| Phase 4-C④ | matrix_rules バージョン付与（JP_FX_2025）・2025年改正3件追加（EL-7-24〜26: EUVフォトレジスト/先端AI GPU/HBM） | 2026-06-26 |
+
+---
+
+### ✅ Phase 5 完了（2026-06-26）
+
+| タスク | 内容 | 完了日 |
+|--------|------|--------|
+| Phase 5-A | Layer A FAISS 再ビルド（2,184→2,192vec）。build_layer_a.py に jp_fx_2025 ローダー追加。EL-7-24/25/26 反映・EUV検索スコア 0.886 確認 | 2026-06-26 |
+| Phase 5-B | Screeningバッチ結果 CSV エクスポート（「⬇ CSVエクスポート」ボタン追加・クライアントサイドCSV生成・タイムスタンプファイル名・BOM付） | 2026-06-26 |
+| Phase 5-C | `./start.sh --verify-demos` CI連携（--verify-demos オプション追加・ワンコマンドで全6DEMO検証・Exit code 連動） | 2026-06-26 |
+| Phase 5-D | 輸出許可申請双方向連携強化（linked_license_id/linked_license_status カラム追加・自動書戻し・PATCH /decision/{id}/license-status エンドポイント・export_license 承認/却下コールバック・Transaction Detail ライセンスステータスパネル） | 2026-06-26 |
+| Phase 5-E | ERP Webhook Bearer認証完全適用（pull_review.py 4エンドポイントに verify_api_key 追加・AITM_WEBHOOK_SECRET 環境変数・config.py AliasChoices 対応・401/200 動作確認） | 2026-06-26 |
+| Phase 5-F | Red Flag 詳細入力UI改善（「該当」選択時テキストエリア展開・rf1_note〜rf7_note 送信・判定結果に該当RF + 根拠メモ表示・toggleRfNote 関数追加） | 2026-06-26 |
 
 ---
 

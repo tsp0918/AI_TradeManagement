@@ -15,8 +15,10 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
+
+from ..auth import verify_api_key
 
 from ..adapters import erp_pull, faiss_search as faiss
 from ..adapters import screening as screen_adapter
@@ -207,7 +209,7 @@ async def _screen_party(party: dict) -> CounterpartyScreenResult:
 # ── エンドポイント ─────────────────────────────────────────────────────────────
 
 @router.post("/item-review", response_model=ItemReviewResult)
-async def pull_item_review(body: ItemReviewRequest) -> ItemReviewResult:
+async def pull_item_review(body: ItemReviewRequest, _: None = Depends(verify_api_key)) -> ItemReviewResult:
     """
     ERP から品目コードで品目マスターを取得し、AI 該非判定を実施して返す。
 
@@ -229,7 +231,7 @@ async def pull_item_review(body: ItemReviewRequest) -> ItemReviewResult:
 
 
 @router.post("/items-batch-review", response_model=ItemsBatchReviewResponse)
-async def pull_items_batch_review(body: ItemsBatchReviewRequest) -> ItemsBatchReviewResponse:
+async def pull_items_batch_review(body: ItemsBatchReviewRequest, _: None = Depends(verify_api_key)) -> ItemsBatchReviewResponse:
     """
     ERP から輸出管理レビュー対象品目を一括取得して AI 該非判定を実施する。
 
@@ -264,7 +266,7 @@ async def pull_items_batch_review(body: ItemsBatchReviewRequest) -> ItemsBatchRe
 
 
 @router.post("/counterparty-screen", response_model=CounterpartyScreenResult)
-async def pull_counterparty_screen(body: CounterpartyScreenRequest) -> CounterpartyScreenResult:
+async def pull_counterparty_screen(body: CounterpartyScreenRequest, _: None = Depends(verify_api_key)) -> CounterpartyScreenResult:
     """
     ERP から取引先コードで取引先マスターを取得し、制裁スクリーニングを実施して返す。
     """
@@ -287,6 +289,7 @@ async def pull_counterparty_screen(body: CounterpartyScreenRequest) -> Counterpa
 @router.post("/counterparties-batch-screen", response_model=CounterpartiesBatchScreenResponse)
 async def pull_counterparties_batch_screen(
     body: CounterpartiesBatchScreenRequest,
+    _: None = Depends(verify_api_key),
 ) -> CounterpartiesBatchScreenResponse:
     """
     ERP から取引先リストを一括取得して制裁スクリーニングを実施する。

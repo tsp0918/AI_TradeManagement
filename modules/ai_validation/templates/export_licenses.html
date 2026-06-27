@@ -23,19 +23,19 @@
     </div>
     <div class="col-6 col-md-3">
       <div class="card text-center border-0 bg-warning bg-opacity-10 py-2">
-        <div class="fs-4 fw-bold text-warning">{{ stats.pending or 0 }}</div>
+        <div class="fs-4 fw-bold text-warning">{{ stats.pending_submission or 0 }}</div>
         <div class="small text-muted">申請中</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="card text-center border-0 bg-success bg-opacity-10 py-2">
-        <div class="fs-4 fw-bold text-success">{{ stats.approved or 0 }}</div>
+        <div class="fs-4 fw-bold text-success">{{ stats.active_licenses or 0 }}</div>
         <div class="small text-muted">承認済</div>
       </div>
     </div>
     <div class="col-6 col-md-3">
       <div class="card text-center border-0 bg-danger bg-opacity-10 py-2">
-        <div class="fs-4 fw-bold text-danger">{{ stats.expiring_soon or 0 }}</div>
+        <div class="fs-4 fw-bold text-danger">{{ stats.expiring_soon_count or 0 }}</div>
         <div class="small text-muted">期限切れ間近</div>
       </div>
     </div>
@@ -79,21 +79,24 @@
                 <br><small class="text-muted">許可: {{ lic.license_number }}</small>
                 {% endif %}
               </td>
-              <td>{{ lic.product_code or "—" }}</td>
+              <td>{{ lic.item_description or "—" }}</td>
               <td>{{ lic.destination_country or "—" }}</td>
               <td>
                 {% if lic.license_type == "individual" %}個別許可
                 {% elif lic.license_type == "general" %}一般許可
                 {% elif lic.license_type == "blanket" %}包括許可
+                {% elif lic.license_type == "EAR" %}EAR
+                {% elif lic.license_type == "FEFTA" %}外為法
                 {% else %}{{ lic.license_type or "—" }}{% endif %}
               </td>
-              <td><span class="badge bg-secondary">{{ lic.authority or "—" }}</span></td>
-              <td class="text-end">{{ "{:,.0f}".format(lic.value_usd or 0) }}</td>
+              <td><span class="badge bg-secondary">{{ lic.issuing_authority or "—" }}</span></td>
+              <td class="text-end">{{ "{:,.0f}".format((lic.value_usd or 0) | float) if lic.value_usd is not none else "—" }}</td>
               <td class="text-end">
-                {% if lic.remaining_value_usd is not none %}
-                  {% set ratio = lic.remaining_value_usd / lic.value_usd * 100 if lic.value_usd else 0 %}
+                {% set _rem = lic.license_value_remaining_usd | default(none) %}
+                {% if _rem is not none and _rem is not undefined %}
+                  {% set ratio = (_rem | float) / (lic.value_usd | float) * 100 if lic.value_usd else 0 %}
                   <span class="{{ 'text-danger fw-bold' if ratio < 20 else 'text-success' }}">
-                    {{ "{:,.0f}".format(lic.remaining_value_usd) }}
+                    {{ "{:,.0f}".format(_rem | float) }}
                   </span>
                   <div class="progress" style="height:4px;min-width:60px">
                     <div class="progress-bar {{ 'bg-danger' if ratio < 20 else 'bg-success' }}"
@@ -103,11 +106,11 @@
               </td>
               <td class="text-nowrap">
                 {% if lic.expires_at %}
-                  {% set days = lic.days_until_expiry %}
-                  <span class="{{ 'text-danger fw-bold' if days is not none and days < 30 else '' }}">
+                  {% set days = lic.days_remaining %}
+                  <span class="{{ 'text-danger fw-bold' if days and days < 30 else '' }}">
                     {{ lic.expires_at[:10] }}
                   </span>
-                  {% if days is not none and days < 30 %}
+                  {% if days and days < 30 %}
                   <br><small class="text-danger">残{{ days }}日</small>
                   {% endif %}
                 {% else %}—{% endif %}

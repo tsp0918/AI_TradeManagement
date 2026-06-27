@@ -2,6 +2,7 @@
 
 エンドポイント:
   POST /api/screen              企業名スクリーニング実行
+  POST /api/screen/batch        CSV一括スクリーニング
   GET  /api/results             スクリーニング結果一覧
   GET  /api/results/{id}        スクリーニング結果詳細
   GET  /api/watchlist           ウォッチリスト一覧
@@ -12,10 +13,12 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
 logger = logging.getLogger(__name__)
 from sqlalchemy import select
@@ -46,6 +49,72 @@ async def screen_company(
 ):
     """企業名・住所をウォッチリストと照合する。"""
     return await run_screening(request, db)
+
+
+@router.post("/screen/batch", status_code=status.HTTP_200_OK)
+async def screen_batch(
+    file: UploadFile = File(..., description="CSV: name, country(optional), address(optional)"),
+    threshold: float = Form(0.75),
+    db: AsyncSession = Depends(get_db),
+):
+    """CSV ファイルを受け取り、全行を一括スクリーニングする（最大 200 件）。
+
+    CSV フォーマット（1行目はヘッダー）:
+      name, country, address
+    """
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=422, detail="CSVファイルを選択してください。")
+    content = await file.read()
+    try:
+        text_io = io.StringIO(content.decode("utf-8-sig"))
+    except UnicodeDecodeError:
+        text_io = io.StringIO(content.decode("cp932", errors="replace"))
+
+    reader = csv.DictReader(text_io)
+    rows = list(reader)
+    if not rows:
+        raise HTTPException(status_code=422, detail="CSVが空です。")
+    if len(rows) > 200:
+        raise HTTPException(status_code=422, detail="一度に処理できる上限は200行です。")
+
+    results = []
+    for i, row in enumerate(rows):
+        name = (row.get("name") or row.get("企業名") or row.get("company_name") or "").strip()
+        if not name:
+            continue
+        country = (row.get("country") or row.get("国コード") or "").strip() or None
+        address = (row.get("address") or row.get("住所") or "").strip() or None
+        req = ScreenRequest(company_name=name, country=country, address=address, threshold=threshold)
+        try:
+            result = await run_screening(req, db)
+            results.append({
+                "row": i + 1,
+                "name": name,
+                "country": country,
+                "status": result.result_status,
+                "max_score": result.max_score,
+                "matches": len(result.matches),
+                "result_id": str(result.id),
+            })
+        except Exception as exc:
+            results.append({
+                "row": i + 1,
+                "name": name,
+                "country": country,
+                "status": "error",
+                "max_score": None,
+                "matches": 0,
+                "error": str(exc),
+            })
+
+    total = len(results)
+    hits = sum(1 for r in results if r["status"] in ("match", "possible_match"))
+    return {
+        "total": total,
+        "hits": hits,
+        "clean": total - hits,
+        "results": results,
+    }
 
 
 # ── スクリーニング結果 ─────────────────────────────────────────────────────

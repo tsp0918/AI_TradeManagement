@@ -96,6 +96,10 @@ class Transaction(Base, TimestampMixin):
     # みなし輸出連携
     deemed_export_personnel_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)  # rnd_assessment personnel_id
 
+    # 輸出許可申請連携
+    linked_license_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)        # export_license application UUID
+    linked_license_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)    # draft/submitted/approved/rejected
+
     # ERP 連携フィールド（受注・出荷情報）
     erp_case_no: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True) # ERP 側の受注番号（case_no と分離）
     total_value_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)            # 取引総額 (USD)

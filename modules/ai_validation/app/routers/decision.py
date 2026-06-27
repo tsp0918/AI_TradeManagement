@@ -23,12 +23,13 @@ def _auto_create_license_draft(tx_id: int, tx_case_no: str, product_code: str | 
                                 dest_country: str | None, end_use: str | None) -> None:
     """
     judgment=requires_permit 確定時に export_license モジュールへドラフトを自動作成する。
+    作成成功時に linked_license_id / linked_license_status を Transaction へ書き戻す。
     fire-and-forget スレッドで実行（失敗しても審査フローは止めない）。
     """
     def _post():
         try:
             with httpx.Client(timeout=10.0) as client:
-                client.post(
+                r = client.post(
                     f"{_EXPORT_LICENSE_BASE}/api/export-licenses/draft-from-transaction",
                     json={
                         "transaction_id": tx_id,
@@ -37,6 +38,20 @@ def _auto_create_license_draft(tx_id: int, tx_case_no: str, product_code: str | 
                         "reason": "requires_permit",
                     },
                 )
+            if r.status_code not in (200, 201):
+                return
+            data = r.json()
+            license_id = data.get("id") or data.get("app_id")
+            license_status = data.get("status", "draft")
+            if not license_id:
+                return
+            from app.db.session import SessionLocal
+            with SessionLocal() as db:
+                tx = db.get(Transaction, tx_id)
+                if tx and not tx.linked_license_id:
+                    tx.linked_license_id = str(license_id)
+                    tx.linked_license_status = license_status
+                    db.commit()
         except Exception:
             pass
     threading.Thread(target=_post, daemon=True).start()
@@ -634,6 +649,27 @@ class EUDualUseCheckRequest(BaseModel):
     eccn: Optional[str] = None
     end_user_type: str = "unknown"
     is_intra_eu_transfer: bool = False
+
+
+class LicenseStatusUpdateRequest(BaseModel):
+    license_id: str
+    status: str  # draft / submitted / approved / denied
+
+
+@router.patch("/{transaction_id}/license-status")
+def update_license_status(
+    transaction_id: int,
+    body: LicenseStatusUpdateRequest,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """export_license モジュールからのコールバック: 許可証ステータスを Transaction へ反映する。"""
+    tx = db.get(Transaction, transaction_id)
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    tx.linked_license_id = body.license_id
+    tx.linked_license_status = body.status
+    db.commit()
+    return {"ok": True, "transaction_id": transaction_id, "license_status": body.status}
 
 
 @router.post("/{transaction_id}/eu-dual-use-check")

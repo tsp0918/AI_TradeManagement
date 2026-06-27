@@ -414,6 +414,21 @@ async def submit_license(app_id: str, db: AsyncSession = Depends(get_pg_db)):
     return _serialize(a)
 
 
+async def _notify_ai_validation_license_status(transaction_ids: list[str], app_id: str, status: str) -> None:
+    """ai_validation の linked_license_status を非同期で更新する（失敗しても許可証フローは止めない）。"""
+    if not transaction_ids:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            for tx_id_str in transaction_ids:
+                await client.patch(
+                    f"{_AI_VALIDATION_URL}/decision/{tx_id_str}/license-status",
+                    json={"license_id": app_id, "status": status},
+                )
+    except Exception:
+        pass
+
+
 @router.post("/api/export-licenses/{app_id}/approve")
 async def approve_license(app_id: str, body: LicenseApprove, db: AsyncSession = Depends(get_pg_db)):
     a = await _get_or_404(app_id, db)
@@ -427,6 +442,7 @@ async def approve_license(app_id: str, body: LicenseApprove, db: AsyncSession = 
         a.license_value_remaining_usd = body.license_value_remaining_usd
     await db.commit()
     await db.refresh(a)
+    await _notify_ai_validation_license_status(a.transaction_ids or [], str(app_id), "approved")
     return _serialize(a)
 
 
@@ -436,6 +452,7 @@ async def deny_license(app_id: str, db: AsyncSession = Depends(get_pg_db)):
     a.status = "denied"
     await db.commit()
     await db.refresh(a)
+    await _notify_ai_validation_license_status(a.transaction_ids or [], str(app_id), "denied")
     return _serialize(a)
 
 

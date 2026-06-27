@@ -1,0 +1,90 @@
+<!-- templates/admin_settings.html -->
+{% extends "base.html" %}
+{% block title %}管理 - AIパラメーター設定{% endblock %}
+{% block nav_admin %} active{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>管理 — AIパラメーター設定</h1>
+  <div class="muted">２リスト判定・マトリクスマッチの動作パラメーターを調整します</div>
+</div>
+
+<div style="display:flex; gap:12px; margin-bottom:20px;">
+  <a class="btn" href="/ui/admin/import">← データインポートへ</a>
+</div>
+
+{% if message %}
+<div class="alert alert-ok" style="margin-bottom:16px;">{{ message }}</div>
+{% endif %}
+{% if error %}
+<div class="alert alert-warn" style="margin-bottom:16px;">
+  <div class="alert-title">入力エラー</div>
+  <div class="alert-body">{{ error }}</div>
+</div>
+{% endif %}
+
+<form method="post" action="/ui/admin/settings">
+  <div class="card" style="max-width:680px;">
+    <h2 style="margin-bottom:20px;">マトリクスマッチ パラメーター</h2>
+
+    {% for d in defs %}
+    <div style="margin-bottom:22px; padding-bottom:20px; border-bottom:1px solid #e5e7eb;">
+      <label style="display:block; font-weight:600; font-size:.92rem; margin-bottom:4px;">
+        {{ d.label }}
+        <span style="font-size:.78rem; font-weight:400; color:#6b7280; margin-left:6px;">
+          （{{ d.min }} 〜 {{ d.max }}）
+        </span>
+      </label>
+      <div class="muted small" style="margin-bottom:8px;">{{ d.desc }}</div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <input
+          type="range"
+          name="{{ d.key }}"
+          id="range_{{ d.key }}"
+          min="{{ d.min }}" max="{{ d.max }}" step="{{ d.step }}"
+          value="{{ settings[d.key] }}"
+          style="flex:1; accent-color:#2563eb;"
+          oninput="document.getElementById('num_{{ d.key }}').value=this.value"
+        >
+        <input
+          type="number"
+          id="num_{{ d.key }}"
+          min="{{ d.min }}" max="{{ d.max }}" step="{{ d.step }}"
+          value="{{ settings[d.key] }}"
+          style="width:80px; padding:4px 8px; border:1px solid #d1d5db; border-radius:4px; text-align:center;"
+          oninput="document.getElementById('range_{{ d.key }}').value=this.value"
+          name="{{ d.key }}_num"
+        >
+      </div>
+      <div class="muted small" style="margin-top:4px;">
+        現在の値: <strong>{{ settings[d.key] }}</strong>
+        （デフォルト: {{ d.default }}）
+      </div>
+    </div>
+    {% endfor %}
+
+    <div style="margin-top:8px; display:flex; gap:10px; align-items:center;">
+      <button class="btn btn-primary" type="submit">保存</button>
+      <span class="muted small">※ 次回のAI判定実行から反映されます。現在実行中の判定には影響しません。</span>
+    </div>
+  </div>
+</form>
+
+<script>
+// range と number input を双方向同期（name 属性は range 側だけ送信する）
+document.querySelectorAll('input[id^="num_"]').forEach(function(numInput) {
+  numInput.removeAttribute('name');
+});
+</script>
+
+<style>
+.alert-ok {
+  background:#f0fdf4; border:1px solid #86efac; border-radius:6px;
+  padding:10px 14px; color:#166534; font-size:.9rem;
+}
+.alert-warn {
+  background:#fffbeb; border:1px solid #fbbf24; border-radius:6px;
+  padding:10px 14px; color:#92400e; font-size:.9rem;
+}
+</style>
+{% endblock %}

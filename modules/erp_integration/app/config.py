@@ -17,8 +17,11 @@ class Settings(BaseSettings):
     )
 
     # ── 認証 ──────────────────────────────────────────────────────────────────
-    # ERP → このアダプターへの Bearer トークン
-    API_KEY: str = "dev-erp-integration-key"
+    # ERP → このアダプターへの Bearer トークン（AITM_WEBHOOK_SECRET or API_KEY）
+    API_KEY: str = Field(
+        default="dev-erp-integration-key",
+        validation_alias=AliasChoices("AITM_WEBHOOK_SECRET", "API_KEY"),
+    )
 
     # ── 上流 AI_TM モジュール URL ─────────────────────────────────────────────
     HS_CLASSIFIER_URL: str = Field(

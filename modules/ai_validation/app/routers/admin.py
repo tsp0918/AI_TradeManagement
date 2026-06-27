@@ -4,11 +4,28 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db.deps import get_db
 from app.services.data_import import import_matrix_from_data, import_patents_from_data
+
+
+# ── system_settings helpers ──────────────────────────────────────────────────
+
+def get_setting(db: Session, key: str, default: str = "") -> str:
+    row = db.execute(text("SELECT value FROM system_settings WHERE key=:k"), {"k": key}).fetchone()
+    return row[0] if row else default
+
+
+def set_setting(db: Session, key: str, value: str) -> None:
+    db.execute(
+        text("INSERT INTO system_settings(key, value, updated_at) VALUES(:k,:v,datetime('now')) "
+             "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at"),
+        {"k": key, "v": value},
+    )
+    db.commit()
 
 router = APIRouter(tags=["admin"])
 
@@ -109,3 +126,69 @@ async def admin_import_patents(
         return _render(request, patents_error=f"JSONパースエラー: {e}")
     except Exception as e:
         return _render(request, patents_error=str(e))
+
+
+# ── 閾値・パラメーター設定 UI ─────────────────────────────────────────────────
+
+_SETTINGS_DEFS = [
+    {
+        "key":   "matrix_match_threshold",
+        "label": "２リスト マッチ閾値",
+        "type":  "float",
+        "min":   "0.50",
+        "max":   "0.99",
+        "step":  "0.01",
+        "default": "0.82",
+        "desc":  "Layer A ベクトル類似度の下限。0.82 で適合率95%・再現率95%。下げると判定ヒット増、上げると精度向上。",
+    },
+    {
+        "key":   "matrix_match_top_k",
+        "label": "マッチ上位件数 (top_k)",
+        "type":  "int",
+        "min":   "1",
+        "max":   "30",
+        "step":  "1",
+        "default": "10",
+        "desc":  "1使用目的あたりに返すマッチ候補の最大数。増やすと網羅性向上、処理時間も増加。",
+    },
+]
+
+
+def _render_settings(request: Request, db: Session, **ctx):
+    templates = request.app.state.templates
+    settings = {d["key"]: get_setting(db, d["key"], d["default"]) for d in _SETTINGS_DEFS}
+    return templates.TemplateResponse(
+        request, "admin_settings.html",
+        {"settings": settings, "defs": _SETTINGS_DEFS, **ctx},
+    )
+
+
+@router.get("/ui/admin/settings", response_class=HTMLResponse)
+def admin_settings_form(request: Request, db: Session = Depends(get_db)):
+    return _render_settings(request, db)
+
+
+@router.post("/ui/admin/settings", response_class=HTMLResponse)
+async def admin_settings_save(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    form = await request.form()
+    errors = []
+    for d in _SETTINGS_DEFS:
+        val = form.get(d["key"], "").strip()
+        if not val:
+            continue
+        try:
+            if d["type"] == "float":
+                v = float(val)
+                assert float(d["min"]) <= v <= float(d["max"])
+            else:
+                v = int(val)
+                assert int(d["min"]) <= v <= int(d["max"])
+            set_setting(db, d["key"], str(v))
+        except Exception:
+            errors.append(f"{d['label']}: 値が不正です（{val}）")
+    if errors:
+        return _render_settings(request, db, error=" / ".join(errors))
+    return _render_settings(request, db, message="設定を保存しました。")

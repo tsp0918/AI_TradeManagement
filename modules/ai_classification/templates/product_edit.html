@@ -349,10 +349,11 @@
           <table style="width:100%; border-collapse:collapse; font-size:.85rem;">
             <thead>
               <tr style="border-bottom:2px solid var(--border); background:var(--bg);">
-                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem; width:140px;">該当項番</th>
-                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem; width:160px;">判定結果</th>
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem; width:88px;">規制</th>
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem; width:120px;">該当項番</th>
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem; width:108px;">判定結果</th>
                 <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem;">コメント</th>
-                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem; width:130px;">日時</th>
+                <th style="padding:8px 10px; text-align:left; color:var(--muted); font-size:.75rem; width:112px;">日時</th>
                 <th style="padding:8px 6px; width:36px;"></th>
               </tr>
             </thead>
@@ -960,22 +961,39 @@
       }).join('');
     }
 
+    // 保存済み "外為令別表第1 第7項 第19号" を {regime, item} に分割する
+    function _splitItemNo(full) {
+      if (!full) return { regime: '', item: '' };
+      var m;
+      m = full.match(/^(外為令別表第1)\s+(.+)$/);
+      if (m) return { regime: m[1], item: m[2] };
+      m = full.match(/^(外為令)(第\d+項.*)$/);
+      if (m) return { regime: '外為令', item: m[2] };
+      m = full.match(/^(EAR)\s+(.+)$/);
+      if (m) return { regime: 'EAR', item: m[2] };
+      return { regime: '', item: full };
+    }
+
+    var _INPUT_STYLE = 'width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:.82rem; font-family:inherit;';
+
     function renderRows(items) {
       var tbody = document.getElementById('ecItemsBody');
       var rows = [];
-      var total = items.length;
-      for (var i = 0; i < total; i++) {
-        var it = items[i] || { rule_item_no: '', decision: '', comment: '', recorded_at: '' };
-        var dt = it.recorded_at || '';
+      for (var i = 0; i < items.length; i++) {
+        var it  = items[i] || { rule_item_no: '', decision: '', comment: '', recorded_at: '' };
+        var sp  = _splitItemNo(it.rule_item_no || '');
+        var dt  = it.recorded_at || '';
         rows.push(
           '<tr style="border-bottom:1px solid var(--border);">'
-          + '<td style="padding:6px 8px;"><input type="text" class="ec-item-no" value="' + _esc(it.rule_item_no) + '" placeholder="EL-7-19"'
-          + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;"></td>'
-          + '<td style="padding:6px 8px;"><select class="ec-decision" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:.82rem; font-family:inherit;">'
+          + '<td style="padding:6px 6px;"><input type="text" class="ec-regime" value="' + _esc(sp.regime) + '" placeholder="外為令別表第1"'
+          + ' style="' + _INPUT_STYLE + '"></td>'
+          + '<td style="padding:6px 6px;"><input type="text" class="ec-item-no" value="' + _esc(sp.item) + '" placeholder="第7項 第19号"'
+          + ' style="' + _INPUT_STYLE + '"></td>'
+          + '<td style="padding:6px 6px;"><select class="ec-decision" style="' + _INPUT_STYLE + '">'
           + buildSelectHtml(it.decision) + '</select></td>'
-          + '<td style="padding:6px 8px;"><input type="text" class="ec-comment" value="' + _esc(it.comment || '') + '" placeholder="メモ"'
-          + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;"></td>'
-          + '<td style="padding:6px 8px; width:130px;"><span class="ec-datetime" data-value="' + _esc(dt) + '"'
+          + '<td style="padding:6px 6px;"><input type="text" class="ec-comment" value="' + _esc(it.comment || '') + '" placeholder="品目名・メモ"'
+          + ' style="' + _INPUT_STYLE + '"></td>'
+          + '<td style="padding:6px 6px; width:112px;"><span class="ec-datetime" data-value="' + _esc(dt) + '"'
           + ' style="display:block; font-size:.75rem; color:var(--muted); white-space:nowrap;">' + (dt || '—') + '</span></td>'
           + '<td style="padding:6px 4px; text-align:center;"><button type="button" onclick="removeEcRow(this)"'
           + ' style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1rem;">&times;</button></td>'
@@ -993,13 +1011,15 @@
       var tbody = document.getElementById('ecItemsBody');
       var tr = document.createElement('tr');
       tr.style.borderBottom = '1px solid var(--border)';
-      tr.innerHTML = '<td style="padding:6px 8px;"><input type="text" class="ec-item-no" placeholder="EL-7-19"'
-        + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;"></td>'
-        + '<td style="padding:6px 8px;"><select class="ec-decision" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:.82rem; font-family:inherit;">'
+      tr.innerHTML = '<td style="padding:6px 6px;"><input type="text" class="ec-regime" placeholder="外為令別表第1"'
+        + ' style="' + _INPUT_STYLE + '"></td>'
+        + '<td style="padding:6px 6px;"><input type="text" class="ec-item-no" placeholder="第7項 第19号"'
+        + ' style="' + _INPUT_STYLE + '"></td>'
+        + '<td style="padding:6px 6px;"><select class="ec-decision" style="' + _INPUT_STYLE + '">'
         + buildSelectHtml('') + '</select></td>'
-        + '<td style="padding:6px 8px;"><input type="text" class="ec-comment" placeholder="メモ"'
-        + ' style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:.82rem; font-family:inherit;"></td>'
-        + '<td style="padding:6px 8px; width:130px;"><span class="ec-datetime" data-value="" style="display:block; font-size:.75rem; color:var(--muted); white-space:nowrap;">—</span></td>'
+        + '<td style="padding:6px 6px;"><input type="text" class="ec-comment" placeholder="品目名・メモ"'
+        + ' style="' + _INPUT_STYLE + '"></td>'
+        + '<td style="padding:6px 6px; width:112px;"><span class="ec-datetime" data-value="" style="display:block; font-size:.75rem; color:var(--muted); white-space:nowrap;">—</span></td>'
         + '<td style="padding:6px 4px; text-align:center;"><button type="button" onclick="removeEcRow(this)"'
         + ' style="background:none; border:none; color:#aaa; cursor:pointer; font-size:1rem;">&times;</button></td>';
       tbody.appendChild(tr);
@@ -1010,6 +1030,33 @@
       if (tr) tr.remove();
     };
 
+    // 証拠 evidence から公式な該当項番表記を生成する
+    function _fmtItemNo(ev) {
+      var no  = (ev.rule_item_no || ev.item_no || '').trim();
+      var src = (ev.source_name || '').toLowerCase();
+      if (!no) return '';
+
+      // EL-7-19 → 外為令別表第1 第7項 第19号
+      // EL-7    → 外為令別表第1 第7項
+      var elFull = no.match(/^EL-(\d+)-(\d+)/);
+      if (elFull) return '外為令別表第1 第' + elFull[1] + '項 第' + elFull[2] + '号';
+      var elItem = no.match(/^EL-(\d+)$/);
+      if (elItem) return '外為令別表第1 第' + elItem[1] + '項';
+
+      // 外為令N → 外為令別表第1 第N項
+      var fxPfx = no.match(/^外為令(\d+)$/);
+      if (fxPfx) return '外為令別表第1 第' + fxPfx[1] + '項';
+
+      // 純数字 + fefta 系ソース → 外為令別表第1 第N項
+      if (/^\d+$/.test(no) && src.indexOf('fefta') >= 0)
+        return '外為令別表第1 第' + no + '項';
+
+      // EAR CCL
+      if (src === 'ccl_ear' || /^\d[A-E]\d{3}/.test(no)) return 'EAR ' + no;
+
+      return no;
+    }
+
     window.transferFromAI = function() {
       var payload = null;
       try { payload = JSON.parse(EXT_PAYLOAD); } catch(e) {}
@@ -1019,19 +1066,41 @@
       var mm = inner.matrix_matches_top;
       if (!Array.isArray(mm) || mm.length === 0) { alert('外部AI判定結果に matrix_matches_top が見つかりませんでした。'); return; }
       var decisionMap = { 'hit':'controlled', 'intersection':'controlled', 'core_only':'needs_review', 'list2_only':'needs_review' };
-      var items = mm
+      var raw = mm
         .filter(function(m) { var d = m.decision || ''; return d !== 'not_matched'; })
         .map(function(m) {
           var ev = (m.evidence && typeof m.evidence === 'object') ? m.evidence : {};
-          var itemNo = ev.rule_item_no || m.rule_item_no || '';
-          var dec = m.decision || ev.decision || '';
-          var mapped = decisionMap[dec] || '';
-          var score = (typeof m.match_score === 'number') ? ' score=' + m.match_score.toFixed(3) : '';
-          var comment = itemNo ? (itemNo + ' [' + dec + ']' + score) : (dec + score);
-          return { rule_item_no: itemNo, decision: mapped, comment: comment, recorded_at: '' };
+          var itemNo   = _fmtItemNo(ev);                          // 公式表記の項番
+          var rawNo    = ev.rule_item_no || ev.item_no || '';    // dedupキー用（元の値）
+          // 品目名: rule_title（旧形式）→ item_label（新形式）の順で取得
+          var title    = ev.rule_title || ev.item_label || '';   // 例: レジスト / 電子部品・集積回路・半導体
+          var dec      = m.decision || ev.decision || '';
+          var mapped   = decisionMap[dec] || '';
+          var rawScore = (typeof m.match_score === 'number') ? m.match_score : -1;
+          var scoreTxt = rawScore >= 0 ? ' score=' + rawScore.toFixed(3) : '';
+          // コメント: 品目名のみ（規制・項番は専用列に表示）→ "レジスト [hit] score=0.873"
+          var desc = title || '';
+          var comment = desc
+            ? (desc + ' [' + dec + ']' + scoreTxt)
+            : (dec + scoreTxt);
+          return { rule_item_no: itemNo, _raw_no: rawNo, decision: mapped, comment: comment, recorded_at: '', _score: rawScore };
         });
+      // 元の item_no をキーに最高スコア1件を残す（同一項番の重複排除）
+      var bestMap = {};
+      var noKeyItems = [];
+      raw.forEach(function(item) {
+        var key = item._raw_no;
+        if (!key) { noKeyItems.push(item); return; }
+        var cur = bestMap[key];
+        if (!cur || item._score > cur._score) { bestMap[key] = item; }
+      });
+      var items = Object.keys(bestMap).sort().map(function(k) {
+        var r = bestMap[k]; return { rule_item_no: r.rule_item_no, decision: r.decision, comment: r.comment, recorded_at: '' };
+      }).concat(noKeyItems.map(function(r) {
+        return { rule_item_no: r.rule_item_no, decision: r.decision, comment: r.comment, recorded_at: '' };
+      }));
       if (items.length === 0) { alert('転記対象の規制合致項目（hit/intersection/core_only/list2_only）が見つかりませんでした。'); return; }
-      if (confirm('外部AI判定の ' + items.length + ' 件を転記します。現在の入力内容は上書きされます。よろしいですか？')) {
+      if (confirm('外部AI判定の ' + items.length + ' 件を転記します（項番ごとに最高スコア1件）。現在の入力内容は上書きされます。よろしいですか？')) {
         renderRows(items);
       }
     };
@@ -1043,19 +1112,22 @@
       var rows = document.querySelectorAll('#ecItemsBody tr');
       var items = [];
       rows.forEach(function(tr) {
-        var no  = (tr.querySelector('.ec-item-no')  || {}).value || '';
-        var dec = (tr.querySelector('.ec-decision') || {}).value || '';
-        var cmt = (tr.querySelector('.ec-comment')  || {}).value || '';
+        var regime = (tr.querySelector('.ec-regime')   || {}).value || '';
+        var no     = (tr.querySelector('.ec-item-no')  || {}).value || '';
+        var dec    = (tr.querySelector('.ec-decision') || {}).value || '';
+        var cmt    = (tr.querySelector('.ec-comment')  || {}).value || '';
+        // 規制列 + 項番列を結合して rule_item_no として保存
+        var fullNo = [regime.trim(), no.trim()].filter(Boolean).join(' ');
         var dtEl = tr.querySelector('.ec-datetime');
         var dt = '';
-        if (no.trim() || dec) {
+        if (fullNo || dec) {
           dt = nowStr;
           if (dtEl) { dtEl.setAttribute('data-value', dt); dtEl.textContent = dt; }
         } else {
           dt = dtEl ? (dtEl.getAttribute('data-value') || '') : '';
         }
-        if (no.trim() || dec) {
-          items.push({ rule_item_no: no.trim(), decision: dec, comment: cmt.trim(), recorded_at: dt });
+        if (fullNo || dec) {
+          items.push({ rule_item_no: fullNo, decision: dec, comment: cmt.trim(), recorded_at: dt });
         }
       });
       document.getElementById('ecItemsJson').value = JSON.stringify(items);
