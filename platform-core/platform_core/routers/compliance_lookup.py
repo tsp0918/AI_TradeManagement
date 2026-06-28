@@ -30,6 +30,7 @@ from platform_core.models.supplier_attestation import SupplierAttestation
 router = APIRouter(prefix="/api/compliance-lookup", tags=["compliance_lookup"])
 
 _AI_VALIDATION_URL = "http://localhost:8011"
+_AI_CLASSIFICATION_URL = "http://localhost:8002"
 
 
 # ── ステージ定義 ─────────────────────────────────────────────────────────────
@@ -46,6 +47,31 @@ STAGES = [
 
 
 # ── ai_validation 取引検索 ────────────────────────────────────────────────────
+
+async def _fetch_classification_product_id(item_code: str | None, item_name: str) -> int | None:
+    """ai_classification から item_code / 品目名で整数 product_id を取得する（ベストエフォート）。"""
+    if not item_code and not item_name:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            # item_code で完全一致検索
+            if item_code:
+                r = await client.get(f"{_AI_CLASSIFICATION_URL}/api/products/by-code/{item_code}")
+                if r.status_code == 200:
+                    return r.json().get("id")
+            # フォールバック: 品目名で曖昧検索
+            r = await client.get(
+                f"{_AI_CLASSIFICATION_URL}/api/products/json-search",
+                params={"q": item_name[:50]},
+            )
+            if r.status_code == 200:
+                results = r.json()
+                if results:
+                    return results[0].get("id")
+    except Exception:
+        pass
+    return None
+
 
 async def _fetch_validation_transactions(item_name: str, eccn: str | None) -> list[dict]:
     """ai_validation から品目名/ECCN でトランザクションを検索する（ベストエフォート）。"""
@@ -121,7 +147,7 @@ async def get_pipeline(
         stages["validated"] = {
             "done": len(txns) > 0,
             "detail": f"{len(txns)}件" if txns else None,
-            "link": f"/proxy/ai_validation/ui/transaction/{txns[0]['id']}" if txns else None,
+            "link": f"/proxy/ai_validation/ui/transactions/{txns[0]['id']}" if txns else None,
         }
 
         # Stage 5: スクリーニング（supply chain attestation でサプライヤーが screening 済みかチェック）
@@ -181,6 +207,9 @@ async def get_pipeline(
             "license_id": str(license.id) if license else None,
         }
 
+        # ai_classification の整数 product_id を取得（直接リンク用）
+        ai_class_product_id = await _fetch_classification_product_id(item.item_code, item.name)
+
         # 全体進捗スコア
         done_count = sum(1 for s in stages.values() if s.get("done"))
         total_stages = len(STAGES)
@@ -194,6 +223,7 @@ async def get_pipeline(
                 "eccn": item.eccn,
                 "hs_code": item.hs_code,
                 "export_control_status": item.export_control_status,
+                "ai_classification_product_id": ai_class_product_id,
             },
             "stages": stages,
             "progress_pct": progress_pct,

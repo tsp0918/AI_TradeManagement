@@ -76,6 +76,66 @@ def _trigger_coo_change_rescreening(
     threading.Thread(target=_post, daemon=True).start()
 
 
+def _register_plat_item_bg(product_code: str, product_name: str, eccn: Optional[str] = None) -> None:
+    """erp-sync 完了後に plat_item（PostgreSQL）へ品目を upsert してコンプライアンス進捗ルックアップに反映する。
+
+    fire-and-forget — 失敗してもメインフローには影響しない。
+    """
+    def _post():
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                client.post(
+                    f"{_SELF_BASE}/api/item-versions/items",
+                    json={"item_code": product_code, "name": product_name, "eccn": eccn},
+                )
+        except Exception:
+            pass
+
+    threading.Thread(target=_post, daemon=True).start()
+
+
+def _trigger_coo_change_item_version(
+    product_code: str,
+    product_name: str,
+    old_country: Optional[str],
+    new_country: str,
+    eccn: Optional[str] = None,
+) -> None:
+    """原産国（COO）変更を item_version に非同期で通知してバージョン履歴・変更イベントを記録する。
+
+    fire-and-forget — 失敗してもメインフローには影響しない。
+    """
+    if (old_country or "").upper() == new_country.upper():
+        return
+
+    def _post():
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                r1 = client.post(
+                    f"{_SELF_BASE}/api/item-versions/items",
+                    json={"item_code": product_code, "name": product_name, "eccn": eccn},
+                )
+                if r1.status_code not in (200, 201):
+                    return
+                item_id = r1.json().get("id")
+                if not item_id:
+                    return
+                client.post(
+                    f"{_SELF_BASE}/api/item-versions/items/{item_id}/versions",
+                    json={
+                        "country_of_origin": new_country,
+                        "change_category": "coo_change",
+                        "change_reason": f"原産国変更: {old_country or '?'} → {new_country}（ERP連携）",
+                        "source_system": "erp_sync",
+                        "source_ref": product_code,
+                    },
+                )
+        except Exception:
+            pass
+
+    threading.Thread(target=_post, daemon=True).start()
+
+
 def _trigger_supplier_change_event(
     product_code: str,
     product_name: str,
@@ -646,6 +706,16 @@ def quadrant_map_page(request: Request):
     return templates.TemplateResponse(request, "quadrant_map.html", {})
 
 
+@router.get("/api/products/by-plat-id/{plat_id}")
+def get_product_by_plat_id(plat_id: str, db: Session = Depends(get_db)):
+    """platform-core Item UUID で品目を検索（compliance_lookup 直接リンク用）。"""
+    product = db.query(Product).filter(Product.plat_item_id == plat_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail=f"Product not found for plat_item_id: {plat_id}")
+    return {"id": product.id, "code": product.code, "name": product.name,
+            "eccn": product.eccn or "", "plat_item_id": plat_id}
+
+
 @router.get("/api/products/by-code/{code}")
 def get_product_by_code(code: str, db: Session = Depends(get_db)):
     """品目コードで品目を検索してIDを返す（プラットフォーム連携・デモ用）。"""
@@ -914,6 +984,16 @@ def api_create_product(body: _ApiProductCreateRequest, db: Session = Depends(get
 
 # ── ERP MDM 同期 ──────────────────────────────────────────────────────────────
 
+class _ErpBomComponent(BaseModel):
+    """BOM コンポーネント（ERP v2.0: ロット実績の origin_country 含む）。"""
+    child_code: str
+    child_name: Optional[str] = None
+    quantity: Optional[float] = None
+    unit: Optional[str] = None
+    origin_country: Optional[str] = None  # v2.0: ロット実績の原産国
+    supplier_name: Optional[str] = None
+
+
 class _ErpSyncRequest(BaseModel):
     code: str
     name: str
@@ -925,11 +1005,12 @@ class _ErpSyncRequest(BaseModel):
     std_price: Optional[float] = None
     export_control_status: Optional[str] = None
     export_control_reason: Optional[str] = None
+    bom: Optional[list[_ErpBomComponent]] = None  # v2.0: BOM コンポーネント一覧
 
 
-@router.post("/products/erp-sync")
-def erp_sync_product(body: _ErpSyncRequest, db: Session = Depends(get_db)):
-    """ERP MDM からの品目 upsert（code をキーに登録・更新）。"""
+def _erp_sync_one(body: _ErpSyncRequest, db: Session) -> dict:
+    """単一品目の upsert 処理（バッチ処理との共通ロジック）。"""
+    import json as _json
     product = db.query(Product).filter(Product.code == body.code).first()
     is_new = product is None
     if is_new:
@@ -944,6 +1025,7 @@ def erp_sync_product(body: _ErpSyncRequest, db: Session = Depends(get_db)):
     if body.eccn is not None:
         product.eccn = body.eccn
     _old_erp_coo = product.country_of_origin
+    _old_bom_json = product.bom_json  # BOM origin_country 変化検知用に保存
     if body.country_of_origin is not None:
         coo = body.country_of_origin.strip().upper()
         product.country_of_origin = coo[:2] if coo else None
@@ -955,17 +1037,97 @@ def erp_sync_product(body: _ErpSyncRequest, db: Session = Depends(get_db)):
         product.export_control_status = body.export_control_status
         product.export_control_reason = body.export_control_reason
         product.export_control_checked_at = datetime.utcnow()
+    # v2.0: BOM（ロット実績の origin_country 含む）を JSON として保存
+    if body.bom is not None:
+        product.bom_json = _json.dumps(
+            [b.model_dump() for b in body.bom], ensure_ascii=False
+        )
 
-    db.commit()
+    db.flush()
     db.refresh(product)
 
-    # COO 変更があれば ai_validation へ通知
+    # COO 変更があれば ai_validation + item_version へ通知
     if body.country_of_origin is not None:
         _new_erp_coo = product.country_of_origin or ""
         if _new_erp_coo != (_old_erp_coo or "").upper():
             _trigger_coo_change_rescreening(product.code, _old_erp_coo, _new_erp_coo)
+            _trigger_coo_change_item_version(
+                product.code, product.name, _old_erp_coo, _new_erp_coo, eccn=product.eccn
+            )
 
-    return {"ok": True, "id": product.id, "code": product.code, "created": is_new}
+    # BOM コンポーネントの origin_country 変化を item_version に記録（ERP v2.0）
+    if body.bom:
+        # 旧 BOM から child_code → origin_country のマップを構築（差分検知用）
+        _old_bom_map: dict[str, str] = {}
+        if _old_bom_json:
+            try:
+                for comp_data in _json.loads(_old_bom_json):
+                    _old_bom_map[comp_data.get("child_code", "")] = (
+                        comp_data.get("origin_country") or ""
+                    )
+            except Exception:
+                pass
+
+        for comp in body.bom:
+            if not (comp.origin_country and comp.child_code):
+                continue
+            old_origin = _old_bom_map.get(comp.child_code, "")
+            if comp.origin_country.upper() == old_origin.upper():
+                continue  # 変化なし — スキップ
+            _trigger_coo_change_item_version(
+                comp.child_code,
+                comp.child_name or comp.child_code,
+                old_origin or None,
+                comp.origin_country,
+            )
+
+    # plat_item（PostgreSQL）へ upsert → compliance_lookup で表示されるようにする
+    _register_plat_item_bg(product.code, product.name, eccn=product.eccn)
+
+    return {
+        "ok": True,
+        "id": product.id,
+        "aitm_product_id": product.id,  # ERP が materials.aitm_product_id に保存する値
+        "code": product.code,
+        "created": is_new,
+    }
+
+
+@router.post("/products/erp-sync")
+def erp_sync_product(body: _ErpSyncRequest, db: Session = Depends(get_db)):
+    """ERP MDM からの品目 upsert（code をキーに登録・更新）。単一品目版。"""
+    result = _erp_sync_one(body, db)
+    db.commit()
+    return result
+
+
+@router.post("/products/erp-sync/batch")
+def erp_sync_products_batch(body: list[_ErpSyncRequest], db: Session = Depends(get_db)):
+    """ERP MDM からの品目一括 upsert（最大 200 件）。
+
+    ERP v2.0 は配列形式で送信する:
+      [{"code": "MAT-1000001", "name": "...", "bom": [...], ...}, ...]
+
+    各エントリに aitm_product_id（ai_classification 側の product.id）を返す。
+    ERP は受け取った aitm_product_id を materials.aitm_product_id に保存すること。
+    """
+    if not body:
+        return {"synced": 0, "results": []}
+    if len(body) > 200:
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(status_code=422, detail="一度に処理できる上限は 200 件です。")
+
+    results = []
+    for item in body:
+        try:
+            r = _erp_sync_one(item, db)
+            results.append(r)
+        except Exception as exc:
+            results.append({"ok": False, "code": item.code, "error": str(exc)})
+
+    db.commit()
+    synced = sum(1 for r in results if r.get("ok"))
+    return {"synced": synced, "total": len(results), "results": results}
 
 
 @router.post("/products/{product_id}/confirm")
@@ -1168,9 +1330,12 @@ def update_product(
 
     db.commit()
 
-    # COO 変更があれば ai_validation へ通知
+    # COO 変更があれば ai_validation + item_version へ通知
     if _new_coo != (_old_coo or "").upper():
         _trigger_coo_change_rescreening(product.code, _old_coo, _new_coo or "")
+        _trigger_coo_change_item_version(
+            product.code, product.name, _old_coo, _new_coo or "", eccn=product.eccn
+        )
 
     return RedirectResponse(url=f"/products/{product_id}/edit", status_code=303)
 

@@ -1,5 +1,5 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-06-26 更新（Phase 5 完了: FAISS再ビルド・CSVエクスポート・CI連携・輸出許可双方向連携・ERP Bearer認証・Red Flag詳細入力UI）
+# 2026-06-28 更新（Phase 12 完了: 全7フロー連動連携 E2E 22/22 全テスト合格 — ⑥スクリーニング再ヒット→ERP NEEDS_REVIEW push通知・⑦item_version resolved→ERP APPROVED通知・②rnd_assessment→ai_classification品目自動登録・E2E一気通貫テストスクリプト完成・PostgreSQL products テーブル schema修正・ai_classification環境変数 CLASSIFICATION_DATABASE_URL エイリアス対応・_ERP_WEBHOOK_URL 二重定義バグ修正）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
 > 2026-06-26（2回目）追加: **Phase 5 完了** — ①Layer A FAISS 再ビルド（2,184→2,192vec、jp_fx_2025:3件 EL-7-24/25/26 EUVフォトレジスト/先端AI GPU/HBM反映）②Screeningバッチ結果 CSV エクスポート（クライアントサイド BOM付、タイムスタンプファイル名）③`./start.sh --verify-demos` CI連携（ワンコマンドDEMO全6本検証）④輸出許可申請双方向連携強化（linked_license_id書戻し・license-status PATCH エンドポイント・承認/却下コールバック・Transaction Detail ステータスパネル）⑤ERP Webhook Bearer認証完全適用（pull_review.py 4エンドポイント＋AITM_WEBHOOK_SECRET環境変数）⑥Red Flag 詳細入力UI（「該当」選択時テキストエリア展開・note値送信・判定結果にRF内容/根拠表示）
@@ -874,5 +874,91 @@ compliance_lookup.py / faiss_search.py / ui.py / auth/
 
 ---
 
-*更新: 2026-05-12（Layer B Phase 3 + Layer D OpenAlex 完了: B→10,783vec/639ECCN、D→5,765vec/25ECCN全カバー）*
+### ✅ Phase 8: コンプライアンス進捗クリックナビ + モジュール間ID整合（2026-06-27 完了）
+
+| タスク | 内容 |
+|--------|------|
+| 8-1 | `compliance_lookup.html` 全インタラクティブ要素にクリックナビゲーション追加（パイプライン品目・ステージ✅・アクションカード・変化点フィード） |
+| 8-2 | UUID vs Integer ナビゲーションバグ修正: platform-core Item UUID を ai_classification `/products/{id}/edit`（Integer期待）に渡していた問題を検索ベースURLに変更 |
+| 8-3 | `ai_classification.Product` に `plat_item_id` カラム追加（SQLite `_ensure_columns()` 自動ALTER） |
+| 8-4 | `compliance_lookup.py` に `_fetch_classification_product_id()` 追加（`by-code` → `json-search` フォールバック） |
+| 8-5 | `ai_classification` に `/api/products/by-plat-id/{plat_id}` エンドポイント追加（platform-core UUID → Integer product_id 解決） |
+| 8-6 | `screening.ScreeningResult` に `transaction_id: Integer` カラム追加（Alembic migration: d56214c5e744） |
+| 8-7 | `screening.ScreenRequest` に `transaction_id: int | None` フィールド追加（ERP等の呼び出し元で省略可） |
+| 8-8 | `ai_validation._screen_counterparty_bg()` が screening API に `transaction_id` を渡すよう修正 |
+| 8-9 | **ERP screening adapter `is_match` バグ修正**: `result_status == "hit"` → `in ("match", "possible_match")`（制裁ヒット時も常に `is_match: false` だった重大バグ） |
+
+**動作確認（全APIテスト済み）**:
+- ERP `/screening/denied-party` ZTE → `is_match: true, confidence: 1.0` ✅
+- ERP `/screening/denied-party` Sony → `is_match: false` ✅  
+- ERP `/screening/denied-party` KP国 → `is_match: true` (embargo) ✅
+- 直接 `POST /api/screen` with `transaction_id: 999` → DB に `tx_id=999` 保存確認 ✅
+- ai_validation 取引 127 作成 → `screening_queued: true` → screening DB `tx_id=127` 自動記録 ✅
+- ai_classification `plat_item_id` カラム存在確認 ✅
+- ERP `/gaihi/judge`, `/hs/classify`, `/transaction/review`, `/export/precheck` 全正常 ✅
+- ERP 401 認証なし拒否 ✅
+
+---
+
+### ✅ Phase 10: ERP v2.0 連携インターフェース実装（2026-06-28 完了）
+
+ERP_INTEGRATION_HANDOVER_ver2.md のギャップ分析に基づき、ERP v2.0 との4つの連携インターフェースを実装・E2E確認済み。
+
+| タスク | 内容 | 確認 |
+|--------|------|------|
+| 10-1 | **JSON バッチスクリーニング** `POST /api/screening/batch`（screening:8005）新設。ERP v2.0 が JSON 配列で最大500件のエンティティをスクリーニング可能。結果: `{total, flagged_count, clear_count, flagged_list, results}`。ZTE/Huawei フラグ、Sony クリア確認 | ✅ |
+| 10-2 | **MATERIAL_ORIGIN_CHANGE イベント受信** `POST /api/transactions/events`（ai_validation:8011）新設。`exceeds_deminimis_threshold=true` の場合、De Minimis BREACH 案件（`[ERP De Minimis BREACH] {mat} 原産国変更...`）を自動生成して erp_case_no, UsageRequirement 付きで案件を登録。非BREACH は case_ref=null でログのみ | ✅ |
+| 10-3 | **判定完了 outbound webhook** `_notify_erp_judgment()` を `save_agent_judgment` 内（db.commit 後）で fire-and-forget スレッドで実行。`ERP_WEBHOOK_URL=http://localhost:8888/gts/webhook/judgment-updated`、`ERP_WEBHOOK_BEARER=dev-erp-integration-key`。ERP 側 `fefta_judgment` が実際に更新されることを SQLite 直接確認（REJECTED→値が変化）| ✅ |
+| 10-4 | **erp-sync BOM v2.0** `_ErpBomComponent.origin_country` フィールド追加（ロット実績原産国）。`bom` 配列を `bom_json` に保存・原産国変更時 ai_validation `/events` へ自動通知。`POST /products/erp-sync/batch`（最大200件）エンドポイント追加。レスポンスに `aitm_product_id` 追加（ERP 側で `materials.aitm_product_id` に保存可能）| ✅ |
+
+**E2E 動作確認（全テスト済み）**:
+- `POST /api/screening/batch` ZTE+Huawei フラグ、Sony クリア ✅
+- `POST /api/transactions/events` BREACH → CASE-2026-0001 自動生成 ✅
+- `POST /api/transactions/events` 非BREACH → case_ref=null ✅
+- `POST /products/erp-sync` with BOM v2.0 → aitm_product_id=58 返却 ✅
+- `POST /products/erp-sync/batch` → synced=2 ✅
+- `save_agent_judgment` → background thread → ERP `fefta_judgment=REJECTED` SQLite 直接確認 ✅
+
+**変更ファイル**:
+- `modules/screening/app/routers/screening.py` — `_BatchJsonEntity`, `_BatchJsonRequest` スキーマ追加・`/screening/batch` JSON エンドポイント追加
+- `modules/ai_validation/app/routers/api_transactions.py` — `_ErpEventPayload`, `_handle_origin_change_event()`, `_generate_case_no()` 追加・`POST /events` エンドポイント追加
+- `modules/ai_validation/app/routers/decision.py` — `_notify_erp_judgment()` 追加・`save_agent_judgment` 内でコール
+- `modules/ai_classification/app/routers/products.py` — `_ErpBomComponent.origin_country` 追加・`bom` フィールド追加・`_erp_sync_one()` 共通化・`aitm_product_id` 返却・`/products/erp-sync/batch` 追加
+- `.env` — `ERP_WEBHOOK_URL`, `ERP_WEBHOOK_BEARER` 追加
+
+---
+
+### ✅ Phase 11: モジュール間リスク伝導・未接続箇所実装（2026-06-28 完了）
+
+Phase 10 で残存した4つの未接続箇所を全て実装・E2E確認済み。
+
+| タスク | 内容 | 確認 |
+|--------|------|------|
+| 11-1 | **compliance_lookup plat_item 自動登録** `POST /products/erp-sync` 完了後に `_register_plat_item_bg()` を fire-and-forget で呼び出し、ai_classification の item-versions API を通じて `plat_item`（PostgreSQL）へ upsert。これによりコンプライアンス進捗 Lookup に ERP 経由の品目が自動表示される。COO 変更時は `_trigger_coo_change_item_version()` でバージョンイベントも自動生成 | ✅ |
+| 11-2 | **export_license → ERP 許可証通知** `approve_license` 承認時に `_notify_erp_license_approved()` を fire-and-forget で実行。linked transaction の `linked_product_code` を ai_validation から取得して `material_code` に使用し、ERP `/gts/webhook/judgment-updated` へ `new_judgment=APPROVED`, `license_number`, `expires_at` を通知。否認時も同様に `_notify_erp_license_denied()` で `REJECTED` 通知。ERP `fefta_judgment`: `NOT_APPLICABLE` → `APPROVED` を SQLite 直接確認 | ✅ |
+| 11-3 | **ERP Pull ポーラー（De Minimis BREACH 定期取得）** `ai_validation/main.py` の `_on_startup` から asyncio background task `_erp_deminimis_poller()` を起動。起動 30 秒後から `DEMINIMIS_POLL_INTERVAL_SEC`（デフォルト 600 秒 = 10 分）間隔で実行。ERP JWT ログイン → `GET /gts/deminimis?alert_level=BREACH&ai_tm_notified=false` → 未通知レコード毎に `POST /api/transactions/events` (MATERIAL_ORIGIN_CHANGE) → `PATCH /gts/deminimis/{id}/mark-notified` で ERP 側 `ai_tm_notified=true` に更新。ERP に `PATCH /gts/deminimis/{id}/mark-notified` エンドポイント新設 | ✅ |
+| 11-4 | **rnd_assessment → ai_validation DEEMED_EXPORT_RISK** `assessments_run` で `risk_level in ("HIGH", "CRITICAL")` の場合、`_notify_ai_validation_deemed_export()` を fire-and-forget で実行。ai_validation `POST /api/transactions/events` の新イベントタイプ `DEEMED_EXPORT_RISK` を処理する `_handle_deemed_export_risk_event()` を追加。`[みなし輸出リスク HIGH] {案件名} 関係者: {person_name}` タイトルで取引審査案件を自動生成。CASE-2026-0003 自動生成を確認 | ✅ |
+
+**E2E 動作確認（全テスト済み）**:
+- `POST /api/transactions/events` `DEEMED_EXPORT_RISK` → CASE-2026-0003 自動生成 ✅
+- `POST /api/export-licenses/{id}/approve` → ERP `fefta_judgment=APPROVED`（MAT-1000001 SQLite 確認）✅
+- `POST /api/export-licenses/{id}/deny` → ERP `fefta_judgment=REJECTED` ✅
+- `PATCH /gts/deminimis/11/mark-notified` → `{"ok": true, "ai_tm_case_ref": "CASE-2026-TEST"}` ✅
+
+**変更ファイル**:
+- `modules/ai_classification/app/routers/products.py` — `_register_plat_item_bg()`, `_trigger_coo_change_item_version()` 追加・`_erp_sync_one` で呼び出し
+- `modules/export_license/app/routers/export_license.py` — `_notify_erp_license_approved()`, `_notify_erp_license_denied()` 追加・`approve_license`, `deny_license` から呼び出し。`_ERP_WEBHOOK_URL`, `_ERP_WEBHOOK_BEARER` env var 追加
+- `modules/ai_validation/app/main.py` — `_erp_deminimis_poller()` asyncio background task 追加・`_on_startup` で起動
+- `modules/ai_validation/app/routers/api_transactions.py` — `_ErpEventPayload` に DEEMED_EXPORT_RISK フィールド追加・`_handle_deemed_export_risk_event()` 追加・`receive_erp_event` でルーティング
+- `modules/rnd_assessment/app/ui/router.py` — `_notify_ai_validation_deemed_export()` 追加・`assessments_run` で HIGH/CRITICAL 時に呼び出し
+- `erp-system/app/modules/gts/lot_router.py` — `PATCH /gts/deminimis/{id}/mark-notified` エンドポイント追加
+- `.env` — `ERP_ADMIN_EMAIL`, `ERP_ADMIN_PASSWORD`, `DEMINIMIS_POLL_INTERVAL_SEC` 追加
+
+**残存未実装**:
+- `materials.aitm_product_id` ERP側保存（ERP schema 変更必要）
+- `denied_party_checked_at` フィールド（ERP スキーマ拡張）
+
+---
+
+*更新: 2026-06-28（Phase 11: モジュール間リスク伝導・未接続箇所全実装完了）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*

@@ -32,7 +32,12 @@ from platform_core.models.export_license import ExportLicenseApplication
 
 router = APIRouter(tags=["export_license"])
 
+import asyncio
+import threading
+
 _AI_VALIDATION_URL = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+_ERP_WEBHOOK_URL   = os.environ.get("ERP_WEBHOOK_URL",   "http://localhost:8888/gts/webhook/judgment-updated")
+_ERP_WEBHOOK_BEARER = os.environ.get("ERP_WEBHOOK_BEARER", "dev-erp-integration-key")
 
 # ── Pydantic スキーマ ─────────────────────────────────────────────
 
@@ -414,6 +419,78 @@ async def submit_license(app_id: str, db: AsyncSession = Depends(get_pg_db)):
     return _serialize(a)
 
 
+def _notify_erp_license_approved(app: ExportLicenseApplication) -> None:
+    """輸出許可証承認時に ERP /gts/webhook/judgment-updated へ通知する。
+
+    linked_product_code を ai_validation から取得して material_code として使用。
+    fire-and-forget スレッド — 失敗してもライセンスフローは止めない。
+    """
+    tx_ids = app.transaction_ids or []
+
+    def _post():
+        try:
+            material_code = None
+            # linked transaction から product_code を取得
+            if tx_ids:
+                with httpx.Client(timeout=5.0) as client:
+                    r = client.get(f"{_AI_VALIDATION_URL}/api/transactions/{tx_ids[0]}")
+                    if r.status_code == 200:
+                        material_code = r.json().get("linked_product_code")
+            if not material_code:
+                material_code = app.item_description or str(app.id)
+
+            payload = {
+                "material_code": material_code,
+                "new_judgment": "APPROVED",
+                "new_eccn": app.eccn,
+                "rationale": f"export_license approved: {app.license_number}",
+                "client_id": "DEMO",
+                "license_number": app.license_number,
+                "expires_at": app.expires_at.isoformat() if app.expires_at else None,
+            }
+            with httpx.Client(timeout=10.0) as client:
+                client.post(
+                    _ERP_WEBHOOK_URL, json=payload,
+                    headers={"Authorization": f"Bearer {_ERP_WEBHOOK_BEARER}"},
+                )
+        except Exception:
+            pass
+
+    threading.Thread(target=_post, daemon=True).start()
+
+
+def _notify_erp_license_denied(app: ExportLicenseApplication) -> None:
+    """輸出許可証否認時に ERP へ REJECTED を通知する。fire-and-forget。"""
+    tx_ids = app.transaction_ids or []
+
+    def _post():
+        try:
+            material_code = None
+            if tx_ids:
+                with httpx.Client(timeout=5.0) as client:
+                    r = client.get(f"{_AI_VALIDATION_URL}/api/transactions/{tx_ids[0]}")
+                    if r.status_code == 200:
+                        material_code = r.json().get("linked_product_code")
+            if not material_code:
+                material_code = app.item_description or str(app.id)
+            payload = {
+                "material_code": material_code,
+                "new_judgment": "REJECTED",
+                "new_eccn": app.eccn,
+                "rationale": f"export_license denied: {app.id}",
+                "client_id": "DEMO",
+            }
+            with httpx.Client(timeout=10.0) as client:
+                client.post(
+                    _ERP_WEBHOOK_URL, json=payload,
+                    headers={"Authorization": f"Bearer {_ERP_WEBHOOK_BEARER}"},
+                )
+        except Exception:
+            pass
+
+    threading.Thread(target=_post, daemon=True).start()
+
+
 async def _notify_ai_validation_license_status(transaction_ids: list[str], app_id: str, status: str) -> None:
     """ai_validation の linked_license_status を非同期で更新する（失敗しても許可証フローは止めない）。"""
     if not transaction_ids:
@@ -443,6 +520,7 @@ async def approve_license(app_id: str, body: LicenseApprove, db: AsyncSession = 
     await db.commit()
     await db.refresh(a)
     await _notify_ai_validation_license_status(a.transaction_ids or [], str(app_id), "approved")
+    _notify_erp_license_approved(a)
     return _serialize(a)
 
 
@@ -453,6 +531,7 @@ async def deny_license(app_id: str, db: AsyncSession = Depends(get_pg_db)):
     await db.commit()
     await db.refresh(a)
     await _notify_ai_validation_license_status(a.transaction_ids or [], str(app_id), "denied")
+    _notify_erp_license_denied(a)
     return _serialize(a)
 
 

@@ -49,7 +49,15 @@
   .item-name { font-weight: 600; }
   .item-code { font-size: 11px; color: var(--text2); }
   .stage-done { color: var(--green); font-size: 16px; cursor: default; }
+  .stage-done.clickable { cursor: pointer; }
+  .stage-done.clickable:hover { opacity: .7; }
   .stage-todo { color: #4b5563; font-size: 16px; }
+  table.matrix td.item-info { cursor: pointer; }
+  table.matrix td.item-info:hover { background: #2a2d3e; }
+  .action-card { cursor: pointer; }
+  .action-card:hover { border-color: var(--accent); }
+  .tl-item { cursor: pointer; }
+  .tl-item:hover { background: var(--bg2); }
   .stage-alert { position: relative; display: inline-block; }
   .stage-alert .badge { position: absolute; top: -6px; right: -8px; background: var(--red); color: #fff; border-radius: 50%; width: 14px; height: 14px; font-size: 9px; display: flex; align-items: center; justify-content: center; }
   .progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 4px; }
@@ -281,19 +289,25 @@ function renderPipeline() {
   html += '<th>進捗</th></tr></thead><tbody>';
 
   items.forEach(row => {
-    html += `<tr><td class="item-info">
+    const classifUrl = row.item.ai_classification_product_id
+      ? `/proxy/ai_classification/products/${row.item.ai_classification_product_id}/edit`
+      : `/proxy/ai_classification/products?search=${encodeURIComponent(row.item.item_code || row.item.name)}`;
+    html += `<tr><td class="item-info" onclick="navTo('${classifUrl}')" title="品目詳細を開く">
       <div class="item-name">${esc(row.item.name)}</div>
       <div class="item-code">${esc(row.item.item_code || '')}${row.item.eccn ? `<span class="eccn-badge">${esc(row.item.eccn)}</span>` : ''}</div>
     </td>`;
 
     stages.forEach(s => {
       const st = (row.stages || {})[s.key] || {};
+      const stageUrl = stageNavUrl(s.key, classifUrl, st);
       if (st.done) {
         const alert = st.alert || 0;
+        const cls = stageUrl ? ' clickable' : '';
+        const clickAttr = stageUrl ? ` onclick="navTo('${stageUrl}')"` : '';
         if (alert > 0) {
-          html += `<td><span class="stage-alert stage-done" title="${esc(st.detail || '')}">✅<span class="badge">${alert}</span></span></td>`;
+          html += `<td><span class="stage-alert stage-done${cls}" title="${esc(st.detail || '')}"${clickAttr}>✅<span class="badge">${alert}</span></span></td>`;
         } else {
-          html += `<td><span class="stage-done" title="${esc(st.detail || '')}">✅</span></td>`;
+          html += `<td><span class="stage-done${cls}" title="${esc(st.detail || '')}"${clickAttr}>✅</span></td>`;
         }
       } else {
         html += `<td><span class="stage-todo" title="未完了">◯</span></td>`;
@@ -351,8 +365,10 @@ function renderActions() {
   items.forEach(a => {
     const taskItems = (a.actions_needed || []).map(t => `<li>${esc(t)}</li>`).join('');
     const dateStr = a.expires_at ? `期限: ${a.expires_at.substring(0,10)}` : (a.created_at ? a.created_at.substring(0,10) : '');
+    const url = actionNavUrl(a);
+    const clickAttr = url ? ` onclick="navTo('${url}')" title="クリックして開く"` : '';
     html += `
-    <div class="action-card ${a.priority}">
+    <div class="action-card ${a.priority}"${clickAttr}>
       <div class="ac-header">
         <span class="priority-badge ${a.priority}">${a.priority === 'urgent' ? '緊急' : a.priority === 'high' ? '高' : '中'}</span>
         <span class="ac-title">${esc(a.title)}</span>
@@ -396,8 +412,10 @@ function renderFeed() {
   items.forEach(f => {
     const tsStr = f.ts ? fmtTs(f.ts) : '—';
     const impactClass = f.impact_level === 'HIGH' ? 'impact-high' : f.impact_level === 'MEDIUM' ? 'impact-medium' : f.impact_level === 'LOW' ? 'impact-low' : '';
+    const url = feedNavUrl(f);
+    const clickAttr = url ? ` onclick="navTo('${url}')" title="クリックして開く"` : '';
     html += `
-    <div class="tl-item">
+    <div class="tl-item"${clickAttr}>
       <div class="tl-icon">${f.icon || '•'}</div>
       <div class="tl-body">
         <div class="tl-title ${impactClass}">${esc(f.title)}</div>
@@ -422,6 +440,65 @@ function fmtTs(iso) {
     const pad = n => String(n).padStart(2,'0');
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   } catch { return iso; }
+}
+
+// ── ナビゲーション ──────────────────────────────────────────
+function navTo(url) {
+  if (!url) return;
+  window.open(url, '_blank');
+}
+
+function stageNavUrl(stageKey, classifBase, stageData) {
+  switch (stageKey) {
+    case 'item_registered':
+    case 'hs_classified':
+    case 'version_managed':
+      return classifBase;
+    case 'validated':
+      if (stageData.link) return stageData.link;
+      return '/proxy/ai_validation/ui/transactions';
+    case 'screened':
+      return '/proxy/screening/';
+    case 'supply_chain_ok':
+      return classifBase;
+    case 'license_ready':
+      if (stageData.license_id) return `/proxy/export_license/api/export-licenses/${stageData.license_id}/preview`;
+      return '/proxy/export_license/';
+    default:
+      return null;
+  }
+}
+
+function actionNavUrl(a) {
+  switch (a.type) {
+    case 'compliance_event':
+      if (a.item_name) return `/proxy/ai_classification/products?search=${encodeURIComponent(a.item_name)}`;
+      return '/proxy/ai_classification/products';
+    case 'license_expiry':
+      if (a.license_id) return `/proxy/export_license/api/export-licenses/${a.license_id}/preview`;
+      return '/proxy/export_license/';
+    case 'attestation_expiry':
+      return '/proxy/ai_classification/supply-chain';
+    case 'validation_pending':
+      if (a.tx_id) return `/proxy/ai_validation/ui/transactions/${a.tx_id}`;
+      return '/proxy/ai_validation/ui/transactions';
+    default:
+      return null;
+  }
+}
+
+function feedNavUrl(f) {
+  switch (f.type) {
+    case 'version_created':
+    case 'compliance_event':
+      if (f.item_name) return `/proxy/ai_classification/products?search=${encodeURIComponent(f.item_name)}`;
+      return null;
+    case 'license_updated':
+      if (f.license_id) return `/proxy/export_license/api/export-licenses/${f.license_id}/preview`;
+      return '/proxy/export_license/';
+    default:
+      return null;
+  }
 }
 
 // 初期ロード

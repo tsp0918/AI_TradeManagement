@@ -33,6 +33,30 @@ _BASE = _os.environ.get("MODULE_AI_VALIDATION_PUBLIC_URL", "https://validation.t
 _SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
 # スクリーニング結果確認リンク（ブラウザ向け）
 _SCREENING_PUBLIC = _os.environ.get("MODULE_SCREENING_PUBLIC_URL", "https://screening.tsp-aitrademanagement.com")
+# ERP outbound webhook
+_ERP_WEBHOOK_URL    = _os.environ.get("ERP_WEBHOOK_URL",    "http://localhost:8888/gts/webhook/judgment-updated")
+_ERP_WEBHOOK_BEARER = _os.environ.get("ERP_WEBHOOK_BEARER", "dev-erp-integration-key")
+
+
+def _push_erp_status(tx: Transaction, new_judgment: str, rationale: str = "") -> None:
+    """ERP /gts/webhook/judgment-updated へ非同期で状態を通知する。erp_case_no がない場合はスキップ。"""
+    if not tx.erp_case_no:
+        return
+    payload = {
+        "material_code": tx.linked_product_code or tx.erp_case_no or tx.case_no,
+        "new_judgment":  new_judgment,
+        "new_eccn":      getattr(tx, "linked_product_eccn", None),
+        "rationale":     rationale,
+        "client_id":     "DEMO",
+    }
+    def _post():
+        try:
+            with httpx.Client(timeout=10) as c:
+                c.post(_ERP_WEBHOOK_URL, json=payload,
+                       headers={"Authorization": f"Bearer {_ERP_WEBHOOK_BEARER}"})
+        except Exception:
+            pass
+    threading.Thread(target=_post, daemon=True).start()
 
 
 def _screen_counterparty_bg(transaction_id: int, counterparty_name: str) -> None:
@@ -40,7 +64,7 @@ def _screen_counterparty_bg(transaction_id: int, counterparty_name: str) -> None
     try:
         resp = httpx.post(
             f"{_SCREENING_BASE}/api/screen",
-            json={"company_name": counterparty_name, "threshold": 0.75},
+            json={"company_name": counterparty_name, "threshold": 0.75, "transaction_id": transaction_id},
             timeout=15.0,
             follow_redirects=True,
         )
@@ -461,8 +485,6 @@ def get_stuck_transactions(
 
 # ── ERP Webhook 受信 ─────────────────────────────────────────────
 
-_ERP_WEBHOOK_URL = _os.environ.get("ERP_WEBHOOK_URL", "")
-
 
 class _WebhookPayload(BaseModel):
     """ERP が AI_TM に送信する審査結果通知ペイロード（オプション）。"""
@@ -687,6 +709,240 @@ def coo_changed(
         "reset_count": len(reset_ids),
         "reset_transaction_ids": reset_ids,
     }
+
+
+# ── ERP イベント受信（MATERIAL_ORIGIN_CHANGE 等） ──────────────────────────
+
+class _ErpEventPayload(BaseModel):
+    """ERP → AI_TM 汎用イベントペイロード。"""
+    event_type: str
+    # MATERIAL_ORIGIN_CHANGE 専用フィールド
+    material_code: Optional[str] = None
+    from_country: Optional[str] = None
+    to_country: Optional[str] = None
+    effective_date: Optional[str] = None
+    max_us_content_pct: Optional[float] = None
+    exceeds_deminimis_threshold: Optional[bool] = None
+    affected_products: Optional[List[str]] = None
+    breach_lot_count: Optional[int] = None
+    breach_lots: Optional[List[Dict[str, Any]]] = None
+    # DEEMED_EXPORT_RISK 専用フィールド（rnd_assessment から）
+    deemed_export_risk_level: Optional[str] = None
+    person_name: Optional[str] = None
+    case_title: Optional[str] = None
+    top_factors: Optional[List[Any]] = None
+    recommendation: Optional[str] = None
+
+
+@router.post("/events")
+def receive_erp_event(
+    body: _ErpEventPayload,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    モジュール間汎用イベント受信エンドポイント。
+
+    対応イベントタイプ:
+      MATERIAL_ORIGIN_CHANGE — 原産国切り替えイベント（ERP から）
+      DEEMED_EXPORT_RISK     — みなし輸出 HIGH/CRITICAL リスク（rnd_assessment から）
+    """
+    if body.event_type == "MATERIAL_ORIGIN_CHANGE":
+        return _handle_origin_change_event(body, db)
+    if body.event_type == "DEEMED_EXPORT_RISK":
+        return _handle_deemed_export_risk_event(body, db)
+
+    _logger.info("ERP event received (unhandled type): %s", body.event_type)
+    return {"ok": True, "event_type": body.event_type, "case_ref": None}
+
+
+def _handle_origin_change_event(body: _ErpEventPayload, db: Session) -> Dict[str, Any]:
+    """原産国切り替えイベントを処理し、BREACH 時は取引審査案件を作成する。"""
+    mat = body.material_code or "UNKNOWN"
+    pct = body.max_us_content_pct or 0.0
+    is_breach = bool(body.exceeds_deminimis_threshold)
+
+    affected = ", ".join(body.affected_products or []) or "不明"
+    lot_count = body.breach_lot_count or 0
+
+    if is_breach:
+        # De Minimis 閾値超過 → 審査案件を自動作成
+        title = (
+            f"[ERP De Minimis BREACH] {mat} 原産国変更 "
+            f"{body.from_country or '?'}→{body.to_country or '?'} "
+            f"US含有率 {pct:.1f}%"
+        )
+        usage_text = (
+            f"ERP 原産国切り替えイベント (MATERIAL_ORIGIN_CHANGE)\n"
+            f"原料コード: {mat}\n"
+            f"切り替え: {body.from_country}→{body.to_country} @ {body.effective_date or '不明'}\n"
+            f"US含有率: {pct:.1f}% (閾値 25% 超過)\n"
+            f"影響品目: {affected}\n"
+            f"BREACH ロット数: {lot_count}"
+        )
+        tx = Transaction(
+            title=title,
+            case_no=_generate_case_no(db),
+            status="draft",
+            source_module="ERP",
+            erp_case_no=f"OCL-{mat}-{body.effective_date or 'NA'}",
+        )
+        db.add(tx)
+        db.flush()
+
+        db.add(UsageRequirement(
+            transaction_id=tx.id,
+            transaction_item_id=None,
+            source="ERP",
+            text=usage_text,
+            risk_tags=["de_minimis_breach", "us_origin_change"],
+            created_by="erp",
+        ))
+        db.commit()
+
+        _logger.info(
+            "ERP MATERIAL_ORIGIN_CHANGE BREACH: mat=%s pct=%.1f case=%s",
+            mat, pct, tx.case_no,
+        )
+        return {
+            "ok": True,
+            "event_type": body.event_type,
+            "case_ref": tx.case_no,
+            "transaction_id": tx.id,
+            "breach": True,
+            "us_content_pct": pct,
+            "message": f"De Minimis BREACH案件を自動作成しました: {tx.case_no}",
+        }
+    else:
+        # 閾値以下 → ログのみ
+        _logger.info(
+            "ERP MATERIAL_ORIGIN_CHANGE (no breach): mat=%s pct=%.1f from=%s to=%s",
+            mat, pct, body.from_country, body.to_country,
+        )
+        return {
+            "ok": True,
+            "event_type": body.event_type,
+            "case_ref": None,
+            "breach": False,
+            "us_content_pct": pct,
+            "message": f"原産国変更を記録しました（閾値以下のため案件未作成）: {mat}",
+        }
+
+
+def _handle_deemed_export_risk_event(body: _ErpEventPayload, db: Session) -> Dict[str, Any]:
+    """みなし輸出 HIGH/CRITICAL リスク確定時に取引審査案件を自動作成する。"""
+    case_id = body.material_code or "UNKNOWN"
+    risk = body.deemed_export_risk_level or "HIGH"
+    person = body.person_name or "不明"
+    title_text = body.case_title or case_id
+    factors = ", ".join(str(f) for f in (body.top_factors or []))
+
+    title = f"[みなし輸出リスク {risk}] {title_text} 関係者: {person}"
+    usage_text = (
+        f"rnd_assessment みなし輸出リスク通知\n"
+        f"R&D案件: {title_text} (case_id={case_id})\n"
+        f"関係者: {person}\n"
+        f"リスクレベル: {risk}\n"
+        f"主要因: {factors or '詳細なし'}\n"
+        f"推奨対応: {body.recommendation or '要確認'}"
+    )
+    tx = Transaction(
+        title=title,
+        case_no=_generate_case_no(db),
+        status="draft",
+        source_module="rnd_assessment",
+        erp_case_no=f"RND-{case_id}",
+    )
+    db.add(tx)
+    db.flush()
+    db.add(UsageRequirement(
+        transaction_id=tx.id,
+        transaction_item_id=None,
+        source="rnd_assessment",
+        text=usage_text,
+        risk_tags=["deemed_export", f"risk_{risk.lower()}"],
+        created_by="rnd_assessment",
+    ))
+    db.commit()
+    _logger.info("DEEMED_EXPORT_RISK case created: %s risk=%s person=%s", tx.case_no, risk, person)
+    return {
+        "ok": True,
+        "event_type": body.event_type,
+        "case_ref": tx.case_no,
+        "transaction_id": tx.id,
+        "risk_level": risk,
+        "message": f"みなし輸出リスク審査案件を自動作成しました: {tx.case_no}",
+    }
+
+
+def _generate_case_no(db: Session) -> str:
+    """CASE-YYYY-NNNN 形式のケース番号を生成する。"""
+    from datetime import datetime as _dt
+    year = _dt.utcnow().year
+    prefix = f"CASE-{year}-"
+    last = (
+        db.query(Transaction.case_no)
+        .filter(Transaction.case_no.like(f"{prefix}%"))
+        .order_by(desc(Transaction.case_no))
+        .first()
+    )
+    if last:
+        try:
+            seq = int(last[0].split("-")[-1]) + 1
+        except (ValueError, IndexError):
+            seq = 1
+    else:
+        seq = 1
+    return f"{prefix}{seq:04d}"
+
+
+@router.post("/{tx_id}/flag-for-review")
+def flag_transaction_for_review(
+    tx_id: int,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """スクリーニング再ヒット・コンプライアンスイベント発生時に取引を NEEDS_REVIEW へ強制遷移し ERP へ push 通知する。"""
+    from datetime import datetime as _dt
+    tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
+    if tx is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    note = f"[再スクリーニングヒット {_dt.utcnow().strftime('%Y-%m-%d')}] 取引先スクリーニング再判定により審査中断"
+    tx.tier_reason = f"{tx.tier_reason}\n{note}" if tx.tier_reason else note
+    if tx.status == "approved":
+        tx.status = "in_review"
+    db.commit()
+
+    _push_erp_status(tx, "NEEDS_REVIEW", "re_screening_hit")
+    _logger.info("flag-for-review: tx=%d case=%s erp=%s", tx.id, tx.case_no, tx.erp_case_no)
+    return {"ok": True, "tx_id": tx_id, "case_no": tx.case_no, "erp_notified": bool(tx.erp_case_no)}
+
+
+class _ComplianceClearedBody(BaseModel):
+    item_code: str
+
+
+@router.post("/product-compliance-cleared")
+def notify_product_compliance_cleared(
+    body: _ComplianceClearedBody,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """item_version イベント解決後に呼ばれる。品目コードに紐付く ERP 連携取引へ APPROVED を再通知する。"""
+    targets = (
+        db.query(Transaction)
+        .filter(
+            Transaction.linked_product_code == body.item_code,
+            Transaction.erp_case_no.isnot(None),
+            Transaction.erp_case_no != "",
+            Transaction.status.in_(["in_review", "approved", "draft"]),
+        )
+        .all()
+    )
+    notified = []
+    for tx in targets:
+        _push_erp_status(tx, "APPROVED", f"compliance_event_resolved:{body.item_code}")
+        notified.append({"tx_id": tx.id, "case_no": tx.case_no, "erp_case_no": tx.erp_case_no})
+    _logger.info("product-compliance-cleared: item=%s → notified %d txns", body.item_code, len(notified))
+    return {"ok": True, "item_code": body.item_code, "notified_transactions": notified}
 
 
 @router.post("/{tx_id}/supply-chain")

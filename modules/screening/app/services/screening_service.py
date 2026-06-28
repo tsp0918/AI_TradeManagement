@@ -177,6 +177,7 @@ async def run_screening(
         max_score=max_score,
         matches=[m.model_dump(mode="json") for m in matches],
         screened_by=screened_by,
+        transaction_id=getattr(request, "transaction_id", None),
     )
     db.add(screening_result)
     await db.flush()

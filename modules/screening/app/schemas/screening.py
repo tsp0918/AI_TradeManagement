@@ -19,6 +19,7 @@ class ScreenRequest(BaseModel):
     address: str | None = Field(None, description="住所 (任意)")
     company_id: uuid.UUID | None = Field(None, description="platform-core の plat_company.id (任意)")
     threshold: float = Field(0.75, ge=0.0, le=1.0, description="一致とみなすスコア閾値")
+    transaction_id: int | None = Field(None, description="ai_validation Transaction.id (任意・追跡用)")
 
 
 class WatchlistImportRow(BaseModel):

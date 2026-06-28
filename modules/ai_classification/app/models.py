@@ -81,6 +81,9 @@ class Product(Base):
     # ai_validation 連携（Webhook で受け取る UI_xxx transaction ID）
     ui_validation_transaction_id = Column(Integer, nullable=True)   # UI_xxx / TX_xxx の transaction ID
 
+    # platform-core 連携（platform-core plat_items.id の UUID 文字列）
+    plat_item_id = Column(String(36), nullable=True, index=True)
+
     # 輸出管理 判定明細（JSON list: [{rule_item_no, decision, comment}, ...]）
     export_control_items = Column(Text, nullable=True)
 

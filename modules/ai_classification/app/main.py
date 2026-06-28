@@ -37,6 +37,7 @@ async def _ensure_columns() -> None:
             ("source_rnd_case_id",          "VARCHAR(64)"),
             ("source_rnd_transaction_id",   "INTEGER"),
             ("ui_validation_transaction_id","INTEGER"),
+            ("plat_item_id",                "VARCHAR(36)"),
             ("export_control_items",        "TEXT"),
             ("country_of_origin",           "VARCHAR(10)"),
             ("regulation_score",            "REAL"),
@@ -44,7 +45,12 @@ async def _ensure_columns() -> None:
             ("sovereignty_note",            "TEXT"),
             ("source",                      "VARCHAR(20)"),
             ("item_type",                   "VARCHAR(20)"),
-            ("is_unconfirmed",              "INTEGER"),  # SQLite BOOLEAN → INTEGER
+            ("is_unconfirmed",              "BOOLEAN"),
+            ("usage_summary",               "TEXT"),
+            ("hs_classification_status",    "VARCHAR(20)"),
+            ("hs_classification_result",    "TEXT"),
+            ("hs_classified_at",            "TIMESTAMP"),
+            ("hs_request_id",               "VARCHAR(64)"),
         ],
     }
     with engine.connect() as conn:

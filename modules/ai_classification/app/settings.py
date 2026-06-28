@@ -15,7 +15,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    DATABASE_URL: str = "sqlite:///./products.db"
+    DATABASE_URL: str = Field(
+        default="sqlite:///./products.db",
+        validation_alias=AliasChoices("DATABASE_URL", "CLASSIFICATION_DATABASE_URL"),
+    )
 
     # Ollama
     OLLAMA_BASE_URL: str = "http://localhost:11434"

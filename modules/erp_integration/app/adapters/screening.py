@@ -26,7 +26,8 @@ async def screen_entity(name: str, country: str | None, address: str | None) -> 
         data = resp.json()
 
     result_status = data.get("result_status", "clear")
-    is_match = result_status == "hit"
+    # screening returns "match" / "possible_match" / "clear" (not "hit")
+    is_match = result_status in ("match", "possible_match")
     matches = data.get("matches", [])
     max_score = data.get("max_score") or 0.0
     list_name = matches[0].get("list_source") if matches else None

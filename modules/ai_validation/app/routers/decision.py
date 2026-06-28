@@ -12,11 +12,56 @@ from app.db.models.transaction import Transaction, TransactionItem, UsageRequire
 from app.services.two_list import compute_two_lists
 from app.services.pipeline.orchestrator import run_until_matrix_match
 
+import logging as _logging
 import os as _os
 _EXPORT_LICENSE_BASE = _os.environ.get("MODULE_EXPORT_LICENSE_URL", "http://localhost:8012")
 _RND_BASE = _os.environ.get("MODULE_RND_ASSESSMENT_URL", "http://localhost:8003")
+_ERP_WEBHOOK_URL = _os.environ.get("ERP_WEBHOOK_URL", "http://localhost:8888/gts/webhook/judgment-updated")
+_ERP_WEBHOOK_BEARER = _os.environ.get("ERP_WEBHOOK_BEARER", "dev-erp-integration-key")
+_logger_dec = _logging.getLogger(__name__)
 
 router = APIRouter(prefix="/decision", tags=["decision"])
+
+
+def _notify_erp_judgment(tx: Transaction, judgment_status: str) -> None:
+    """
+    判定完了時に ERP の /gts/webhook/judgment-updated へ結果を通知する。
+    ERP_WEBHOOK_URL が未設定の場合はスキップ。fire-and-forget スレッドで実行。
+    """
+    if not _ERP_WEBHOOK_URL or not tx.erp_case_no:
+        return
+
+    _JUDGMENT_MAP = {
+        "approved":        "APPROVED",
+        "rejected":        "REJECTED",
+        "requires_permit": "NEEDS_REVIEW",
+        "requires_review": "NEEDS_REVIEW",
+        "controlled":      "NEEDS_REVIEW",
+        "clear":           "APPROVED",
+    }
+    normalized = _JUDGMENT_MAP.get((judgment_status or "").lower(), "NEEDS_REVIEW")
+
+    payload = {
+        "material_code": tx.linked_product_code or tx.erp_case_no or tx.case_no,
+        "new_judgment":  normalized,
+        "new_eccn":      tx.linked_product_eccn,
+        "rationale":     judgment_status,
+        "client_id":     "DEMO",
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {_ERP_WEBHOOK_BEARER}",
+    }
+
+    def _post():
+        try:
+            with httpx.Client(timeout=10) as client:
+                resp = client.post(_ERP_WEBHOOK_URL, json=payload, headers=headers)
+            _logger_dec.info("ERP webhook sent: tx=%d judgment=%s status=%d", tx.id, normalized, resp.status_code)
+        except Exception as exc:
+            _logger_dec.warning("ERP webhook failed: tx=%d %s", tx.id, exc)
+
+    threading.Thread(target=_post, daemon=True).start()
 
 
 def _auto_create_license_draft(tx_id: int, tx_case_no: str, product_code: str | None,
@@ -411,6 +456,9 @@ def save_agent_judgment(
         tx.status = TransactionStatus.in_review.value
 
     db.commit()
+
+    # ERP に判定結果を通知（erp_case_no がある場合のみ）
+    _notify_erp_judgment(tx, body.overall_status)
 
     # requires_permit 確定時: export_license モジュールへドラフトを自動作成
     if body.overall_status == "requires_permit":

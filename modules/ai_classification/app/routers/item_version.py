@@ -198,17 +198,21 @@ def _ser_version(v: ItemVersion) -> dict:
     }
 
 
-def _ser_event(e: ComplianceChangeEvent) -> dict:
+def _ser_event(e: ComplianceChangeEvent, item: "Item | None" = None) -> dict:
+    detected = e.assessed_at or e.created_at
     return {
         "id": str(e.id),
         "item_id": str(e.item_id),
+        "item_code": item.item_code if item else None,
+        "item_name": item.name if item else None,
         "from_version_id": str(e.from_version_id) if e.from_version_id else None,
-        "to_version_id": str(e.to_version_id),
+        "to_version_id": str(e.to_version_id) if e.to_version_id else None,
         "change_category": e.change_category,
         "impact_level": e.impact_level,
         "impact_details": e.impact_details,
         "action_required": e.action_required,
         "status": e.status,
+        "detected_at": detected.isoformat() if detected else None,
         "assessed_at": e.assessed_at.isoformat() if e.assessed_at else None,
         "resolved_at": e.resolved_at.isoformat() if e.resolved_at else None,
         "resolved_by_user_id": str(e.resolved_by_user_id) if e.resolved_by_user_id else None,
@@ -556,7 +560,15 @@ async def list_events(
             pass
     stmt = stmt.order_by(ComplianceChangeEvent.created_at.desc()).limit(limit).offset(offset)
     rows = (await db.execute(stmt)).scalars().all()
-    return [_ser_event(e) for e in rows]
+
+    # item_id → Item の一括解決（N+1 回避）
+    item_ids = list({e.item_id for e in rows})
+    items_map: dict[uuid.UUID, Item] = {}
+    if item_ids:
+        item_rows = (await db.execute(select(Item).where(Item.id.in_(item_ids)))).scalars().all()
+        items_map = {i.id: i for i in item_rows}
+
+    return [_ser_event(e, items_map.get(e.item_id)) for e in rows]
 
 
 @router.get("/events/{event_id}")
@@ -564,7 +576,8 @@ async def get_event(event_id: uuid.UUID, db: AsyncSession = Depends(get_pg_db)):
     e = await db.get(ComplianceChangeEvent, event_id)
     if not e:
         raise HTTPException(404, "イベントが見つかりません")
-    return _ser_event(e)
+    item = await db.get(Item, e.item_id)
+    return _ser_event(e, item)
 
 
 @router.post("/events/{event_id}/request-validation", status_code=201)
@@ -635,6 +648,21 @@ async def request_validation(event_id: uuid.UUID, db: AsyncSession = Depends(get
     }
 
 
+def _notify_compliance_cleared_bg(item_code: str) -> None:
+    """コンプライアンスイベント解決後に ai_validation へ通知し ERP 出荷ブロック解除を促す。fire-and-forget。"""
+    import threading as _th
+    def _post():
+        try:
+            with httpx.Client(timeout=5.0) as c:
+                c.post(
+                    f"{_VALIDATION_BASE}/api/transactions/product-compliance-cleared",
+                    json={"item_code": item_code},
+                )
+        except Exception:
+            pass
+    _th.Thread(target=_post, daemon=True).start()
+
+
 @router.post("/events/{event_id}/resolve")
 async def resolve_event(event_id: uuid.UUID, body: ResolveBody, db: AsyncSession = Depends(get_pg_db)):
     e = await db.get(ComplianceChangeEvent, event_id)
@@ -647,6 +675,12 @@ async def resolve_event(event_id: uuid.UUID, body: ResolveBody, db: AsyncSession
     e.resolution_notes = body.resolution_notes
     await db.commit()
     await db.refresh(e)
+
+    # 解決済みイベントの品目コードを取得して ai_validation 経由で ERP ブロック解除を通知
+    item = await db.get(Item, e.item_id)
+    if item and item.item_code:
+        _notify_compliance_cleared_bg(item.item_code)
+
     return _ser_event(e)
 
 

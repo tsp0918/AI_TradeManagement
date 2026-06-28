@@ -9,6 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+import sqlalchemy as sa
 from sqlalchemy import DateTime, Float, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -82,4 +83,8 @@ class ScreeningResult(ScreeningBase):
     )
     screened_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+    # ai_validation Transaction.id との紐付け（スクリーニングを起動したトランザクション）
+    transaction_id: Mapped[int | None] = mapped_column(
+        sa.Integer, nullable=True, index=True
     )

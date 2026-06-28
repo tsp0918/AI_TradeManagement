@@ -27,8 +27,66 @@ from app.models.personnel import Personnel
 from app.services.deemed_export import run_screening as _run_deemed_screening
 
 import os as _os
-AI_VALIDATION_BASE = _os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
-SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
+import threading
+AI_VALIDATION_BASE      = _os.environ.get("MODULE_AI_VALIDATION_URL",      "http://localhost:8011")
+SCREENING_BASE          = _os.environ.get("MODULE_SCREENING_URL",           "http://localhost:8005")
+AI_CLASSIFICATION_BASE  = _os.environ.get("MODULE_AI_CLASSIFICATION_URL",   "http://localhost:8002")
+
+
+def _register_rnd_product_bg(case_id: str, case_title: str, use_raw: str | None) -> None:
+    """R&D アセスメント完了後、ai_classification へ品目を自動登録する。
+    code=RND-{case_id} で upsert（409 = 既存なので無視）。fire-and-forget。
+    """
+    code = f"RND-{case_id}"
+    desc = (use_raw or "")[:500] or None
+
+    def _post():
+        try:
+            with httpx.Client(timeout=5.0) as c:
+                c.post(
+                    f"{AI_CLASSIFICATION_BASE}/api/products",
+                    json={
+                        "code": code,
+                        "name": case_title[:200],
+                        "description": desc,
+                        "item_type": None,
+                        "usage_summary": desc,
+                    },
+                )
+        except Exception:
+            pass
+    threading.Thread(target=_post, daemon=True).start()
+
+
+def _notify_ai_validation_deemed_export(
+    case_id: str,
+    case_title: str,
+    risk_level: str,
+    top_factors: list,
+    recommendation: str,
+    person_name: str,
+) -> None:
+    """HIGH/CRITICAL みなし輸出リスク確定時に ai_validation へ DEEMED_EXPORT_RISK イベントを送る。
+    fire-and-forget — 失敗してもアセスメントフローは止めない。
+    """
+    def _post():
+        try:
+            payload = {
+                "event_type": "DEEMED_EXPORT_RISK",
+                "material_code": case_id,
+                "from_country": None,
+                "to_country": None,
+                "deemed_export_risk_level": risk_level,
+                "person_name": person_name,
+                "case_title": case_title,
+                "top_factors": top_factors or [],
+                "recommendation": recommendation or "",
+            }
+            with httpx.Client(timeout=5.0) as client:
+                client.post(f"{AI_VALIDATION_BASE}/api/transactions/events", json=payload)
+        except Exception:
+            pass
+    threading.Thread(target=_post, daemon=True).start()
 
 
 router = APIRouter(prefix="/ui", tags=["ui"])
@@ -443,6 +501,30 @@ def assessments_run(case_id: str, db: Session = Depends(get_db)):
         scoring_config_version="scoring-demo-0.3",
         external_screening_job=None,
     )
+
+    # 全リスクレベルで ai_classification に品目登録（R&D技術のトレーサビリティ確保）
+    _register_rnd_product_bg(
+        case_id=case_id,
+        case_title=case.title,
+        use_raw=prof.use_requirements_raw,
+    )
+
+    # HIGH/CRITICAL リスク → ai_validation へ DEEMED_EXPORT_RISK 通知
+    if scored["risk_level"] in ("HIGH", "CRITICAL"):
+        import json as _json
+        end_json = {}
+        try:
+            end_json = _json.loads(prof.end_user_template_json or "{}")
+        except Exception:
+            pass
+        _notify_ai_validation_deemed_export(
+            case_id=case_id,
+            case_title=case.title,
+            risk_level=scored["risk_level"],
+            top_factors=scored.get("top_factors") or [],
+            recommendation=scored.get("recommendation") or "",
+            person_name=end_json.get("end_user_name") or "",
+        )
 
     return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest", status_code=303)
 

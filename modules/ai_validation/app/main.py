@@ -289,9 +289,76 @@ MODULE = ModuleInfo(
 )
 
 
+_ERP_BASE           = os.environ.get("ERP_API_URL",       "http://localhost:8888")
+_ERP_ADMIN_EMAIL    = os.environ.get("ERP_ADMIN_EMAIL",    "admin@example.com")
+_ERP_ADMIN_PASSWORD = os.environ.get("ERP_ADMIN_PASSWORD", "admin1234")
+_SELF_URL           = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+_DEMINIMIS_POLL_SEC = int(os.environ.get("DEMINIMIS_POLL_INTERVAL_SEC", "600"))
+
+
+async def _erp_deminimis_poller() -> None:
+    """ERP /gts/deminimis BREACH を定期取得し、未通知案件を ai_validation へ登録する。"""
+    import asyncio
+    import httpx
+
+    await asyncio.sleep(30)  # 起動直後の一斉接続を避ける
+    while True:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # JWT 取得
+                r = await client.post(
+                    f"{_ERP_BASE}/auth/token",
+                    data={"username": _ERP_ADMIN_EMAIL, "password": _ERP_ADMIN_PASSWORD},
+                )
+                if r.status_code != 200:
+                    raise RuntimeError(f"ERP auth failed: {r.status_code}")
+                token = r.json()["access_token"]
+                headers = {"Authorization": f"Bearer {token}"}
+
+                # 未通知 BREACH レコード取得
+                r2 = await client.get(
+                    f"{_ERP_BASE}/gts/deminimis",
+                    params={"alert_level": "BREACH", "ai_tm_notified": "false", "limit": "100"},
+                    headers=headers,
+                )
+                if r2.status_code != 200:
+                    raise RuntimeError(f"ERP deminimis fetch failed: {r2.status_code}")
+
+                records = r2.json()
+                for rec in records:
+                    # AI_TM 自身へ MATERIAL_ORIGIN_CHANGE イベントを投稿
+                    payload = {
+                        "event_type": "MATERIAL_ORIGIN_CHANGE",
+                        "material_code": rec.get("fg_material_code"),
+                        "from_country": None,
+                        "to_country": None,
+                        "max_us_content_pct": rec.get("us_content_pct", 0.0),
+                        "exceeds_deminimis_threshold": True,
+                        "affected_products": [rec.get("fg_material_code", "")],
+                        "breach_lot_count": 1,
+                        "breach_lots": rec.get("us_components", []),
+                    }
+                    r3 = await client.post(f"{_SELF_URL}/api/transactions/events", json=payload)
+                    case_ref = r3.json().get("case_ref") if r3.status_code == 200 else None
+
+                    # ERP 側 ai_tm_notified フラグを更新
+                    await client.patch(
+                        f"{_ERP_BASE}/gts/deminimis/{rec['id']}/mark-notified",
+                        json={"ai_tm_case_ref": case_ref},
+                        headers=headers,
+                    )
+        except Exception as exc:
+            import logging
+            logging.getLogger("ai_validation.poller").warning("ERP deminimis poll error: %s", exc)
+
+        await asyncio.sleep(_DEMINIMIS_POLL_SEC)
+
+
 async def _on_startup() -> None:
+    import asyncio
     await _ensure_columns()
     await _preload_faiss_model()
+    asyncio.ensure_future(_erp_deminimis_poller())
 
 
 app = FastAPI(

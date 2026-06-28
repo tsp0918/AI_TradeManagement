@@ -16,9 +16,13 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import os
+import threading
 import uuid
 
+import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 from sqlalchemy import select
@@ -38,6 +42,19 @@ from app.services.screening_service import run_screening
 
 router = APIRouter(prefix="/api", tags=["screening"])
 
+_AI_VALIDATION_URL = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
+
+
+def _flag_transaction_for_review(transaction_id: int) -> None:
+    """スクリーニング再ヒット時に ai_validation へ取引の NEEDS_REVIEW 通知を fire-and-forget で送る。"""
+    def _post():
+        try:
+            with httpx.Client(timeout=5.0) as c:
+                c.post(f"{_AI_VALIDATION_URL}/api/transactions/{transaction_id}/flag-for-review")
+        except Exception:
+            pass
+    threading.Thread(target=_post, daemon=True).start()
+
 
 # ── スクリーニング実行 ──────────────────────────────────────────────────────
 
@@ -47,8 +64,11 @@ async def screen_company(
     request: ScreenRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """企業名・住所をウォッチリストと照合する。"""
-    return await run_screening(request, db)
+    """企業名・住所をウォッチリストと照合する。ヒット時かつ transaction_id が設定されていれば ai_validation へ NEEDS_REVIEW を通知する。"""
+    result = await run_screening(request, db)
+    if result.result_status in ("match", "possible_match") and request.transaction_id:
+        _flag_transaction_for_review(request.transaction_id)
+    return result
 
 
 @router.post("/screen/batch", status_code=status.HTTP_200_OK)
@@ -113,6 +133,90 @@ async def screen_batch(
         "total": total,
         "hits": hits,
         "clean": total - hits,
+        "results": results,
+    }
+
+
+# ── JSON バッチスクリーニング（ERP 連携用） ────────────────────────────────
+
+
+class _BatchJsonEntity(BaseModel):
+    name: str
+    country: str | None = None
+    address: str | None = None
+    entity_type: str | None = None
+
+
+class _BatchJsonRequest(BaseModel):
+    entities: list[_BatchJsonEntity]
+    sources: list[str] | None = None   # 現在は無視（全ソース使用）; 将来フィルタ用
+    threshold: float = 0.75
+
+
+@router.post("/screening/batch", status_code=status.HTTP_200_OK)
+async def screen_batch_json(
+    body: _BatchJsonRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """ERP / 外部システム向け JSON バッチスクリーニング（最大 500 件）。
+
+    ERP の `POST /api/screening/batch` 呼び出し形式に対応:
+      {"entities": [{"name": "...", "country": "CN", "entity_type": "company"}], "sources": [...]}
+
+    各エンティティに対してスクリーニングを実行し、結果を返す。
+    `is_match: true` は "match" または "possible_match" 状態を示す。
+    """
+    if not body.entities:
+        raise HTTPException(status_code=422, detail="entities が空です。")
+    if len(body.entities) > 500:
+        raise HTTPException(status_code=422, detail="一度に処理できる上限は 500 件です。")
+
+    results = []
+    for i, entity in enumerate(body.entities):
+        name = entity.name.strip()
+        if not name:
+            continue
+        req = ScreenRequest(
+            company_name=name,
+            country=entity.country,
+            address=entity.address,
+            threshold=body.threshold,
+        )
+        try:
+            result = await run_screening(req, db)
+            results.append({
+                "index": i,
+                "name": name,
+                "country": entity.country,
+                "entity_type": entity.entity_type,
+                "result_status": result.result_status,
+                "is_match": result.result_status in ("match", "possible_match"),
+                "max_score": result.max_score,
+                "list_name": result.matches[0].list_source if result.matches else None,
+                "matches": len(result.matches),
+                "result_id": str(result.id),
+            })
+        except Exception as exc:
+            results.append({
+                "index": i,
+                "name": name,
+                "country": entity.country,
+                "entity_type": entity.entity_type,
+                "result_status": "error",
+                "is_match": False,
+                "max_score": None,
+                "list_name": None,
+                "matches": 0,
+                "error": str(exc),
+            })
+
+    total = len(results)
+    flagged = [r for r in results if r["is_match"]]
+    return {
+        "total": total,
+        "flagged_count": len(flagged),
+        "clear_count": total - len(flagged),
+        "flagged_list": flagged,
         "results": results,
     }
 
