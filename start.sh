@@ -88,14 +88,17 @@ if [[ "${1:-}" == "--verify-demos" ]]; then
 fi
 
 if [[ "${1:-}" == "--restart-tunnel" ]]; then
-  _CF_PID=$(pgrep -f "cloudflared tunnel run" 2>/dev/null || true)
-  if [[ -n "$_CF_PID" ]]; then
-    kill "$_CF_PID" 2>/dev/null && info "既存の Tunnel プロセスを停止しました"
-    sleep 1
-  fi
   info "Cloudflare Tunnel を再起動します…"
-  cloudflared --config ~/.cloudflared/config.yml tunnel run c021837a-9593-4c04-8be8-3477297d5649 &
-  ok "Tunnel 起動済み (PID $!)"
+  launchctl unload ~/Library/LaunchAgents/com.tsp.cloudflared.plist 2>/dev/null || true
+  sleep 2
+  launchctl load ~/Library/LaunchAgents/com.tsp.cloudflared.plist
+  sleep 5
+  _CF_PID=$(pgrep -f "cloudflared tunnel" 2>/dev/null || true)
+  if [[ -n "$_CF_PID" ]]; then
+    ok "Tunnel 起動済み (PID $_CF_PID)"
+  else
+    error "Tunnel の起動に失敗しました。ログ: /tmp/cloudflared.log"
+  fi
   exit 0
 fi
 
