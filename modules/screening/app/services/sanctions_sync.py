@@ -28,6 +28,7 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import time
 import xml.etree.ElementTree as ET
 from typing import Any
 
@@ -39,7 +40,7 @@ OFAC_SDN_URL     = "https://sanctionslistservice.ofac.treas.gov/api/publicationp
 OFAC_SDN_CSV_URL = "https://sanctionslistservice.ofac.treas.gov/api/publicationpreview/exports/SDN.CSV"
 OFAC_SDN_URL_ALT = "https://www.treasury.gov/ofac/downloads/sdn.xml"   # 旧URL（フォールバック）
 UN_SC_XML_URL    = "https://scsanctions.un.org/resources/xml/en/consolidated.xml"
-CSL_API_URL      = "https://api.trade.gov/consolidated_screening_list/v1/search"
+CSL_API_URL      = "https://data.trade.gov/consolidated_screening_list/v1/search"
 BIS_EL_JSON_URL  = "https://efts.bis.doc.gov/complete-search-of-firm-names-and-addresses?searchOptions=allWords&keyWord=&export=true"
 EU_FSF_URL       = "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content"
 UK_OFSI_XML      = "https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.xml"
@@ -256,26 +257,48 @@ def _fetch_csl_source(
     logger.info("Fetching Trade.gov CSL source=%s (key=%s...)", source_code, api_key[:8])
 
     entries: list[dict[str, Any]] = []
-    offset    = 0
-    page_size = 100
+    offset      = 0
+    page_size   = 10    # data.trade.gov は実際には最大10件/ページを返す
+    max_offset  = 1000  # API の offset 上限（"Maximum offset is 1000"）
+    total_count = 0
 
+    # data.trade.gov は Azure APIM 形式: キーは "subscription-key" ヘッダーで渡す
+    headers = {"subscription-key": api_key} if api_key and api_key != "DEMO_KEY" else {}
     with httpx.Client(timeout=timeout, follow_redirects=True) as client:
         while True:
+            if offset > max_offset:
+                logger.warning(
+                    "CSL %s: offset %d exceeded API max (%d). "
+                    "Total %d entries — fetched %d/%d. "
+                    "Use additional search filters to retrieve remaining entries.",
+                    source_code, offset, max_offset, total_count, len(entries), total_count,
+                )
+                break
+
             params = {
                 "sources": source_code,
                 "size":    page_size,
                 "offset":  offset,
-                "api_key": api_key,
             }
-            resp = client.get(CSL_API_URL, params=params)
+            # 429 レートリミット対応: retry-after ヘッダーに従い最大3回リトライ
+            for attempt in range(3):
+                resp = client.get(CSL_API_URL, params=params, headers=headers)
+                if resp.status_code == 429:
+                    wait = float(resp.headers.get("retry-after", "2")) + 0.5
+                    logger.warning("CSL %s: rate limited (429), waiting %.1fs", source_code, wait)
+                    time.sleep(wait)
+                    continue
+                break
             if resp.status_code != 200:
                 raise RuntimeError(
                     f"Trade.gov CSL API returned HTTP {resp.status_code}. "
-                    "DEMO_KEY has limited access — register at api.trade.gov for a free key."
+                    "Register at developer.trade.gov and set TRADE_GOV_API_KEY."
                 )
             if not resp.text.strip():
                 raise RuntimeError("Trade.gov CSL API returned empty response (rate limit or key issue)")
             data = resp.json()
+            total_count = data.get("total", 0)
+            time.sleep(0.5)  # ページ間のレートリミット回避
 
             results: list[dict] = data.get("results", [])
             if not results:

@@ -363,7 +363,7 @@ async def deactivate_watchlist_entry(
 @router.post("/admin/sync-sanctions", status_code=status.HTTP_200_OK)
 async def sync_sanctions(
     sources: str = "all",
-    csl_api_key: str = "DEMO_KEY",
+    csl_api_key: str = "",
     db: AsyncSession = Depends(get_db),
 ):
     """全制裁リストを公式ソースから取得してウォッチリストを同期する。
@@ -389,6 +389,11 @@ async def sync_sanctions(
         fetch_eu_consolidated,
         fetch_uk_ofsi,
     )
+
+    import os
+    # クエリパラメータ未指定時は環境変数からAPIキーを取得
+    if not csl_api_key:
+        csl_api_key = os.environ.get("TRADE_GOV_API_KEY", "DEMO_KEY")
 
     # APIキー不要ソース（"free" で一括指定可）
     FREE_SOURCES = {"ofac_sdn_csv", "un_sc", "eu_consolidated"}
