@@ -1,0 +1,180 @@
+{
+  "_comment": "地政学サプライチェーン軸オントロジー seed — 技術覇権・チョークポイント・同盟エコシステム",
+  "_version": "v1.0",
+  "_updated": "2026-07-16",
+  "technology_power_map": {
+    "_description": "主要国の技術覇権分布（ECCN カテゴリ × 国別強み）",
+    "US": {
+      "dominant_domains": ["AI（LLM・ファウンデーションモデル）","クラウドインフラ（AWS/Azure/GCP）","半導体設計（Nvidiaの GPU・AMD・Intel Foundry）","高性能計算（HPC）","宇宙打上げ（SpaceX）","サイバーセキュリティ"],
+      "eccn_strongholds": ["3A001","4A003","5A001","5E002","9A004"],
+      "key_leverage": "半導体サプライチェーン全体（設計ツール・EDA・材料・製造装置）"
+    },
+    "CN": {
+      "dominant_domains": ["太陽光パネル製造","EV電池（CATL・BYD）","希土類（レアアース）精製・磁石","無人機（DJI）","5G機器（Huawei・ZTE）","グラファイト精製"],
+      "eccn_strongholds": ["1C010（レアアース）","3A001（一部）"],
+      "key_leverage": "レアアース・黒鉛・コバルト精製の世界シェア（>70%）"
+    },
+    "EU": {
+      "dominant_domains": ["EUV露光装置（ASML）","航空機エンジン（Safran・MTU）","産業用ロボット（KUKA）","核融合（ITER議長国）","精密医療機器"],
+      "eccn_strongholds": ["3B001","9E003","6A003"],
+      "key_leverage": "世界唯一のEUV露光装置メーカー（ASML）"
+    },
+    "JP": {
+      "dominant_domains": ["半導体材料（フォトレジスト・研磨剤・フォトマスク）","精密工作機械","産業用ロボット","ファインケミカル","炭素繊維（東レ・帝人）","光学部品"],
+      "eccn_strongholds": ["3C002","3C004","2B001","1C010"],
+      "key_leverage": "ArFフォトレジスト世界シェア>90%、フォトマスクブランク>70%"
+    },
+    "KR": {
+      "dominant_domains": ["DRAM（Samsung・SK Hynix）","NAND Flash","OLED・LCD パネル","造船（LNG船）"],
+      "eccn_strongholds": ["3A001（メモリ）"],
+      "key_leverage": "先端メモリ（HBM3）世界シェア>95%（Samsung+SK Hynix）"
+    },
+    "TW": {
+      "dominant_domains": ["先端ロジック半導体製造（TSMC）","半導体パッケージング（ASE）"],
+      "eccn_strongholds": ["3B001"],
+      "key_leverage": "3nm以下先端プロセス受託製造の世界シェア>90%（TSMC）"
+    }
+  },
+  "chokepoints": [
+    {
+      "chokepoint_id": "CP-1",
+      "name": "EUV露光装置（ASML）",
+      "concentration": "EU（蘭）100%",
+      "single_country_share": 1.00,
+      "criticality": "critical",
+      "affected_eccn": ["3B001"],
+      "description": "世界の先端半導体製造（7nm以下）は全てASMLのEUV装置に依存。中国への輸出は米・欧・日の圧力で停止。台湾有事シナリオでの最大リスク要因。",
+      "mitigation_options": ["Intel Foundry Services（IF20A代替）","代替露光技術（NIL・DSA）研究（TRL 3-4）"]
+    },
+    {
+      "chokepoint_id": "CP-2",
+      "name": "レアアース精製（中国）",
+      "concentration": "中国 85-90%",
+      "single_country_share": 0.87,
+      "criticality": "critical",
+      "affected_eccn": ["1C010"],
+      "description": "ネオジム（NdFeB）磁石・モーター・EV・風力発電・誘導爆弾のアクチュエータ全般が依存。2023年ガリウム・ゲルマニウム輸出規制で中国が「兵器化」を実証。",
+      "mitigation_options": ["豪州・カナダ・米国でのレアアース採掘・精製投資","MP Materials（米）のFt. Pass鉱山復活","人工鉱物・代替材料研究（ハイエントロピー合金）"]
+    },
+    {
+      "chokepoint_id": "CP-3",
+      "name": "先端メモリ（HBM：Samsung/SK Hynix）",
+      "concentration": "韓国 95%+",
+      "single_country_share": 0.96,
+      "criticality": "high",
+      "affected_eccn": ["3A001"],
+      "description": "AI推論・訓練に不可欠なHBM（高帯域幅メモリ）は韓国2社が独占。台湾有事より韓国有事の方がAI産業へのインパクト大という見方も。",
+      "mitigation_options": ["Micron（米）のHBM開発加速","国内HBM製造（日本：キオクシア/ソニー）投資"]
+    },
+    {
+      "chokepoint_id": "CP-4",
+      "name": "先端ロジック製造（TSMC）",
+      "concentration": "台湾 90%+",
+      "single_country_share": 0.92,
+      "criticality": "critical",
+      "affected_eccn": ["3B001"],
+      "description": "3nm以下の先端ロジックICは世界のAI・スマートフォン・自動車・軍事システム全般が依存。台湾有事での最大のサプライチェーンリスク。TSMC Arizona（5nm）・熊本工場（28nm）が一部リスク分散。",
+      "mitigation_options": ["TSMC Arizona（N3E 2026年量産）","Intel 18A（2025年）","Samsung TX（3nm）"]
+    },
+    {
+      "chokepoint_id": "CP-5",
+      "name": "ArFフォトレジスト（日本）",
+      "concentration": "日本 >90%",
+      "single_country_share": 0.93,
+      "criticality": "critical",
+      "affected_eccn": ["3C002"],
+      "description": "信越化学・JSR・住友化学・富士フイルムが世界のArF・EUVフォトレジストを独占。1社でも供給停止すれば世界の半導体製造がストップ。逆に言えば日本の最強の経済的バーゲニングチップ。外為法・経済安保推進法で戦略的に管理すべき品目。",
+      "mitigation_options": ["欧州代替メーカー育成（DOW・Merck KGaA）","国内在庫積み増し","EUVレジスト多元化投資"]
+    },
+    {
+      "chokepoint_id": "CP-6",
+      "name": "ブラックシー海峡・ホルムズ海峡・マラッカ海峡",
+      "concentration": "地政学的集中",
+      "single_country_share": null,
+      "criticality": "critical",
+      "affected_eccn": [],
+      "description": "エネルギー輸送の3大チョークポイント。ホルムズ（中東石油20%通過）・マラッカ（アジア向け石油85%通過）・ブラックシー海峡（穀物輸出）。紛争時の封鎖リスク。日本への影響は特に大（エネルギー輸入依存）。",
+      "mitigation_options": ["LNG貯蔵能力拡大","再生可能エネルギー加速","代替ルート（北極航路）"]
+    },
+    {
+      "chokepoint_id": "CP-7",
+      "name": "海底ケーブル網",
+      "concentration": "分散しているが脆弱",
+      "single_country_share": null,
+      "criticality": "high",
+      "affected_eccn": ["5A001"],
+      "description": "世界のインターネットトラフィック99%が海底ケーブルで伝送。中国系（HMN Technologies）のシェア拡大が米欧で問題視。着陸局点の物理的脆弱性。",
+      "mitigation_options": ["非中国系ケーブル敷設（Echo/Bifrost）","衛星通信代替（Starlink）","着陸局の多元化"]
+    }
+  ],
+  "alliance_ecosystems": [
+    {
+      "alliance_id": "AUKUS",
+      "name": "AUKUS（Australia-UK-US 安全保障枠組み）",
+      "members": ["US", "UK", "AU"],
+      "tech_focus": ["原子力潜水艦推進（Pillar 1）","AI・量子・サイバー・極超音速・電子戦（Pillar 2）"],
+      "export_control_implication": "AUKUS Pillar 2 で EAR 特例（ITAR free zone 類似）検討。AU への米英技術移転が通常の輸出管理より緩和。",
+      "eccn_relevant": ["9A004","5E002","9E003"],
+      "jp_relevance": "日本はAUKUS Pillar 2 の「パートナー国」として招待議論中（2024〜）"
+    },
+    {
+      "alliance_id": "QUAD",
+      "name": "Quad（日米豪印 戦略的枠組み）",
+      "members": ["US", "JP", "AU", "IN"],
+      "tech_focus": ["半導体サプライチェーン","クリティカルミネラル","クリーンエネルギー","宇宙","サイバーセキュリティ"],
+      "export_control_implication": "Quadは正式な軍事同盟ではないが技術共有協力。Critical Minerals Partnership でレアアース調達多元化。",
+      "eccn_relevant": ["1C010","3B001","9A004"],
+      "jp_relevance": "日本は半導体材料・工作機械でQuad内の最重要貢献国"
+    },
+    {
+      "alliance_id": "CHIP4",
+      "name": "Chip4（日米台韓 半導体サプライチェーン連携）",
+      "members": ["US", "JP", "KR", "TW"],
+      "tech_focus": ["半導体製造装置","先端ロジック・メモリ製造","半導体材料","設計ツール（EDA）"],
+      "export_control_implication": "2022年米国の対中半導体輸出規制（EAR改正）に日本・蘭が追随。Chip4は中国の先端半導体アクセスを封じる事実上の輸出管理同盟。",
+      "eccn_relevant": ["3B001","3C002","4A003"],
+      "jp_relevance": "日本は2023年5月23品目の半導体製造装置を輸出管理強化"
+    },
+    {
+      "alliance_id": "FVE",
+      "name": "Five Eyes（英米加豪NZ 情報共有同盟）",
+      "members": ["US", "UK", "CA", "AU", "NZ"],
+      "tech_focus": ["SIGINT・通信インテリジェンス","サイバー防衛","5G排除（Huawei）"],
+      "export_control_implication": "Five Eyes内での機密技術共有は通常の輸出管理より緩和。EUポータル（NSG・Wassenaar）の承認に影響。",
+      "eccn_relevant": ["5A001","5E001","5A002","5E002"],
+      "jp_relevance": "日本はFive Eyes外だが「Five Eyes plus Japan」としてサイバー情報共有が進む"
+    },
+    {
+      "alliance_id": "MINERALS",
+      "name": "Minerals Security Partnership（MSP：クリティカルミネラル調達同盟）",
+      "members": ["US", "UK", "CA", "AU", "JP", "KR", "EU", "IN", "FR", "DE"],
+      "tech_focus": ["コバルト","リチウム","ニッケル","希土類","グラファイト","マンガン"],
+      "export_control_implication": "MSPは中国依存からの脱却を目指す調達多元化同盟。EV電池・防衛装備の素材確保が目的。",
+      "eccn_relevant": ["1C010","1C012"],
+      "jp_relevance": "日本は経済安全保障推進法の重要物資確保でMSPと連動"
+    }
+  ],
+  "export_control_convergence": {
+    "_description": "米日欧の輸出規制協調の現状",
+    "semiconductor_equipment": {
+      "status": "協調済み",
+      "description": "2023年：米国BIS改正→日本経産省23品目強化→オランダASML制限強化。EUV・ArF液浸・先進ALD/CVD の中国向け輸出が事実上停止。",
+      "gap": "中国国内の代替技術開発（SMEE の28nm露光装置）を規制できない限界"
+    },
+    "ai_chips": {
+      "status": "強化中",
+      "description": "2023年10月：BIS がH100等AI GPU の中国輸出を追加規制（性能閾値ベース）。日本は対応検討中。ECCN 3A001 の閾値定期更新が課題。",
+      "gap": "Cloud経由の計算リソース提供（Huawei Cloud等）が規制外"
+    },
+    "biotech": {
+      "status": "未整備",
+      "description": "合成生物学・ゲノム編集の輸出管理は各国ともに不十分。SequencingデータやAI-Bioツールの規制フレームワーク未確立。",
+      "gap": "DNAシンセサイザーは一部EARで管理するが、DNAシーケンスデータ・AIモデル自体は管理外"
+    },
+    "quantum": {
+      "status": "検討中",
+      "description": "量子コンピュータ・QKD のEAR分類は TRL進展に追いつかず。NSC・BISが2024年に量子管理強化を発表。",
+      "gap": "量子ソフトウェア（回路コンパイラ・量子アルゴリズム）の規制が未整備"
+    }
+  }
+}

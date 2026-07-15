@@ -1,10 +1,10 @@
 {
-  "schema_version": "1.1.0",
-  "generated_at": "2026-07-14T15:45:46.940371+00:00",
+  "schema_version": "1.2.0",
+  "generated_at": "2026-07-15T23:04:26.954886+00:00",
   "build_manifest": {
-    "schema_version": "1.1.0",
-    "generated_at": "2026-07-14T15:45:46.940371+00:00",
-    "duration_seconds": 4.85,
+    "schema_version": "1.2.0",
+    "generated_at": "2026-07-15T23:04:26.954886+00:00",
+    "duration_seconds": 4.67,
     "sources": {
       "matrix_json": "/Users/takehirosato/Desktop/AI_TradeManagement/data/matrix.json",
       "patents_json": "/Users/takehirosato/Desktop/AI_TradeManagement/data/patents.json",
@@ -24,7 +24,8 @@
       "patent_stub_nodes": 67,
       "wassenaar_nodes": 146,
       "hs_nodes": 281,
-      "total_nodes": 769,
+      "strategic_nodes": 29,
+      "total_nodes": 798,
       "db_enriched": 143,
       "fefta_xml_enriched": 168,
       "eccn_pdf_enriched": 28,
@@ -27350,6 +27351,717 @@
       },
       "source_refs": {
         "hs_json": "hs2022_6digit.json"
+      }
+    },
+    {
+      "id": "ET:ET-AI",
+      "type": "emerging_tech",
+      "label": "人工知能・機械学習",
+      "label_en": "Artificial Intelligence & Machine Learning",
+      "item_no": "ET-AI",
+      "description": "大規模言語モデル・深層学習・強化学習・自律型システムの技術群。軍事AI（自律型致死兵器・ターゲティングAI）、サイバー攻撃AI、AI偵察システムとして転用可能。現行のEARではソフトウェア（5D001）として一部管理。",
+      "dual_use_potential": 0.92,
+      "strategic_importance": "critical",
+      "eccn_connection": [
+        "4D001",
+        "5D001",
+        "5E001"
+      ],
+      "fefta_connection": [
+        "2項"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "emerging_tech_taxonomy.json"
+      }
+    },
+    {
+      "id": "ET:ET-QT",
+      "type": "emerging_tech",
+      "label": "量子技術",
+      "label_en": "Quantum Technology",
+      "item_no": "ET-QT",
+      "description": "量子コンピュータ・量子通信・量子センサーの三分野。量子コンピュータはRSA暗号解読（Shorアルゴリズム）、量子センサーは潜水艦探知・地下施設探知・GPS代替として安全保障上の意義が極めて高い。現行輸出管理が技術進歩に追いついていない最先端領域。",
+      "dual_use_potential": 0.97,
+      "strategic_importance": "critical",
+      "eccn_connection": [
+        "3A001",
+        "5E002"
+      ],
+      "fefta_connection": [
+        "2項",
+        "7項"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "emerging_tech_taxonomy.json"
+      }
+    },
+    {
+      "id": "ET:ET-BIO",
+      "type": "emerging_tech",
+      "label": "バイオテクノロジー（合成生物学）",
+      "label_en": "Biotechnology & Synthetic Biology",
+      "item_no": "ET-BIO",
+      "description": "合成生物学・CRISPR・ゲノム編集・タンパク質工学。生物兵器（強化病原体・エンハンスト毒素）への転用可能性。AIと統合した「AIバイオ」によるデ・ノボ病原体設計リスクが近年顕在化。外為法8項・CWC・BWCが部分的に規制するが、研究ツール自体の管理は不十分。",
+      "dual_use_potential": 0.88,
+      "strategic_importance": "critical",
+      "eccn_connection": [
+        "2B352",
+        "1C351",
+        "1C353"
+      ],
+      "fefta_connection": [
+        "8項"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "emerging_tech_taxonomy.json"
+      }
+    },
+    {
+      "id": "ET:ET-SC",
+      "type": "emerging_tech",
+      "label": "先端半導体",
+      "label_en": "Advanced Semiconductors",
+      "item_no": "ET-SC",
+      "description": "3nm以下プロセスロジックIC・HBM・GaN/SiCパワー半導体・チップレット技術。半導体は現代軍事システム（誘導兵器・AI C4ISR・暗号）の根幹。米国のChip Act・BIS Entity List・日本の外為法が管理。製造装置（EUV/CVD/ALD）も規制対象。",
+      "dual_use_potential": 0.94,
+      "strategic_importance": "critical",
+      "eccn_connection": [
+        "3A001",
+        "3B001",
+        "3C002",
+        "3C004"
+      ],
+      "fefta_connection": [
+        "7項",
+        "7項（7の2）"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "emerging_tech_taxonomy.json"
+      }
+    },
+    {
+      "id": "ET:ET-SPACE",
+      "type": "emerging_tech",
+      "label": "宇宙技術",
+      "label_en": "Space Technology",
+      "item_no": "ET-SPACE",
+      "description": "打上げシステム・衛星・宇宙状況監視（SSA）・衛星間通信。民間宇宙産業の拡大（NewSpace）がデュアルユース管理を複雑化。再使用型ロケット技術はミサイル転用可能性。ASAT（衛星攻撃）技術の管理が緊急課題。",
+      "dual_use_potential": 0.91,
+      "strategic_importance": "critical",
+      "eccn_connection": [
+        "9A004",
+        "9E001",
+        "9A515"
+      ],
+      "fefta_connection": [
+        "2項"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "emerging_tech_taxonomy.json"
+      }
+    },
+    {
+      "id": "ET:ET-HY",
+      "type": "emerging_tech",
+      "label": "極超音速技術",
+      "label_en": "Hypersonic Technology",
+      "item_no": "ET-HY",
+      "description": "マッハ5超の飛翔体技術（HGV・HCM・スクラムジェット）。現行ミサイル防衛を無力化する可能性があり、米・中・露・日が開発競争中。スクラムジェットエンジン・耐熱材料（UHTC）・誘導制御が核心技術。MTCR・Wassenaarで一部管理。",
+      "dual_use_potential": 0.98,
+      "strategic_importance": "critical",
+      "eccn_connection": [
+        "9A004",
+        "9E003"
+      ],
+      "fefta_connection": [
+        "2項",
+        "13項"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "emerging_tech_taxonomy.json"
+      }
+    },
+    {
+      "id": "ET:ET-EN",
+      "type": "emerging_tech",
+      "label": "先進エネルギー貯蔵",
+      "label_en": "Advanced Energy Storage",
+      "item_no": "ET-EN",
+      "description": "リチウムイオン・全固体電池・液体空気蓄電・水素燃料電池・核融合。EV・グリッドに加え、潜水艦（非大気依存推進）・UAV・軍用車両のエネルギー源として重要。中国のEV電池産業は軍民融合企業が主導。",
+      "dual_use_potential": 0.72,
+      "strategic_importance": "high",
+      "eccn_connection": [
+        "1C010"
+      ],
+      "fefta_connection": [
+        "4項"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "emerging_tech_taxonomy.json"
+      }
+    },
+    {
+      "id": "ET:ET-MAT",
+      "type": "emerging_tech",
+      "label": "先進材料",
+      "label_en": "Advanced Materials",
+      "item_no": "ET-MAT",
+      "description": "炭素繊維・高エントロピー合金・トポロジカル絶縁体・メタマテリアル・2D材料（グラフェン等）。複合材料は航空宇宙・防衛機器の軽量化・高強度化に直結。CFRP・アラミド繊維は外為法4項・EAR 1C010で管理。",
+      "dual_use_potential": 0.82,
+      "strategic_importance": "high",
+      "eccn_connection": [
+        "1C010",
+        "1C210"
+      ],
+      "fefta_connection": [
+        "4項"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "emerging_tech_taxonomy.json"
+      }
+    },
+    {
+      "id": "KA:CM-01",
+      "type": "keizai_anpo",
+      "label": "半導体",
+      "label_en": "Semiconductors (Integrated Circuits)",
+      "item_no": "CM-01",
+      "description": "台湾有事で先端ロジックICが全面停止するシナリオ。日本のGDP最大4.2兆円損失試算（経産省2022）",
+      "risk_level": "critical",
+      "eccn_parallel": [
+        "3A001",
+        "3B001",
+        "3C002",
+        "3C004"
+      ],
+      "fefta_parallel": [
+        "7項",
+        "7の2項"
+      ],
+      "requirement_text": "TSMC熊本工場（JASM）・Rapidus北海道工場への補助金",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-02",
+      "type": "keizai_anpo",
+      "label": "蓄電池（電池セル・材料）",
+      "label_en": "Storage Batteries",
+      "item_no": "CM-02",
+      "description": "EV・再生可能エネルギー貯蔵・軍用電源の依存",
+      "risk_level": "critical",
+      "eccn_parallel": [
+        "1C010"
+      ],
+      "fefta_parallel": [
+        "4項"
+      ],
+      "requirement_text": "パナソニック・トヨタ全固体電池投資への補助金",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-03",
+      "type": "keizai_anpo",
+      "label": "重要鉱物（クリティカルミネラル）",
+      "label_en": "Critical Minerals",
+      "item_no": "CM-03",
+      "description": "2023年中国のガリウム・ゲルマニウム輸出規制が「資源の武器化」を実証",
+      "risk_level": "critical",
+      "eccn_parallel": [
+        "1C010",
+        "1C012"
+      ],
+      "fefta_parallel": [
+        "4項"
+      ],
+      "requirement_text": "MSP（Minerals Security Partnership）参加・JOGMEC等権益確保支援",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-04",
+      "type": "keizai_anpo",
+      "label": "工作機械・産業用ロボット",
+      "label_en": "Machine Tools & Industrial Robots",
+      "item_no": "CM-04",
+      "description": "精密工作機械の対中輸出規制（日本2023年5月施行）との整合",
+      "risk_level": "high",
+      "eccn_parallel": [
+        "2B001",
+        "2B006"
+      ],
+      "fefta_parallel": [
+        "3項"
+      ],
+      "requirement_text": "スマートものづくり補助金・ロボット産業振興",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-05",
+      "type": "keizai_anpo",
+      "label": "航空機・宇宙関連部品",
+      "label_en": "Aircraft & Space Components",
+      "item_no": "CM-05",
+      "description": "ITAR・EARによる米国側の再輸出管理リスク",
+      "risk_level": "high",
+      "eccn_parallel": [
+        "9A004",
+        "9E001"
+      ],
+      "fefta_parallel": [
+        "2項"
+      ],
+      "requirement_text": "H3ロケット国産化・防衛装備移転三原則改定",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-06",
+      "type": "keizai_anpo",
+      "label": "天然ガス・液化天然ガス（LNG）",
+      "label_en": "Natural Gas & LNG",
+      "item_no": "CM-06",
+      "description": "ロシアのウクライナ侵攻によるサハリン2の不確実性",
+      "risk_level": "critical",
+      "eccn_parallel": [],
+      "fefta_parallel": [
+        "14項"
+      ],
+      "requirement_text": "サハリン2権益維持・カタールLNG長期契約延長",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-07",
+      "type": "keizai_anpo",
+      "label": "宇宙関連（衛星・測位）",
+      "label_en": "Space Systems (Satellite/Navigation)",
+      "item_no": "CM-07",
+      "description": "ASATによる衛星無力化シナリオ・GPS妨害（欺瞞）リスク",
+      "risk_level": "high",
+      "eccn_parallel": [
+        "9A004",
+        "9A515"
+      ],
+      "fefta_parallel": [
+        "2項"
+      ],
+      "requirement_text": "みちびき（準天頂衛星）拡充・商業打上げ推進法整備",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-08",
+      "type": "keizai_anpo",
+      "label": "海洋（船舶・海底ケーブル）",
+      "label_en": "Maritime (Vessels & Submarine Cables)",
+      "item_no": "CM-08",
+      "description": "有事における海底ケーブル切断・通信遮断シナリオ",
+      "risk_level": "high",
+      "eccn_parallel": [
+        "5A001"
+      ],
+      "fefta_parallel": [
+        "2項"
+      ],
+      "requirement_text": "海底ケーブル保護法整備・日本造船業再活性化",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-09",
+      "type": "keizai_anpo",
+      "label": "抗菌性物質（医薬品・原料）",
+      "label_en": "Antimicrobials & Pharmaceuticals",
+      "item_no": "CM-09",
+      "description": "新型感染症×供給途絶（COVID-19教訓）",
+      "risk_level": "high",
+      "eccn_parallel": [
+        "1C350",
+        "2B352"
+      ],
+      "fefta_parallel": [
+        "8項"
+      ],
+      "requirement_text": "医薬品サプライチェーン強靭化。国内API製造補助金。",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-10",
+      "type": "keizai_anpo",
+      "label": "肥料",
+      "label_en": "Fertilizers",
+      "item_no": "CM-10",
+      "description": "ウクライナ侵攻→黒海封鎖→穀物・肥料輸出途絶",
+      "risk_level": "high",
+      "eccn_parallel": [],
+      "fefta_parallel": [
+        "14項"
+      ],
+      "requirement_text": "代替調達先開拓・海藻肥料研究",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-11",
+      "type": "keizai_anpo",
+      "label": "永久磁石",
+      "label_en": "Permanent Magnets (NdFeB)",
+      "item_no": "CM-11",
+      "description": "EV・風力発電・誘導兵器アクチュエータ全般への影響",
+      "risk_level": "critical",
+      "eccn_parallel": [
+        "1C010"
+      ],
+      "fefta_parallel": [
+        "4項"
+      ],
+      "requirement_text": "国内レアアース磁石製造支援・代替材料（ハイエントロピー合金）研究",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-12",
+      "type": "keizai_anpo",
+      "label": "工作機械用切削工具（超硬合金・CBN等）",
+      "label_en": "Cutting Tools (Cemented Carbide, CBN)",
+      "item_no": "CM-12",
+      "description": "中国のタングステン輸出規制シナリオ",
+      "risk_level": "high",
+      "eccn_parallel": [
+        "2B001"
+      ],
+      "fefta_parallel": [
+        "3項"
+      ],
+      "requirement_text": "タングステン代替材料（TiSiN等）研究・国内回収リサイクル",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-13",
+      "type": "keizai_anpo",
+      "label": "クラウドインフラ・クラウドプログラム",
+      "label_en": "Cloud Infrastructure & Programs",
+      "item_no": "CM-13",
+      "description": "米国の一方的データアクセス（CLOUD Act）・有事の接続遮断リスク",
+      "risk_level": "critical",
+      "eccn_parallel": [
+        "4A003",
+        "5E001"
+      ],
+      "fefta_parallel": [
+        "7項（情報処理）"
+      ],
+      "requirement_text": "政府クラウド（ISMAP）要件強化・国産クラウド育成",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "KA:CM-14",
+      "type": "keizai_anpo",
+      "label": "先端半導体製造装置・材料",
+      "label_en": "Advanced Semiconductor Manufacturing Equipment & Materials",
+      "item_no": "CM-14",
+      "description": "日本の2023年5月23品目輸出規制強化と連動",
+      "risk_level": "critical",
+      "eccn_parallel": [
+        "3B001",
+        "3C002",
+        "3C004"
+      ],
+      "fefta_parallel": [
+        "7の2項"
+      ],
+      "requirement_text": "東京エレクトロン等国内装置メーカーへの研究開発補助",
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "economic_security.json"
+      }
+    },
+    {
+      "id": "CP:CP-1",
+      "type": "geopolitical_sc",
+      "label": "EUV露光装置（ASML）",
+      "label_en": "EUV露光装置（ASML）",
+      "item_no": "CP-1",
+      "description": "世界の先端半導体製造（7nm以下）は全てASMLのEUV装置に依存。中国への輸出は米・欧・日の圧力で停止。台湾有事シナリオでの最大リスク要因。",
+      "criticality": "critical",
+      "concentration": "EU（蘭）100%",
+      "affected_eccn": [
+        "3B001"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "geopolitical_sc.json"
+      }
+    },
+    {
+      "id": "CP:CP-2",
+      "type": "geopolitical_sc",
+      "label": "レアアース精製（中国）",
+      "label_en": "レアアース精製（中国）",
+      "item_no": "CP-2",
+      "description": "ネオジム（NdFeB）磁石・モーター・EV・風力発電・誘導爆弾のアクチュエータ全般が依存。2023年ガリウム・ゲルマニウム輸出規制で中国が「兵器化」を実証。",
+      "criticality": "critical",
+      "concentration": "中国 85-90%",
+      "affected_eccn": [
+        "1C010"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "geopolitical_sc.json"
+      }
+    },
+    {
+      "id": "CP:CP-3",
+      "type": "geopolitical_sc",
+      "label": "先端メモリ（HBM：Samsung/SK Hynix）",
+      "label_en": "先端メモリ（HBM：Samsung/SK Hynix）",
+      "item_no": "CP-3",
+      "description": "AI推論・訓練に不可欠なHBM（高帯域幅メモリ）は韓国2社が独占。台湾有事より韓国有事の方がAI産業へのインパクト大という見方も。",
+      "criticality": "high",
+      "concentration": "韓国 95%+",
+      "affected_eccn": [
+        "3A001"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "geopolitical_sc.json"
+      }
+    },
+    {
+      "id": "CP:CP-4",
+      "type": "geopolitical_sc",
+      "label": "先端ロジック製造（TSMC）",
+      "label_en": "先端ロジック製造（TSMC）",
+      "item_no": "CP-4",
+      "description": "3nm以下の先端ロジックICは世界のAI・スマートフォン・自動車・軍事システム全般が依存。台湾有事での最大のサプライチェーンリスク。TSMC Arizona（5nm）・熊本工場（28nm）が一部リスク分散。",
+      "criticality": "critical",
+      "concentration": "台湾 90%+",
+      "affected_eccn": [
+        "3B001"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "geopolitical_sc.json"
+      }
+    },
+    {
+      "id": "CP:CP-5",
+      "type": "geopolitical_sc",
+      "label": "ArFフォトレジスト（日本）",
+      "label_en": "ArFフォトレジスト（日本）",
+      "item_no": "CP-5",
+      "description": "信越化学・JSR・住友化学・富士フイルムが世界のArF・EUVフォトレジストを独占。1社でも供給停止すれば世界の半導体製造がストップ。逆に言えば日本の最強の経済的バーゲニングチップ。外為法・経済安保推進法で戦略的に管理すべき品目。",
+      "criticality": "critical",
+      "concentration": "日本 >90%",
+      "affected_eccn": [
+        "3C002"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "geopolitical_sc.json"
+      }
+    },
+    {
+      "id": "CP:CP-6",
+      "type": "geopolitical_sc",
+      "label": "ブラックシー海峡・ホルムズ海峡・マラッカ海峡",
+      "label_en": "ブラックシー海峡・ホルムズ海峡・マラッカ海峡",
+      "item_no": "CP-6",
+      "description": "エネルギー輸送の3大チョークポイント。ホルムズ（中東石油20%通過）・マラッカ（アジア向け石油85%通過）・ブラックシー海峡（穀物輸出）。紛争時の封鎖リスク。日本への影響は特に大（エネルギー輸入依存）。",
+      "criticality": "critical",
+      "concentration": "地政学的集中",
+      "affected_eccn": [],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "geopolitical_sc.json"
+      }
+    },
+    {
+      "id": "CP:CP-7",
+      "type": "geopolitical_sc",
+      "label": "海底ケーブル網",
+      "label_en": "海底ケーブル網",
+      "item_no": "CP-7",
+      "description": "世界のインターネットトラフィック99%が海底ケーブルで伝送。中国系（HMN Technologies）のシェア拡大が米欧で問題視。着陸局点の物理的脆弱性。",
+      "criticality": "high",
+      "concentration": "分散しているが脆弱",
+      "affected_eccn": [
+        "5A001"
+      ],
+      "requirement_text": null,
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      },
+      "source_refs": {
+        "seed": "geopolitical_sc.json"
       }
     }
   ],

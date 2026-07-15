@@ -1,17 +1,21 @@
 {
-  "_version": "1.0",
-  "_built_at": "2026-05-10T05:13:09+00:00",
-  "_description": "輸出管理コンプライアンス オントロジーグラフ（platform-core API 用）",
+  "_version": "1.1",
+  "_built_at": "2026-07-15T22:59:39+00:00",
+  "_description": "輸出管理コンプライアンス オントロジーグラフ（platform-core API 用）— 3軸戦略知識統合版",
   "stats": {
     "eccn_nodes": 637,
-    "ipc_mappings": 174,
+    "ipc_mappings": 186,
     "hs_eccn_mappings": 1469,
     "fefta_items": 17,
-    "eccns_with_patents": 629,
-    "eccns_with_papers": 13,
+    "eccns_with_patents": 631,
+    "eccns_with_papers": 23,
     "eccns_with_fefta": 460,
     "eccns_with_ipc": 631,
-    "eccns_with_hs": 27
+    "eccns_with_hs": 27,
+    "emerging_tech_domains": 8,
+    "keizai_anpo_materials": 14,
+    "geopolitical_chokepoints": 7,
+    "alliance_ecosystems": 5
   },
   "eccn_nodes": {
     "0A002": {
@@ -28,7 +32,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 170,
+      "patent_count": 778,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -63,7 +67,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 82,
+      "patent_count": 92,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -98,7 +102,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 82,
+      "patent_count": 92,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -129,7 +133,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 27,
+      "patent_count": 39,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -163,7 +167,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 100,
+      "patent_count": 681,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -199,7 +203,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 45,
+      "patent_count": 112,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -233,7 +237,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 82,
+      "patent_count": 92,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -267,7 +271,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 82,
+      "patent_count": 92,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -302,7 +306,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 82,
+      "patent_count": 92,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -337,7 +341,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 82,
+      "patent_count": 92,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -365,7 +369,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 490,
+      "patent_count": 1726,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -401,7 +405,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 158,
+      "patent_count": 213,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -441,7 +445,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 51,
+      "patent_count": 256,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -476,7 +480,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 8,
+      "patent_count": 57,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -510,7 +514,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 221,
+      "patent_count": 803,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -544,7 +548,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 138,
+      "patent_count": 992,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -577,7 +581,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 193,
+      "patent_count": 988,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -608,7 +612,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 10,
+      "patent_count": 82,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -639,7 +643,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 6,
+      "patent_count": 35,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -669,7 +673,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 9,
+      "patent_count": 41,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -753,7 +757,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 6,
+      "patent_count": 29,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -783,7 +787,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 4,
+      "patent_count": 26,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -811,7 +815,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 38,
+      "patent_count": 168,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -842,7 +846,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -878,7 +882,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 96,
+      "patent_count": 299,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -910,7 +914,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -940,7 +944,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 431,
+      "patent_count": 1517,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -975,7 +979,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 180,
+      "patent_count": 572,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1007,7 +1011,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 484,
+      "patent_count": 1425,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1041,7 +1045,7 @@
         "14"
       ],
       "has_technical_notes": true,
-      "patent_count": 370,
+      "patent_count": 1029,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1075,7 +1079,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 370,
+      "patent_count": 1029,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1109,7 +1113,7 @@
         "14"
       ],
       "has_technical_notes": true,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1142,7 +1146,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 111,
+      "patent_count": 395,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1168,7 +1172,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 396,
+      "patent_count": 1354,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1202,7 +1206,7 @@
         "14"
       ],
       "has_technical_notes": true,
-      "patent_count": 49,
+      "patent_count": 351,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1234,7 +1238,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 39,
+      "patent_count": 588,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1261,7 +1265,7 @@
         "14"
       ],
       "has_technical_notes": true,
-      "patent_count": 297,
+      "patent_count": 1144,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1294,7 +1298,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 215,
+      "patent_count": 1005,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1326,7 +1330,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 215,
+      "patent_count": 1005,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1353,7 +1357,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 205,
+      "patent_count": 1008,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1385,7 +1389,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 310,
+      "patent_count": 1338,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1418,7 +1422,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1450,7 +1454,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1482,7 +1486,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 438,
+      "patent_count": 1463,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1515,7 +1519,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1544,7 +1548,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 281,
+      "patent_count": 1083,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1574,7 +1578,7 @@
         "14"
       ],
       "has_technical_notes": false,
-      "patent_count": 240,
+      "patent_count": 775,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1601,7 +1605,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 156,
+      "patent_count": 651,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1611,7 +1615,8 @@
         "ipc_prefixes": [
           "G21C",
           "C07F",
-          "C22C"
+          "C22C",
+          "G21B"
         ],
         "hs_codes_count": 0
       }
@@ -1635,7 +1640,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1670,7 +1675,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1706,7 +1711,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1741,7 +1746,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1773,7 +1778,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 682,
+      "patent_count": 2474,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1812,7 +1817,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 545,
+      "patent_count": 1966,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1852,7 +1857,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1889,7 +1894,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1956,7 +1961,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -1990,7 +1995,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -2024,7 +2029,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -2053,7 +2058,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 95,
+      "patent_count": 552,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2080,7 +2085,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 10,
+      "patent_count": 445,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2106,7 +2111,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 37,
+      "patent_count": 687,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2134,7 +2139,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 31,
+      "patent_count": 477,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2161,7 +2166,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 10,
+      "patent_count": 445,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2187,7 +2192,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 263,
+      "patent_count": 996,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2214,7 +2219,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 237,
+      "patent_count": 505,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2240,7 +2245,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 6,
+      "patent_count": 186,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2266,7 +2271,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 233,
+      "patent_count": 1084,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2289,7 +2294,7 @@
       "reason_for_control": [],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 23,
+      "patent_count": 599,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2315,7 +2320,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 6,
+      "patent_count": 364,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2340,7 +2345,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 52,
+      "patent_count": 180,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2366,7 +2371,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 78,
+      "patent_count": 426,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2392,7 +2397,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 114,
+      "patent_count": 518,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2417,7 +2422,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 114,
+      "patent_count": 400,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2442,7 +2447,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 114,
+      "patent_count": 400,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2469,7 +2474,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 2,
+      "patent_count": 225,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2497,7 +2502,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 48,
+      "patent_count": 361,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2522,7 +2527,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 106,
+      "patent_count": 525,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2546,7 +2551,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 27,
+      "patent_count": 149,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2570,7 +2575,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 23,
+      "patent_count": 381,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2594,7 +2599,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 23,
+      "patent_count": 391,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2624,7 +2629,7 @@
         "13"
       ],
       "has_technical_notes": true,
-      "patent_count": 10,
+      "patent_count": 426,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -2652,7 +2657,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 5,
+      "patent_count": 82,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2677,7 +2682,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 182,
+      "patent_count": 638,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2707,7 +2712,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 181,
+      "patent_count": 592,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2735,7 +2740,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 4,
+      "patent_count": 97,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2760,7 +2765,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 99,
+      "patent_count": 622,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2786,7 +2791,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 190,
+      "patent_count": 641,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2813,7 +2818,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 35,
+      "patent_count": 525,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2838,7 +2843,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 4,
+      "patent_count": 47,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2863,7 +2868,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 4,
+      "patent_count": 47,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2888,7 +2893,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 205,
+      "patent_count": 692,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2914,7 +2919,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 6,
+      "patent_count": 261,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2939,7 +2944,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 12,
+      "patent_count": 248,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2965,7 +2970,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 10,
+      "patent_count": 428,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -2990,7 +2995,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 60,
+      "patent_count": 601,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3016,7 +3021,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 5,
+      "patent_count": 36,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3041,7 +3046,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 153,
+      "patent_count": 423,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3067,7 +3072,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 47,
+      "patent_count": 171,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3092,7 +3097,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 85,
+      "patent_count": 422,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3118,7 +3123,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 136,
+      "patent_count": 686,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3146,7 +3151,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 44,
+      "patent_count": 476,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3175,7 +3180,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 311,
+      "patent_count": 795,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3205,7 +3210,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 162,
+      "patent_count": 746,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3231,7 +3236,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 20,
+      "patent_count": 767,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3260,7 +3265,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 182,
+      "patent_count": 882,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3287,7 +3292,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 36,
+      "patent_count": 392,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3312,14 +3317,16 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 329,
+      "patent_count": 1329,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
         "ipc_prefixes": [
           "C22C",
           "H01L",
-          "G01S"
+          "G01S",
+          "C30B",
+          "H01F"
         ],
         "hs_codes_count": 0
       }
@@ -3338,7 +3345,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 5,
+      "patent_count": 109,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3363,7 +3370,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 199,
+      "patent_count": 513,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3388,7 +3395,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 94,
+      "patent_count": 352,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3415,7 +3422,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 8,
+      "patent_count": 280,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3440,7 +3447,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 97,
+      "patent_count": 416,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3466,7 +3473,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 45,
+      "patent_count": 270,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3494,7 +3501,7 @@
         "11"
       ],
       "has_technical_notes": true,
-      "patent_count": 12,
+      "patent_count": 394,
       "paper_count": 27,
       "relations": {
         "fefta_items": [
@@ -3525,7 +3532,7 @@
         "11"
       ],
       "has_technical_notes": true,
-      "patent_count": 6,
+      "patent_count": 186,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -3553,7 +3560,7 @@
         "15"
       ],
       "has_technical_notes": false,
-      "patent_count": 135,
+      "patent_count": 304,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -3582,7 +3589,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 39,
+      "patent_count": 588,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3605,7 +3612,7 @@
       "reason_for_control": [],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 23,
+      "patent_count": 599,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3631,7 +3638,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 146,
+      "patent_count": 450,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3660,8 +3667,8 @@
         "15"
       ],
       "has_technical_notes": true,
-      "patent_count": 46,
-      "paper_count": 49,
+      "patent_count": 155,
+      "paper_count": 56,
       "relations": {
         "fefta_items": [
           "15"
@@ -3688,7 +3695,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 36,
+      "patent_count": 392,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3713,7 +3720,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 36,
+      "patent_count": 392,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3738,7 +3745,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 36,
+      "patent_count": 392,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3763,7 +3770,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 4,
+      "patent_count": 81,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3789,7 +3796,7 @@
         "11"
       ],
       "has_technical_notes": true,
-      "patent_count": 6,
+      "patent_count": 364,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -3818,7 +3825,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 36,
+      "patent_count": 392,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -3845,7 +3852,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 46,
+      "patent_count": 155,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3870,7 +3877,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 161,
+      "patent_count": 615,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3896,7 +3903,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 46,
+      "patent_count": 155,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3921,7 +3928,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 36,
+      "patent_count": 392,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3946,7 +3953,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 199,
+      "patent_count": 513,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3971,7 +3978,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 226,
+      "patent_count": 794,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -3997,7 +4004,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 226,
+      "patent_count": 794,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4023,7 +4030,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 434,
+      "patent_count": 1206,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4049,7 +4056,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 46,
+      "patent_count": 155,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4074,7 +4081,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 36,
+      "patent_count": 392,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4099,7 +4106,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 180,
+      "patent_count": 714,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4125,7 +4132,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 43,
+      "patent_count": 100,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4150,7 +4157,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 156,
+      "patent_count": 474,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4176,7 +4183,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 134,
+      "patent_count": 411,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4204,7 +4211,7 @@
         "15"
       ],
       "has_technical_notes": true,
-      "patent_count": 226,
+      "patent_count": 794,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -4232,7 +4239,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 36,
+      "patent_count": 392,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4256,7 +4263,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 170,
+      "patent_count": 479,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4283,7 +4290,7 @@
         "12"
       ],
       "has_technical_notes": true,
-      "patent_count": 197,
+      "patent_count": 539,
       "paper_count": 8,
       "relations": {
         "fefta_items": [
@@ -4315,7 +4322,7 @@
         "13"
       ],
       "has_technical_notes": true,
-      "patent_count": 26,
+      "patent_count": 560,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -4346,7 +4353,7 @@
         "13"
       ],
       "has_technical_notes": true,
-      "patent_count": 10,
+      "patent_count": 414,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -4378,7 +4385,7 @@
         "13"
       ],
       "has_technical_notes": false,
-      "patent_count": 5,
+      "patent_count": 297,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -4407,7 +4414,7 @@
         "12"
       ],
       "has_technical_notes": true,
-      "patent_count": 131,
+      "patent_count": 223,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -4436,7 +4443,7 @@
         "12"
       ],
       "has_technical_notes": false,
-      "patent_count": 106,
+      "patent_count": 525,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -4465,7 +4472,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 131,
+      "patent_count": 223,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4493,7 +4500,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 94,
+      "patent_count": 349,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4517,7 +4524,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 62,
+      "patent_count": 173,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4542,7 +4549,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 6,
+      "patent_count": 23,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4566,7 +4573,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 8,
+      "patent_count": 39,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4590,7 +4597,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 54,
+      "patent_count": 182,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4636,7 +4643,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 6,
+      "patent_count": 364,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4661,7 +4668,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 30,
+      "patent_count": 457,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4687,7 +4694,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 14,
+      "patent_count": 197,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4712,7 +4719,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 131,
+      "patent_count": 223,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4736,7 +4743,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 90,
+      "patent_count": 161,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4761,7 +4768,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 0,
+      "patent_count": 4,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4785,7 +4792,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 94,
+      "patent_count": 349,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4810,7 +4817,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 233,
+      "patent_count": 889,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -4844,7 +4851,7 @@
         "15"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -4876,7 +4883,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 49,
+      "patent_count": 351,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -4907,7 +4914,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 321,
+      "patent_count": 1323,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -4939,7 +4946,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -4970,7 +4977,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 277,
+      "patent_count": 1045,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5000,7 +5007,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 310,
+      "patent_count": 1203,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5030,7 +5037,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5060,7 +5067,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 174,
+      "patent_count": 776,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5092,7 +5099,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 310,
+      "patent_count": 1338,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5126,7 +5133,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5158,7 +5165,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5187,7 +5194,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5216,7 +5223,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 18,
+      "patent_count": 442,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5252,7 +5259,7 @@
         "13"
       ],
       "has_technical_notes": false,
-      "patent_count": 635,
+      "patent_count": 2064,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5293,7 +5300,7 @@
         "11"
       ],
       "has_technical_notes": true,
-      "patent_count": 98,
+      "patent_count": 430,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5324,7 +5331,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 960,
+      "patent_count": 3415,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5365,7 +5372,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 215,
+      "patent_count": 1005,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5395,7 +5402,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 39,
+      "patent_count": 592,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5425,7 +5432,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 35,
+      "patent_count": 525,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5454,7 +5461,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5487,7 +5494,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5520,7 +5527,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 215,
+      "patent_count": 1005,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5550,7 +5557,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 163,
+      "patent_count": 547,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5580,7 +5587,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 158,
+      "patent_count": 520,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5610,7 +5617,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 131,
+      "patent_count": 223,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5641,7 +5648,7 @@
         "11"
       ],
       "has_technical_notes": true,
-      "patent_count": 138,
+      "patent_count": 492,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5675,7 +5682,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 191,
+      "patent_count": 690,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5709,7 +5716,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5738,7 +5745,7 @@
         "11"
       ],
       "has_technical_notes": false,
-      "patent_count": 10,
+      "patent_count": 445,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5767,7 +5774,7 @@
         "11"
       ],
       "has_technical_notes": true,
-      "patent_count": 300,
+      "patent_count": 1026,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -5797,7 +5804,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 1,
+      "patent_count": 30,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -5821,7 +5828,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 1,
+      "patent_count": 30,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -5845,7 +5852,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 36,
+      "patent_count": 392,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -5871,7 +5878,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 36,
+      "patent_count": 346,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -5896,7 +5903,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 157,
+      "patent_count": 490,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -5922,7 +5929,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 241,
+      "patent_count": 804,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -5948,7 +5955,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 20,
+      "patent_count": 367,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -5974,7 +5981,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 178,
+      "patent_count": 683,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -5998,7 +6005,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 1,
+      "patent_count": 30,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -6022,7 +6029,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 8,
+      "patent_count": 44,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -6046,7 +6053,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 3,
+      "patent_count": 63,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -6070,7 +6077,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 8,
+      "patent_count": 304,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -6095,7 +6102,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 238,
+      "patent_count": 811,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -6125,8 +6132,8 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 196,
-      "paper_count": 0,
+      "patent_count": 590,
+      "paper_count": 576,
       "relations": {
         "fefta_items": [
           "10"
@@ -6157,7 +6164,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 180,
+      "patent_count": 572,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6187,7 +6194,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 180,
+      "patent_count": 572,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6219,7 +6226,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 191,
+      "patent_count": 649,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6249,7 +6256,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 222,
+      "patent_count": 731,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6279,7 +6286,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 82,
+      "patent_count": 362,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6309,7 +6316,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 177,
+      "patent_count": 500,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6338,7 +6345,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 181,
+      "patent_count": 592,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6371,7 +6378,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 96,
+      "patent_count": 292,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6397,7 +6404,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 370,
+      "patent_count": 1029,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6430,7 +6437,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 199,
+      "patent_count": 514,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6460,7 +6467,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 35,
+      "patent_count": 525,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6490,7 +6497,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 96,
+      "patent_count": 292,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6520,7 +6527,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 7,
+      "patent_count": 206,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6549,7 +6556,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 65,
+      "patent_count": 663,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6579,7 +6586,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 82,
+      "patent_count": 316,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6608,7 +6615,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 75,
+      "patent_count": 342,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6637,7 +6644,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 75,
+      "patent_count": 342,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6666,7 +6673,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 2,
+      "patent_count": 225,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6696,7 +6703,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 180,
+      "patent_count": 572,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6726,7 +6733,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 0,
+      "patent_count": 23,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6755,7 +6762,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 16,
+      "patent_count": 103,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6784,7 +6791,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 20,
+      "patent_count": 119,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6813,7 +6820,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 96,
+      "patent_count": 292,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6842,7 +6849,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 117,
+      "patent_count": 365,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6871,7 +6878,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 35,
+      "patent_count": 389,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6900,7 +6907,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 7,
+      "patent_count": 143,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6929,7 +6936,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 234,
+      "patent_count": 881,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6960,7 +6967,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 82,
+      "patent_count": 316,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -6989,7 +6996,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 199,
+      "patent_count": 451,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7018,7 +7025,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 201,
+      "patent_count": 485,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7048,7 +7055,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 67,
+      "patent_count": 128,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7078,7 +7085,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 5,
+      "patent_count": 36,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7107,15 +7114,16 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 123,
-      "paper_count": 0,
+      "patent_count": 455,
+      "paper_count": 470,
       "relations": {
         "fefta_items": [
           "10"
         ],
         "ipc_prefixes": [
           "C07C",
-          "B01J"
+          "B01J",
+          "B04C"
         ],
         "hs_codes_count": 15
       }
@@ -7136,7 +7144,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 24,
+      "patent_count": 376,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7165,7 +7173,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 19,
+      "patent_count": 457,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7174,7 +7182,9 @@
         "ipc_prefixes": [
           "A61B",
           "E06B",
-          "B01L"
+          "B01L",
+          "C12M",
+          "C12P"
         ],
         "hs_codes_count": 4
       }
@@ -7196,7 +7206,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 46,
+      "patent_count": 453,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7225,7 +7235,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 96,
+      "patent_count": 292,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7253,7 +7263,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 159,
+      "patent_count": 549,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7281,7 +7291,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 111,
+      "patent_count": 333,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7309,7 +7319,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 16,
+      "patent_count": 103,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7337,7 +7347,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 92,
+      "patent_count": 657,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7366,7 +7376,7 @@
         "10"
       ],
       "has_technical_notes": false,
-      "patent_count": 160,
+      "patent_count": 569,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7396,7 +7406,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 106,
+      "patent_count": 435,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7430,7 +7440,7 @@
         "10"
       ],
       "has_technical_notes": true,
-      "patent_count": 277,
+      "patent_count": 1045,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -7459,7 +7469,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 84,
+      "patent_count": 618,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7484,7 +7494,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 188,
+      "patent_count": 632,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7508,7 +7518,7 @@
       "reason_for_control": [],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 300,
+      "patent_count": 1026,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7536,7 +7546,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7562,7 +7572,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7588,7 +7598,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7614,7 +7624,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7640,7 +7650,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 196,
+      "patent_count": 825,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7666,7 +7676,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 78,
+      "patent_count": 836,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7693,7 +7703,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 277,
+      "patent_count": 1045,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7719,7 +7729,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7745,7 +7755,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 242,
+      "patent_count": 1198,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7770,7 +7780,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7795,7 +7805,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 84,
+      "patent_count": 618,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7819,7 +7829,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 96,
+      "patent_count": 647,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7843,7 +7853,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 1,
+      "patent_count": 46,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7901,7 +7911,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 544,
+      "patent_count": 1863,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7932,7 +7942,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 180,
+      "patent_count": 572,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7960,7 +7970,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -7990,7 +8000,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 700,
+      "patent_count": 2274,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -8023,7 +8033,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 540,
+      "patent_count": 1952,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -8053,7 +8063,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -8079,7 +8089,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -8106,7 +8116,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 35,
+      "patent_count": 525,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -8132,7 +8142,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -8161,7 +8171,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -8187,7 +8197,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -8212,7 +8222,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -8237,7 +8247,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -8265,7 +8275,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 52,
+      "patent_count": 239,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -8296,7 +8306,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 252,
+      "patent_count": 1629,
       "paper_count": 62,
       "relations": {
         "fefta_items": [
@@ -8306,7 +8316,10 @@
           "H01L",
           "H03F",
           "H04B",
-          "H01J"
+          "H01J",
+          "H01S",
+          "G11C",
+          "H01F"
         ],
         "hs_codes_count": 351
       }
@@ -8328,7 +8341,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 295,
+      "patent_count": 893,
       "paper_count": 31,
       "relations": {
         "fefta_items": [
@@ -8357,7 +8370,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 196,
+      "patent_count": 462,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8387,7 +8400,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 26,
+      "patent_count": 556,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8417,7 +8430,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8447,7 +8460,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 325,
+      "patent_count": 889,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8476,7 +8489,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 3,
+      "patent_count": 252,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8505,7 +8518,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 1,
+      "patent_count": 236,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8534,7 +8547,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 1,
+      "patent_count": 221,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8563,7 +8576,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 1,
+      "patent_count": 221,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8592,7 +8605,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 9,
+      "patent_count": 458,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8621,7 +8634,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 8,
+      "patent_count": 45,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8650,7 +8663,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 364,
+      "patent_count": 884,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8679,7 +8692,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 4,
+      "patent_count": 472,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8709,7 +8722,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 8,
+      "patent_count": 45,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8738,7 +8751,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 26,
+      "patent_count": 547,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8767,7 +8780,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 248,
+      "patent_count": 686,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8798,7 +8811,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 393,
+      "patent_count": 1396,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8831,7 +8844,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 248,
+      "patent_count": 686,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8861,7 +8874,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 196,
+      "patent_count": 439,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8889,7 +8902,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 6,
+      "patent_count": 100,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8917,7 +8930,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 94,
+      "patent_count": 726,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8946,7 +8959,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 268,
+      "patent_count": 985,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -8975,7 +8988,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 177,
+      "patent_count": 559,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9005,7 +9018,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 196,
+      "patent_count": 1258,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9037,8 +9050,8 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 242,
-      "paper_count": 0,
+      "patent_count": 942,
+      "paper_count": 753,
       "relations": {
         "fefta_items": [
           "3"
@@ -9070,7 +9083,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 215,
+      "patent_count": 592,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9102,7 +9115,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 412,
+      "patent_count": 1465,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9135,7 +9148,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 229,
+      "patent_count": 824,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9166,7 +9179,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 199,
+      "patent_count": 530,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9194,7 +9207,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9223,7 +9236,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 202,
+      "patent_count": 479,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9252,7 +9265,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9282,7 +9295,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9312,8 +9325,8 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 199,
-      "paper_count": 0,
+      "patent_count": 599,
+      "paper_count": 533,
       "relations": {
         "fefta_items": [
           "3"
@@ -9341,7 +9354,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 211,
+      "patent_count": 494,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9370,7 +9383,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 505,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9399,7 +9412,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 264,
+      "patent_count": 800,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9429,7 +9442,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 222,
+      "patent_count": 731,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9458,7 +9471,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 222,
+      "patent_count": 731,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9488,7 +9501,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 222,
+      "patent_count": 731,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9518,7 +9531,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 505,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9548,7 +9561,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 222,
+      "patent_count": 731,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9576,7 +9589,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 211,
+      "patent_count": 494,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9606,7 +9619,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 204,
+      "patent_count": 910,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9636,7 +9649,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9666,7 +9679,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 211,
+      "patent_count": 494,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9695,7 +9708,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9725,7 +9738,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 268,
+      "patent_count": 985,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9755,7 +9768,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9785,7 +9798,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9815,7 +9828,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9845,7 +9858,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 205,
+      "patent_count": 1008,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9877,7 +9890,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 204,
+      "patent_count": 922,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9908,7 +9921,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9939,7 +9952,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 238,
+      "patent_count": 622,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9969,7 +9982,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -9998,7 +10011,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10029,7 +10042,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10059,7 +10072,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10089,7 +10102,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10122,7 +10135,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10152,7 +10165,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 268,
+      "patent_count": 985,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10181,7 +10194,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 195,
+      "patent_count": 432,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10209,7 +10222,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 336,
+      "patent_count": 1000,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10240,7 +10253,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10270,7 +10283,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10303,7 +10316,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 215,
+      "patent_count": 1005,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10333,7 +10346,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10366,7 +10379,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 215,
+      "patent_count": 1005,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10398,7 +10411,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 371,
+      "patent_count": 1190,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10430,7 +10443,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10464,7 +10477,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10494,7 +10507,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10526,7 +10539,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10560,7 +10573,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10590,7 +10603,7 @@
         "3"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10622,7 +10635,7 @@
         "3"
       ],
       "has_technical_notes": true,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10657,7 +10670,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 268,
+      "patent_count": 985,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10688,7 +10701,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 268,
+      "patent_count": 985,
       "paper_count": 63,
       "relations": {
         "fefta_items": [
@@ -10719,7 +10732,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 113,
+      "patent_count": 841,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10750,7 +10763,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 215,
+      "patent_count": 1005,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10780,7 +10793,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 268,
+      "patent_count": 985,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10810,7 +10823,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 268,
+      "patent_count": 985,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10836,7 +10849,7 @@
         "4"
       ],
       "has_technical_notes": false,
-      "patent_count": 75,
+      "patent_count": 560,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10862,7 +10875,7 @@
         "4"
       ],
       "has_technical_notes": false,
-      "patent_count": 205,
+      "patent_count": 1008,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10893,7 +10906,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 212,
+      "patent_count": 569,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10922,7 +10935,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 80,
+      "patent_count": 571,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10950,7 +10963,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 204,
+      "patent_count": 910,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -10982,7 +10995,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 204,
+      "patent_count": 910,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11011,7 +11024,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 217,
+      "patent_count": 945,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11041,7 +11054,7 @@
         "4"
       ],
       "has_technical_notes": false,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11072,7 +11085,7 @@
         "4"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11105,7 +11118,7 @@
         "4"
       ],
       "has_technical_notes": false,
-      "patent_count": 310,
+      "patent_count": 1338,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11135,7 +11148,7 @@
         "4"
       ],
       "has_technical_notes": false,
-      "patent_count": 88,
+      "patent_count": 654,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11163,7 +11176,7 @@
         "4"
       ],
       "has_technical_notes": false,
-      "patent_count": 193,
+      "patent_count": 927,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11196,7 +11209,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 714,
+      "patent_count": 2376,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11232,7 +11245,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 88,
+      "patent_count": 654,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11262,7 +11275,7 @@
         "4"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11295,7 +11308,7 @@
         "4"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11327,7 +11340,7 @@
         "4"
       ],
       "has_technical_notes": false,
-      "patent_count": 446,
+      "patent_count": 1450,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11358,7 +11371,7 @@
         "4"
       ],
       "has_technical_notes": true,
-      "patent_count": 204,
+      "patent_count": 910,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11388,7 +11401,7 @@
         "5"
       ],
       "has_technical_notes": true,
-      "patent_count": 237,
+      "patent_count": 1081,
       "paper_count": 27,
       "relations": {
         "fefta_items": [
@@ -11398,7 +11411,9 @@
           "H04B",
           "H04L",
           "H04W",
-          "H04M"
+          "H04M",
+          "H03L",
+          "G08C"
         ],
         "hs_codes_count": 34
       }
@@ -11417,7 +11432,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 407,
+      "patent_count": 1648,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11442,7 +11457,7 @@
       "reason_for_control": [],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 212,
+      "patent_count": 742,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11468,7 +11483,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 212,
+      "patent_count": 742,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11493,7 +11508,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 212,
+      "patent_count": 742,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11521,7 +11536,7 @@
         "5"
       ],
       "has_technical_notes": true,
-      "patent_count": 204,
+      "patent_count": 910,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11547,7 +11562,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 392,
+      "patent_count": 1344,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11573,7 +11588,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 31,
+      "patent_count": 242,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11602,7 +11617,7 @@
         "5"
       ],
       "has_technical_notes": true,
-      "patent_count": 321,
+      "patent_count": 1323,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11630,7 +11645,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11656,7 +11671,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 170,
+      "patent_count": 559,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11680,7 +11695,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 295,
+      "patent_count": 893,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11708,8 +11723,8 @@
         "5"
       ],
       "has_technical_notes": true,
-      "patent_count": 237,
-      "paper_count": 0,
+      "patent_count": 802,
+      "paper_count": 461,
       "relations": {
         "fefta_items": [
           "5"
@@ -11736,7 +11751,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 446,
+      "patent_count": 1450,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11764,7 +11779,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 830,
+      "patent_count": 2983,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11797,7 +11812,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 235,
+      "patent_count": 856,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11827,7 +11842,7 @@
         "5の2"
       ],
       "has_technical_notes": true,
-      "patent_count": 170,
+      "patent_count": 562,
       "paper_count": 46,
       "relations": {
         "fefta_items": [
@@ -11855,7 +11870,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 170,
+      "patent_count": 559,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11880,7 +11895,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 170,
+      "patent_count": 559,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11907,7 +11922,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 205,
+      "patent_count": 1008,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11934,7 +11949,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 170,
+      "patent_count": 559,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -11963,7 +11978,7 @@
         "5の2"
       ],
       "has_technical_notes": true,
-      "patent_count": 321,
+      "patent_count": 1323,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -11991,7 +12006,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 205,
+      "patent_count": 1008,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -12021,8 +12036,8 @@
         "5の2"
       ],
       "has_technical_notes": true,
-      "patent_count": 385,
-      "paper_count": 0,
+      "patent_count": 1294,
+      "paper_count": 619,
       "relations": {
         "fefta_items": [
           "5の2"
@@ -12052,7 +12067,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 170,
+      "patent_count": 559,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -12079,7 +12094,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 148,
+      "patent_count": 1279,
       "paper_count": 35,
       "relations": {
         "fefta_items": [
@@ -12088,7 +12103,9 @@
         "ipc_prefixes": [
           "G01S",
           "G01N",
-          "B06B"
+          "B06B",
+          "H04R",
+          "G10K"
         ],
         "hs_codes_count": 31
       }
@@ -12113,7 +12130,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 155,
+      "patent_count": 1283,
       "paper_count": 13,
       "relations": {
         "fefta_items": [
@@ -12123,7 +12140,9 @@
           "G01S",
           "G02B",
           "H01S",
-          "G01J"
+          "G01J",
+          "G02F",
+          "G21K"
         ],
         "hs_codes_count": 12
       }
@@ -12147,7 +12166,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 49,
+      "patent_count": 374,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12177,7 +12196,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 35,
+      "patent_count": 551,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12208,7 +12227,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 28,
+      "patent_count": 380,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12237,7 +12256,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 80,
+      "patent_count": 412,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12267,7 +12286,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 78,
+      "patent_count": 330,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12298,7 +12317,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 178,
+      "patent_count": 683,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12327,7 +12346,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 325,
+      "patent_count": 889,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12353,7 +12372,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 20,
+      "patent_count": 550,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12383,7 +12402,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 193,
+      "patent_count": 724,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12412,7 +12431,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 208,
+      "patent_count": 1034,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12442,7 +12461,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 12,
+      "patent_count": 301,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12471,7 +12490,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 211,
+      "patent_count": 494,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12500,7 +12519,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 28,
+      "patent_count": 380,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12529,7 +12548,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 193,
+      "patent_count": 724,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12558,7 +12577,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 11,
+      "patent_count": 67,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12587,7 +12606,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 24,
+      "patent_count": 196,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12613,7 +12632,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 332,
+      "patent_count": 1085,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12642,7 +12661,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 178,
+      "patent_count": 683,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12671,7 +12690,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 54,
+      "patent_count": 600,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12700,7 +12719,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 211,
+      "patent_count": 494,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12728,7 +12747,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 245,
+      "patent_count": 918,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12757,7 +12776,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 2,
+      "patent_count": 218,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12786,7 +12805,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 199,
+      "patent_count": 530,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12814,7 +12833,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 80,
+      "patent_count": 358,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12843,7 +12862,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 233,
+      "patent_count": 1084,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12873,7 +12892,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 370,
+      "patent_count": 1112,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12903,7 +12922,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 211,
+      "patent_count": 494,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12932,7 +12951,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 42,
+      "patent_count": 302,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12962,7 +12981,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 193,
+      "patent_count": 724,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -12992,7 +13011,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 178,
+      "patent_count": 683,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13021,7 +13040,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 146,
+      "patent_count": 769,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13052,7 +13071,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 354,
+      "patent_count": 968,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13082,7 +13101,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 161,
+      "patent_count": 767,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13112,7 +13131,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 222,
+      "patent_count": 731,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13141,7 +13160,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 222,
+      "patent_count": 731,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13170,7 +13189,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 28,
+      "patent_count": 486,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13199,7 +13218,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 29,
+      "patent_count": 225,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13227,7 +13246,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 91,
+      "patent_count": 386,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13259,7 +13278,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 373,
+      "patent_count": 1579,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13293,7 +13312,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13327,7 +13346,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 178,
+      "patent_count": 683,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13356,7 +13375,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13386,7 +13405,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 356,
+      "patent_count": 1155,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13416,7 +13435,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 205,
+      "patent_count": 1008,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13448,7 +13467,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 277,
+      "patent_count": 1045,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13478,7 +13497,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 215,
+      "patent_count": 1005,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13507,7 +13526,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13537,7 +13556,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 356,
+      "patent_count": 1155,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13572,7 +13591,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 1052,
+      "patent_count": 3800,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13620,7 +13639,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 386,
+      "patent_count": 1310,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13654,7 +13673,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 71,
+      "patent_count": 568,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13684,7 +13703,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 353,
+      "patent_count": 1280,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13716,7 +13735,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13749,7 +13768,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 217,
+      "patent_count": 945,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13781,7 +13800,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13814,7 +13833,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13846,7 +13865,7 @@
         "6"
       ],
       "has_technical_notes": false,
-      "patent_count": 396,
+      "patent_count": 1354,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13878,7 +13897,7 @@
         "6"
       ],
       "has_technical_notes": true,
-      "patent_count": 126,
+      "patent_count": 542,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -13909,8 +13928,8 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 207,
-      "paper_count": 0,
+      "patent_count": 1044,
+      "paper_count": 688,
       "relations": {
         "fefta_items": [
           "7"
@@ -13918,7 +13937,9 @@
         "ipc_prefixes": [
           "G01C",
           "G01S",
-          "G01P"
+          "G01P",
+          "G04F",
+          "H03L"
         ],
         "hs_codes_count": 7
       }
@@ -13940,8 +13961,8 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 269,
-      "paper_count": 0,
+      "patent_count": 745,
+      "paper_count": 376,
       "relations": {
         "fefta_items": [
           "7"
@@ -13970,7 +13991,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 216,
+      "patent_count": 754,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14001,7 +14022,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 208,
+      "patent_count": 1034,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14032,7 +14053,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 240,
+      "patent_count": 1024,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14064,7 +14085,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 178,
+      "patent_count": 683,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14093,7 +14114,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 193,
+      "patent_count": 724,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14122,7 +14143,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 89,
+      "patent_count": 345,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14151,7 +14172,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 75,
+      "patent_count": 342,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14181,7 +14202,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 193,
+      "patent_count": 724,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14210,7 +14231,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 193,
+      "patent_count": 724,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14239,7 +14260,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 239,
+      "patent_count": 946,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14266,7 +14287,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 193,
+      "patent_count": 724,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14295,7 +14316,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 193,
+      "patent_count": 724,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14321,7 +14342,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 178,
+      "patent_count": 683,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14350,7 +14371,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 212,
+      "patent_count": 874,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14377,7 +14398,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 193,
+      "patent_count": 724,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14409,7 +14430,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 193,
+      "patent_count": 724,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14437,7 +14458,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 319,
+      "patent_count": 1250,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14469,7 +14490,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 219,
+      "patent_count": 805,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14500,7 +14521,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 16,
+      "patent_count": 103,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14530,7 +14551,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14563,7 +14584,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 365,
+      "patent_count": 1272,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14595,7 +14616,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 27,
+      "patent_count": 485,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14621,7 +14642,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 300,
+      "patent_count": 1026,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14655,7 +14676,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 239,
+      "patent_count": 946,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14684,7 +14705,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 319,
+      "patent_count": 1250,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14717,7 +14738,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 277,
+      "patent_count": 1045,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14748,7 +14769,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 193,
+      "patent_count": 724,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14778,7 +14799,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 356,
+      "patent_count": 1297,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14787,7 +14808,8 @@
         "ipc_prefixes": [
           "G01C",
           "G01S",
-          "H04L"
+          "H04L",
+          "G08C"
         ],
         "hs_codes_count": 0
       }
@@ -14808,7 +14830,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 327,
+      "patent_count": 1073,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14838,7 +14860,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 194,
+      "patent_count": 836,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14868,7 +14890,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 408,
+      "patent_count": 1655,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14901,7 +14923,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 268,
+      "patent_count": 985,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14927,7 +14949,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 219,
+      "patent_count": 852,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14960,7 +14982,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -14989,7 +15011,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 319,
+      "patent_count": 1250,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -15022,7 +15044,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 875,
+      "patent_count": 3125,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -15063,7 +15085,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 386,
+      "patent_count": 1310,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -15098,7 +15120,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 354,
+      "patent_count": 968,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -15130,7 +15152,7 @@
         "7"
       ],
       "has_technical_notes": true,
-      "patent_count": 212,
+      "patent_count": 901,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -15162,7 +15184,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -15195,7 +15217,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 337,
+      "patent_count": 1005,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -15222,7 +15244,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 121,
+      "patent_count": 778,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -15255,7 +15277,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -15287,7 +15309,7 @@
         "7"
       ],
       "has_technical_notes": false,
-      "patent_count": 319,
+      "patent_count": 1250,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -15316,14 +15338,15 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 138,
+      "patent_count": 868,
       "paper_count": 55,
       "relations": {
         "fefta_items": [],
         "ipc_prefixes": [
           "B63G",
           "G01S",
-          "B63B"
+          "B63B",
+          "B63H"
         ],
         "hs_codes_count": 39
       }
@@ -15342,14 +15365,16 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 8,
+      "patent_count": 541,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
         "ipc_prefixes": [
           "B63H",
           "F02B",
-          "B63B"
+          "B63B",
+          "B63G",
+          "B63C"
         ],
         "hs_codes_count": 0
       }
@@ -15365,7 +15390,7 @@
       "reason_for_control": [],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 324,
+      "patent_count": 1426,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15395,7 +15420,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 185,
+      "patent_count": 1134,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15425,7 +15450,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 11,
+      "patent_count": 443,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15450,7 +15475,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 178,
+      "patent_count": 683,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15475,7 +15500,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 24,
+      "patent_count": 376,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15502,7 +15527,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15533,7 +15558,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 300,
+      "patent_count": 1026,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15560,7 +15585,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 19,
+      "patent_count": 520,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15587,7 +15612,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 241,
+      "patent_count": 848,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15614,7 +15639,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 82,
+      "patent_count": 615,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15642,7 +15667,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15670,7 +15695,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15695,7 +15720,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 237,
+      "patent_count": 785,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15718,7 +15743,7 @@
       "reason_for_control": [],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 221,
+      "patent_count": 860,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15744,7 +15769,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 516,
+      "patent_count": 1729,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15774,7 +15799,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 293,
+      "patent_count": 1059,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15803,7 +15828,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15834,7 +15859,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15862,7 +15887,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -15896,7 +15921,7 @@
         "9"
       ],
       "has_technical_notes": true,
-      "patent_count": 137,
+      "patent_count": 453,
       "paper_count": 13,
       "relations": {
         "fefta_items": [
@@ -15927,7 +15952,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 47,
+      "patent_count": 171,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -15984,8 +16009,8 @@
         "9"
       ],
       "has_technical_notes": true,
-      "patent_count": 66,
-      "paper_count": 0,
+      "patent_count": 635,
+      "paper_count": 644,
       "relations": {
         "fefta_items": [
           "2",
@@ -15994,7 +16019,8 @@
         "ipc_prefixes": [
           "B64G",
           "F02K",
-          "F02C"
+          "F02C",
+          "F03H"
         ],
         "hs_codes_count": 0
       }
@@ -16012,7 +16038,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 188,
+      "patent_count": 666,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16039,7 +16065,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 62,
+      "patent_count": 492,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16066,7 +16092,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 65,
+      "patent_count": 663,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16093,7 +16119,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 32,
+      "patent_count": 848,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16121,7 +16147,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 65,
+      "patent_count": 663,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16148,7 +16174,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 23,
+      "patent_count": 599,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16175,7 +16201,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 137,
+      "patent_count": 453,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16205,7 +16231,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 241,
+      "patent_count": 922,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16214,7 +16240,8 @@
         "ipc_prefixes": [
           "B64C",
           "G01S",
-          "F41G"
+          "F41G",
+          "B64U"
         ],
         "hs_codes_count": 0
       }
@@ -16232,7 +16259,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 324,
+      "patent_count": 1426,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16264,7 +16291,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 137,
+      "patent_count": 453,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16293,7 +16320,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 137,
+      "patent_count": 453,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16319,7 +16346,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 65,
+      "patent_count": 543,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16346,7 +16373,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 152,
+      "patent_count": 771,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16373,7 +16400,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 61,
+      "patent_count": 464,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16402,7 +16429,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 65,
+      "patent_count": 663,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16429,7 +16456,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 65,
+      "patent_count": 663,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16456,7 +16483,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 65,
+      "patent_count": 663,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16483,7 +16510,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 65,
+      "patent_count": 663,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16513,7 +16540,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 10,
+      "patent_count": 445,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16540,7 +16567,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 61,
+      "patent_count": 478,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16571,7 +16598,7 @@
         "9"
       ],
       "has_technical_notes": false,
-      "patent_count": 334,
+      "patent_count": 1551,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16601,7 +16628,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 65,
+      "patent_count": 663,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16628,7 +16655,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 136,
+      "patent_count": 732,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16655,7 +16682,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 51,
+      "patent_count": 270,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16682,7 +16709,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 65,
+      "patent_count": 543,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16712,7 +16739,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 160,
+      "patent_count": 628,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16743,7 +16770,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 382,
+      "patent_count": 1414,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16777,7 +16804,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 66,
+      "patent_count": 551,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16811,7 +16838,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 205,
+      "patent_count": 1015,
       "paper_count": 34,
       "relations": {
         "fefta_items": [
@@ -16845,7 +16872,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 57,
+      "patent_count": 220,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16876,7 +16903,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 207,
+      "patent_count": 762,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16905,7 +16932,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 37,
+      "patent_count": 523,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16934,7 +16961,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 3,
+      "patent_count": 53,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16964,7 +16991,7 @@
         "2"
       ],
       "has_technical_notes": true,
-      "patent_count": 137,
+      "patent_count": 453,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -16992,7 +17019,7 @@
         "2"
       ],
       "has_technical_notes": false,
-      "patent_count": 97,
+      "patent_count": 689,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17024,7 +17051,7 @@
         "9"
       ],
       "has_technical_notes": false,
-      "patent_count": 63,
+      "patent_count": 211,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17056,7 +17083,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 239,
+      "patent_count": 867,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17087,7 +17114,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 122,
+      "patent_count": 429,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17118,7 +17145,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 182,
+      "patent_count": 638,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17149,7 +17176,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 114,
+      "patent_count": 409,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17179,7 +17206,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 202,
+      "patent_count": 488,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17210,7 +17237,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 39,
+      "patent_count": 693,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17240,7 +17267,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 19,
+      "patent_count": 54,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17269,7 +17296,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 182,
+      "patent_count": 638,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17300,7 +17327,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17333,7 +17360,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 192,
+      "patent_count": 912,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17363,7 +17390,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 279,
+      "patent_count": 1212,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17394,7 +17421,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 22,
+      "patent_count": 366,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17423,7 +17450,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17456,7 +17483,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17489,7 +17516,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 23,
+      "patent_count": 396,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17521,7 +17548,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 230,
+      "patent_count": 856,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17555,7 +17582,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 515,
+      "patent_count": 1751,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17592,7 +17619,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17627,7 +17654,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 365,
+      "patent_count": 1272,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17661,7 +17688,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 352,
+      "patent_count": 1188,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17690,7 +17717,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 17,
+      "patent_count": 424,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17719,7 +17746,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 200,
+      "patent_count": 874,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17748,7 +17775,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": false,
-      "patent_count": 6,
+      "patent_count": 364,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -17775,7 +17802,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 282,
+      "patent_count": 916,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -17805,7 +17832,7 @@
       ],
       "fefta_item_nos": [],
       "has_technical_notes": true,
-      "patent_count": 81,
+      "patent_count": 534,
       "paper_count": 0,
       "relations": {
         "fefta_items": [],
@@ -17834,7 +17861,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 305,
+      "patent_count": 1139,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17866,7 +17893,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 875,
+      "patent_count": 3125,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17906,7 +17933,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 129,
+      "patent_count": 760,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17936,7 +17963,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 264,
+      "patent_count": 904,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17963,7 +17990,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 213,
+      "patent_count": 969,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -17990,7 +18017,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 321,
+      "patent_count": 1323,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18020,7 +18047,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 353,
+      "patent_count": 1280,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18049,7 +18076,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 75,
+      "patent_count": 560,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18078,7 +18105,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 321,
+      "patent_count": 1323,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18105,7 +18132,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 187,
+      "patent_count": 934,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18136,7 +18163,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 284,
+      "patent_count": 1047,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18169,7 +18196,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 215,
+      "patent_count": 1005,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18202,7 +18229,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 186,
+      "patent_count": 1245,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18235,7 +18262,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 261,
+      "patent_count": 1085,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18268,7 +18295,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 377,
+      "patent_count": 1299,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18297,7 +18324,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 88,
+      "patent_count": 654,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18325,7 +18352,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 277,
+      "patent_count": 1045,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18356,8 +18383,8 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 960,
-      "paper_count": 0,
+      "patent_count": 3415,
+      "paper_count": 565,
       "relations": {
         "fefta_items": [
           "8"
@@ -18397,7 +18424,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18431,7 +18458,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 50,
+      "patent_count": 224,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18457,7 +18484,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18490,7 +18517,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 1088,
+      "patent_count": 3625,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18532,7 +18559,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 532,
+      "patent_count": 2147,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18569,7 +18596,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 239,
+      "patent_count": 1131,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18603,7 +18630,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 771,
+      "patent_count": 2817,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18644,7 +18671,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 771,
+      "patent_count": 2817,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18684,7 +18711,7 @@
         "8"
       ],
       "has_technical_notes": true,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18719,7 +18746,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 223,
+      "patent_count": 757,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18748,7 +18775,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 617,
+      "patent_count": 2415,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18784,7 +18811,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 385,
+      "patent_count": 1294,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -18816,7 +18843,7 @@
         "8"
       ],
       "has_technical_notes": false,
-      "patent_count": 47,
+      "patent_count": 171,
       "paper_count": 0,
       "relations": {
         "fefta_items": [
@@ -19063,6 +19090,71 @@
           "eccn": "6C001",
           "confidence": "medium",
           "rationale": "光学材料"
+        },
+        {
+          "eccn": "0C002",
+          "confidence": "medium",
+          "rationale": ""
+        }
+      ]
+    },
+    "B04B": {
+      "ipc_prefix": "B04B",
+      "eccns": [
+        {
+          "eccn": "0B001",
+          "confidence": "high",
+          "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+        },
+        {
+          "eccn": "2B122",
+          "confidence": "medium",
+          "rationale": "高速遠心分離機の機械的基本構造はB04B（遠心分離機）、軸受はF16C、スリップリングなどの電力伝送デバイスはH01R（電気コネクタ）に対応。"
+        }
+      ]
+    },
+    "G21K": {
+      "ipc_prefix": "G21K",
+      "eccns": [
+        {
+          "eccn": "0B001",
+          "confidence": "high",
+          "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+        },
+        {
+          "eccn": "6A002",
+          "confidence": "high",
+          "rationale": "光学・赤外線センサー・レーザー測距"
+        }
+      ]
+    },
+    "H05H": {
+      "ipc_prefix": "H05H",
+      "eccns": [
+        {
+          "eccn": "0B001",
+          "confidence": "high",
+          "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+        },
+        {
+          "eccn": "1B999",
+          "confidence": "medium",
+          "rationale": "電解槽(C25C)、粒子加速器(H05H)、産業プロセス制御(G05B)、複合材料(C08J)、化学繊維(D01F)に対応する複数の規制品目を包含"
+        },
+        {
+          "eccn": "3A231",
+          "confidence": "medium",
+          "rationale": "中性子発生管は核反応を利用した装置。G21Bは核反応装置、H05Hは高エネルギー粒子加速に関連し、静電加速による核融合反応に対応。"
+        },
+        {
+          "eccn": "3A999",
+          "confidence": "medium",
+          "rationale": "周波数変換器(H05H)、質量分析計(G01N)、X線装置(H01J)、パルス増幅器・時間遅延(H04L)に対応する多様な電子機器の集合体"
+        },
+        {
+          "eccn": "9B990",
+          "confidence": "medium",
+          "rationale": "振動試験装置は測定・試験機器であり、G01M（試験機器）が最適。G01B（長さ・角度測定）、H05H（プラズマ技術）も関連する可能性がある。"
         }
       ]
     },
@@ -19073,6 +19165,11 @@
           "eccn": "0C001",
           "confidence": "high",
           "rationale": "核物質（ウラン・プルトニウム化合物）"
+        },
+        {
+          "eccn": "0C002",
+          "confidence": "medium",
+          "rationale": ""
         }
       ]
     },
@@ -22966,6 +23063,91 @@
         }
       ]
     },
+    "H01S": {
+      "ipc_prefix": "H01S",
+      "eccns": [
+        {
+          "eccn": "3A001",
+          "confidence": "high",
+          "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+        },
+        {
+          "eccn": "6A002",
+          "confidence": "high",
+          "rationale": "光学・赤外線センサー・レーザー測距"
+        },
+        {
+          "eccn": "0A504",
+          "confidence": "high",
+          "rationale": "光学照準装置は光学要素（レンズ、プリズム）を含むため G02B、測距・照準機能は G01C、レーザー照準は H01S に該当。"
+        },
+        {
+          "eccn": "3A228",
+          "confidence": "high",
+          "rationale": "冷陰極管（クライトロン、スプリトロン）は電子放出素子であり、H01J（電子管）およびH01S（スイッチング素子）に分類されます。"
+        },
+        {
+          "eccn": "6A004",
+          "confidence": "high",
+          "rationale": "光学鏡・変形可能鏡はG02B（光学要素）、レーザー関連光学機器はH01S（レーザー）、変調器などはG02F（光学機器制御）に該当"
+        },
+        {
+          "eccn": "6A005",
+          "confidence": "high",
+          "rationale": "レーザー及び光学部品の輸出規制に対応。H01Sは半導体レーザー、G02Bは光学素子・光学系を分類する標準的なIPCコード"
+        },
+        {
+          "eccn": "6A205",
+          "confidence": "high",
+          "rationale": "ECCN 6A205は銅蒸気レーザー、アルゴンイオンレーザーなど特定出力のレーザーを規制。H01S（レーザー）とG02B（光学素子）が対応する主要IPC分類。"
+        },
+        {
+          "eccn": "6A995",
+          "confidence": "high",
+          "rationale": "CO2レーザーは光学デバイスであり、IPC H01S（レーザー）が最適。H01S3はガスレーザーを含む。"
+        },
+        {
+          "eccn": "6B995",
+          "confidence": "medium",
+          "rationale": "自由電子レーザー関連の製造・検査装置であり、レーザー技術（H01S）と精密加工・研削工具（B23B、B24B）が該当"
+        },
+        {
+          "eccn": "6C005",
+          "confidence": "high",
+          "rationale": "レーザー結晶材料(チタンドープサファイア)と希土類ドープファイバーの製造・材料に関連。C09Kは光学材料、H01Sはレーザー、C30Bは単結晶成長に対応。"
+        }
+      ]
+    },
+    "G11C": {
+      "ipc_prefix": "G11C",
+      "eccns": [
+        {
+          "eccn": "3A001",
+          "confidence": "high",
+          "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+        }
+      ]
+    },
+    "H01F": {
+      "ipc_prefix": "H01F",
+      "eccns": [
+        {
+          "eccn": "3A001",
+          "confidence": "high",
+          "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+        },
+        {
+          "eccn": "1C003",
+          "confidence": "high",
+          "rationale": "磁性金属材料の特性制御に関する技術。合金設計（C22C）、半導体・素子応用（H01L）、レーダー等防衛用途（G01S）に対応。"
+        },
+        {
+          "eccn": "3A201",
+          "confidence": "high",
+          "rationale": "パルス放電コンデンサと超伝導電磁石が対象。H01Fは電磁石、H01Gはコンデンサに対応する電気機器の基本分類。"
+        }
+      ]
+    },
     "G03F": {
       "ipc_prefix": "G03F",
       "eccns": [
@@ -24615,6 +24797,11 @@
           "rationale": "光学材料"
         },
         {
+          "eccn": "1C003",
+          "confidence": "high",
+          "rationale": "磁性金属材料の特性制御に関する技術。合金設計（C22C）、半導体・素子応用（H01L）、レーダー等防衛用途（G01S）に対応。"
+        },
+        {
           "eccn": "6C005",
           "confidence": "high",
           "rationale": "レーザー結晶材料(チタンドープサファイア)と希土類ドープファイバーの製造・材料に関連。C09Kは光学材料、H01Sはレーザー、C30Bは単結晶成長に対応。"
@@ -25466,6 +25653,36 @@
         }
       ]
     },
+    "H03L": {
+      "ipc_prefix": "H03L",
+      "eccns": [
+        {
+          "eccn": "5A001",
+          "confidence": "high",
+          "rationale": "通信機器（無線・衛星・SDR）"
+        },
+        {
+          "eccn": "7A001",
+          "confidence": "high",
+          "rationale": "加速度計・ジャイロスコープ・慣性航法"
+        }
+      ]
+    },
+    "G08C": {
+      "ipc_prefix": "G08C",
+      "eccns": [
+        {
+          "eccn": "5A001",
+          "confidence": "high",
+          "rationale": "通信機器（無線・衛星・SDR）"
+        },
+        {
+          "eccn": "7D003",
+          "confidence": "high",
+          "rationale": "ナビゲーション性能向上と測位誤差低減に特化したソフトウェア。測定・ナビゲーション(G01C)、レーダー・ソナー(G01S)、デジタル通信(H04L)が該当。"
+        }
+      ]
+    },
     "G09C": {
       "ipc_prefix": "G09C",
       "eccns": [
@@ -26186,6 +26403,26 @@
         }
       ]
     },
+    "H04R": {
+      "ipc_prefix": "H04R",
+      "eccns": [
+        {
+          "eccn": "6A001",
+          "confidence": "high",
+          "rationale": "音響センサー・ソナー（水中探知）"
+        }
+      ]
+    },
+    "G10K": {
+      "ipc_prefix": "G10K",
+      "eccns": [
+        {
+          "eccn": "6A001",
+          "confidence": "high",
+          "rationale": "音響センサー・ソナー（水中探知）"
+        }
+      ]
+    },
     "G02B": {
       "ipc_prefix": "G02B",
       "eccns": [
@@ -26271,56 +26508,6 @@
         }
       ]
     },
-    "H01S": {
-      "ipc_prefix": "H01S",
-      "eccns": [
-        {
-          "eccn": "6A002",
-          "confidence": "high",
-          "rationale": "光学・赤外線センサー・レーザー測距"
-        },
-        {
-          "eccn": "0A504",
-          "confidence": "high",
-          "rationale": "光学照準装置は光学要素（レンズ、プリズム）を含むため G02B、測距・照準機能は G01C、レーザー照準は H01S に該当。"
-        },
-        {
-          "eccn": "3A228",
-          "confidence": "high",
-          "rationale": "冷陰極管（クライトロン、スプリトロン）は電子放出素子であり、H01J（電子管）およびH01S（スイッチング素子）に分類されます。"
-        },
-        {
-          "eccn": "6A004",
-          "confidence": "high",
-          "rationale": "光学鏡・変形可能鏡はG02B（光学要素）、レーザー関連光学機器はH01S（レーザー）、変調器などはG02F（光学機器制御）に該当"
-        },
-        {
-          "eccn": "6A005",
-          "confidence": "high",
-          "rationale": "レーザー及び光学部品の輸出規制に対応。H01Sは半導体レーザー、G02Bは光学素子・光学系を分類する標準的なIPCコード"
-        },
-        {
-          "eccn": "6A205",
-          "confidence": "high",
-          "rationale": "ECCN 6A205は銅蒸気レーザー、アルゴンイオンレーザーなど特定出力のレーザーを規制。H01S（レーザー）とG02B（光学素子）が対応する主要IPC分類。"
-        },
-        {
-          "eccn": "6A995",
-          "confidence": "high",
-          "rationale": "CO2レーザーは光学デバイスであり、IPC H01S（レーザー）が最適。H01S3はガスレーザーを含む。"
-        },
-        {
-          "eccn": "6B995",
-          "confidence": "medium",
-          "rationale": "自由電子レーザー関連の製造・検査装置であり、レーザー技術（H01S）と精密加工・研削工具（B23B、B24B）が該当"
-        },
-        {
-          "eccn": "6C005",
-          "confidence": "high",
-          "rationale": "レーザー結晶材料(チタンドープサファイア)と希土類ドープファイバーの製造・材料に関連。C09Kは光学材料、H01Sはレーザー、C30Bは単結晶成長に対応。"
-        }
-      ]
-    },
     "G01J": {
       "ipc_prefix": "G01J",
       "eccns": [
@@ -26333,6 +26520,21 @@
           "eccn": "7B102",
           "confidence": "high",
           "rationale": "鏡の特性測定用機器（散乱計、反射率計、プロファイロメーター）は光学測定・分析装置であり、G01J（光学測定）とG01N（材料特性測定）が最適合。"
+        }
+      ]
+    },
+    "G02F": {
+      "ipc_prefix": "G02F",
+      "eccns": [
+        {
+          "eccn": "6A002",
+          "confidence": "high",
+          "rationale": "光学・赤外線センサー・レーザー測距"
+        },
+        {
+          "eccn": "6A004",
+          "confidence": "high",
+          "rationale": "光学鏡・変形可能鏡はG02B（光学要素）、レーザー関連光学機器はH01S（レーザー）、変調器などはG02F（光学機器制御）に該当"
         }
       ]
     },
@@ -26681,6 +26883,16 @@
         }
       ]
     },
+    "G04F": {
+      "ipc_prefix": "G04F",
+      "eccns": [
+        {
+          "eccn": "7A001",
+          "confidence": "high",
+          "rationale": "加速度計・ジャイロスコープ・慣性航法"
+        }
+      ]
+    },
     "F41G": {
       "ipc_prefix": "F41G",
       "eccns": [
@@ -26713,6 +26925,11 @@
           "eccn": "8A001",
           "confidence": "high",
           "rationale": "潜水艇・水中推進・海洋監視システム"
+        },
+        {
+          "eccn": "8A002",
+          "confidence": "medium",
+          "rationale": "船舶システム（推進・操舵）"
         },
         {
           "eccn": "8A620",
@@ -26754,6 +26971,11 @@
     "B63H": {
       "ipc_prefix": "B63H",
       "eccns": [
+        {
+          "eccn": "8A001",
+          "confidence": "high",
+          "rationale": "潜水艇・水中推進・海洋監視システム"
+        },
         {
           "eccn": "8A002",
           "confidence": "medium",
@@ -26798,6 +27020,21 @@
           "eccn": "9A990",
           "confidence": "high",
           "rationale": "ディーゼルエンジンと農業用トラクター関連。F02B内燃機関、F02D燃料供給制御、F16C軸受などが該当"
+        }
+      ]
+    },
+    "B63C": {
+      "ipc_prefix": "B63C",
+      "eccns": [
+        {
+          "eccn": "8A002",
+          "confidence": "medium",
+          "rationale": "船舶システム（推進・操舵）"
+        },
+        {
+          "eccn": "8A609",
+          "confidence": "medium",
+          "rationale": "水上艦艇の船体設計（B63B）、推進装置（B63H）、レーダー・ソナー等の検知システム（G01S）、無線通信システム（H04B）が該当する軍事用途の表面船舶に関連する技術領域。"
         }
       ]
     },
@@ -27451,6 +27688,16 @@
         }
       ]
     },
+    "F03H": {
+      "ipc_prefix": "F03H",
+      "eccns": [
+        {
+          "eccn": "9A004",
+          "confidence": "high",
+          "rationale": "宇宙打上げシステム・ロケットエンジン"
+        }
+      ]
+    },
     "B64C": {
       "ipc_prefix": "B64C",
       "eccns": [
@@ -27648,6 +27895,16 @@
           "eccn": "9E101",
           "confidence": "medium",
           "rationale": "9E101は9A012等の軍事転用可能な製品の開発・生産技術を対象。半導体製造、通信、航空宇宙、防御システム等の広範な技術領域に対応。"
+        }
+      ]
+    },
+    "B64U": {
+      "ipc_prefix": "B64U",
+      "eccns": [
+        {
+          "eccn": "9A012",
+          "confidence": "high",
+          "rationale": "無人機（UAV）・自律飛行システム"
         }
       ]
     },
@@ -28671,6 +28928,26 @@
         }
       ]
     },
+    "G21B": {
+      "ipc_prefix": "G21B",
+      "eccns": [
+        {
+          "eccn": "0E001",
+          "confidence": "high",
+          "rationale": "原子力技術に関する0E001は、原子炉(G21C)、有機金属化合物(C07F)、合金(C22C)など核関連物質・材料の開発・製造技術に該当。"
+        },
+        {
+          "eccn": "1B226",
+          "confidence": "medium",
+          "rationale": "電磁同位体分離器は、イオン源を備えた装置であり、イオンビーム生成に関する技術分野に該当。H01Jは電子放出、イオン、プラズマ装置に関連し、G21Bは核反応装置・同位体分離装置に対応する。"
+        },
+        {
+          "eccn": "3A231",
+          "confidence": "medium",
+          "rationale": "中性子発生管は核反応を利用した装置。G21Bは核反応装置、H05Hは高エネルギー粒子加速に関連し、静電加速による核融合反応に対応。"
+        }
+      ]
+    },
     "A62B": {
       "ipc_prefix": "A62B",
       "eccns": [
@@ -28843,6 +29120,11 @@
           "eccn": "1C991",
           "confidence": "high",
           "rationale": "ワクチン、免疫毒素、医療製品に関する分類。A61K(医薬品)、A61P(医療用途)、C07K(ペプチド・蛋白質)が対応する。"
+        },
+        {
+          "eccn": "1C352",
+          "confidence": "medium",
+          "rationale": ""
         }
       ]
     },
@@ -29001,21 +29283,6 @@
         }
       ]
     },
-    "G21B": {
-      "ipc_prefix": "G21B",
-      "eccns": [
-        {
-          "eccn": "1B226",
-          "confidence": "medium",
-          "rationale": "電磁同位体分離器は、イオン源を備えた装置であり、イオンビーム生成に関する技術分野に該当。H01Jは電子放出、イオン、プラズマ装置に関連し、G21Bは核反応装置・同位体分離装置に対応する。"
-        },
-        {
-          "eccn": "3A231",
-          "confidence": "medium",
-          "rationale": "中性子発生管は核反応を利用した装置。G21Bは核反応装置、H05Hは高エネルギー粒子加速に関連し、静電加速による核融合反応に対応。"
-        }
-      ]
-    },
     "F25J": {
       "ipc_prefix": "F25J",
       "eccns": [
@@ -29073,31 +29340,6 @@
           "eccn": "1B607",
           "confidence": "medium",
           "rationale": "化学兵器破壊施設・試験装置は廃棄物処理技術(B09B)、化学分離(B01D)、爆発物・火薬処理(C06B)に関連"
-        }
-      ]
-    },
-    "H05H": {
-      "ipc_prefix": "H05H",
-      "eccns": [
-        {
-          "eccn": "1B999",
-          "confidence": "medium",
-          "rationale": "電解槽(C25C)、粒子加速器(H05H)、産業プロセス制御(G05B)、複合材料(C08J)、化学繊維(D01F)に対応する複数の規制品目を包含"
-        },
-        {
-          "eccn": "3A231",
-          "confidence": "medium",
-          "rationale": "中性子発生管は核反応を利用した装置。G21Bは核反応装置、H05Hは高エネルギー粒子加速に関連し、静電加速による核融合反応に対応。"
-        },
-        {
-          "eccn": "3A999",
-          "confidence": "medium",
-          "rationale": "周波数変換器(H05H)、質量分析計(G01N)、X線装置(H01J)、パルス増幅器・時間遅延(H04L)に対応する多様な電子機器の集合体"
-        },
-        {
-          "eccn": "9B990",
-          "confidence": "medium",
-          "rationale": "振動試験装置は測定・試験機器であり、G01M（試験機器）が最適。G01B（長さ・角度測定）、H05H（プラズマ技術）も関連する可能性がある。"
         }
       ]
     },
@@ -29263,6 +29505,11 @@
           "eccn": "2D352",
           "confidence": "medium",
           "rationale": "遺伝子配列設計・合成ソフトウェアは、バイオインフォマティクス（G16B）、化学計算（G06F）、生物工学（C12N）に関連する技術"
+        },
+        {
+          "eccn": "1C352",
+          "confidence": "medium",
+          "rationale": ""
         }
       ]
     },
@@ -29288,6 +29535,11 @@
           "eccn": "1C991",
           "confidence": "high",
           "rationale": "ワクチン、免疫毒素、医療製品に関する分類。A61K(医薬品)、A61P(医療用途)、C07K(ペプチド・蛋白質)が対応する。"
+        },
+        {
+          "eccn": "1C352",
+          "confidence": "medium",
+          "rationale": ""
         }
       ]
     },
@@ -29631,16 +29883,6 @@
         }
       ]
     },
-    "B04B": {
-      "ipc_prefix": "B04B",
-      "eccns": [
-        {
-          "eccn": "2B122",
-          "confidence": "medium",
-          "rationale": "高速遠心分離機の機械的基本構造はB04B（遠心分離機）、軸受はF16C、スリップリングなどの電力伝送デバイスはH01R（電気コネクタ）に対応。"
-        }
-      ]
-    },
     "H01R": {
       "ipc_prefix": "H01R",
       "eccns": [
@@ -29686,6 +29928,16 @@
         }
       ]
     },
+    "B04C": {
+      "ipc_prefix": "B04C",
+      "eccns": [
+        {
+          "eccn": "2B350",
+          "confidence": "medium",
+          "rationale": "化学製造施設・設備の規制。反応器・反応容器は化学工業用機械であり、有機化合物製造装置に分類される。"
+        }
+      ]
+    },
     "A61B": {
       "ipc_prefix": "A61B",
       "eccns": [
@@ -29718,6 +29970,26 @@
     },
     "B01L": {
       "ipc_prefix": "B01L",
+      "eccns": [
+        {
+          "eccn": "2B352",
+          "confidence": "medium",
+          "rationale": "バイオセーフティ施設・機器は医療機器(A61B)、建築設備(E06B)、実験室機器(B01L)に分類される可能性が高い。"
+        }
+      ]
+    },
+    "C12M": {
+      "ipc_prefix": "C12M",
+      "eccns": [
+        {
+          "eccn": "2B352",
+          "confidence": "medium",
+          "rationale": "バイオセーフティ施設・機器は医療機器(A61B)、建築設備(E06B)、実験室機器(B01L)に分類される可能性が高い。"
+        }
+      ]
+    },
+    "C12P": {
+      "ipc_prefix": "C12P",
       "eccns": [
         {
           "eccn": "2B352",
@@ -29838,16 +30110,6 @@
           "eccn": "9D103",
           "confidence": "high",
           "rationale": "ミサイル設計・シミュレーション用ソフトウェアはコンピュータプログラムであり、G06F（電子デジタルデータ処理）またはG06G（アナログ/デジタルコンピュータ）に分類される。"
-        }
-      ]
-    },
-    "H01F": {
-      "ipc_prefix": "H01F",
-      "eccns": [
-        {
-          "eccn": "3A201",
-          "confidence": "high",
-          "rationale": "パルス放電コンデンサと超伝導電磁石が対象。H01Fは電磁石、H01Gはコンデンサに対応する電気機器の基本分類。"
         }
       ]
     },
@@ -30036,16 +30298,6 @@
         }
       ]
     },
-    "G02F": {
-      "ipc_prefix": "G02F",
-      "eccns": [
-        {
-          "eccn": "6A004",
-          "confidence": "high",
-          "rationale": "光学鏡・変形可能鏡はG02B（光学要素）、レーザー関連光学機器はH01S（レーザー）、変調器などはG02F（光学機器制御）に該当"
-        }
-      ]
-    },
     "H01S3": {
       "ipc_prefix": "H01S3",
       "eccns": [
@@ -30103,16 +30355,6 @@
           "eccn": "9D105",
           "confidence": "high",
           "rationale": "ロケット・ミサイル・無人航空機の制御ソフトウェアであり、宇宙機(B64G)、ナビゲーション(G01S)、自動制御(G05D)に関連する。"
-        }
-      ]
-    },
-    "B63C": {
-      "ipc_prefix": "B63C",
-      "eccns": [
-        {
-          "eccn": "8A609",
-          "confidence": "medium",
-          "rationale": "水上艦艇の船体設計（B63B）、推進装置（B63H）、レーダー・ソナー等の検知システム（G01S）、無線通信システム（H04B）が該当する軍事用途の表面船舶に関連する技術領域。"
         }
       ]
     },
@@ -30183,6 +30425,21 @@
       },
       {
         "ipc_prefix": "G21F",
+        "confidence": "high",
+        "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+      },
+      {
+        "ipc_prefix": "B04B",
+        "confidence": "high",
+        "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+      },
+      {
+        "ipc_prefix": "G21K",
+        "confidence": "high",
+        "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+      },
+      {
+        "ipc_prefix": "H05H",
         "confidence": "high",
         "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
       }
@@ -30336,6 +30593,21 @@
         "ipc_prefix": "H01J",
         "confidence": "high",
         "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+      },
+      {
+        "ipc_prefix": "H01S",
+        "confidence": "high",
+        "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+      },
+      {
+        "ipc_prefix": "G11C",
+        "confidence": "high",
+        "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+      },
+      {
+        "ipc_prefix": "H01F",
+        "confidence": "high",
+        "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
       }
     ],
     "3B001": [
@@ -30450,6 +30722,16 @@
         "ipc_prefix": "H04M",
         "confidence": "high",
         "rationale": "通信機器（無線・衛星・SDR）"
+      },
+      {
+        "ipc_prefix": "H03L",
+        "confidence": "high",
+        "rationale": "通信機器（無線・衛星・SDR）"
+      },
+      {
+        "ipc_prefix": "G08C",
+        "confidence": "high",
+        "rationale": "通信機器（無線・衛星・SDR）"
       }
     ],
     "5A002": [
@@ -30513,6 +30795,16 @@
         "ipc_prefix": "B06B",
         "confidence": "high",
         "rationale": "音響センサー・ソナー（水中探知）"
+      },
+      {
+        "ipc_prefix": "H04R",
+        "confidence": "high",
+        "rationale": "音響センサー・ソナー（水中探知）"
+      },
+      {
+        "ipc_prefix": "G10K",
+        "confidence": "high",
+        "rationale": "音響センサー・ソナー（水中探知）"
       }
     ],
     "6A002": [
@@ -30533,6 +30825,16 @@
       },
       {
         "ipc_prefix": "G01J",
+        "confidence": "high",
+        "rationale": "光学・赤外線センサー・レーザー測距"
+      },
+      {
+        "ipc_prefix": "G02F",
+        "confidence": "high",
+        "rationale": "光学・赤外線センサー・レーザー測距"
+      },
+      {
+        "ipc_prefix": "G21K",
         "confidence": "high",
         "rationale": "光学・赤外線センサー・レーザー測距"
       }
@@ -30593,6 +30895,16 @@
         "ipc_prefix": "G01P",
         "confidence": "high",
         "rationale": "加速度計・ジャイロスコープ・慣性航法"
+      },
+      {
+        "ipc_prefix": "G04F",
+        "confidence": "high",
+        "rationale": "加速度計・ジャイロスコープ・慣性航法"
+      },
+      {
+        "ipc_prefix": "H03L",
+        "confidence": "high",
+        "rationale": "加速度計・ジャイロスコープ・慣性航法"
       }
     ],
     "7A003": [
@@ -30639,6 +30951,11 @@
         "ipc_prefix": "B63B",
         "confidence": "high",
         "rationale": "潜水艇・水中推進・海洋監視システム"
+      },
+      {
+        "ipc_prefix": "B63H",
+        "confidence": "high",
+        "rationale": "潜水艇・水中推進・海洋監視システム"
       }
     ],
     "8A002": [
@@ -30656,6 +30973,16 @@
         "ipc_prefix": "B63B",
         "confidence": "medium",
         "rationale": "船舶システム（推進・操舵）"
+      },
+      {
+        "ipc_prefix": "B63G",
+        "confidence": "medium",
+        "rationale": "船舶システム（推進・操舵）"
+      },
+      {
+        "ipc_prefix": "B63C",
+        "confidence": "medium",
+        "rationale": "船舶システム（推進・操舵）"
       }
     ],
     "9A004": [
@@ -30671,6 +30998,11 @@
       },
       {
         "ipc_prefix": "F02C",
+        "confidence": "high",
+        "rationale": "宇宙打上げシステム・ロケットエンジン"
+      },
+      {
+        "ipc_prefix": "F03H",
         "confidence": "high",
         "rationale": "宇宙打上げシステム・ロケットエンジン"
       }
@@ -30705,6 +31037,11 @@
       },
       {
         "ipc_prefix": "F41G",
+        "confidence": "high",
+        "rationale": "無人機（UAV）・自律飛行システム"
+      },
+      {
+        "ipc_prefix": "B64U",
         "confidence": "high",
         "rationale": "無人機（UAV）・自律飛行システム"
       }
@@ -31638,6 +31975,11 @@
       },
       {
         "ipc_prefix": "C22C",
+        "confidence": "high",
+        "rationale": "原子力技術に関する0E001は、原子炉(G21C)、有機金属化合物(C07F)、合金(C22C)など核関連物質・材料の開発・製造技術に該当。"
+      },
+      {
+        "ipc_prefix": "G21B",
         "confidence": "high",
         "rationale": "原子力技術に関する0E001は、原子炉(G21C)、有機金属化合物(C07F)、合金(C22C)など核関連物質・材料の開発・製造技術に該当。"
       }
@@ -32763,6 +33105,16 @@
       },
       {
         "ipc_prefix": "G01S",
+        "confidence": "high",
+        "rationale": "磁性金属材料の特性制御に関する技術。合金設計（C22C）、半導体・素子応用（H01L）、レーダー等防衛用途（G01S）に対応。"
+      },
+      {
+        "ipc_prefix": "C30B",
+        "confidence": "high",
+        "rationale": "磁性金属材料の特性制御に関する技術。合金設計（C22C）、半導体・素子応用（H01L）、レーダー等防衛用途（G01S）に対応。"
+      },
+      {
+        "ipc_prefix": "H01F",
         "confidence": "high",
         "rationale": "磁性金属材料の特性制御に関する技術。合金設計（C22C）、半導体・素子応用（H01L）、レーダー等防衛用途（G01S）に対応。"
       }
@@ -34754,6 +35106,11 @@
         "ipc_prefix": "B01J",
         "confidence": "medium",
         "rationale": "化学製造施設・設備の規制。反応器・反応容器は化学工業用機械であり、有機化合物製造装置に分類される。"
+      },
+      {
+        "ipc_prefix": "B04C",
+        "confidence": "medium",
+        "rationale": "化学製造施設・設備の規制。反応器・反応容器は化学工業用機械であり、有機化合物製造装置に分類される。"
       }
     ],
     "2B351": [
@@ -34781,6 +35138,16 @@
       },
       {
         "ipc_prefix": "B01L",
+        "confidence": "medium",
+        "rationale": "バイオセーフティ施設・機器は医療機器(A61B)、建築設備(E06B)、実験室機器(B01L)に分類される可能性が高い。"
+      },
+      {
+        "ipc_prefix": "C12M",
+        "confidence": "medium",
+        "rationale": "バイオセーフティ施設・機器は医療機器(A61B)、建築設備(E06B)、実験室機器(B01L)に分類される可能性が高い。"
+      },
+      {
+        "ipc_prefix": "C12P",
         "confidence": "medium",
         "rationale": "バイオセーフティ施設・機器は医療機器(A61B)、建築設備(E06B)、実験室機器(B01L)に分類される可能性が高い。"
       }
@@ -39053,6 +39420,11 @@
         "ipc_prefix": "H04L",
         "confidence": "high",
         "rationale": "ナビゲーション性能向上と測位誤差低減に特化したソフトウェア。測定・ナビゲーション(G01C)、レーダー・ソナー(G01S)、デジタル通信(H04L)が該当。"
+      },
+      {
+        "ipc_prefix": "G08C",
+        "confidence": "high",
+        "rationale": "ナビゲーション性能向上と測位誤差低減に特化したソフトウェア。測定・ナビゲーション(G01C)、レーダー・ソナー(G01S)、デジタル通信(H04L)が該当。"
       }
     ],
     "7D004": [
@@ -41885,6 +42257,35 @@
         "ipc_prefix": "F16C",
         "confidence": "high",
         "rationale": "ガスタービンエンジンロータ組立体用ガス軸受とロータブレード先端隙間制御システムは、ガスタービン技術とガス軸受技術に関連。"
+      }
+    ],
+    "0C002": [
+      {
+        "ipc_prefix": "G21G",
+        "confidence": "medium",
+        "rationale": ""
+      },
+      {
+        "ipc_prefix": "C01G",
+        "confidence": "medium",
+        "rationale": ""
+      }
+    ],
+    "1C352": [
+      {
+        "ipc_prefix": "C12N",
+        "confidence": "medium",
+        "rationale": ""
+      },
+      {
+        "ipc_prefix": "C07K",
+        "confidence": "medium",
+        "rationale": ""
+      },
+      {
+        "ipc_prefix": "A61K",
+        "confidence": "medium",
+        "rationale": ""
       }
     ]
   },
@@ -56002,6 +56403,1340 @@
     "XP": {
       "label_en": "Computers",
       "label_ja": "計算機 (XP)"
+    }
+  },
+  "emerging_tech_domains": {
+    "ET-AI": {
+      "id": "ET-AI",
+      "type": "EMERGING_TECH",
+      "name_ja": "人工知能・機械学習",
+      "name_en": "Artificial Intelligence & Machine Learning",
+      "dual_use_potential": 0.92,
+      "strategic_importance": "critical",
+      "control_readiness": "emerging",
+      "description": "大規模言語モデル・深層学習・強化学習・自律型システムの技術群。軍事AI（自律型致死兵器・ターゲティングAI）、サイバー攻撃AI、AI偵察システムとして転用可能。現行のEARではソフトウェア（5D001）として一部管理。",
+      "eccn_connection": [
+        "4D001",
+        "5D001",
+        "5E001"
+      ],
+      "fefta_connection": [
+        "2項"
+      ],
+      "keizai_anpo_connection": [
+        "KA-3-1"
+      ],
+      "subtechnologies": [
+        {
+          "id": "ET-AI-LLM",
+          "name": "大規模言語モデル（LLM）",
+          "trl": 8,
+          "dual_use_score": 0.8
+        },
+        {
+          "id": "ET-AI-CV",
+          "name": "コンピュータビジョン（軍事偵察・ターゲティング）",
+          "trl": 9,
+          "dual_use_score": 0.95
+        },
+        {
+          "id": "ET-AI-RL",
+          "name": "強化学習（自律制御・ゲーム理論的戦略）",
+          "trl": 7,
+          "dual_use_score": 0.9
+        },
+        {
+          "id": "ET-AI-LAWS",
+          "name": "自律型致死兵器システム（LAWS）",
+          "trl": 5,
+          "dual_use_score": 1.0
+        },
+        {
+          "id": "ET-AI-CYBER",
+          "name": "AIサイバー攻撃・防御（攻防AI）",
+          "trl": 7,
+          "dual_use_score": 0.95
+        },
+        {
+          "id": "ET-AI-CHEM",
+          "name": "AI創薬・化学合成予測（デュアルユース）",
+          "trl": 7,
+          "dual_use_score": 0.75
+        }
+      ]
+    },
+    "ET-QT": {
+      "id": "ET-QT",
+      "type": "EMERGING_TECH",
+      "name_ja": "量子技術",
+      "name_en": "Quantum Technology",
+      "dual_use_potential": 0.97,
+      "strategic_importance": "critical",
+      "control_readiness": "lagging",
+      "description": "量子コンピュータ・量子通信・量子センサーの三分野。量子コンピュータはRSA暗号解読（Shorアルゴリズム）、量子センサーは潜水艦探知・地下施設探知・GPS代替として安全保障上の意義が極めて高い。現行輸出管理が技術進歩に追いついていない最先端領域。",
+      "eccn_connection": [
+        "3A001",
+        "5E002"
+      ],
+      "fefta_connection": [
+        "2項",
+        "7項"
+      ],
+      "keizai_anpo_connection": [
+        "KA-3-2"
+      ],
+      "subtechnologies": [
+        {
+          "id": "ET-QT-QC",
+          "name": "超電導量子コンピュータ（>50 logical qubit）",
+          "trl": 5,
+          "dual_use_score": 0.98
+        },
+        {
+          "id": "ET-QT-QKD",
+          "name": "量子鍵配送（QKD）",
+          "trl": 7,
+          "dual_use_score": 0.9
+        },
+        {
+          "id": "ET-QT-QS",
+          "name": "量子センサー（原子干渉計・重力計）",
+          "trl": 6,
+          "dual_use_score": 0.95
+        },
+        {
+          "id": "ET-QT-PQC",
+          "name": "ポスト量子暗号（PQC）",
+          "trl": 8,
+          "dual_use_score": 0.85
+        },
+        {
+          "id": "ET-QT-QN",
+          "name": "量子ネットワーク（量子リピーター）",
+          "trl": 4,
+          "dual_use_score": 0.92
+        }
+      ]
+    },
+    "ET-BIO": {
+      "id": "ET-BIO",
+      "type": "EMERGING_TECH",
+      "name_ja": "バイオテクノロジー（合成生物学）",
+      "name_en": "Biotechnology & Synthetic Biology",
+      "dual_use_potential": 0.88,
+      "strategic_importance": "critical",
+      "control_readiness": "partial",
+      "description": "合成生物学・CRISPR・ゲノム編集・タンパク質工学。生物兵器（強化病原体・エンハンスト毒素）への転用可能性。AIと統合した「AIバイオ」によるデ・ノボ病原体設計リスクが近年顕在化。外為法8項・CWC・BWCが部分的に規制するが、研究ツール自体の管理は不十分。",
+      "eccn_connection": [
+        "2B352",
+        "1C351",
+        "1C353"
+      ],
+      "fefta_connection": [
+        "8項"
+      ],
+      "keizai_anpo_connection": [
+        "KA-3-3"
+      ],
+      "subtechnologies": [
+        {
+          "id": "ET-BIO-CRISPR",
+          "name": "CRISPR-Cas ゲノム編集（in vivo）",
+          "trl": 7,
+          "dual_use_score": 0.85
+        },
+        {
+          "id": "ET-BIO-SYN",
+          "name": "合成生物学（デ・ノボ病原体設計）",
+          "trl": 5,
+          "dual_use_score": 0.97
+        },
+        {
+          "id": "ET-BIO-DNA",
+          "name": "DNA合成（全合成能力・>10kbp）",
+          "trl": 8,
+          "dual_use_score": 0.9
+        },
+        {
+          "id": "ET-BIO-NEURO",
+          "name": "神経インターフェース（BCI：脳機械インターフェース）",
+          "trl": 5,
+          "dual_use_score": 0.78
+        },
+        {
+          "id": "ET-BIO-AI",
+          "name": "AI創薬（タンパク質構造予測・de novo設計）",
+          "trl": 7,
+          "dual_use_score": 0.75
+        }
+      ]
+    },
+    "ET-SC": {
+      "id": "ET-SC",
+      "type": "EMERGING_TECH",
+      "name_ja": "先端半導体",
+      "name_en": "Advanced Semiconductors",
+      "dual_use_potential": 0.94,
+      "strategic_importance": "critical",
+      "control_readiness": "active",
+      "description": "3nm以下プロセスロジックIC・HBM・GaN/SiCパワー半導体・チップレット技術。半導体は現代軍事システム（誘導兵器・AI C4ISR・暗号）の根幹。米国のChip Act・BIS Entity List・日本の外為法が管理。製造装置（EUV/CVD/ALD）も規制対象。",
+      "eccn_connection": [
+        "3A001",
+        "3B001",
+        "3C002",
+        "3C004"
+      ],
+      "fefta_connection": [
+        "7項",
+        "7項（7の2）"
+      ],
+      "keizai_anpo_connection": [
+        "KA-1-1",
+        "KA-1-10"
+      ],
+      "subtechnologies": [
+        {
+          "id": "ET-SC-LOGIC",
+          "name": "先端ロジックIC（<3nm, FinFET/GAAFET）",
+          "trl": 9,
+          "dual_use_score": 0.95
+        },
+        {
+          "id": "ET-SC-HBM",
+          "name": "高帯域幅メモリ（HBM3/HBM4）",
+          "trl": 8,
+          "dual_use_score": 0.9
+        },
+        {
+          "id": "ET-SC-POWER",
+          "name": "GaN/SiCパワー半導体（EV・軍用電源）",
+          "trl": 8,
+          "dual_use_score": 0.85
+        },
+        {
+          "id": "ET-SC-CHIPLET",
+          "name": "チップレット集積技術（HBM + Logic）",
+          "trl": 7,
+          "dual_use_score": 0.92
+        },
+        {
+          "id": "ET-SC-EUV",
+          "name": "EUV露光装置・ArFフォトレジスト",
+          "trl": 9,
+          "dual_use_score": 0.98
+        },
+        {
+          "id": "ET-SC-NEUROMOR",
+          "name": "ニューロモーフィックチップ",
+          "trl": 5,
+          "dual_use_score": 0.8
+        }
+      ]
+    },
+    "ET-SPACE": {
+      "id": "ET-SPACE",
+      "type": "EMERGING_TECH",
+      "name_ja": "宇宙技術",
+      "name_en": "Space Technology",
+      "dual_use_potential": 0.91,
+      "strategic_importance": "critical",
+      "control_readiness": "active",
+      "description": "打上げシステム・衛星・宇宙状況監視（SSA）・衛星間通信。民間宇宙産業の拡大（NewSpace）がデュアルユース管理を複雑化。再使用型ロケット技術はミサイル転用可能性。ASAT（衛星攻撃）技術の管理が緊急課題。",
+      "eccn_connection": [
+        "9A004",
+        "9E001",
+        "9A515"
+      ],
+      "fefta_connection": [
+        "2項"
+      ],
+      "keizai_anpo_connection": [
+        "KA-1-7",
+        "KA-3-4"
+      ],
+      "subtechnologies": [
+        {
+          "id": "ET-SPACE-LAUNCH",
+          "name": "再使用型ロケット（第1段回収・コスト革命）",
+          "trl": 9,
+          "dual_use_score": 0.88
+        },
+        {
+          "id": "ET-SPACE-SAT",
+          "name": "小型衛星コンステレーション（LEO）",
+          "trl": 8,
+          "dual_use_score": 0.85
+        },
+        {
+          "id": "ET-SPACE-SSA",
+          "name": "宇宙状況監視（SSA・SDA）",
+          "trl": 7,
+          "dual_use_score": 0.9
+        },
+        {
+          "id": "ET-SPACE-ASAT",
+          "name": "衛星攻撃（ASAT）対抗技術",
+          "trl": 6,
+          "dual_use_score": 0.97
+        },
+        {
+          "id": "ET-SPACE-PROP",
+          "name": "核熱推進・電気推進（深宇宙）",
+          "trl": 4,
+          "dual_use_score": 0.88
+        }
+      ]
+    },
+    "ET-HY": {
+      "id": "ET-HY",
+      "type": "EMERGING_TECH",
+      "name_ja": "極超音速技術",
+      "name_en": "Hypersonic Technology",
+      "dual_use_potential": 0.98,
+      "strategic_importance": "critical",
+      "control_readiness": "active",
+      "description": "マッハ5超の飛翔体技術（HGV・HCM・スクラムジェット）。現行ミサイル防衛を無力化する可能性があり、米・中・露・日が開発競争中。スクラムジェットエンジン・耐熱材料（UHTC）・誘導制御が核心技術。MTCR・Wassenaarで一部管理。",
+      "eccn_connection": [
+        "9A004",
+        "9E003"
+      ],
+      "fefta_connection": [
+        "2項",
+        "13項"
+      ],
+      "keizai_anpo_connection": [
+        "KA-3-5"
+      ],
+      "subtechnologies": [
+        {
+          "id": "ET-HY-HGV",
+          "name": "極超音速滑空体（HGV）",
+          "trl": 6,
+          "dual_use_score": 1.0
+        },
+        {
+          "id": "ET-HY-SCRAM",
+          "name": "スクラムジェットエンジン",
+          "trl": 5,
+          "dual_use_score": 0.97
+        },
+        {
+          "id": "ET-HY-UHTC",
+          "name": "超高温耐熱材料（UHTC: ZrB2/HfC）",
+          "trl": 6,
+          "dual_use_score": 0.88
+        },
+        {
+          "id": "ET-HY-GUID",
+          "name": "極超音速誘導制御（マッハ5+飛翔中）",
+          "trl": 5,
+          "dual_use_score": 0.99
+        }
+      ]
+    },
+    "ET-EN": {
+      "id": "ET-EN",
+      "type": "EMERGING_TECH",
+      "name_ja": "先進エネルギー貯蔵",
+      "name_en": "Advanced Energy Storage",
+      "dual_use_potential": 0.72,
+      "strategic_importance": "high",
+      "control_readiness": "partial",
+      "description": "リチウムイオン・全固体電池・液体空気蓄電・水素燃料電池・核融合。EV・グリッドに加え、潜水艦（非大気依存推進）・UAV・軍用車両のエネルギー源として重要。中国のEV電池産業は軍民融合企業が主導。",
+      "eccn_connection": [
+        "1C010"
+      ],
+      "fefta_connection": [
+        "4項"
+      ],
+      "keizai_anpo_connection": [
+        "KA-1-2"
+      ],
+      "subtechnologies": [
+        {
+          "id": "ET-EN-SSB",
+          "name": "全固体電池（固体電解質）",
+          "trl": 6,
+          "dual_use_score": 0.75
+        },
+        {
+          "id": "ET-EN-H2",
+          "name": "水素燃料電池（高出力密度）",
+          "trl": 8,
+          "dual_use_score": 0.7
+        },
+        {
+          "id": "ET-EN-FUSION",
+          "name": "核融合発電（ITERの先）",
+          "trl": 4,
+          "dual_use_score": 0.8
+        },
+        {
+          "id": "ET-EN-AIP",
+          "name": "空気非依存推進（AIP：潜水艦）",
+          "trl": 8,
+          "dual_use_score": 0.92
+        }
+      ]
+    },
+    "ET-MAT": {
+      "id": "ET-MAT",
+      "type": "EMERGING_TECH",
+      "name_ja": "先進材料",
+      "name_en": "Advanced Materials",
+      "dual_use_potential": 0.82,
+      "strategic_importance": "high",
+      "control_readiness": "partial",
+      "description": "炭素繊維・高エントロピー合金・トポロジカル絶縁体・メタマテリアル・2D材料（グラフェン等）。複合材料は航空宇宙・防衛機器の軽量化・高強度化に直結。CFRP・アラミド繊維は外為法4項・EAR 1C010で管理。",
+      "eccn_connection": [
+        "1C010",
+        "1C210"
+      ],
+      "fefta_connection": [
+        "4項"
+      ],
+      "keizai_anpo_connection": [
+        "KA-1-3"
+      ],
+      "subtechnologies": [
+        {
+          "id": "ET-MAT-CFRP",
+          "name": "炭素繊維強化複合材（T1100グレード）",
+          "trl": 9,
+          "dual_use_score": 0.88
+        },
+        {
+          "id": "ET-MAT-META",
+          "name": "メタマテリアル（電磁波制御・ステルス）",
+          "trl": 5,
+          "dual_use_score": 0.85
+        },
+        {
+          "id": "ET-MAT-2D",
+          "name": "2D材料（グラフェン・hBN・MoS2）",
+          "trl": 5,
+          "dual_use_score": 0.72
+        },
+        {
+          "id": "ET-MAT-HEA",
+          "name": "高エントロピー合金（耐熱・耐放射線）",
+          "trl": 5,
+          "dual_use_score": 0.8
+        },
+        {
+          "id": "ET-MAT-UHTC",
+          "name": "超高温セラミクス（HfB2/ZrB2）",
+          "trl": 5,
+          "dual_use_score": 0.87
+        }
+      ]
+    }
+  },
+  "trl_risk_matrix": {
+    "_description": "TRL段階 × 輸出管理対象となる可能性（高/中/低）",
+    "TRL1": {
+      "label": "基礎研究",
+      "control_risk": "低",
+      "note": "学術公開が原則。BWC/CWC禁止物質生成の研究は例外"
+    },
+    "TRL2": {
+      "label": "技術コンセプト定義",
+      "control_risk": "低",
+      "note": "軍民両用ポテンシャルの評価開始時期"
+    },
+    "TRL3": {
+      "label": "実験的証明",
+      "control_risk": "低〜中",
+      "note": "AIバイオ・量子センサーは TRL3 で管理開始議論が始まる"
+    },
+    "TRL4": {
+      "label": "実験室環境での実証",
+      "control_risk": "中",
+      "note": "CISTEC みなし輸出審査の実務上の開始目安"
+    },
+    "TRL5": {
+      "label": "関連環境での実証",
+      "control_risk": "中〜高",
+      "note": "試作品が完成しパラメータが確定し始める段階。輸出令パラメータ照合が現実的に"
+    },
+    "TRL6": {
+      "label": "関連環境でのシステム実証",
+      "control_risk": "高",
+      "note": "外為法リスト規制該非判定が必要"
+    },
+    "TRL7": {
+      "label": "運用環境でのシステム実証",
+      "control_risk": "高",
+      "note": "EUC・輸出許可が必要なフェーズ"
+    },
+    "TRL8": {
+      "label": "システム完成・資格取得",
+      "control_risk": "高",
+      "note": "量産品の輸出管理が本格化"
+    },
+    "TRL9": {
+      "label": "実績ある実際の環境での運用",
+      "control_risk": "高",
+      "note": "制裁・エンドユーザー管理が最重要"
+    }
+  },
+  "keizai_anpo_materials": {
+    "CM-01": {
+      "id": "CM-01",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "半導体",
+      "name_en": "Semiconductors (Integrated Circuits)",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "台湾・韓国・中国への集中（TSMC/Samsung/SMIC）",
+      "eccn_parallel": [
+        "3A001",
+        "3B001",
+        "3C002",
+        "3C004"
+      ],
+      "fefta_parallel": [
+        "7項",
+        "7の2項"
+      ],
+      "key_policy": "TSMC熊本工場（JASM）・Rapidus北海道工場への補助金",
+      "geopolitical_risk": "台湾有事で先端ロジックICが全面停止するシナリオ。日本のGDP最大4.2兆円損失試算（経産省2022）"
+    },
+    "CM-02": {
+      "id": "CM-02",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "蓄電池（電池セル・材料）",
+      "name_en": "Storage Batteries",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "中国の正極材・負極材・電解液・セパレータ供給支配",
+      "eccn_parallel": [
+        "1C010"
+      ],
+      "fefta_parallel": [
+        "4項"
+      ],
+      "key_policy": "パナソニック・トヨタ全固体電池投資への補助金",
+      "geopolitical_risk": "EV・再生可能エネルギー貯蔵・軍用電源の依存"
+    },
+    "CM-03": {
+      "id": "CM-03",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "重要鉱物（クリティカルミネラル）",
+      "name_en": "Critical Minerals",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "リチウム（智利/阿/豪）、コバルト（コンゴ民主）、ニッケル（インドネシア/フィリピン）、黒鉛・レアアース精製（中国）",
+      "eccn_parallel": [
+        "1C010",
+        "1C012"
+      ],
+      "fefta_parallel": [
+        "4項"
+      ],
+      "key_policy": "MSP（Minerals Security Partnership）参加・JOGMEC等権益確保支援",
+      "geopolitical_risk": "2023年中国のガリウム・ゲルマニウム輸出規制が「資源の武器化」を実証"
+    },
+    "CM-04": {
+      "id": "CM-04",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "工作機械・産業用ロボット",
+      "name_en": "Machine Tools & Industrial Robots",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "日独に製造基盤集中（安川電機・FANUC・ヤマザキマザック）",
+      "eccn_parallel": [
+        "2B001",
+        "2B006"
+      ],
+      "fefta_parallel": [
+        "3項"
+      ],
+      "key_policy": "スマートものづくり補助金・ロボット産業振興",
+      "geopolitical_risk": "精密工作機械の対中輸出規制（日本2023年5月施行）との整合"
+    },
+    "CM-05": {
+      "id": "CM-05",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "航空機・宇宙関連部品",
+      "name_en": "Aircraft & Space Components",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "米国Boeing/Pratt & Whitney依存（日本の787分担製造）",
+      "eccn_parallel": [
+        "9A004",
+        "9E001"
+      ],
+      "fefta_parallel": [
+        "2項"
+      ],
+      "key_policy": "H3ロケット国産化・防衛装備移転三原則改定",
+      "geopolitical_risk": "ITAR・EARによる米国側の再輸出管理リスク"
+    },
+    "CM-06": {
+      "id": "CM-06",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "天然ガス・液化天然ガス（LNG）",
+      "name_en": "Natural Gas & LNG",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "中東・豪州・ロシア（サハリン）への依存",
+      "eccn_parallel": [],
+      "fefta_parallel": [
+        "14項"
+      ],
+      "key_policy": "サハリン2権益維持・カタールLNG長期契約延長",
+      "geopolitical_risk": "ロシアのウクライナ侵攻によるサハリン2の不確実性"
+    },
+    "CM-07": {
+      "id": "CM-07",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "宇宙関連（衛星・測位）",
+      "name_en": "Space Systems (Satellite/Navigation)",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "GPS（米国）への測位依存・衛星打上げ能力の不足",
+      "eccn_parallel": [
+        "9A004",
+        "9A515"
+      ],
+      "fefta_parallel": [
+        "2項"
+      ],
+      "key_policy": "みちびき（準天頂衛星）拡充・商業打上げ推進法整備",
+      "geopolitical_risk": "ASATによる衛星無力化シナリオ・GPS妨害（欺瞞）リスク"
+    },
+    "CM-08": {
+      "id": "CM-08",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "海洋（船舶・海底ケーブル）",
+      "name_en": "Maritime (Vessels & Submarine Cables)",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "造船（韓国・中国）・海底ケーブル（中国系HMN増加）",
+      "eccn_parallel": [
+        "5A001"
+      ],
+      "fefta_parallel": [
+        "2項"
+      ],
+      "key_policy": "海底ケーブル保護法整備・日本造船業再活性化",
+      "geopolitical_risk": "有事における海底ケーブル切断・通信遮断シナリオ"
+    },
+    "CM-09": {
+      "id": "CM-09",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "抗菌性物質（医薬品・原料）",
+      "name_en": "Antimicrobials & Pharmaceuticals",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "APIの中国・インド依存（アモキシシリン等）",
+      "eccn_parallel": [
+        "1C350",
+        "2B352"
+      ],
+      "fefta_parallel": [
+        "8項"
+      ],
+      "key_policy": "医薬品サプライチェーン強靭化。国内API製造補助金。",
+      "geopolitical_risk": "新型感染症×供給途絶（COVID-19教訓）"
+    },
+    "CM-10": {
+      "id": "CM-10",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "肥料",
+      "name_en": "Fertilizers",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "カリウム（ロシア・ベラルーシ）・ウラン（カザフスタン・ロシア）",
+      "eccn_parallel": [],
+      "fefta_parallel": [
+        "14項"
+      ],
+      "key_policy": "代替調達先開拓・海藻肥料研究",
+      "geopolitical_risk": "ウクライナ侵攻→黒海封鎖→穀物・肥料輸出途絶"
+    },
+    "CM-11": {
+      "id": "CM-11",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "永久磁石",
+      "name_en": "Permanent Magnets (NdFeB)",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "中国が世界の NdFeB 磁石の85%を製造（精製含む）",
+      "eccn_parallel": [
+        "1C010"
+      ],
+      "fefta_parallel": [
+        "4項"
+      ],
+      "key_policy": "国内レアアース磁石製造支援・代替材料（ハイエントロピー合金）研究",
+      "geopolitical_risk": "EV・風力発電・誘導兵器アクチュエータ全般への影響"
+    },
+    "CM-12": {
+      "id": "CM-12",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "工作機械用切削工具（超硬合金・CBN等）",
+      "name_en": "Cutting Tools (Cemented Carbide, CBN)",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "タングステン（中国80%シェア）依存",
+      "eccn_parallel": [
+        "2B001"
+      ],
+      "fefta_parallel": [
+        "3項"
+      ],
+      "key_policy": "タングステン代替材料（TiSiN等）研究・国内回収リサイクル",
+      "geopolitical_risk": "中国のタングステン輸出規制シナリオ"
+    },
+    "CM-13": {
+      "id": "CM-13",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "クラウドインフラ・クラウドプログラム",
+      "name_en": "Cloud Infrastructure & Programs",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "AWS/Azure/GCP（米国3社）への過度な依存。国産クラウド（さくら/IDC Frontier）シェア低い",
+      "eccn_parallel": [
+        "4A003",
+        "5E001"
+      ],
+      "fefta_parallel": [
+        "7項（情報処理）"
+      ],
+      "key_policy": "政府クラウド（ISMAP）要件強化・国産クラウド育成",
+      "geopolitical_risk": "米国の一方的データアクセス（CLOUD Act）・有事の接続遮断リスク"
+    },
+    "CM-14": {
+      "id": "CM-14",
+      "type": "KEIZAI_ANPO_MATERIAL",
+      "name_ja": "先端半導体製造装置・材料",
+      "name_en": "Advanced Semiconductor Manufacturing Equipment & Materials",
+      "category": "特定重要物資（CM-01と連動）",
+      "risk_level": "critical",
+      "concentration_risk": "ASML（EUV：蘭）・KLA/Lam Research/Applied Materials（米）・東京エレクトロン（JP）の寡占",
+      "eccn_parallel": [
+        "3B001",
+        "3C002",
+        "3C004"
+      ],
+      "fefta_parallel": [
+        "7の2項"
+      ],
+      "key_policy": "東京エレクトロン等国内装置メーカーへの研究開発補助",
+      "geopolitical_risk": "日本の2023年5月23品目輸出規制強化と連動"
+    }
+  },
+  "keizai_anpo_framework": {
+    "law_name": "経済安全保障推進法",
+    "enacted": "2022-05-11",
+    "enforced": "2022-08-01",
+    "purpose": "経済活動に関する安全保障を確保するため、サプライチェーン強靭化・基幹インフラ安全確保・先端技術育成・特許非公開の4本柱から成る包括的経済安全保障法制",
+    "pillars": [
+      {
+        "pillar_id": "P1",
+        "name": "重要物資の安定供給確保",
+        "articles": "第5〜58条",
+        "description": "半導体・蓄電池・重要鉱物等14品目を「特定重要物資」に指定。国内生産支援・調達先多元化・備蓄義務を企業に課す。",
+        "fefta_connection": "輸出管理と連動（安定供給阻害要因の排除）"
+      },
+      {
+        "pillar_id": "P2",
+        "name": "基幹インフラの安全確保",
+        "articles": "第50〜113条",
+        "description": "電力・ガス・水道・通信・金融・空港・港湾等14分野を「特定社会基盤事業」に指定。機器・プログラム導入時の事前審査義務。",
+        "fefta_connection": "外為法対内直接投資規制と連動"
+      },
+      {
+        "pillar_id": "P3",
+        "name": "先端的な重要技術の開発支援",
+        "articles": "第61〜78条",
+        "description": "AI・量子・バイオ・宇宙等の「特定重要技術」を官民連携で開発。経済安全保障重要技術育成プログラム（K Program）。",
+        "fefta_connection": "みなし輸出・技術移転規制と連動"
+      },
+      {
+        "pillar_id": "P4",
+        "name": "特許出願の非公開",
+        "articles": "第65〜82条",
+        "description": "安全保障上機微な発明の特許公開を非公開にする制度。国家安全保障への応用可能性が高い技術は審査前に非公開指定。米国InSRA・英UK-GIPA類似。",
+        "fefta_connection": "輸出管理対象技術との重複管理"
+      }
+    ]
+  },
+  "atip_program": {
+    "name": "先端技術育成プログラム（K Program）",
+    "official": "経済安全保障重要技術育成プログラム",
+    "budget": "5000億円規模（2022〜2026年度）",
+    "domains": [
+      {
+        "domain": "AI・機械学習",
+        "trl_target": "TRL 4→7",
+        "eccn_relevant": [
+          "5D001",
+          "4D001"
+        ]
+      },
+      {
+        "domain": "量子技術（コンピュータ・センサー・通信）",
+        "trl_target": "TRL 3→6",
+        "eccn_relevant": [
+          "3A001",
+          "5E002"
+        ]
+      },
+      {
+        "domain": "バイオ（合成生物・ゲノム）",
+        "trl_target": "TRL 4→7",
+        "eccn_relevant": [
+          "2B352",
+          "1C353"
+        ]
+      },
+      {
+        "domain": "先端半導体・製造装置",
+        "trl_target": "TRL 5→8",
+        "eccn_relevant": [
+          "3B001",
+          "3C002"
+        ]
+      },
+      {
+        "domain": "宇宙（衛星・推進）",
+        "trl_target": "TRL 5→8",
+        "eccn_relevant": [
+          "9A004",
+          "9E001"
+        ]
+      },
+      {
+        "domain": "次世代通信（6G・衛星通信）",
+        "trl_target": "TRL 3→6",
+        "eccn_relevant": [
+          "5A001",
+          "5E001"
+        ]
+      },
+      {
+        "domain": "サイバーセキュリティ",
+        "trl_target": "TRL 5→8",
+        "eccn_relevant": [
+          "5A002",
+          "5E002"
+        ]
+      },
+      {
+        "domain": "先進材料（炭素繊維・超耐熱）",
+        "trl_target": "TRL 5→8",
+        "eccn_relevant": [
+          "1C010",
+          "1C210"
+        ]
+      }
+    ]
+  },
+  "fdi_screening": {
+    "law": "外国為替及び外国貿易法（外為法）第26条以降",
+    "threshold": "指定業種企業への1%以上出資で事前届出義務（従来10%→厳格化）",
+    "designated_sectors": [
+      "武器製造",
+      "航空機製造",
+      "核関連",
+      "宇宙関連",
+      "サイバーセキュリティ",
+      "重要鉱物採掘",
+      "半導体製造",
+      "電力・ガス・水道",
+      "金融・証券",
+      "通信",
+      "放送"
+    ],
+    "fdi_review_body": "財務省（主管）＋経済産業省（指定業種）＋内閣官房（NSC）",
+    "eccn_relevance": "EAR FDP Rule と類似の外国投資規制。輸出管理対象技術を保有する企業への外国投資が主要対象"
+  },
+  "geopolitical_chokepoints": {
+    "CP-1": {
+      "id": "CP-1",
+      "type": "CHOKEPOINT",
+      "name": "EUV露光装置（ASML）",
+      "concentration": "EU（蘭）100%",
+      "single_country_share": 1.0,
+      "criticality": "critical",
+      "affected_eccn": [
+        "3B001"
+      ],
+      "description": "世界の先端半導体製造（7nm以下）は全てASMLのEUV装置に依存。中国への輸出は米・欧・日の圧力で停止。台湾有事シナリオでの最大リスク要因。",
+      "mitigation_options": [
+        "Intel Foundry Services（IF20A代替）",
+        "代替露光技術（NIL・DSA）研究（TRL 3-4）"
+      ]
+    },
+    "CP-2": {
+      "id": "CP-2",
+      "type": "CHOKEPOINT",
+      "name": "レアアース精製（中国）",
+      "concentration": "中国 85-90%",
+      "single_country_share": 0.87,
+      "criticality": "critical",
+      "affected_eccn": [
+        "1C010"
+      ],
+      "description": "ネオジム（NdFeB）磁石・モーター・EV・風力発電・誘導爆弾のアクチュエータ全般が依存。2023年ガリウム・ゲルマニウム輸出規制で中国が「兵器化」を実証。",
+      "mitigation_options": [
+        "豪州・カナダ・米国でのレアアース採掘・精製投資",
+        "MP Materials（米）のFt. Pass鉱山復活",
+        "人工鉱物・代替材料研究（ハイエントロピー合金）"
+      ]
+    },
+    "CP-3": {
+      "id": "CP-3",
+      "type": "CHOKEPOINT",
+      "name": "先端メモリ（HBM：Samsung/SK Hynix）",
+      "concentration": "韓国 95%+",
+      "single_country_share": 0.96,
+      "criticality": "high",
+      "affected_eccn": [
+        "3A001"
+      ],
+      "description": "AI推論・訓練に不可欠なHBM（高帯域幅メモリ）は韓国2社が独占。台湾有事より韓国有事の方がAI産業へのインパクト大という見方も。",
+      "mitigation_options": [
+        "Micron（米）のHBM開発加速",
+        "国内HBM製造（日本：キオクシア/ソニー）投資"
+      ]
+    },
+    "CP-4": {
+      "id": "CP-4",
+      "type": "CHOKEPOINT",
+      "name": "先端ロジック製造（TSMC）",
+      "concentration": "台湾 90%+",
+      "single_country_share": 0.92,
+      "criticality": "critical",
+      "affected_eccn": [
+        "3B001"
+      ],
+      "description": "3nm以下の先端ロジックICは世界のAI・スマートフォン・自動車・軍事システム全般が依存。台湾有事での最大のサプライチェーンリスク。TSMC Arizona（5nm）・熊本工場（28nm）が一部リスク分散。",
+      "mitigation_options": [
+        "TSMC Arizona（N3E 2026年量産）",
+        "Intel 18A（2025年）",
+        "Samsung TX（3nm）"
+      ]
+    },
+    "CP-5": {
+      "id": "CP-5",
+      "type": "CHOKEPOINT",
+      "name": "ArFフォトレジスト（日本）",
+      "concentration": "日本 >90%",
+      "single_country_share": 0.93,
+      "criticality": "critical",
+      "affected_eccn": [
+        "3C002"
+      ],
+      "description": "信越化学・JSR・住友化学・富士フイルムが世界のArF・EUVフォトレジストを独占。1社でも供給停止すれば世界の半導体製造がストップ。逆に言えば日本の最強の経済的バーゲニングチップ。外為法・経済安保推進法で戦略的に管理すべき品目。",
+      "mitigation_options": [
+        "欧州代替メーカー育成（DOW・Merck KGaA）",
+        "国内在庫積み増し",
+        "EUVレジスト多元化投資"
+      ]
+    },
+    "CP-6": {
+      "id": "CP-6",
+      "type": "CHOKEPOINT",
+      "name": "ブラックシー海峡・ホルムズ海峡・マラッカ海峡",
+      "concentration": "地政学的集中",
+      "single_country_share": null,
+      "criticality": "critical",
+      "affected_eccn": [],
+      "description": "エネルギー輸送の3大チョークポイント。ホルムズ（中東石油20%通過）・マラッカ（アジア向け石油85%通過）・ブラックシー海峡（穀物輸出）。紛争時の封鎖リスク。日本への影響は特に大（エネルギー輸入依存）。",
+      "mitigation_options": [
+        "LNG貯蔵能力拡大",
+        "再生可能エネルギー加速",
+        "代替ルート（北極航路）"
+      ]
+    },
+    "CP-7": {
+      "id": "CP-7",
+      "type": "CHOKEPOINT",
+      "name": "海底ケーブル網",
+      "concentration": "分散しているが脆弱",
+      "single_country_share": null,
+      "criticality": "high",
+      "affected_eccn": [
+        "5A001"
+      ],
+      "description": "世界のインターネットトラフィック99%が海底ケーブルで伝送。中国系（HMN Technologies）のシェア拡大が米欧で問題視。着陸局点の物理的脆弱性。",
+      "mitigation_options": [
+        "非中国系ケーブル敷設（Echo/Bifrost）",
+        "衛星通信代替（Starlink）",
+        "着陸局の多元化"
+      ]
+    }
+  },
+  "alliance_ecosystems": {
+    "AUKUS": {
+      "id": "AUKUS",
+      "type": "ALLIANCE",
+      "name": "AUKUS（Australia-UK-US 安全保障枠組み）",
+      "members": [
+        "US",
+        "UK",
+        "AU"
+      ],
+      "tech_focus": [
+        "原子力潜水艦推進（Pillar 1）",
+        "AI・量子・サイバー・極超音速・電子戦（Pillar 2）"
+      ],
+      "eccn_relevant": [
+        "9A004",
+        "5E002",
+        "9E003"
+      ],
+      "jp_relevance": "日本はAUKUS Pillar 2 の「パートナー国」として招待議論中（2024〜）"
+    },
+    "QUAD": {
+      "id": "QUAD",
+      "type": "ALLIANCE",
+      "name": "Quad（日米豪印 戦略的枠組み）",
+      "members": [
+        "US",
+        "JP",
+        "AU",
+        "IN"
+      ],
+      "tech_focus": [
+        "半導体サプライチェーン",
+        "クリティカルミネラル",
+        "クリーンエネルギー",
+        "宇宙",
+        "サイバーセキュリティ"
+      ],
+      "eccn_relevant": [
+        "1C010",
+        "3B001",
+        "9A004"
+      ],
+      "jp_relevance": "日本は半導体材料・工作機械でQuad内の最重要貢献国"
+    },
+    "CHIP4": {
+      "id": "CHIP4",
+      "type": "ALLIANCE",
+      "name": "Chip4（日米台韓 半導体サプライチェーン連携）",
+      "members": [
+        "US",
+        "JP",
+        "KR",
+        "TW"
+      ],
+      "tech_focus": [
+        "半導体製造装置",
+        "先端ロジック・メモリ製造",
+        "半導体材料",
+        "設計ツール（EDA）"
+      ],
+      "eccn_relevant": [
+        "3B001",
+        "3C002",
+        "4A003"
+      ],
+      "jp_relevance": "日本は2023年5月23品目の半導体製造装置を輸出管理強化"
+    },
+    "FVE": {
+      "id": "FVE",
+      "type": "ALLIANCE",
+      "name": "Five Eyes（英米加豪NZ 情報共有同盟）",
+      "members": [
+        "US",
+        "UK",
+        "CA",
+        "AU",
+        "NZ"
+      ],
+      "tech_focus": [
+        "SIGINT・通信インテリジェンス",
+        "サイバー防衛",
+        "5G排除（Huawei）"
+      ],
+      "eccn_relevant": [
+        "5A001",
+        "5E001",
+        "5A002",
+        "5E002"
+      ],
+      "jp_relevance": "日本はFive Eyes外だが「Five Eyes plus Japan」としてサイバー情報共有が進む"
+    },
+    "MINERALS": {
+      "id": "MINERALS",
+      "type": "ALLIANCE",
+      "name": "Minerals Security Partnership（MSP：クリティカルミネラル調達同盟）",
+      "members": [
+        "US",
+        "UK",
+        "CA",
+        "AU",
+        "JP",
+        "KR",
+        "EU",
+        "IN",
+        "FR",
+        "DE"
+      ],
+      "tech_focus": [
+        "コバルト",
+        "リチウム",
+        "ニッケル",
+        "希土類",
+        "グラファイト",
+        "マンガン"
+      ],
+      "eccn_relevant": [
+        "1C010",
+        "1C012"
+      ],
+      "jp_relevance": "日本は経済安全保障推進法の重要物資確保でMSPと連動"
+    }
+  },
+  "tech_power_map": {
+    "US": {
+      "dominant_domains": [
+        "AI（LLM・ファウンデーションモデル）",
+        "クラウドインフラ（AWS/Azure/GCP）",
+        "半導体設計（Nvidiaの GPU・AMD・Intel Foundry）",
+        "高性能計算（HPC）",
+        "宇宙打上げ（SpaceX）",
+        "サイバーセキュリティ"
+      ],
+      "eccn_strongholds": [
+        "3A001",
+        "4A003",
+        "5A001",
+        "5E002",
+        "9A004"
+      ],
+      "key_leverage": "半導体サプライチェーン全体（設計ツール・EDA・材料・製造装置）"
+    },
+    "CN": {
+      "dominant_domains": [
+        "太陽光パネル製造",
+        "EV電池（CATL・BYD）",
+        "希土類（レアアース）精製・磁石",
+        "無人機（DJI）",
+        "5G機器（Huawei・ZTE）",
+        "グラファイト精製"
+      ],
+      "eccn_strongholds": [
+        "1C010（レアアース）",
+        "3A001（一部）"
+      ],
+      "key_leverage": "レアアース・黒鉛・コバルト精製の世界シェア（>70%）"
+    },
+    "EU": {
+      "dominant_domains": [
+        "EUV露光装置（ASML）",
+        "航空機エンジン（Safran・MTU）",
+        "産業用ロボット（KUKA）",
+        "核融合（ITER議長国）",
+        "精密医療機器"
+      ],
+      "eccn_strongholds": [
+        "3B001",
+        "9E003",
+        "6A003"
+      ],
+      "key_leverage": "世界唯一のEUV露光装置メーカー（ASML）"
+    },
+    "JP": {
+      "dominant_domains": [
+        "半導体材料（フォトレジスト・研磨剤・フォトマスク）",
+        "精密工作機械",
+        "産業用ロボット",
+        "ファインケミカル",
+        "炭素繊維（東レ・帝人）",
+        "光学部品"
+      ],
+      "eccn_strongholds": [
+        "3C002",
+        "3C004",
+        "2B001",
+        "1C010"
+      ],
+      "key_leverage": "ArFフォトレジスト世界シェア>90%、フォトマスクブランク>70%"
+    },
+    "KR": {
+      "dominant_domains": [
+        "DRAM（Samsung・SK Hynix）",
+        "NAND Flash",
+        "OLED・LCD パネル",
+        "造船（LNG船）"
+      ],
+      "eccn_strongholds": [
+        "3A001（メモリ）"
+      ],
+      "key_leverage": "先端メモリ（HBM3）世界シェア>95%（Samsung+SK Hynix）"
+    },
+    "TW": {
+      "dominant_domains": [
+        "先端ロジック半導体製造（TSMC）",
+        "半導体パッケージング（ASE）"
+      ],
+      "eccn_strongholds": [
+        "3B001"
+      ],
+      "key_leverage": "3nm以下先端プロセス受託製造の世界シェア>90%（TSMC）"
+    }
+  },
+  "export_control_convergence": {
+    "_description": "米日欧の輸出規制協調の現状",
+    "semiconductor_equipment": {
+      "status": "協調済み",
+      "description": "2023年：米国BIS改正→日本経産省23品目強化→オランダASML制限強化。EUV・ArF液浸・先進ALD/CVD の中国向け輸出が事実上停止。",
+      "gap": "中国国内の代替技術開発（SMEE の28nm露光装置）を規制できない限界"
+    },
+    "ai_chips": {
+      "status": "強化中",
+      "description": "2023年10月：BIS がH100等AI GPU の中国輸出を追加規制（性能閾値ベース）。日本は対応検討中。ECCN 3A001 の閾値定期更新が課題。",
+      "gap": "Cloud経由の計算リソース提供（Huawei Cloud等）が規制外"
+    },
+    "biotech": {
+      "status": "未整備",
+      "description": "合成生物学・ゲノム編集の輸出管理は各国ともに不十分。SequencingデータやAI-Bioツールの規制フレームワーク未確立。",
+      "gap": "DNAシンセサイザーは一部EARで管理するが、DNAシーケンスデータ・AIモデル自体は管理外"
+    },
+    "quantum": {
+      "status": "検討中",
+      "description": "量子コンピュータ・QKD のEAR分類は TRL進展に追いつかず。NSC・BISが2024年に量子管理強化を発表。",
+      "gap": "量子ソフトウェア（回路コンパイラ・量子アルゴリズム）の規制が未整備"
+    }
+  },
+  "strategic_axes_xref": {
+    "eccn_to_emerging_tech": {
+      "4D001": [
+        "ET-AI"
+      ],
+      "5D001": [
+        "ET-AI"
+      ],
+      "5E001": [
+        "ET-AI"
+      ],
+      "3A001": [
+        "ET-QT",
+        "ET-SC"
+      ],
+      "5E002": [
+        "ET-QT"
+      ],
+      "2B352": [
+        "ET-BIO"
+      ],
+      "1C351": [
+        "ET-BIO"
+      ],
+      "1C353": [
+        "ET-BIO"
+      ],
+      "3B001": [
+        "ET-SC"
+      ],
+      "3C002": [
+        "ET-SC"
+      ],
+      "3C004": [
+        "ET-SC"
+      ],
+      "9A004": [
+        "ET-SPACE",
+        "ET-HY"
+      ],
+      "9E001": [
+        "ET-SPACE"
+      ],
+      "9A515": [
+        "ET-SPACE"
+      ],
+      "9E003": [
+        "ET-HY"
+      ],
+      "1C010": [
+        "ET-EN",
+        "ET-MAT"
+      ],
+      "1C210": [
+        "ET-MAT"
+      ]
+    },
+    "eccn_to_keizai_anpo": {
+      "3A001": [
+        "CM-01"
+      ],
+      "3B001": [
+        "CM-01",
+        "CM-14"
+      ],
+      "3C002": [
+        "CM-01",
+        "CM-14"
+      ],
+      "3C004": [
+        "CM-01",
+        "CM-14"
+      ],
+      "1C010": [
+        "CM-02",
+        "CM-03",
+        "CM-11"
+      ],
+      "1C012": [
+        "CM-03"
+      ],
+      "2B001": [
+        "CM-04",
+        "CM-12"
+      ],
+      "2B006": [
+        "CM-04"
+      ],
+      "9A004": [
+        "CM-05",
+        "CM-07"
+      ],
+      "9E001": [
+        "CM-05"
+      ],
+      "9A515": [
+        "CM-07"
+      ],
+      "5A001": [
+        "CM-08"
+      ],
+      "1C350": [
+        "CM-09"
+      ],
+      "2B352": [
+        "CM-09"
+      ],
+      "4A003": [
+        "CM-13"
+      ],
+      "5E001": [
+        "CM-13"
+      ]
+    },
+    "eccn_to_chokepoint": {
+      "3B001": [
+        "CP-1",
+        "CP-4"
+      ],
+      "1C010": [
+        "CP-2"
+      ],
+      "3A001": [
+        "CP-3"
+      ],
+      "3C002": [
+        "CP-5"
+      ],
+      "5A001": [
+        "CP-7"
+      ]
     }
   }
 }

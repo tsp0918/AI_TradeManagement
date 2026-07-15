@@ -604,6 +604,132 @@ def build_hs_eccn_scored() -> dict:
 # ⑤ 統合オントロジーグラフ JSON 生成
 # ──────────────────────────────────────────────────────────────────────────────
 
+_SEED_DIR = _ROOT / "platform-core" / "platform_core" / "ontology" / "seed"
+
+
+def build_strategic_axes() -> dict:
+    """3軸戦略オントロジー（経済安保・技術戦略・地政学SC）を seed JSON から読み込む。"""
+    result: dict = {
+        "emerging_tech_domains": {},
+        "keizai_anpo_materials": {},
+        "geopolitical_chokepoints": {},
+        "alliance_ecosystems": {},
+        "tech_power_map": {},
+    }
+
+    # ── 技術戦略軸 ─────────────────────────────────────────────────────────────
+    et_path = _SEED_DIR / "emerging_tech_taxonomy.json"
+    if et_path.exists():
+        et = json.loads(et_path.read_text(encoding="utf-8"))
+        for domain in et.get("domains", []):
+            did = domain["domain_id"]
+            result["emerging_tech_domains"][did] = {
+                "id": did,
+                "type": "EMERGING_TECH",
+                "name_ja": domain.get("name_ja", ""),
+                "name_en": domain.get("name_en", ""),
+                "dual_use_potential": domain.get("dual_use_potential", 0.0),
+                "strategic_importance": domain.get("strategic_importance", ""),
+                "control_readiness": domain.get("control_readiness", ""),
+                "description": domain.get("description", "")[:300],
+                "eccn_connection": domain.get("eccn_connection", []),
+                "fefta_connection": domain.get("fefta_connection", []),
+                "keizai_anpo_connection": domain.get("keizai_anpo_connection", []),
+                "subtechnologies": [
+                    {"id": s["id"], "name": s["name"], "trl": s["trl"],
+                     "dual_use_score": s["dual_use_score"]}
+                    for s in domain.get("subtechnologies", [])
+                ],
+            }
+        result["trl_risk_matrix"] = et.get("trl_risk_matrix", {})
+        logger.info("emerging_tech_taxonomy: %d domains", len(result["emerging_tech_domains"]))
+
+    # ── 経済安保軸 ─────────────────────────────────────────────────────────────
+    es_path = _SEED_DIR / "economic_security.json"
+    if es_path.exists():
+        es = json.loads(es_path.read_text(encoding="utf-8"))
+        for mat in es.get("critical_materials", []):
+            mid = mat["material_id"]
+            result["keizai_anpo_materials"][mid] = {
+                "id": mid,
+                "type": "KEIZAI_ANPO_MATERIAL",
+                "name_ja": mat.get("name_ja", ""),
+                "name_en": mat.get("name_en", ""),
+                "category": mat.get("category", ""),
+                "risk_level": mat.get("risk_level", ""),
+                "concentration_risk": mat.get("concentration_risk", ""),
+                "eccn_parallel": mat.get("eccn_parallel", []),
+                "fefta_parallel": mat.get("fefta_parallel", []),
+                "key_policy": mat.get("key_policy", ""),
+                "geopolitical_risk": mat.get("geopolitical_risk", ""),
+            }
+        result["keizai_anpo_framework"] = es.get("framework", {})
+        result["atip_program"] = es.get("atip_program", {})
+        result["fdi_screening"] = es.get("foreign_investment_screening", {})
+        logger.info("keizai_anpo: %d critical materials", len(result["keizai_anpo_materials"]))
+
+    # ── 地政学SC軸 ─────────────────────────────────────────────────────────────
+    geo_path = _SEED_DIR / "geopolitical_sc.json"
+    if geo_path.exists():
+        geo = json.loads(geo_path.read_text(encoding="utf-8"))
+        for cp in geo.get("chokepoints", []):
+            cpid = cp["chokepoint_id"]
+            result["geopolitical_chokepoints"][cpid] = {
+                "id": cpid,
+                "type": "CHOKEPOINT",
+                "name": cp.get("name", ""),
+                "concentration": cp.get("concentration", ""),
+                "single_country_share": cp.get("single_country_share"),
+                "criticality": cp.get("criticality", ""),
+                "affected_eccn": cp.get("affected_eccn", []),
+                "description": cp.get("description", "")[:300],
+                "mitigation_options": cp.get("mitigation_options", []),
+            }
+        for al in geo.get("alliance_ecosystems", []):
+            alid = al["alliance_id"]
+            result["alliance_ecosystems"][alid] = {
+                "id": alid,
+                "type": "ALLIANCE",
+                "name": al.get("name", ""),
+                "members": al.get("members", []),
+                "tech_focus": al.get("tech_focus", []),
+                "eccn_relevant": al.get("eccn_relevant", []),
+                "jp_relevance": al.get("jp_relevance", ""),
+            }
+        result["tech_power_map"] = {
+            k: v for k, v in geo.get("technology_power_map", {}).items()
+            if not k.startswith("_")
+        }
+        result["export_control_convergence"] = geo.get("export_control_convergence", {})
+        logger.info("geopolitical: %d chokepoints, %d alliances",
+                    len(result["geopolitical_chokepoints"]),
+                    len(result["alliance_ecosystems"]))
+
+    # ── ECCN ↔ 3軸 クロスリファレンス ─────────────────────────────────────────
+    eccn_to_emerging_tech: dict[str, list[str]] = defaultdict(list)
+    for did, domain in result["emerging_tech_domains"].items():
+        for eccn in domain["eccn_connection"]:
+            eccn_to_emerging_tech[eccn].append(did)
+
+    eccn_to_keizai_anpo: dict[str, list[str]] = defaultdict(list)
+    for mid, mat in result["keizai_anpo_materials"].items():
+        for eccn in mat["eccn_parallel"]:
+            eccn_to_keizai_anpo[eccn].append(mid)
+
+    eccn_to_chokepoint: dict[str, list[str]] = defaultdict(list)
+    for cpid, cp in result["geopolitical_chokepoints"].items():
+        for eccn in cp["affected_eccn"]:
+            eccn_to_chokepoint[eccn].append(cpid)
+
+    result["cross_references"] = {
+        "eccn_to_emerging_tech": dict(eccn_to_emerging_tech),
+        "eccn_to_keizai_anpo": dict(eccn_to_keizai_anpo),
+        "eccn_to_chokepoint": dict(eccn_to_chokepoint),
+    }
+
+    return result
+
+
 def build_ontology_graph(eccn_index: dict, ipc_bidir: dict, hs_scored: dict, fefta_xref: dict) -> None:
     logger.info("統合オントロジーグラフ生成中...")
 
@@ -682,10 +808,12 @@ def build_ontology_graph(eccn_index: dict, ipc_bidir: dict, hs_scored: dict, fef
             },
         }
 
+    strategic_axes = build_strategic_axes()
+
     result = {
-        "_version": "1.0",
+        "_version": "1.1",
         "_built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "_description": "輸出管理コンプライアンス オントロジーグラフ（platform-core API 用）",
+        "_description": "輸出管理コンプライアンス オントロジーグラフ（platform-core API 用）— 3軸戦略知識統合版",
         "stats": {
             "eccn_nodes": len(nodes),
             "ipc_mappings": len(ipc_forward),
@@ -696,6 +824,10 @@ def build_ontology_graph(eccn_index: dict, ipc_bidir: dict, hs_scored: dict, fef
             "eccns_with_fefta": sum(1 for e in nodes if nodes[e]["relations"]["fefta_items"]),
             "eccns_with_ipc": sum(1 for e in nodes if nodes[e]["relations"]["ipc_prefixes"]),
             "eccns_with_hs": sum(1 for e in nodes if nodes[e]["relations"]["hs_codes_count"] > 0),
+            "emerging_tech_domains": len(strategic_axes.get("emerging_tech_domains", {})),
+            "keizai_anpo_materials": len(strategic_axes.get("keizai_anpo_materials", {})),
+            "geopolitical_chokepoints": len(strategic_axes.get("geopolitical_chokepoints", {})),
+            "alliance_ecosystems": len(strategic_axes.get("alliance_ecosystems", {})),
         },
         # Lookup indexes for API queries
         "eccn_nodes": nodes,
@@ -710,15 +842,30 @@ def build_ontology_graph(eccn_index: dict, ipc_bidir: dict, hs_scored: dict, fef
         "eccn_categories": ECCN_CATEGORIES,
         "product_groups": PRODUCT_GROUPS,
         "reason_for_control_labels": REASON_FOR_CONTROL_LABELS,
+        # ── 3軸戦略知識 ──────────────────────────────────────────────────────────
+        "emerging_tech_domains": strategic_axes.get("emerging_tech_domains", {}),
+        "trl_risk_matrix": strategic_axes.get("trl_risk_matrix", {}),
+        "keizai_anpo_materials": strategic_axes.get("keizai_anpo_materials", {}),
+        "keizai_anpo_framework": strategic_axes.get("keizai_anpo_framework", {}),
+        "atip_program": strategic_axes.get("atip_program", {}),
+        "fdi_screening": strategic_axes.get("fdi_screening", {}),
+        "geopolitical_chokepoints": strategic_axes.get("geopolitical_chokepoints", {}),
+        "alliance_ecosystems": strategic_axes.get("alliance_ecosystems", {}),
+        "tech_power_map": strategic_axes.get("tech_power_map", {}),
+        "export_control_convergence": strategic_axes.get("export_control_convergence", {}),
+        "strategic_axes_xref": strategic_axes.get("cross_references", {}),
     }
     _OUT.joinpath("ontology_graph.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     s = result["stats"]
     logger.info(
-        "オントロジーグラフ: ECCN=%d, IPC=%d, HS=%d, FEFTA=%d, 特許付き=%d, 論文付き=%d",
+        "オントロジーグラフ: ECCN=%d, IPC=%d, HS=%d, FEFTA=%d, 特許付き=%d, 論文付き=%d | "
+        "新興技術=%d, 重要物資=%d, チョークポイント=%d, 同盟=%d",
         s["eccn_nodes"], s["ipc_mappings"], s["hs_eccn_mappings"], s["fefta_items"],
         s["eccns_with_patents"], s["eccns_with_papers"],
+        s["emerging_tech_domains"], s["keizai_anpo_materials"],
+        s["geopolitical_chokepoints"], s["alliance_ecosystems"],
     )
 
 

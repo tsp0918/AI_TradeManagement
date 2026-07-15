@@ -1,0 +1,179 @@
+{
+  "_comment": "新興・基盤技術タクソノミー — 技術戦略軸オントロジー seed",
+  "_version": "v1.0",
+  "_updated": "2026-07-16",
+  "domains": [
+    {
+      "domain_id": "ET-AI",
+      "name_ja": "人工知能・機械学習",
+      "name_en": "Artificial Intelligence & Machine Learning",
+      "trl_range": "TRL 4-9",
+      "dual_use_potential": 0.92,
+      "strategic_importance": "critical",
+      "control_readiness": "emerging",
+      "description": "大規模言語モデル・深層学習・強化学習・自律型システムの技術群。軍事AI（自律型致死兵器・ターゲティングAI）、サイバー攻撃AI、AI偵察システムとして転用可能。現行のEARではソフトウェア（5D001）として一部管理。",
+      "fefta_connection": ["2項"],
+      "eccn_connection": ["4D001", "5D001", "5E001"],
+      "keizai_anpo_connection": ["KA-3-1"],
+      "subtechnologies": [
+        {"id":"ET-AI-LLM", "name":"大規模言語モデル（LLM）", "trl":8, "dual_use_score":0.80},
+        {"id":"ET-AI-CV", "name":"コンピュータビジョン（軍事偵察・ターゲティング）", "trl":9, "dual_use_score":0.95},
+        {"id":"ET-AI-RL", "name":"強化学習（自律制御・ゲーム理論的戦略）", "trl":7, "dual_use_score":0.90},
+        {"id":"ET-AI-LAWS", "name":"自律型致死兵器システム（LAWS）", "trl":5, "dual_use_score":1.00},
+        {"id":"ET-AI-CYBER", "name":"AIサイバー攻撃・防御（攻防AI）", "trl":7, "dual_use_score":0.95},
+        {"id":"ET-AI-CHEM", "name":"AI創薬・化学合成予測（デュアルユース）", "trl":7, "dual_use_score":0.75}
+      ]
+    },
+    {
+      "domain_id": "ET-QT",
+      "name_ja": "量子技術",
+      "name_en": "Quantum Technology",
+      "trl_range": "TRL 2-7",
+      "dual_use_potential": 0.97,
+      "strategic_importance": "critical",
+      "control_readiness": "lagging",
+      "description": "量子コンピュータ・量子通信・量子センサーの三分野。量子コンピュータはRSA暗号解読（Shorアルゴリズム）、量子センサーは潜水艦探知・地下施設探知・GPS代替として安全保障上の意義が極めて高い。現行輸出管理が技術進歩に追いついていない最先端領域。",
+      "fefta_connection": ["2項", "7項"],
+      "eccn_connection": ["3A001", "5E002"],
+      "keizai_anpo_connection": ["KA-3-2"],
+      "subtechnologies": [
+        {"id":"ET-QT-QC", "name":"超電導量子コンピュータ（>50 logical qubit）", "trl":5, "dual_use_score":0.98},
+        {"id":"ET-QT-QKD", "name":"量子鍵配送（QKD）", "trl":7, "dual_use_score":0.90},
+        {"id":"ET-QT-QS", "name":"量子センサー（原子干渉計・重力計）", "trl":6, "dual_use_score":0.95},
+        {"id":"ET-QT-PQC", "name":"ポスト量子暗号（PQC）", "trl":8, "dual_use_score":0.85},
+        {"id":"ET-QT-QN", "name":"量子ネットワーク（量子リピーター）", "trl":4, "dual_use_score":0.92}
+      ]
+    },
+    {
+      "domain_id": "ET-BIO",
+      "name_ja": "バイオテクノロジー（合成生物学）",
+      "name_en": "Biotechnology & Synthetic Biology",
+      "trl_range": "TRL 4-8",
+      "dual_use_potential": 0.88,
+      "strategic_importance": "critical",
+      "control_readiness": "partial",
+      "description": "合成生物学・CRISPR・ゲノム編集・タンパク質工学。生物兵器（強化病原体・エンハンスト毒素）への転用可能性。AIと統合した「AIバイオ」によるデ・ノボ病原体設計リスクが近年顕在化。外為法8項・CWC・BWCが部分的に規制するが、研究ツール自体の管理は不十分。",
+      "fefta_connection": ["8項"],
+      "eccn_connection": ["2B352", "1C351", "1C353"],
+      "keizai_anpo_connection": ["KA-3-3"],
+      "subtechnologies": [
+        {"id":"ET-BIO-CRISPR", "name":"CRISPR-Cas ゲノム編集（in vivo）", "trl":7, "dual_use_score":0.85},
+        {"id":"ET-BIO-SYN", "name":"合成生物学（デ・ノボ病原体設計）", "trl":5, "dual_use_score":0.97},
+        {"id":"ET-BIO-DNA", "name":"DNA合成（全合成能力・>10kbp）", "trl":8, "dual_use_score":0.90},
+        {"id":"ET-BIO-NEURO", "name":"神経インターフェース（BCI：脳機械インターフェース）", "trl":5, "dual_use_score":0.78},
+        {"id":"ET-BIO-AI", "name":"AI創薬（タンパク質構造予測・de novo設計）", "trl":7, "dual_use_score":0.75}
+      ]
+    },
+    {
+      "domain_id": "ET-SC",
+      "name_ja": "先端半導体",
+      "name_en": "Advanced Semiconductors",
+      "trl_range": "TRL 6-9",
+      "dual_use_potential": 0.94,
+      "strategic_importance": "critical",
+      "control_readiness": "active",
+      "description": "3nm以下プロセスロジックIC・HBM・GaN/SiCパワー半導体・チップレット技術。半導体は現代軍事システム（誘導兵器・AI C4ISR・暗号）の根幹。米国のChip Act・BIS Entity List・日本の外為法が管理。製造装置（EUV/CVD/ALD）も規制対象。",
+      "fefta_connection": ["7項", "7項（7の2）"],
+      "eccn_connection": ["3A001", "3B001", "3C002", "3C004"],
+      "keizai_anpo_connection": ["KA-1-1", "KA-1-10"],
+      "subtechnologies": [
+        {"id":"ET-SC-LOGIC", "name":"先端ロジックIC（<3nm, FinFET/GAAFET）", "trl":9, "dual_use_score":0.95},
+        {"id":"ET-SC-HBM", "name":"高帯域幅メモリ（HBM3/HBM4）", "trl":8, "dual_use_score":0.90},
+        {"id":"ET-SC-POWER", "name":"GaN/SiCパワー半導体（EV・軍用電源）", "trl":8, "dual_use_score":0.85},
+        {"id":"ET-SC-CHIPLET", "name":"チップレット集積技術（HBM + Logic）", "trl":7, "dual_use_score":0.92},
+        {"id":"ET-SC-EUV", "name":"EUV露光装置・ArFフォトレジスト", "trl":9, "dual_use_score":0.98},
+        {"id":"ET-SC-NEUROMOR", "name":"ニューロモーフィックチップ", "trl":5, "dual_use_score":0.80}
+      ]
+    },
+    {
+      "domain_id": "ET-SPACE",
+      "name_ja": "宇宙技術",
+      "name_en": "Space Technology",
+      "trl_range": "TRL 5-9",
+      "dual_use_potential": 0.91,
+      "strategic_importance": "critical",
+      "control_readiness": "active",
+      "description": "打上げシステム・衛星・宇宙状況監視（SSA）・衛星間通信。民間宇宙産業の拡大（NewSpace）がデュアルユース管理を複雑化。再使用型ロケット技術はミサイル転用可能性。ASAT（衛星攻撃）技術の管理が緊急課題。",
+      "fefta_connection": ["2項"],
+      "eccn_connection": ["9A004", "9E001", "9A515"],
+      "keizai_anpo_connection": ["KA-1-7", "KA-3-4"],
+      "subtechnologies": [
+        {"id":"ET-SPACE-LAUNCH", "name":"再使用型ロケット（第1段回収・コスト革命）", "trl":9, "dual_use_score":0.88},
+        {"id":"ET-SPACE-SAT", "name":"小型衛星コンステレーション（LEO）", "trl":8, "dual_use_score":0.85},
+        {"id":"ET-SPACE-SSA", "name":"宇宙状況監視（SSA・SDA）", "trl":7, "dual_use_score":0.90},
+        {"id":"ET-SPACE-ASAT", "name":"衛星攻撃（ASAT）対抗技術", "trl":6, "dual_use_score":0.97},
+        {"id":"ET-SPACE-PROP", "name":"核熱推進・電気推進（深宇宙）", "trl":4, "dual_use_score":0.88}
+      ]
+    },
+    {
+      "domain_id": "ET-HY",
+      "name_ja": "極超音速技術",
+      "name_en": "Hypersonic Technology",
+      "trl_range": "TRL 3-7",
+      "dual_use_potential": 0.98,
+      "strategic_importance": "critical",
+      "control_readiness": "active",
+      "description": "マッハ5超の飛翔体技術（HGV・HCM・スクラムジェット）。現行ミサイル防衛を無力化する可能性があり、米・中・露・日が開発競争中。スクラムジェットエンジン・耐熱材料（UHTC）・誘導制御が核心技術。MTCR・Wassenaarで一部管理。",
+      "fefta_connection": ["2項", "13項"],
+      "eccn_connection": ["9A004", "9E003"],
+      "keizai_anpo_connection": ["KA-3-5"],
+      "subtechnologies": [
+        {"id":"ET-HY-HGV", "name":"極超音速滑空体（HGV）", "trl":6, "dual_use_score":1.00},
+        {"id":"ET-HY-SCRAM", "name":"スクラムジェットエンジン", "trl":5, "dual_use_score":0.97},
+        {"id":"ET-HY-UHTC", "name":"超高温耐熱材料（UHTC: ZrB2/HfC）", "trl":6, "dual_use_score":0.88},
+        {"id":"ET-HY-GUID", "name":"極超音速誘導制御（マッハ5+飛翔中）", "trl":5, "dual_use_score":0.99}
+      ]
+    },
+    {
+      "domain_id": "ET-EN",
+      "name_ja": "先進エネルギー貯蔵",
+      "name_en": "Advanced Energy Storage",
+      "trl_range": "TRL 5-9",
+      "dual_use_potential": 0.72,
+      "strategic_importance": "high",
+      "control_readiness": "partial",
+      "description": "リチウムイオン・全固体電池・液体空気蓄電・水素燃料電池・核融合。EV・グリッドに加え、潜水艦（非大気依存推進）・UAV・軍用車両のエネルギー源として重要。中国のEV電池産業は軍民融合企業が主導。",
+      "fefta_connection": ["4項"],
+      "eccn_connection": ["1C010"],
+      "keizai_anpo_connection": ["KA-1-2"],
+      "subtechnologies": [
+        {"id":"ET-EN-SSB", "name":"全固体電池（固体電解質）", "trl":6, "dual_use_score":0.75},
+        {"id":"ET-EN-H2", "name":"水素燃料電池（高出力密度）", "trl":8, "dual_use_score":0.70},
+        {"id":"ET-EN-FUSION", "name":"核融合発電（ITERの先）", "trl":4, "dual_use_score":0.80},
+        {"id":"ET-EN-AIP", "name":"空気非依存推進（AIP：潜水艦）", "trl":8, "dual_use_score":0.92}
+      ]
+    },
+    {
+      "domain_id": "ET-MAT",
+      "name_ja": "先進材料",
+      "name_en": "Advanced Materials",
+      "trl_range": "TRL 4-9",
+      "dual_use_potential": 0.82,
+      "strategic_importance": "high",
+      "control_readiness": "partial",
+      "description": "炭素繊維・高エントロピー合金・トポロジカル絶縁体・メタマテリアル・2D材料（グラフェン等）。複合材料は航空宇宙・防衛機器の軽量化・高強度化に直結。CFRP・アラミド繊維は外為法4項・EAR 1C010で管理。",
+      "fefta_connection": ["4項"],
+      "eccn_connection": ["1C010", "1C210"],
+      "keizai_anpo_connection": ["KA-1-3"],
+      "subtechnologies": [
+        {"id":"ET-MAT-CFRP", "name":"炭素繊維強化複合材（T1100グレード）", "trl":9, "dual_use_score":0.88},
+        {"id":"ET-MAT-META", "name":"メタマテリアル（電磁波制御・ステルス）", "trl":5, "dual_use_score":0.85},
+        {"id":"ET-MAT-2D", "name":"2D材料（グラフェン・hBN・MoS2）", "trl":5, "dual_use_score":0.72},
+        {"id":"ET-MAT-HEA", "name":"高エントロピー合金（耐熱・耐放射線）", "trl":5, "dual_use_score":0.80},
+        {"id":"ET-MAT-UHTC", "name":"超高温セラミクス（HfB2/ZrB2）", "trl":5, "dual_use_score":0.87}
+      ]
+    }
+  ],
+  "trl_risk_matrix": {
+    "_description": "TRL段階 × 輸出管理対象となる可能性（高/中/低）",
+    "TRL1": {"label":"基礎研究", "control_risk":"低", "note":"学術公開が原則。BWC/CWC禁止物質生成の研究は例外"},
+    "TRL2": {"label":"技術コンセプト定義", "control_risk":"低", "note":"軍民両用ポテンシャルの評価開始時期"},
+    "TRL3": {"label":"実験的証明", "control_risk":"低〜中", "note":"AIバイオ・量子センサーは TRL3 で管理開始議論が始まる"},
+    "TRL4": {"label":"実験室環境での実証", "control_risk":"中", "note":"CISTEC みなし輸出審査の実務上の開始目安"},
+    "TRL5": {"label":"関連環境での実証", "control_risk":"中〜高", "note":"試作品が完成しパラメータが確定し始める段階。輸出令パラメータ照合が現実的に"},
+    "TRL6": {"label":"関連環境でのシステム実証", "control_risk":"高", "note":"外為法リスト規制該非判定が必要"},
+    "TRL7": {"label":"運用環境でのシステム実証", "control_risk":"高", "note":"EUC・輸出許可が必要なフェーズ"},
+    "TRL8": {"label":"システム完成・資格取得", "control_risk":"高", "note":"量産品の輸出管理が本格化"},
+    "TRL9": {"label":"実績ある実際の環境での運用", "control_risk":"高", "note":"制裁・エンドユーザー管理が最重要"}
+  }
+}

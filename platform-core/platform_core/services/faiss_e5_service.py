@@ -1,17 +1,18 @@
 """
 faiss_e5_service.py  (platform_core 共有版)
 ─────────────────────────────────────────────────────────────────────────────
-intfloat/multilingual-e5-large による Layer A / B / C / D 静的 FAISS インデックス。
+intfloat/multilingual-e5-large による Layer A / B / C / D / E 静的 FAISS インデックス。
 
 設計方針:
 - モデルは 1 インスタンスのみ（メモリ ~2GB）、全レイヤー共有
-- Layer A: 外為法 + ECCN 規制テキスト (2,922 vec, dim=1024)
-- Layer B: US 特許チャンク (1,595 vec, dim=1024)
+- Layer A: 外為法 + ECCN 規制テキスト (2,343 vec, dim=1024)
+- Layer B: US 特許チャンク (10,783 vec, dim=1024)
 - Layer C: HS コード (5,476 vec, dim=1024)
 - Layer D: 学術論文アブストラクト (academic_intel.db から構築, dim=1024)
+- Layer E: 政策・戦略文書 / 技術哲学 (61 vec, dim=1024) — 「なぜ？」に答える知識層
 - インデックスは data/staging/ にある事前構築済みファイルをロード（再構築しない）
 - クエリは必ず "query: {text}" プレフィックスを付与（e5-large 仕様）
-- Layer C / D が存在しない場合は警告のみ（A/B は通常通り使用可）
+- Layer C / D / E が存在しない場合は警告のみ（A/B は通常通り使用可）
 
 公開インターフェース:
   preload(layers=None)            → 起動時に呼ぶ。layers=frozenset({"c"}) で Layer C のみも可
@@ -21,6 +22,7 @@ intfloat/multilingual-e5-large による Layer A / B / C / D 静的 FAISS イン
   search_layer_c(query, top_k, fefta_filter)  → List[LayerCHit]
   lookup_layer_c(hs_code)         → dict | None  (hs_code → メタデータ)
   search_layer_d(query, top_k, eccn_filter)   → List[LayerDHit]
+  search_layer_e(query, top_k, axis_filter)   → List[LayerEHit]  (新設)
 """
 from __future__ import annotations
 
@@ -72,6 +74,8 @@ _LAYER_C_INDEX = _staging_dir() / "layer_c.index"
 _LAYER_C_META  = _staging_dir() / "layer_c_meta.json"
 _LAYER_D_INDEX = _staging_dir() / "layer_d.index"
 _LAYER_D_META  = _staging_dir() / "layer_d_meta.json"
+_LAYER_E_INDEX = _staging_dir() / "layer_e.index"
+_LAYER_E_META  = _staging_dir() / "layer_e_meta.json"
 
 # ── グローバルキャッシュ ──────────────────────────────────────────────────────
 _model: SentenceTransformer | None = None
@@ -83,6 +87,8 @@ _layer_c_index: faiss.Index | None = None
 _layer_c_records: list[dict[str, Any]] = []
 _layer_d_index: faiss.Index | None = None
 _layer_d_records: list[dict[str, Any]] = []
+_layer_e_index: faiss.Index | None = None
+_layer_e_records: list[dict[str, Any]] = []
 _ready: bool = False
 
 
@@ -145,6 +151,22 @@ class LayerDHit:
     keywords_matched: str
 
 
+@dataclass
+class LayerEHit:
+    score: float
+    faiss_id: int
+    doc_id: str
+    source_type: str        # policy_doc / emerging_tech / keizai_anpo / geopolitical_sc
+    category: str
+    title: str
+    subtitle: str
+    keywords: list[str]
+    eccn_relevance: list[str]
+    fefta_relevance: list[str]
+    strategic_axis: list[str]
+    full_text: str
+
+
 # ── ロード ────────────────────────────────────────────────────────────────────
 def _load_model() -> SentenceTransformer:
     global _model
@@ -205,23 +227,36 @@ def _load_layer_d() -> tuple[faiss.Index, list[dict]] | None:
     return index, records
 
 
+def _load_layer_e() -> tuple[faiss.Index, list[dict]] | None:
+    """Layer E（政策・戦略文書）は optional。"""
+    if not _LAYER_E_INDEX.exists() or not _LAYER_E_META.exists():
+        logger.warning("Layer E files not found — strategic search unavailable: %s", _LAYER_E_INDEX)
+        return None
+    index = faiss.read_index(str(_LAYER_E_INDEX))
+    meta = json.loads(_LAYER_E_META.read_text(encoding="utf-8"))
+    records = meta["records"] if isinstance(meta, dict) else meta
+    logger.info("Layer E loaded: ntotal=%d", index.ntotal)
+    return index, records
+
+
 def preload(layers: frozenset[str] | None = None) -> None:
     """起動時に呼ぶ。モデルと指定レイヤーをメモリにロードする。
 
     Args:
         layers: ロードするレイヤーのセット。None（デフォルト）は全レイヤー。
                 例: frozenset({"c"}) → Layer C のみ（hs_classifier 用）
-                    frozenset({"a", "b", "c"}) → 全レイヤー（ai_validation 用）
-                    frozenset({"a", "b", "c", "d"}) → 学術論文含む全レイヤー
+                    frozenset({"a", "b", "c"}) → Layer A/B/C
+                    frozenset({"a", "b", "c", "d", "e"}) → 全レイヤー（Layer E 含む）
     """
     global _layer_a_index, _layer_a_records
     global _layer_b_index, _layer_b_records
     global _layer_c_index, _layer_c_records
     global _layer_d_index, _layer_d_records
+    global _layer_e_index, _layer_e_records
     global _ready
 
     if layers is None:
-        layers = frozenset({"a", "b", "c", "d"})
+        layers = frozenset({"a", "b", "c", "d", "e"})
 
     _load_model()
 
@@ -237,6 +272,10 @@ def preload(layers: frozenset[str] | None = None) -> None:
         result_d = _load_layer_d()
         if result_d is not None:
             _layer_d_index, _layer_d_records = result_d
+    if "e" in layers:
+        result_e = _load_layer_e()
+        if result_e is not None:
+            _layer_e_index, _layer_e_records = result_e
 
     _ready = True
 
@@ -251,6 +290,10 @@ def layer_c_available() -> bool:
 
 def layer_d_available() -> bool:
     return _layer_d_index is not None and _layer_d_index.ntotal > 0
+
+
+def layer_e_available() -> bool:
+    return _layer_e_index is not None and _layer_e_index.ntotal > 0
 
 
 # ── エンコード ────────────────────────────────────────────────────────────────
@@ -404,6 +447,10 @@ def ntotal_layer_d() -> int:
     return _layer_d_index.ntotal if _layer_d_index else 0
 
 
+def ntotal_layer_e() -> int:
+    return _layer_e_index.ntotal if _layer_e_index else 0
+
+
 def search_layer_d(
     query: str,
     top_k: int = 10,
@@ -448,6 +495,60 @@ def search_layer_d(
             source=str(r.get("source", "s2")),
             eccn_tags=eccn_tags,
             keywords_matched=str(r.get("keywords_matched", "")),
+        ))
+        if len(hits) >= top_k:
+            break
+    return hits
+
+
+def search_layer_e(
+    query: str,
+    top_k: int = 5,
+    axis_filter: list[str] | None = None,
+) -> list[LayerEHit]:
+    """Layer E（政策・戦略文書 / 技術哲学）をクエリで検索する。
+
+    DAP の「なぜ？」「背景を教えて」「哲学的に説明して」等の問いに応答するための
+    戦略知識検索レイヤー。通常の業務検索では使用しない（on-demand）。
+
+    Args:
+        query:        「なぜ輸出管理が重要か」等の文脈・哲学・戦略的問い
+        top_k:        返す件数（デフォルト5）
+        axis_filter:  strategic_axis によるフィルタ。
+                      例: ["経済安保"] → 経済安保軸の文書のみ返す
+    """
+    if _layer_e_index is None or _layer_e_index.ntotal == 0:
+        logger.warning("Layer E index not ready (run scripts/build_layer_e.py)")
+        return []
+    query = (query or "").strip()
+    if not query:
+        return []
+    qv = _encode_query(query)
+    fetch_k = min(top_k * 5 if axis_filter else top_k, _layer_e_index.ntotal)
+    D, I = _layer_e_index.search(qv, fetch_k)
+
+    hits: list[LayerEHit] = []
+    for score, idx in zip(D[0].tolist(), I[0].tolist()):
+        if idx < 0 or idx >= len(_layer_e_records):
+            continue
+        r = _layer_e_records[idx]
+        axes = r.get("strategic_axis") or []
+        if axis_filter:
+            if not any(ax in axes for ax in axis_filter):
+                continue
+        hits.append(LayerEHit(
+            score=float(score),
+            faiss_id=int(idx),
+            doc_id=str(r.get("doc_id", "")),
+            source_type=str(r.get("source_type", "")),
+            category=str(r.get("category", "")),
+            title=str(r.get("title", "")),
+            subtitle=str(r.get("subtitle", "")),
+            keywords=list(r.get("keywords") or []),
+            eccn_relevance=list(r.get("eccn_relevance") or []),
+            fefta_relevance=list(r.get("fefta_relevance") or []),
+            strategic_axis=list(axes),
+            full_text=str(r.get("full_text", ""))[:500],
         ))
         if len(hits) >= top_k:
             break

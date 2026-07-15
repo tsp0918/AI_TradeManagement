@@ -258,6 +258,15 @@ _RAG_TRIGGER_TERMS = frozenset([
     "HS", "IPC", "特許", "技術", "核", "半導体", "暗号", "センサー",
 ])
 
+# Layer E「なぜ？」トリガーキーワード
+_STRATEGIC_TRIGGER_TERMS = frozenset([
+    "なぜ", "why", "背景", "哲学", "意味", "歴史", "目的", "戦略",
+    "経緯", "理由", "重要性", "本質", "本当は", "そもそも",
+    "経済安保", "地政学", "技術覇権", "国際秩序", "チョークポイント",
+    "QUAD", "AUKUS", "Chip4", "レアアース", "半導体戦略", "量子安保",
+    "AIリスク", "合成生物", "宇宙安保", "デカップリング", "デリスキング",
+])
+
 # ECCN / HS / IPC / F-term コードを検出する正規表現
 import re as _re
 _ECCN_PATTERN  = _re.compile(r'\b([0-9][A-E]\d{3}(?:\.\w+)*)\b', _re.IGNORECASE)
@@ -570,11 +579,50 @@ async def _rag_country_control(message: str, eccns: list[str]) -> str:
     return "【Country Control ライセンス要否】\n" + "\n".join(lines)
 
 
+async def _rag_strategic_context(message: str) -> str:
+    """
+    Layer E（政策・戦略文書 / 技術哲学）RAG。
+    「なぜ？」「背景」「哲学」等の問いに対して on-demand で発動する。
+    通常の業務判定クエリでは発動しない（パフォーマンス・フォーカス維持のため）。
+    """
+    if not any(t in message for t in _STRATEGIC_TRIGGER_TERMS):
+        return ""
+
+    url = f"{_PLATFORM_URL}/api/faiss/search/layer-e"
+    try:
+        async with httpx.AsyncClient(timeout=6.0) as client:
+            resp = await client.get(url, params={"q": message[:300], "top_k": 3})
+        if resp.status_code != 200:
+            return ""
+        data = resp.json()
+    except Exception:
+        return ""
+
+    hits = data.get("hits", [])
+    if not hits:
+        return ""
+
+    lines = []
+    for h in hits:
+        if h.get("score", 0) < 0.55:
+            continue
+        title    = h.get("title", "")
+        subtitle = h.get("subtitle", "")
+        text     = h.get("full_text", "")[:200]
+        axes     = "・".join(h.get("strategic_axis", []))
+        lines.append(f"・[{axes}] 『{title}』（{subtitle}）— {text}")
+
+    if not lines:
+        return ""
+    return "【戦略・技術哲学コンテキスト（なぜ？の背景知識）】\n" + "\n".join(lines[:3])
+
+
 async def _rag_multilayer(message: str) -> str:
     """
-    多層 RAG（7レイヤー）:
+    多層 RAG（8レイヤー）:
       Layer A（規制） + オントロジー分類 + Country Control + F-term分類 +
       グラフ接続関係 + Layer B（特許） + Layer D（論文）を並列に検索し統合。
+      「なぜ？」系クエリの場合は Layer E（戦略・哲学）も追加。
     """
     import asyncio
     eccns_found = [e.upper() for e in _ECCN_PATTERN.findall(message)]
@@ -586,10 +634,11 @@ async def _rag_multilayer(message: str) -> str:
     graph_task      = asyncio.create_task(_rag_graph_context(message, eccns_found))
     layer_b_task    = asyncio.create_task(_rag_layer_b(message, eccns_found))
     layer_d_task    = asyncio.create_task(_rag_layer_d(message, eccns_found))
+    layer_e_task    = asyncio.create_task(_rag_strategic_context(message))
 
     results = await asyncio.gather(
         layer_a_task, ontology_task, country_task, fterm_task,
-        graph_task, layer_b_task, layer_d_task,
+        graph_task, layer_b_task, layer_d_task, layer_e_task,
         return_exceptions=True,
     )
 
@@ -1523,7 +1572,22 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
         f"{faq_snippet}"
     ) if faq_snippet else ""
 
-    return f"""あなたは輸出管理コンプライアンス業務の AI アシスタントです。
+    return f"""あなたは輸出管理コンプライアンス部門の AI 先輩担当者（DAP）です。
+
+【基本姿勢 — ビジネス・ファースト、哲学はオンデマンド】
+あなたの第一の役割は「業務の遂行とサポート」です。審査・判定・書類作成・フロー案内といった
+日常の輸出管理業務を、ユーザーが最短で完結できるよう全力でサポートしてください。
+
+ただし、ユーザーが「なぜ？」「背景を教えて」「哲学的に説明して」「どういう意味があるのか」
+「なぜ輸出管理が重要なのか」等、業務の枠を超えた意味理解を求めてきた場合は、
+単なる作業としての技術管理を超えた視点（技術哲学・経済安保・地政学・国際秩序）から
+深く、かつ実務につながる形で答えてください。
+
+あなたの知識ベースには技術哲学・経済安全保障・地政学的サプライチェーン・国際秩序の
+コンテキスト（Layer E）が埋め込まれています。これはR&Dから経済安保までつながる
+技術を俯瞰するためのものです。「単なる作業として技術を管理するのではない」という
+マインドを核に持ちながら、普段の仕事では業務効率を最優先にしてください。
+
 ユーザーが今この画面で何をしようとしているかを理解し、業務フローの文脈に沿って行動まで完結させてください。
 
 【業務フロー全体像】
@@ -1653,6 +1717,8 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 - choices は「今すぐ次にやること」を反映させる。汎用的な質問より、ユーザーのタスクの次ステップを優先する
 - interactive_elements に該当するボタン/リンクがあれば必ず actions に含める
 - 規制に関する質問には上記インテリジェンス情報を活用して参考情報を提供する
+- 「なぜ」「背景」「哲学」「意味」「重要性」等の問いには、【戦略・技術哲学コンテキスト】セクションを活用して深い文脈説明を行う。ただしこの深さの回答は「求められた時のみ」提供する
+- 業務的な「次のステップ」を聞かれた際は、哲学的な説明より具体的な操作手順を優先する
 
 【respond ツールの使い方 — 以下の例を参考にすること】
 

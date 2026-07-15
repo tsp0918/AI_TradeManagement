@@ -1,0 +1,236 @@
+{
+  "_comment": "経済安全保障軸オントロジー seed — 経済安保推進法4本柱・14重要物資・ATIP・外国投資規制",
+  "_version": "v1.0",
+  "_updated": "2026-07-16",
+  "framework": {
+    "law_name": "経済安全保障推進法",
+    "enacted": "2022-05-11",
+    "enforced": "2022-08-01",
+    "purpose": "経済活動に関する安全保障を確保するため、サプライチェーン強靭化・基幹インフラ安全確保・先端技術育成・特許非公開の4本柱から成る包括的経済安全保障法制",
+    "pillars": [
+      {
+        "pillar_id": "P1",
+        "name": "重要物資の安定供給確保",
+        "articles": "第5〜58条",
+        "description": "半導体・蓄電池・重要鉱物等14品目を「特定重要物資」に指定。国内生産支援・調達先多元化・備蓄義務を企業に課す。",
+        "fefta_connection": "輸出管理と連動（安定供給阻害要因の排除）"
+      },
+      {
+        "pillar_id": "P2",
+        "name": "基幹インフラの安全確保",
+        "articles": "第50〜113条",
+        "description": "電力・ガス・水道・通信・金融・空港・港湾等14分野を「特定社会基盤事業」に指定。機器・プログラム導入時の事前審査義務。",
+        "fefta_connection": "外為法対内直接投資規制と連動"
+      },
+      {
+        "pillar_id": "P3",
+        "name": "先端的な重要技術の開発支援",
+        "articles": "第61〜78条",
+        "description": "AI・量子・バイオ・宇宙等の「特定重要技術」を官民連携で開発。経済安全保障重要技術育成プログラム（K Program）。",
+        "fefta_connection": "みなし輸出・技術移転規制と連動"
+      },
+      {
+        "pillar_id": "P4",
+        "name": "特許出願の非公開",
+        "articles": "第65〜82条",
+        "description": "安全保障上機微な発明の特許公開を非公開にする制度。国家安全保障への応用可能性が高い技術は審査前に非公開指定。米国InSRA・英UK-GIPA類似。",
+        "fefta_connection": "輸出管理対象技術との重複管理"
+      }
+    ]
+  },
+  "critical_materials": [
+    {
+      "material_id": "CM-01",
+      "name_ja": "半導体",
+      "name_en": "Semiconductors (Integrated Circuits)",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "台湾・韓国・中国への集中（TSMC/Samsung/SMIC）",
+      "eccn_parallel": ["3A001","3B001","3C002","3C004"],
+      "fefta_parallel": ["7項","7の2項"],
+      "key_policy": "TSMC熊本工場（JASM）・Rapidus北海道工場への補助金",
+      "geopolitical_risk": "台湾有事で先端ロジックICが全面停止するシナリオ。日本のGDP最大4.2兆円損失試算（経産省2022）"
+    },
+    {
+      "material_id": "CM-02",
+      "name_ja": "蓄電池（電池セル・材料）",
+      "name_en": "Storage Batteries",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "中国の正極材・負極材・電解液・セパレータ供給支配",
+      "eccn_parallel": ["1C010"],
+      "fefta_parallel": ["4項"],
+      "key_policy": "パナソニック・トヨタ全固体電池投資への補助金",
+      "geopolitical_risk": "EV・再生可能エネルギー貯蔵・軍用電源の依存"
+    },
+    {
+      "material_id": "CM-03",
+      "name_ja": "重要鉱物（クリティカルミネラル）",
+      "name_en": "Critical Minerals",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "リチウム（智利/阿/豪）、コバルト（コンゴ民主）、ニッケル（インドネシア/フィリピン）、黒鉛・レアアース精製（中国）",
+      "eccn_parallel": ["1C010","1C012"],
+      "fefta_parallel": ["4項"],
+      "key_policy": "MSP（Minerals Security Partnership）参加・JOGMEC等権益確保支援",
+      "geopolitical_risk": "2023年中国のガリウム・ゲルマニウム輸出規制が「資源の武器化」を実証"
+    },
+    {
+      "material_id": "CM-04",
+      "name_ja": "工作機械・産業用ロボット",
+      "name_en": "Machine Tools & Industrial Robots",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "日独に製造基盤集中（安川電機・FANUC・ヤマザキマザック）",
+      "eccn_parallel": ["2B001","2B006"],
+      "fefta_parallel": ["3項"],
+      "key_policy": "スマートものづくり補助金・ロボット産業振興",
+      "geopolitical_risk": "精密工作機械の対中輸出規制（日本2023年5月施行）との整合"
+    },
+    {
+      "material_id": "CM-05",
+      "name_ja": "航空機・宇宙関連部品",
+      "name_en": "Aircraft & Space Components",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "米国Boeing/Pratt & Whitney依存（日本の787分担製造）",
+      "eccn_parallel": ["9A004","9E001"],
+      "fefta_parallel": ["2項"],
+      "key_policy": "H3ロケット国産化・防衛装備移転三原則改定",
+      "geopolitical_risk": "ITAR・EARによる米国側の再輸出管理リスク"
+    },
+    {
+      "material_id": "CM-06",
+      "name_ja": "天然ガス・液化天然ガス（LNG）",
+      "name_en": "Natural Gas & LNG",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "中東・豪州・ロシア（サハリン）への依存",
+      "eccn_parallel": [],
+      "fefta_parallel": ["14項"],
+      "key_policy": "サハリン2権益維持・カタールLNG長期契約延長",
+      "geopolitical_risk": "ロシアのウクライナ侵攻によるサハリン2の不確実性"
+    },
+    {
+      "material_id": "CM-07",
+      "name_ja": "宇宙関連（衛星・測位）",
+      "name_en": "Space Systems (Satellite/Navigation)",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "GPS（米国）への測位依存・衛星打上げ能力の不足",
+      "eccn_parallel": ["9A004","9A515"],
+      "fefta_parallel": ["2項"],
+      "key_policy": "みちびき（準天頂衛星）拡充・商業打上げ推進法整備",
+      "geopolitical_risk": "ASATによる衛星無力化シナリオ・GPS妨害（欺瞞）リスク"
+    },
+    {
+      "material_id": "CM-08",
+      "name_ja": "海洋（船舶・海底ケーブル）",
+      "name_en": "Maritime (Vessels & Submarine Cables)",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "造船（韓国・中国）・海底ケーブル（中国系HMN増加）",
+      "eccn_parallel": ["5A001"],
+      "fefta_parallel": ["2項"],
+      "key_policy": "海底ケーブル保護法整備・日本造船業再活性化",
+      "geopolitical_risk": "有事における海底ケーブル切断・通信遮断シナリオ"
+    },
+    {
+      "material_id": "CM-09",
+      "name_ja": "抗菌性物質（医薬品・原料）",
+      "name_en": "Antimicrobials & Pharmaceuticals",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "APIの中国・インド依存（アモキシシリン等）",
+      "eccn_parallel": ["1C350","2B352"],
+      "fefta_parallel": ["8項"],
+      "key_policy": "医薬品サプライチェーン強靭化。国内API製造補助金。",
+      "geopolitical_risk": "新型感染症×供給途絶（COVID-19教訓）"
+    },
+    {
+      "material_id": "CM-10",
+      "name_ja": "肥料",
+      "name_en": "Fertilizers",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "カリウム（ロシア・ベラルーシ）・ウラン（カザフスタン・ロシア）",
+      "eccn_parallel": [],
+      "fefta_parallel": ["14項"],
+      "key_policy": "代替調達先開拓・海藻肥料研究",
+      "geopolitical_risk": "ウクライナ侵攻→黒海封鎖→穀物・肥料輸出途絶"
+    },
+    {
+      "material_id": "CM-11",
+      "name_ja": "永久磁石",
+      "name_en": "Permanent Magnets (NdFeB)",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "中国が世界の NdFeB 磁石の85%を製造（精製含む）",
+      "eccn_parallel": ["1C010"],
+      "fefta_parallel": ["4項"],
+      "key_policy": "国内レアアース磁石製造支援・代替材料（ハイエントロピー合金）研究",
+      "geopolitical_risk": "EV・風力発電・誘導兵器アクチュエータ全般への影響"
+    },
+    {
+      "material_id": "CM-12",
+      "name_ja": "工作機械用切削工具（超硬合金・CBN等）",
+      "name_en": "Cutting Tools (Cemented Carbide, CBN)",
+      "category": "特定重要物資",
+      "risk_level": "high",
+      "concentration_risk": "タングステン（中国80%シェア）依存",
+      "eccn_parallel": ["2B001"],
+      "fefta_parallel": ["3項"],
+      "key_policy": "タングステン代替材料（TiSiN等）研究・国内回収リサイクル",
+      "geopolitical_risk": "中国のタングステン輸出規制シナリオ"
+    },
+    {
+      "material_id": "CM-13",
+      "name_ja": "クラウドインフラ・クラウドプログラム",
+      "name_en": "Cloud Infrastructure & Programs",
+      "category": "特定重要物資",
+      "risk_level": "critical",
+      "concentration_risk": "AWS/Azure/GCP（米国3社）への過度な依存。国産クラウド（さくら/IDC Frontier）シェア低い",
+      "eccn_parallel": ["4A003","5E001"],
+      "fefta_parallel": ["7項（情報処理）"],
+      "key_policy": "政府クラウド（ISMAP）要件強化・国産クラウド育成",
+      "geopolitical_risk": "米国の一方的データアクセス（CLOUD Act）・有事の接続遮断リスク"
+    },
+    {
+      "material_id": "CM-14",
+      "name_ja": "先端半導体製造装置・材料",
+      "name_en": "Advanced Semiconductor Manufacturing Equipment & Materials",
+      "category": "特定重要物資（CM-01と連動）",
+      "risk_level": "critical",
+      "concentration_risk": "ASML（EUV：蘭）・KLA/Lam Research/Applied Materials（米）・東京エレクトロン（JP）の寡占",
+      "eccn_parallel": ["3B001","3C002","3C004"],
+      "fefta_parallel": ["7の2項"],
+      "key_policy": "東京エレクトロン等国内装置メーカーへの研究開発補助",
+      "geopolitical_risk": "日本の2023年5月23品目輸出規制強化と連動"
+    }
+  ],
+  "atip_program": {
+    "name": "先端技術育成プログラム（K Program）",
+    "official": "経済安全保障重要技術育成プログラム",
+    "budget": "5000億円規模（2022〜2026年度）",
+    "domains": [
+      {"domain":"AI・機械学習","trl_target":"TRL 4→7","eccn_relevant":["5D001","4D001"]},
+      {"domain":"量子技術（コンピュータ・センサー・通信）","trl_target":"TRL 3→6","eccn_relevant":["3A001","5E002"]},
+      {"domain":"バイオ（合成生物・ゲノム）","trl_target":"TRL 4→7","eccn_relevant":["2B352","1C353"]},
+      {"domain":"先端半導体・製造装置","trl_target":"TRL 5→8","eccn_relevant":["3B001","3C002"]},
+      {"domain":"宇宙（衛星・推進）","trl_target":"TRL 5→8","eccn_relevant":["9A004","9E001"]},
+      {"domain":"次世代通信（6G・衛星通信）","trl_target":"TRL 3→6","eccn_relevant":["5A001","5E001"]},
+      {"domain":"サイバーセキュリティ","trl_target":"TRL 5→8","eccn_relevant":["5A002","5E002"]},
+      {"domain":"先進材料（炭素繊維・超耐熱）","trl_target":"TRL 5→8","eccn_relevant":["1C010","1C210"]}
+    ]
+  },
+  "foreign_investment_screening": {
+    "law": "外国為替及び外国貿易法（外為法）第26条以降",
+    "threshold": "指定業種企業への1%以上出資で事前届出義務（従来10%→厳格化）",
+    "designated_sectors": [
+      "武器製造","航空機製造","核関連","宇宙関連","サイバーセキュリティ",
+      "重要鉱物採掘","半導体製造","電力・ガス・水道","金融・証券","通信","放送"
+    ],
+    "fdi_review_body": "財務省（主管）＋経済産業省（指定業種）＋内閣官房（NSC）",
+    "eccn_relevance": "EAR FDP Rule と類似の外国投資規制。輸出管理対象技術を保有する企業への外国投資が主要対象"
+  }
+}

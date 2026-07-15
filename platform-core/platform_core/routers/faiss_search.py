@@ -210,3 +210,73 @@ def search_layer_d_endpoint(
             keywords_matched=str(r.get("keywords_matched", "")),
         ))
     return LayerDSearchResponse(query=q, top_k=top_k, hits=results)
+
+
+class LayerEResult(BaseModel):
+    score: float
+    doc_id: str
+    source_type: str
+    category: str
+    title: str
+    subtitle: str
+    keywords: list[str]
+    eccn_relevance: list[str]
+    fefta_relevance: list[str]
+    strategic_axis: list[str]
+    full_text: str
+
+
+class LayerESearchResponse(BaseModel):
+    query: str
+    top_k: int
+    hits: list[LayerEResult]
+    error: str | None = None
+
+
+@router.get("/search/layer-e", response_model=LayerESearchResponse)
+def search_layer_e_endpoint(
+    q: str = Query(..., description="戦略的・哲学的クエリ（例: なぜ輸出管理が重要か、量子の安保意義）"),
+    top_k: int = Query(5, ge=1, le=15),
+    axis: str = Query(None, description="strategic_axis フィルター（例: 技術哲学,経済安保）"),
+) -> LayerESearchResponse:
+    """FAISS Layer E（政策・戦略文書 / 技術哲学）を検索する。
+
+    DAP の「なぜ？」「背景を教えて」モードで使用する戦略知識レイヤー。
+    通常の業務判定検索（Layer A/B/C）とは独立した on-demand 検索。
+    """
+    try:
+        from platform_core.services.faiss_e5_service import search_layer_e, layer_e_available, preload
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"FAISS service import error: {e}")
+
+    if not layer_e_available():
+        try:
+            preload(layers=frozenset({"e"}))
+        except Exception:
+            pass
+
+    axis_filter = [a.strip() for a in axis.split(",") if a.strip()] if axis else None
+
+    try:
+        hits = search_layer_e(q, top_k=top_k, axis_filter=axis_filter)
+    except Exception as e:
+        logger.warning("Layer E search failed: %s", e)
+        return LayerESearchResponse(query=q, top_k=top_k, hits=[], error=str(e))
+
+    results = []
+    for h in hits:
+        r = h.__dict__ if hasattr(h, "__dict__") else {}
+        results.append(LayerEResult(
+            score=float(r.get("score", 0.0)),
+            doc_id=str(r.get("doc_id", "")),
+            source_type=str(r.get("source_type", "")),
+            category=str(r.get("category", "")),
+            title=str(r.get("title", "")),
+            subtitle=str(r.get("subtitle", "")),
+            keywords=list(r.get("keywords") or []),
+            eccn_relevance=list(r.get("eccn_relevance") or []),
+            fefta_relevance=list(r.get("fefta_relevance") or []),
+            strategic_axis=list(r.get("strategic_axis") or []),
+            full_text=str(r.get("full_text", ""))[:600],
+        ))
+    return LayerESearchResponse(query=q, top_k=top_k, hits=results)

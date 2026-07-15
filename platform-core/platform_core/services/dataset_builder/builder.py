@@ -44,7 +44,9 @@ _ECCN_RAW_DIR     = _SOURCE_ROOT / "eccn"     / "raw"
 _WASSENAAR_RAW_DIR = _SOURCE_ROOT / "wassenaar" / "raw"
 _HS_JSON_PATH     = _DATA_DIR / "hs2022_6digit.json"
 
-_SCHEMA_VERSION = "1.1.0"
+_SCHEMA_VERSION = "1.2.0"
+
+_SEED_DIR = _PROJECT_ROOT / "platform-core" / "platform_core" / "ontology" / "seed"
 
 
 def _find_file(
@@ -381,6 +383,82 @@ def build(
         except Exception:
             pass
 
+    # ── 6e. 3軸戦略オントロジー nodes (emerging_tech / keizai_anpo / geopolitical_sc) ──
+    strategic_nodes: list[dict] = []
+    strategic_node_count = 0
+
+    # 技術戦略軸
+    et_path = _SEED_DIR / "emerging_tech_taxonomy.json"
+    if et_path.exists():
+        try:
+            et = json.loads(et_path.read_text(encoding="utf-8"))
+            for domain in et.get("domains", []):
+                strategic_nodes.append({
+                    "id": f"ET:{domain['domain_id']}",
+                    "type": "emerging_tech",
+                    "label": domain.get("name_ja", ""),
+                    "label_en": domain.get("name_en", ""),
+                    "item_no": domain["domain_id"],
+                    "description": domain.get("description", "")[:300],
+                    "dual_use_potential": domain.get("dual_use_potential"),
+                    "strategic_importance": domain.get("strategic_importance"),
+                    "eccn_connection": domain.get("eccn_connection", []),
+                    "fefta_connection": domain.get("fefta_connection", []),
+                    "requirement_text": None,
+                    "edges": {"explicit": [], "derived": [], "semantic": []},
+                    "source_refs": {"seed": "emerging_tech_taxonomy.json"},
+                })
+        except Exception:
+            pass
+
+    # 経済安保軸
+    es_path = _SEED_DIR / "economic_security.json"
+    if es_path.exists():
+        try:
+            es = json.loads(es_path.read_text(encoding="utf-8"))
+            for mat in es.get("critical_materials", []):
+                strategic_nodes.append({
+                    "id": f"KA:{mat['material_id']}",
+                    "type": "keizai_anpo",
+                    "label": mat.get("name_ja", ""),
+                    "label_en": mat.get("name_en", ""),
+                    "item_no": mat["material_id"],
+                    "description": mat.get("geopolitical_risk", "")[:300],
+                    "risk_level": mat.get("risk_level"),
+                    "eccn_parallel": mat.get("eccn_parallel", []),
+                    "fefta_parallel": mat.get("fefta_parallel", []),
+                    "requirement_text": mat.get("key_policy"),
+                    "edges": {"explicit": [], "derived": [], "semantic": []},
+                    "source_refs": {"seed": "economic_security.json"},
+                })
+        except Exception:
+            pass
+
+    # 地政学SC軸
+    geo_path = _SEED_DIR / "geopolitical_sc.json"
+    if geo_path.exists():
+        try:
+            geo = json.loads(geo_path.read_text(encoding="utf-8"))
+            for cp in geo.get("chokepoints", []):
+                strategic_nodes.append({
+                    "id": f"CP:{cp['chokepoint_id']}",
+                    "type": "geopolitical_sc",
+                    "label": cp.get("name", ""),
+                    "label_en": cp.get("name", ""),
+                    "item_no": cp["chokepoint_id"],
+                    "description": cp.get("description", "")[:300],
+                    "criticality": cp.get("criticality"),
+                    "concentration": cp.get("concentration"),
+                    "affected_eccn": cp.get("affected_eccn", []),
+                    "requirement_text": None,
+                    "edges": {"explicit": [], "derived": [], "semantic": []},
+                    "source_refs": {"seed": "geopolitical_sc.json"},
+                })
+        except Exception:
+            pass
+
+    strategic_node_count = len(strategic_nodes)
+
     # ── 7. patent stub nodes ─────────────────────────────────
     # semantic edge で使用された patent を stub として含める
     linked_patent_ids: set[str] = set()
@@ -406,7 +484,7 @@ def build(
         })
 
     # ── 8. assemble ──────────────────────────────────────────
-    all_nodes = reg_nodes + eccn_nodes + patent_nodes + wa_nodes + hs_nodes
+    all_nodes = reg_nodes + eccn_nodes + patent_nodes + wa_nodes + hs_nodes + strategic_nodes
     finished_at = datetime.now(timezone.utc)
     duration_s  = (finished_at - started_at).total_seconds()
 
@@ -440,6 +518,7 @@ def build(
             "patent_stub_nodes":    len(patent_nodes),
             "wassenaar_nodes":      wa_node_count,
             "hs_nodes":             hs_node_count,
+            "strategic_nodes":      strategic_node_count,
             "total_nodes":          len(all_nodes),
             "db_enriched":          enriched_count,
             "fefta_xml_enriched":   fefta_cat_count,

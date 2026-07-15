@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.1.0",
-  "generated_at": "2026-07-14T15:45:46.940371+00:00",
-  "duration_seconds": 4.85,
+  "schema_version": "1.2.0",
+  "generated_at": "2026-07-15T23:04:26.954886+00:00",
+  "duration_seconds": 4.67,
   "sources": {
     "matrix_json": "/Users/takehirosato/Desktop/AI_TradeManagement/data/matrix.json",
     "patents_json": "/Users/takehirosato/Desktop/AI_TradeManagement/data/patents.json",
@@ -21,7 +21,8 @@
     "patent_stub_nodes": 67,
     "wassenaar_nodes": 146,
     "hs_nodes": 281,
-    "total_nodes": 769,
+    "strategic_nodes": 29,
+    "total_nodes": 798,
     "db_enriched": 143,
     "fefta_xml_enriched": 168,
     "eccn_pdf_enriched": 28,
