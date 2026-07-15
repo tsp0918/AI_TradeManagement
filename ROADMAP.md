@@ -1,5 +1,5 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-06-28 更新（Phase 12 完了: 全7フロー連動連携 E2E 22/22 全テスト合格 — ⑥スクリーニング再ヒット→ERP NEEDS_REVIEW push通知・⑦item_version resolved→ERP APPROVED通知・②rnd_assessment→ai_classification品目自動登録・E2E一気通貫テストスクリプト完成・PostgreSQL products テーブル schema修正・ai_classification環境変数 CLASSIFICATION_DATABASE_URL エイリアス対応・_ERP_WEBHOOK_URL 二重定義バグ修正）
+# 2026-07-15 更新（Phase 13 完了: コンテンツDB修正・制裁リスト全件取得強化 — BIS EL 1010件→3415件（eCFR）・UK OFSI 0件→5135件（CSVメタデータ行スキップ修正）・OFAC SDN XML名前空間自動検出・Trade.gov CSL API data.trade.gov移行・plat_hantei_kubanbang/threshold シード投入・control_nodes.json再構築・FAISS 22470→30064件）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
 > 2026-06-26（2回目）追加: **Phase 5 完了** — ①Layer A FAISS 再ビルド（2,184→2,192vec、jp_fx_2025:3件 EL-7-24/25/26 EUVフォトレジスト/先端AI GPU/HBM反映）②Screeningバッチ結果 CSV エクスポート（クライアントサイド BOM付、タイムスタンプファイル名）③`./start.sh --verify-demos` CI連携（ワンコマンドDEMO全6本検証）④輸出許可申請双方向連携強化（linked_license_id書戻し・license-status PATCH エンドポイント・承認/却下コールバック・Transaction Detail ステータスパネル）⑤ERP Webhook Bearer認証完全適用（pull_review.py 4エンドポイント＋AITM_WEBHOOK_SECRET環境変数）⑥Red Flag 詳細入力UI（「該当」選択時テキストエリア展開・note値送信・判定結果にRF内容/根拠表示）
@@ -36,7 +36,7 @@
 | ai_classification | 8002 | SQLite+PG | ✅ | ✅ | 品目管理・6種 item_type・輸入品プロファイル・BOM→SC自動同期・BOMグラフ可視化（cytoscape-dagre）・輸入品影響分析・ECCN付番フロー・US EAR再輸出申請トリガー・**サプライヤー→AI取引審査→BOM自動更新**・HS/ECCN申告+cert確認・手動証明書登録・Hyper-Admin mode・BOM US管理品比率（金額加重）・**国別HSサマリーテーブル・EPA/FTA優遇税率**|
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
 | patent_search | 8004 | SQLite | ✅ | ✅ | BigQuery連携・J-PlatPatフォールバック |
-| screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS/UN/EU）・与信管理・ERP JSON一括インポート・無料3ソース自動同期 |
+| screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS/UN/UK OFSI）・与信管理・ERP JSON一括インポート・FAISS 30,064件（BIS EL 3,415件 eCFR全件・UK OFSI 5,135件） |
 | hs_classifier | 8006 | — | — | ✅ | Layer C FAISS（5,476vec）・同期/非同期両対応 |
 | dap | 8010 | SQLite | ✅ | ✅ | 先輩担当者モード・ペルソナ追跡・ガイドバナー・全モジュール埋込済 |
 | export_license | 8012 | PostgreSQL | — | ✅ | EAR BIS-748P / 外為法様式第1 ドラフト生成・申請ライフサイクル（Phase 6B-1） |
@@ -298,6 +298,22 @@ search.py (GET /status):
 | Phase 5-D | 輸出許可申請双方向連携強化（linked_license_id/linked_license_status カラム追加・自動書戻し・PATCH /decision/{id}/license-status エンドポイント・export_license 承認/却下コールバック・Transaction Detail ライセンスステータスパネル） | 2026-06-26 |
 | Phase 5-E | ERP Webhook Bearer認証完全適用（pull_review.py 4エンドポイントに verify_api_key 追加・AITM_WEBHOOK_SECRET 環境変数・config.py AliasChoices 対応・401/200 動作確認） | 2026-06-26 |
 | Phase 5-F | Red Flag 詳細入力UI改善（「該当」選択時テキストエリア展開・rf1_note〜rf7_note 送信・判定結果に該当RF + 根拠メモ表示・toggleRfNote 関数追加） | 2026-06-26 |
+
+---
+
+### ✅ Phase 13 完了（2026-07-15）
+
+| タスク | 内容 | コミット |
+|--------|------|---------|
+| [C1] Trade.gov CSL API 移行 | api.trade.gov → data.trade.gov、クエリパラメータ認証 → subscription-key ヘッダー（Azure APIM）、page_size=10/offset上限1000対応、429 retry ロジック | `6f97064` |
+| [C2] plat_hantei_kubanbang シード投入 | 29件 kubanbang + 87件 threshold を PostgreSQL に直接 INSERT（`hantei_kubanbang.json` から読込） | `a1e39c7` |
+| [C3] control_nodes.json 再構築 | `builder.py build()` 呼出 → 769ノード（regulation:191, eccn:84, wassenaar:146, hs:281, patent:67）、semantic_edges:310 | `a1e39c7` |
+| [W1] UK OFSI 0件 → 5,135件 | CSV 16MB 先頭メタデータ行（`Last Updated,...`）をスキップする header 検出ロジック追加 | `57ae8e3` |
+| [W2] layer_a_new.index 孤立ファイル削除 | Mar 21 の孤立 index（2231vec）削除。layer_a.index（Jun 26, 2192vec）が正式 | `57ae8e3` |
+| BIS EL 1,010件 → 3,415件 | `fetch_bis_entity_list_ecfr()` 新設。eCFR XML（15 CFR Part 744 Suppl.4）を解析して全件取得。CSL API フォールバック維持 | `57ae8e3` |
+| OFAC SDN XML 名前空間修正 | 旧 `http://tempuri.org/sdnList.xsd` → 新 `https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/XML` を動的検出 | `57ae8e3` |
+
+**FAISS合計: 22,470件 → 30,064件**（BIS EL +2,405件、UK OFSI +5,135件）
 
 ---
 
@@ -658,6 +674,8 @@ Ph.D — patent_search 双方向リンク
 | ハードコードURL → 全モジュール環境変数化 ✅（2026-05-24 修正） | — | 解消済み（item_version.py / export_license.py / transaction_detail.html / import_profiles.html）|
 | `bom_attestation_summary` us_controlled_pct 104% ✅（2026-05-31 修正） | — | 解消済み（edge.quantity 直和 → unit_value_usd 金額加重計算）|
 | `api/products/by-code/{code}` が id/code/name のみ返却 | BOM取得等でフル情報が取れない | 低（次フェーズ候補）|
+| BIS DPL 残 586件（1,010/1,596件） | CSL API の offset 上限 1,000 により未取得。eCFR Part 764 Suppl.1 は「標準条件文」でリスト非掲載。代替ソース未発見 | 低（公開APIに制約あり・受入済み）|
+| EU Consolidated Sanctions 0件 | `webgate.ec.europa.eu` が 403 Forbidden（IP制限と推定）。EEAS/data.europa.eu も同様 | 低（IP制限・OpenSanctions 有料プランが回避策）|
 
 ---
 
