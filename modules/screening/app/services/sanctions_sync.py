@@ -5,29 +5,24 @@
   2. UN Security Council Consolidated List XML            — 国連安保理（APIキー不要）
   3. EU Consolidated Financial Sanctions File (FSF)       — 欧州委員会（APIキー不要）
   4. UK OFSI Consolidated Sanctions List                  — 英国財務省 OFSI（APIキー不要）
-  5. BIS Entity List (EL)                                 — 米国 BIS / Trade.gov CSL（APIキー必要）
+  5. BIS Entity List (EL)                                 — eCFR 15 CFR Part 744 Suppl. 4（APIキー不要・全件）
   6. BIS Unverified List (UVL)                            — 米国 BIS / Trade.gov CSL（APIキー必要）
   7. BIS Military End-User List (MEU)                     — 米国 BIS / Trade.gov CSL（APIキー必要）
   8. BIS Denied Persons List (DPL)                        — 米国 BIS / Trade.gov CSL（APIキー必要）
 
-自動同期（APIキー不要の3リスト）:
-    fetch_ofac_sdn_csv()   → ~7,000件  (5.5MB CSV, 高速)
-    fetch_un_consolidated() → ~800件   (2.2MB XML)
-    fetch_eu_consolidated() → ~1,500件 (2MB XML)
-
-usage:
-    from app.services.sanctions_sync import (
-        fetch_ofac_sdn, fetch_ofac_sdn_csv,
-        fetch_un_consolidated,
-        fetch_eu_consolidated, fetch_uk_ofsi,
-        fetch_bis_entity_list,
-    )
+自動同期（APIキー不要）:
+    fetch_ofac_sdn_csv()        → ~19,000件  (5.5MB CSV)
+    fetch_un_consolidated()     → ~1,000件   (XML)
+    fetch_bis_entity_list_ecfr() → ~3,420件  (eCFR XML, APIキー不要, 全件)
+    fetch_uk_ofsi()             → ~6,500件   (CSV, 16MB)
 """
 from __future__ import annotations
 
 import csv
+import html as html_module
 import io
 import logging
+import re
 import time
 import xml.etree.ElementTree as ET
 from typing import Any
@@ -41,12 +36,14 @@ OFAC_SDN_CSV_URL = "https://sanctionslistservice.ofac.treas.gov/api/publicationp
 OFAC_SDN_URL_ALT = "https://www.treasury.gov/ofac/downloads/sdn.xml"   # 旧URL（フォールバック）
 UN_SC_XML_URL    = "https://scsanctions.un.org/resources/xml/en/consolidated.xml"
 CSL_API_URL      = "https://data.trade.gov/consolidated_screening_list/v1/search"
-BIS_EL_JSON_URL  = "https://efts.bis.doc.gov/complete-search-of-firm-names-and-addresses?searchOptions=allWords&keyWord=&export=true"
+ECFR_PART744_URL = "https://www.ecfr.gov/api/versioner/v1/full/{date}/title-15.xml?subchapter=C&part=744"
+ECFR_VERSIONS_URL = "https://www.ecfr.gov/api/versioner/v1/versions/title-15.json"
 EU_FSF_URL       = "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content"
 UK_OFSI_XML      = "https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.xml"
 UK_OFSI_CSV      = "https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv"
 
-_NS_SDN = "{http://tempuri.org/sdnList.xsd}"
+_NS_SDN = "{https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/XML}"
+_NS_SDN_ALT = "{http://tempuri.org/sdnList.xsd}"  # 旧名前空間（フォールバック）
 
 
 # ── OFAC SDN ─────────────────────────────────────────────────────────────────
@@ -70,33 +67,39 @@ def fetch_ofac_sdn(timeout: int = 90) -> list[dict[str, Any]]:
     root = ET.fromstring(resp.content)
     entries: list[dict[str, Any]] = []
 
-    for entry in root.findall(f"{_NS_SDN}sdnEntry"):
-        uid      = entry.findtext(f"{_NS_SDN}uid", "") or ""
-        last     = entry.findtext(f"{_NS_SDN}lastName",  "") or ""
-        first    = entry.findtext(f"{_NS_SDN}firstName", "") or ""
-        sdn_type = entry.findtext(f"{_NS_SDN}sdnType",   "") or ""
+    # 名前空間を動的判定（新URL では名前空間が変更されている）
+    ns = _NS_SDN
+    if not root.findall(f"{ns}sdnEntry"):
+        ns = _NS_SDN_ALT
+        logger.info("OFAC SDN: using alt namespace %s", ns)
+
+    for entry in root.findall(f"{ns}sdnEntry"):
+        uid      = entry.findtext(f"{ns}uid", "") or ""
+        last     = entry.findtext(f"{ns}lastName",  "") or ""
+        first    = entry.findtext(f"{ns}firstName", "") or ""
+        sdn_type = entry.findtext(f"{ns}sdnType",   "") or ""
 
         name = f"{first} {last}".strip() if first else last.strip()
         if not name:
             continue
 
         aliases: list[str] = []
-        for aka in entry.findall(f"{_NS_SDN}akaList/{_NS_SDN}aka"):
-            aka_last  = aka.findtext(f"{_NS_SDN}lastName",  "") or ""
-            aka_first = aka.findtext(f"{_NS_SDN}firstName", "") or ""
+        for aka in entry.findall(f"{ns}akaList/{ns}aka"):
+            aka_last  = aka.findtext(f"{ns}lastName",  "") or ""
+            aka_first = aka.findtext(f"{ns}firstName", "") or ""
             aka_name  = f"{aka_first} {aka_last}".strip() if aka_first else aka_last.strip()
             if aka_name and aka_name != name:
                 aliases.append(aka_name)
 
         country: str | None = None
-        for addr in entry.findall(f"{_NS_SDN}addressList/{_NS_SDN}address"):
-            c = addr.findtext(f"{_NS_SDN}country", "") or ""
+        for addr in entry.findall(f"{ns}addressList/{ns}address"):
+            c = addr.findtext(f"{ns}country", "") or ""
             if c:
                 country = c[:10]
                 break
 
         programs = [
-            p.text for p in entry.findall(f"{_NS_SDN}programList/{_NS_SDN}program") if p.text
+            p.text for p in entry.findall(f"{ns}programList/{ns}program") if p.text
         ]
         reason = ", ".join(programs) if programs else None
 
@@ -354,9 +357,97 @@ def _fetch_csl_source(
     return entries
 
 
+def fetch_bis_entity_list_ecfr(timeout: int = 120) -> list[dict[str, Any]]:
+    """BIS Entity List を eCFR (15 CFR Part 744 Supplement No. 4) から全件取得する。
+
+    APIキー不要。Trade.gov CSL APIのoffset上限1000制約を回避し全3,420件を取得できる。
+    eCFR XML はリアルタイム更新される公式ソース。
+    """
+    logger.info("Fetching BIS Entity List from eCFR (Part 744 Supplement No. 4)")
+
+    # eCFR は日付ベースのURLを使用。最新版を versions API から取得し、なければ今年の1月1日を使用
+    from datetime import date as _date
+    ecfr_date = _date.today().replace(month=1, day=1).isoformat()
+    try:
+        with httpx.Client(timeout=15, follow_redirects=True) as _vc:
+            _vr = _vc.get(ECFR_VERSIONS_URL)
+            if _vr.status_code == 200:
+                _versions = _vr.json().get("content_versions", [])
+                if _versions:
+                    ecfr_date = sorted(v["date"] for v in _versions)[-1]
+    except Exception:
+        pass
+
+    url = ECFR_PART744_URL.format(date=ecfr_date)
+    logger.info("eCFR URL: %s", url)
+
+    with httpx.Client(timeout=timeout, follow_redirects=True) as client:
+        resp = client.get(url)
+        resp.raise_for_status()
+
+    xml_text = resp.text
+
+    # Supplement No. 4 セクションを抽出
+    idx_start = xml_text.find('<DIV9 N="Supplement No. 4 to Part 744"')
+    if idx_start < 0:
+        raise RuntimeError("eCFR Part 744 Supplement No. 4 not found in response")
+    idx_end = xml_text.find('<DIV9', idx_start + 1)
+    supp4 = xml_text[idx_start:idx_end if idx_end > 0 else len(xml_text)]
+
+    rows = re.findall(r'<TR>(.*?)</TR>', supp4, re.DOTALL)
+    if not rows:
+        raise RuntimeError("No table rows found in eCFR Supplement No. 4")
+
+    entries: list[dict[str, Any]] = []
+    current_country: str = ""
+
+    for row in rows[1:]:  # 先頭ヘッダー行をスキップ
+        cells = re.findall(r'<T[DH][^>]*>(.*?)</T[DH]>', row, re.DOTALL)
+        texts = [html_module.unescape(re.sub(r'<[^>]+>', ' ', c)).strip() for c in cells]
+
+        if len(texts) < 2:
+            continue
+
+        if texts[0].strip():
+            current_country = texts[0].strip()[:10]
+
+        entity_raw = texts[1].strip()
+        if not entity_raw:
+            continue
+
+        # エンティティ名と住所を分離（最初のカンマで分割）
+        parts = entity_raw.split(',', 1)
+        name    = parts[0].strip()
+        address = parts[1].strip() if len(parts) > 1 else ""
+
+        fr_notice = texts[4].strip() if len(texts) > 4 else None
+
+        if not name:
+            continue
+
+        entries.append({
+            "list_source": "bis_entity",
+            "entity_name": name,
+            "aliases":     None,
+            "address":     address[:500] if address else None,
+            "country":     current_country or None,
+            "source_id":   f"EL-{name[:80]}-{current_country}" if current_country else f"EL-{name[:80]}",
+            "reason":      fr_notice,
+            "risk_level":  "high",
+            "extra":       {"federal_register_notice": fr_notice, "source": "ecfr"},
+        })
+
+    logger.info("eCFR BIS Entity List: parsed %d entries", len(entries))
+    return entries
+
+
 def fetch_bis_entity_list(api_key: str = "DEMO_KEY", timeout: int = 30) -> list[dict[str, Any]]:
-    """BIS Entity List を Trade.gov CSL API から全件取得する。"""
-    return _fetch_csl_source("EL", "bis_entity", api_key=api_key, timeout=timeout)
+    """BIS Entity List を取得する。eCFR（全件・APIキー不要）を優先し、失敗時は CSL API にフォールバック。"""
+    try:
+        return fetch_bis_entity_list_ecfr(timeout=120)
+    except Exception as e:
+        logger.warning("eCFR EL fetch failed (%s), falling back to CSL API (offset-limited)", e)
+        return _fetch_csl_source("EL", "bis_entity", api_key=api_key, timeout=timeout)
 
 
 def fetch_bis_unverified(api_key: str = "DEMO_KEY", timeout: int = 30) -> list[dict[str, Any]]:
@@ -454,16 +545,16 @@ def fetch_eu_consolidated(timeout: int = 90) -> list[dict[str, Any]]:
 
 # ── UK OFSI Consolidated Sanctions List ─────────────────────────────────────
 
-def fetch_uk_ofsi(timeout: int = 60) -> list[dict[str, Any]]:
-    """UK OFSI 統合制裁リストを XML または CSV から取得・パースする。
+def fetch_uk_ofsi(timeout: int = 180) -> list[dict[str, Any]]:
+    """UK OFSI 統合制裁リストを CSV から取得・パースする。
 
-    XML は Azure Blob Storage から取得。失敗時は CSV にフォールバック。
+    CSV（16MB）を優先使用。失敗時は XML（54MB）にフォールバック。
     """
     try:
-        return _fetch_uk_ofsi_xml(timeout=timeout)
-    except Exception as e:
-        logger.warning("UK OFSI XML failed (%s), falling back to CSV", e)
         return _fetch_uk_ofsi_csv(timeout=timeout)
+    except Exception as e:
+        logger.warning("UK OFSI CSV failed (%s), falling back to XML", e)
+        return _fetch_uk_ofsi_xml(timeout=timeout)
 
 
 def _fetch_uk_ofsi_xml(timeout: int = 60) -> list[dict[str, Any]]:
@@ -530,14 +621,24 @@ def _fetch_uk_ofsi_xml(timeout: int = 60) -> list[dict[str, Any]]:
     return entries
 
 
-def _fetch_uk_ofsi_csv(timeout: int = 60) -> list[dict[str, Any]]:
+def _fetch_uk_ofsi_csv(timeout: int = 180) -> list[dict[str, Any]]:
     logger.info("Fetching UK OFSI CSV from %s", UK_OFSI_CSV)
     with httpx.Client(timeout=timeout, follow_redirects=True) as client:
         resp = client.get(UK_OFSI_CSV)
         resp.raise_for_status()
 
     text = resp.content.decode("utf-8-sig", errors="replace")
-    reader = csv.DictReader(io.StringIO(text))
+
+    # CSV先頭にメタデータ行（"Last Updated,..."）があるため実際のヘッダー行まで読み飛ばす
+    lines = text.split('\n')
+    header_idx = 0
+    for i, line in enumerate(lines[:10]):
+        if 'Name 6' in line or 'Group ID' in line:
+            header_idx = i
+            break
+    actual_csv = '\n'.join(lines[header_idx:])
+
+    reader = csv.DictReader(io.StringIO(actual_csv))
     entries: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
 

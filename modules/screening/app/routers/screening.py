@@ -396,7 +396,7 @@ async def sync_sanctions(
         csl_api_key = os.environ.get("TRADE_GOV_API_KEY", "DEMO_KEY")
 
     # APIキー不要ソース（"free" で一括指定可）
-    FREE_SOURCES = {"ofac_sdn_csv", "un_sc", "eu_consolidated"}
+    FREE_SOURCES = {"ofac_sdn_csv", "un_sc", "eu_consolidated", "uk_ofsi", "bis_entity"}
 
     ALL_SOURCES = {
         "ofac_sdn":        fetch_ofac_sdn,       # OFAC SDN XML（28MB・低速）
