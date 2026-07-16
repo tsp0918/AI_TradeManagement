@@ -1,5 +1,5 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-07-16 更新（Phase 14-A/B 完了: Layer A 2,192→2,343vec + オントロジー3軸統合 + Layer E（政策・戦略文書 61vec）新設 + DAP哲学オンデマンドモード）
+# 2026-07-16 更新（Phase 15 完了: EU制裁5,893件・Layer E 101vec・DAP戦略コンテキストUI・fta_origin原産性判定API）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
 > 2026-06-26（2回目）追加: **Phase 5 完了** — ①Layer A FAISS 再ビルド（2,184→2,192vec、jp_fx_2025:3件 EL-7-24/25/26 EUVフォトレジスト/先端AI GPU/HBM反映）②Screeningバッチ結果 CSV エクスポート（クライアントサイド BOM付、タイムスタンプファイル名）③`./start.sh --verify-demos` CI連携（ワンコマンドDEMO全6本検証）④輸出許可申請双方向連携強化（linked_license_id書戻し・license-status PATCH エンドポイント・承認/却下コールバック・Transaction Detail ステータスパネル）⑤ERP Webhook Bearer認証完全適用（pull_review.py 4エンドポイント＋AITM_WEBHOOK_SECRET環境変数）⑥Red Flag 詳細入力UI（「該当」選択時テキストエリア展開・note値送信・判定結果にRF内容/根拠表示）
@@ -81,7 +81,7 @@
 | FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ **10,783vec**（JP 6,144 + US/EP 4,639・639 ECCN タイプ・CPC コード対応・2026-05-12）|
 | FAISS Layer C（HSコード） | services/faiss_e5_service.py | ✅ 5,476vec |
 | FAISS Layer D（学術論文） | services/faiss_e5_service.py | ✅ **5,765vec**（S2: 508 + OpenAlex: 5,257・**25/25 ECCN 全カバー**・2026-05-12）|
-| **FAISS Layer E（政策・戦略文書）** | **services/faiss_e5_service.py** | **✅ 61vec（Phase 14-B 新設: policy_doc:20 + emerging_tech:8 + keizai_anpo:15 + geopolitical_sc:18・2026-07-16）**|
+| **FAISS Layer E（政策・戦略文書）** | **services/faiss_e5_service.py** | **✅ 101vec（Phase 15-B 拡充: policy_doc:60 + emerging_tech:8 + keizai_anpo:15 + geopolitical_sc:18・2026-07-16）**|
 | asyncio 規制動向スケジューラー | main.py (_regulatory_scheduler) | ✅ 24h周期 |
 | **DAP 多層 RAG（Phase O-2 + Phase 14-B）** | **modules/dap/app/routers/chat.py** | **✅ 2026-07-16 拡張（8レイヤー）** |
 | _rag_multilayer（Layer A + Ontology + Country Control + Layer B + Layer D + Layer E 並列） | chat.py | ✅ ECCN/HS/IPC + 仕向国を自動抽出・8レイヤー並列検索・Layer E オンデマンド |
@@ -1018,9 +1018,25 @@ Phase 10 で残存した4つの未接続箇所を全て実装・E2E確認済み�
 | 問題 | 影響 | 優先度 |
 |------|------|--------|
 | BIS DPL 残 586件未取得 | CSL API offset 上限 1,000 により取得不能。eCFR Part 764 Suppl.1 は標準条件文のみ | 低（受入済み） |
-| EU Consolidated Sanctions 0件 | webgate.ec.europa.eu 403 Forbidden（IP制限）。OpenSanctions 有料プランが唯一の代替 | 低（受入済み） |
 
 ---
 
-*更新: 2026-07-16（Phase 14-A/B: Layer A 2,343vec + オントロジー3軸統合 + Layer E 61vec + DAP哲学オンデマンドモード 完了）*
+### ✅ Phase 15: 制裁リスト補完・Layer E拡充・DAP哲学UI・FTA原産性判定（2026-07-16 完了）
+
+| タスク | 内容 | コミット |
+|--------|------|---------|
+| **15-A: EU制裁リスト補完** | EU Consolidated (5,893件) を OpenSanctions CC BY-NC CSV 経由で取得。`_fetch_eu_consolidated_opensanctions()` 追加、webgate.ec.europa.eu 403回避 | `925363b` |
+| **15-B: Layer E拡充** | strategic_policy_docs.json 20→60件（POL-021〜060: CHIPS法・EU AI法・CoCom歴史・量子NQI・IRA重要鉱物・みなし輸出・CFIUS・制裁哲学・核不拡散・宇宙・サイバー・BRICS等40件追加）。Layer E 61vec → 101vec | `925363b` |
+| **15-C: DAP哲学モードUI強化** | `ChatResponse` に `strategic_context` フィールド追加。`_rag_multilayer` が Layer E 結果を `tuple[str,str]` で返却。`chat-widget.js` に戦略コンテキスト折り畳みパネル（黄色バッジ・ドキュメントカード・軸表示） | `925363b` |
+| **15-D: fta_origin完成** | 原産地規則データ（10協定・HS章別ルール）・原産性判定API（`POST /api/fta/determine-origin`）・証明書要件API（`GET /api/fta/certificates`）・UI 5タブ化（税率照会/原産性判定/原産地規則/証明書/協定一覧） | `925363b` |
+
+**技術的負債（Phase 15 残存）**:
+| 問題 | 影響 | 優先度 |
+|------|------|--------|
+| BIS DPL 残 586件未取得 | CSL API offset 上限 1,000 により取得不能 | 低（受入済み） |
+| fta_origin 原産地規則 DB永続化未実装 | 現在 in-memory。DB化は次フェーズ候補 | 低 |
+
+---
+
+*更新: 2026-07-16（Phase 15: EU制裁5,893件・Layer E 101vec・DAP戦略UI・fta_origin原産性判定 完了）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*
