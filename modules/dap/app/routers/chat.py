@@ -199,6 +199,7 @@ class ChatResponse(BaseModel):
     guidance: list[dict[str, Any]] = []        # ステップ別ガイダンス (guided tour)
     alert: Optional[dict[str, Any]] = None     # 自発的アラート {type, message, severity}
     persona_summary: Optional[dict[str, Any]] = None  # ユーザー理解状態
+    strategic_context: Optional[str] = None   # Layer E RAG 結果（「なぜ？」系クエリ時のみ）
 
 
 # ── モジュール別デフォルト choices（Claude が省略した場合のフォールバック）──────
@@ -617,12 +618,13 @@ async def _rag_strategic_context(message: str) -> str:
     return "【戦略・技術哲学コンテキスト（なぜ？の背景知識）】\n" + "\n".join(lines[:3])
 
 
-async def _rag_multilayer(message: str) -> str:
+async def _rag_multilayer(message: str) -> tuple[str, str]:
     """
     多層 RAG（8レイヤー）:
       Layer A（規制） + オントロジー分類 + Country Control + F-term分類 +
       グラフ接続関係 + Layer B（特許） + Layer D（論文）を並列に検索し統合。
       「なぜ？」系クエリの場合は Layer E（戦略・哲学）も追加。
+    戻り値: (全RAGコンテキスト結合文字列, Layer-E のみの文字列)
     """
     import asyncio
     eccns_found = [e.upper() for e in _ECCN_PATTERN.findall(message)]
@@ -642,10 +644,11 @@ async def _rag_multilayer(message: str) -> str:
         return_exceptions=True,
     )
 
+    layer_e_result = results[7] if isinstance(results[7], str) else ""
     blocks = [r for r in results if isinstance(r, str) and r.strip()]
     if not blocks:
-        return ""
-    return "\n\n".join(blocks)
+        return ("", layer_e_result)
+    return ("\n\n".join(blocks), layer_e_result)
 
 
 # ── User Persona Tracking ─────────────────────────────────────────────────────
@@ -2573,8 +2576,8 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     ctx["_persona_str"]    = _persona_context_str(persona, session_data)
     ctx["_workflow_alerts"] = workflow_alert_str
 
-    # RAG: 多層検索（Layer A 規制条文 + オントロジー + Layer B 特許 + Layer D 論文）
-    rag_context = await _rag_multilayer(req.message)
+    # RAG: 多層検索（Layer A 規制条文 + オントロジー + Layer B 特許 + Layer D 論文 + Layer E 戦略）
+    rag_context, _layer_e_ctx = await _rag_multilayer(req.message)
     if rag_context:
         ctx["_rag_context"] = rag_context
 
@@ -2745,6 +2748,7 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
             "knowledge_gaps":     persona.get("knowledge_gaps", [])[:3],
             "module_count":       len([v for v in persona.get("module_familiarity", {}).values() if v > 0]),
         },
+        strategic_context=_layer_e_ctx if _layer_e_ctx else None,
     )
 
 

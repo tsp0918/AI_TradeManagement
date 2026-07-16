@@ -39,6 +39,7 @@ CSL_API_URL      = "https://data.trade.gov/consolidated_screening_list/v1/search
 ECFR_PART744_URL = "https://www.ecfr.gov/api/versioner/v1/full/{date}/title-15.xml?subchapter=C&part=744"
 ECFR_VERSIONS_URL = "https://www.ecfr.gov/api/versioner/v1/versions/title-15.json"
 EU_FSF_URL       = "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content"
+EU_FSF_OPENSANCTIONS_URL = "https://data.opensanctions.org/datasets/latest/eu_fsf/targets.simple.csv"
 UK_OFSI_XML      = "https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.xml"
 UK_OFSI_CSV      = "https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.csv"
 
@@ -467,12 +468,61 @@ def fetch_bis_dpl(api_key: str = "DEMO_KEY", timeout: int = 30) -> list[dict[str
 
 # ── EU Consolidated Financial Sanctions File (FSF) ──────────────────────────
 
-def fetch_eu_consolidated(timeout: int = 90) -> list[dict[str, Any]]:
-    """EU 統合制裁リスト（FSF XML）を取得・パースする。
+def _fetch_eu_consolidated_opensanctions(timeout: int = 90) -> list[dict[str, Any]]:
+    """OpenSanctions の EU FSF CSV（CC BY-NC）から EU 制裁リストを取得する。
 
-    欧州委員会 DG FISMA が管理する XML フォーマット。
-    URL: https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content
+    webgate.ec.europa.eu が 403 Forbidden の場合の代替ソース。
+    URL: https://data.opensanctions.org/datasets/latest/eu_fsf/targets.simple.csv
+    形式: id, schema, name, aliases, birth_date, countries, addresses, identifiers,
+          sanctions, phones, emails, program_ids, dataset, first_seen, last_seen, last_change
     """
+    import io as _io
+    logger.info("Fetching EU FSF from OpenSanctions: %s", EU_FSF_OPENSANCTIONS_URL)
+    with httpx.Client(timeout=timeout, follow_redirects=True) as client:
+        resp = client.get(EU_FSF_OPENSANCTIONS_URL)
+        resp.raise_for_status()
+
+    reader = csv.DictReader(_io.StringIO(resp.text))
+    entries: list[dict[str, Any]] = []
+    for row in reader:
+        name = (row.get("name") or "").strip()
+        if not name:
+            continue
+        aliases_raw = (row.get("aliases") or "").strip()
+        aliases = [a.strip() for a in aliases_raw.split(";") if a.strip() and a.strip() != name] if aliases_raw else None
+        countries_raw = (row.get("countries") or "").strip()
+        country = countries_raw.split(";")[0][:10].upper() if countries_raw else None
+        sanctions_raw = (row.get("sanctions") or "").strip()
+        source_id = (row.get("id") or "").strip() or None
+        programme_ids = (row.get("program_ids") or "").strip()
+        entries.append({
+            "list_source": "eu_consolidated",
+            "entity_name": name,
+            "aliases":     aliases,
+            "country":     country,
+            "source_id":   source_id,
+            "reason":      sanctions_raw[:200] if sanctions_raw else None,
+            "risk_level":  "high",
+            "extra":       {"programme": programme_ids, "schema": row.get("schema", "")},
+        })
+
+    logger.info("EU Consolidated (OpenSanctions): parsed %d entries", len(entries))
+    return entries
+
+
+def fetch_eu_consolidated(timeout: int = 90) -> list[dict[str, Any]]:
+    """EU 統合制裁リスト（FSF）を取得・パースする。
+
+    優先: OpenSanctions CSV（webgate.ec.europa.eu が IP 制限のため）
+    フォールバック: webgate.ec.europa.eu XML（復旧した場合）
+    """
+    # OpenSanctions CSV を優先使用（5,800+ 件、毎日更新）
+    try:
+        return _fetch_eu_consolidated_opensanctions(timeout=timeout)
+    except Exception as e:
+        logger.warning("OpenSanctions EU FSF failed (%s), trying original URL", e)
+
+    # フォールバック: 元の webgate.ec.europa.eu XML
     logger.info("Fetching EU Consolidated Sanctions from %s", EU_FSF_URL)
     with httpx.Client(timeout=timeout, follow_redirects=True) as client:
         resp = client.get(EU_FSF_URL)
@@ -481,14 +531,12 @@ def fetch_eu_consolidated(timeout: int = 90) -> list[dict[str, Any]]:
     root = ET.fromstring(resp.content)
     entries: list[dict[str, Any]] = []
 
-    # EU XML には名前空間が含まれる場合があるため、動的に処理
     ns_prefix = ""
     if root.tag.startswith("{"):
         ns_uri   = root.tag.split("}")[0][1:]
         ns_prefix = f"{{{ns_uri}}}"
 
     for entity in root.findall(f"{ns_prefix}sanctionEntity"):
-        # 主名称（wholeName または firstName + lastName）
         primary_name: str | None = None
         aliases: list[str] = []
 
@@ -497,11 +545,9 @@ def fetch_eu_consolidated(timeout: int = 90) -> list[dict[str, Any]]:
             first = (na.get("firstName") or "").strip()
             last  = (na.get("lastName")  or "").strip()
             composed = f"{first} {last}".strip() if first else last
-
             candidate = whole or composed
             if not candidate:
                 continue
-
             quality = (na.get("quality") or "").lower()
             if quality in ("good", "a.k.a.", "") and primary_name is None:
                 primary_name = candidate
@@ -511,7 +557,6 @@ def fetch_eu_consolidated(timeout: int = 90) -> list[dict[str, Any]]:
         if not primary_name:
             continue
 
-        # 国（住所リストの先頭）
         country: str | None = None
         for addr in entity.findall(f"{ns_prefix}addresses/{ns_prefix}address"):
             c = (addr.get("countryDescription") or addr.get("countryIso2Code") or "").strip()
@@ -519,13 +564,10 @@ def fetch_eu_consolidated(timeout: int = 90) -> list[dict[str, Any]]:
                 country = c[:10]
                 break
 
-        # 制裁プログラム
         reg_el = entity.find(f"{ns_prefix}regulation")
         programme = (reg_el.get("programme") or "") if reg_el is not None else ""
         number    = (reg_el.get("numberTitle") or "") if reg_el is not None else ""
         reason    = f"{programme} {number}".strip() or None
-
-        # エンティティID
         entity_id = entity.get("eu-reference-number") or entity.get("logicalId") or ""
 
         entries.append({
@@ -539,7 +581,7 @@ def fetch_eu_consolidated(timeout: int = 90) -> list[dict[str, Any]]:
             "extra":       {"programme": programme},
         })
 
-    logger.info("EU Consolidated: parsed %d entries", len(entries))
+    logger.info("EU Consolidated (XML): parsed %d entries", len(entries))
     return entries
 
 

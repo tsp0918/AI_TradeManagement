@@ -174,13 +174,14 @@
       message: userText, history: [], context: gatherContext(), session_id: SESSION_ID,
     });
     return {
-      reply:          data.reply          || '',
-      actions:        data.actions        || [],
-      choices:        data.choices        || [],
-      guidance:       data.guidance       || [],
-      alert:          data.alert          || null,
-      intake_state:   data.intake_state   || null,
-      persona_summary: data.persona_summary || null,
+      reply:             data.reply             || '',
+      actions:           data.actions           || [],
+      choices:           data.choices           || [],
+      guidance:          data.guidance          || [],
+      alert:             data.alert             || null,
+      intake_state:      data.intake_state      || null,
+      persona_summary:   data.persona_summary   || null,
+      strategic_context: data.strategic_context || null,
     };
   }
 
@@ -469,6 +470,46 @@
       background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.2);
       color: #A0C4D8; font-size: 12px; border-radius: 4px 14px 14px 14px;
     }
+
+    /* ── 戦略・技術哲学コンテキストパネル ── */
+    .dap-strategic-panel {
+      max-width: 80%; margin-top: 6px; margin-left: 34px;
+      border: 1px solid rgba(255,180,0,0.25); border-radius: 8px;
+      overflow: hidden; font-size: 12px;
+    }
+    .dap-strategic-toggle {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 12px; cursor: pointer;
+      background: rgba(255,180,0,0.06); color: rgba(255,200,80,0.9);
+      font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+      user-select: none; transition: background .15s;
+    }
+    .dap-strategic-toggle:hover { background: rgba(255,180,0,0.12); }
+    .dap-strategic-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: rgba(255,180,0,0.2); color: rgba(255,200,80,1);
+      border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 700;
+      margin-right: 2px; letter-spacing: .04em;
+    }
+    .dap-strategic-chevron { margin-left: auto; transition: transform .2s; font-size: 10px; }
+    .dap-strategic-chevron.open { transform: rotate(180deg); }
+    .dap-strategic-body {
+      display: none; padding: 10px 14px;
+      background: rgba(0,0,0,0.3); color: #B8C4D0;
+      line-height: 1.65; border-top: 1px solid rgba(255,180,0,0.15);
+    }
+    .dap-strategic-body.open { display: block; }
+    .dap-strategic-item {
+      padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .dap-strategic-item:last-child { border-bottom: none; }
+    .dap-strategic-axis {
+      display: inline-block; background: rgba(255,180,0,0.15);
+      color: rgba(255,210,100,0.9); border-radius: 3px;
+      padding: 1px 5px; font-size: 10px; margin-right: 4px;
+    }
+    .dap-strategic-title { font-weight: 600; color: #D4B8FF; font-size: 11.5px; }
+    .dap-strategic-snippet { color: #8892A4; font-size: 11px; margin-top: 3px; }
 
     /* ── ローディング ── */
     .dap-msg-loading .dap-msg-bubble { display: flex; align-items: center; gap: 5px; padding: 12px 14px; }
@@ -1604,8 +1645,80 @@
     return wrap;
   }
 
-  function appendBotMessage(reply, actions, choices, guidance, intakeState) {
+  function _renderStrategicPanel(rawText) {
+    if (!rawText) return;
+    const panel = document.createElement('div');
+    panel.className = 'dap-strategic-panel';
+
+    const toggle = document.createElement('div');
+    toggle.className = 'dap-strategic-toggle';
+    const badge = document.createElement('span');
+    badge.className = 'dap-strategic-badge';
+    badge.textContent = '戦略';
+    const label = document.createElement('span');
+    label.textContent = '技術哲学・政策コンテキスト（参考）';
+    const chevron = document.createElement('span');
+    chevron.className = 'dap-strategic-chevron';
+    chevron.textContent = '▼';
+    toggle.appendChild(badge);
+    toggle.appendChild(label);
+    toggle.appendChild(chevron);
+
+    const body = document.createElement('div');
+    body.className = 'dap-strategic-body';
+
+    // Parse each line: "・[軸1・軸2] 『タイトル』（サブ）— スニペット"
+    const header = '【戦略・技術哲学コンテキスト（なぜ？の背景知識）】';
+    const lines = rawText.replace(header, '').trim().split('\n').filter(function (l) { return l.trim(); });
+    lines.forEach(function (line) {
+      const item = document.createElement('div');
+      item.className = 'dap-strategic-item';
+
+      // 軸部分 [軸1・軸2]
+      var axisMatch = line.match(/^\・\[([^\]]+)\]/);
+      var rest = line.replace(/^\・\[[^\]]*\]\s*/, '');
+      if (axisMatch) {
+        axisMatch[1].split('・').forEach(function (ax) {
+          var axEl = document.createElement('span');
+          axEl.className = 'dap-strategic-axis';
+          axEl.textContent = ax;
+          item.appendChild(axEl);
+        });
+      }
+
+      // タイトル部分 『…』
+      var titleMatch = rest.match(/『([^』]+)』/);
+      if (titleMatch) {
+        var titleEl = document.createElement('div');
+        titleEl.className = 'dap-strategic-title';
+        titleEl.textContent = titleMatch[1];
+        item.appendChild(titleEl);
+        rest = rest.replace(/.*』/, '').replace(/^（[^）]*）/, '').replace(/^[\s—\-]+/, '');
+      }
+
+      if (rest.trim()) {
+        var snippetEl = document.createElement('div');
+        snippetEl.className = 'dap-strategic-snippet';
+        snippetEl.textContent = rest.trim().slice(0, 120) + (rest.length > 120 ? '…' : '');
+        item.appendChild(snippetEl);
+      }
+      body.appendChild(item);
+    });
+
+    toggle.addEventListener('click', function () {
+      var isOpen = body.classList.toggle('open');
+      chevron.classList.toggle('open', isOpen);
+    });
+
+    panel.appendChild(toggle);
+    panel.appendChild(body);
+    msgsEl.appendChild(panel);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  function appendBotMessage(reply, actions, choices, guidance, intakeState, strategicContext) {
     if (reply) appendMsg('bot', reply);
+    if (strategicContext) _renderStrategicPanel(strategicContext);
     if (actions && actions.length > 0)  setTimeout(function () { executeActions(actions); }, 300);
     if (choices && choices.length > 0) {
       const choicesEl = document.createElement('div');
@@ -1675,7 +1788,7 @@
     try {
       const data = await sendMessage(text);
       loadingEl.remove();
-      appendBotMessage(data.reply, data.actions, data.choices, data.guidance, data.intake_state);
+      appendBotMessage(data.reply, data.actions, data.choices, data.guidance, data.intake_state, data.strategic_context);
       // バックエンドからのアラートを処理
       if (data.alert && data.alert.message) {
         setTimeout(function () { showAlertBanner(data.alert, []); }, 2000);

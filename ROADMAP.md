@@ -1,5 +1,5 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-07-15 更新（Phase 13 完了: コンテンツDB修正・制裁リスト全件取得強化 — BIS EL 1010件→3415件（eCFR）・UK OFSI 0件→5135件（CSVメタデータ行スキップ修正）・OFAC SDN XML名前空間自動検出・Trade.gov CSL API data.trade.gov移行・plat_hantei_kubanbang/threshold シード投入・control_nodes.json再構築・FAISS 22470→30064件）
+# 2026-07-16 更新（Phase 14-A/B 完了: Layer A 2,192→2,343vec + オントロジー3軸統合 + Layer E（政策・戦略文書 61vec）新設 + DAP哲学オンデマンドモード）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
 > 2026-06-26（2回目）追加: **Phase 5 完了** — ①Layer A FAISS 再ビルド（2,184→2,192vec、jp_fx_2025:3件 EL-7-24/25/26 EUVフォトレジスト/先端AI GPU/HBM反映）②Screeningバッチ結果 CSV エクスポート（クライアントサイド BOM付、タイムスタンプファイル名）③`./start.sh --verify-demos` CI連携（ワンコマンドDEMO全6本検証）④輸出許可申請双方向連携強化（linked_license_id書戻し・license-status PATCH エンドポイント・承認/却下コールバック・Transaction Detail ステータスパネル）⑤ERP Webhook Bearer認証完全適用（pull_review.py 4エンドポイント＋AITM_WEBHOOK_SECRET環境変数）⑥Red Flag 詳細入力UI（「該当」選択時テキストエリア展開・note値送信・判定結果にRF内容/根拠表示）
@@ -31,7 +31,7 @@
 
 | モジュール | ポート | DB | WAL | 安定性 | 備考 |
 |-----------|--------|-----|-----|--------|------|
-| platform-core | 8000 | PostgreSQL | — | ✅ | FAISS 4レイヤー（A/B/C/D）・知識グラフ・規制スケジューラー（業務ロジック分離済） |
+| platform-core | 8000 | PostgreSQL | — | ✅ | FAISS **5レイヤー**（A/B/C/D/E）・知識グラフ（798ノード・3軸統合）・規制スケジューラー（業務ロジック分離済） |
 | ai_validation | 8011 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent・AI run 後キャッチオール自動評価 |
 | ai_classification | 8002 | SQLite+PG | ✅ | ✅ | 品目管理・6種 item_type・輸入品プロファイル・BOM→SC自動同期・BOMグラフ可視化（cytoscape-dagre）・輸入品影響分析・ECCN付番フロー・US EAR再輸出申請トリガー・**サプライヤー→AI取引審査→BOM自動更新**・HS/ECCN申告+cert確認・手動証明書登録・Hyper-Admin mode・BOM US管理品比率（金額加重）・**国別HSサマリーテーブル・EPA/FTA優遇税率**|
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
@@ -53,11 +53,12 @@
 
 | コンポーネント | ファイル | 状態 |
 |-------------|---------|------|
-| 知識グラフ（788ノード） | ontology/seed/control_nodes.json | ✅ 完成 |
-| **輸出管理オントロジー（Phase O-1）** | **data/ontology/*** | **✅ 2026-05-10 新規構築** |
+| **知識グラフ（798ノード）** | **data/unified/control_nodes.json** | **✅ Phase 14-B: +29戦略ノード（ET:8 + KA:14 + CP:7）** |
+| **輸出管理オントロジー v1.1（3軸統合）** | **data/ontology/ontology_graph.json** | **✅ 2026-07-16 新規: emerging_tech/keizai_anpo/geopolitical_sc 統合** |
+| **3軸戦略 seed JSON** | **platform-core/platform_core/ontology/seed/** | **✅ emerging_tech_taxonomy.json / economic_security.json / geopolitical_sc.json** |
 | ECCN 階層 JSON（637 ECCN・カテゴリ/PG/統制理由/CR） | data/ontology/eccn_hierarchy.json | ✅ 完成 |
 | 外為法↔ECCN 対比表（16項目・ECCN逆引き付き） | data/ontology/fefta_eccn_xref.json | ✅ 完成 |
-| IPC-ECCN 双方向（174 IPC prefix / 637 ECCN） | data/ontology/ipc_eccn_bidir.json | ✅ 完成 |
+| IPC-ECCN 双方向（186 IPC prefix / 639 ECCN） | data/ontology/ipc_eccn_bidir.json | ✅ 完成 |
 | HS-ECCN Confidence score（1,469件・exact/high/medium） | data/ontology/hs_eccn_scored.json | ✅ 完成 |
 | 統合オントロジーグラフ API | data/ontology/ontology_graph.json | ✅ 完成 |
 | /api/ontology/ エンドポイント（stats/lookup/expand/fefta/categories） | platform-core/routers/ontology.py | ✅ 完成 |
@@ -76,13 +77,14 @@
 | HanteiAgent | agent/hantei_agent.py | ✅ 完成 |
 | AgentTools（FAISS呼出・キャッチオール詳細） | agent/tools.py | ✅ 完成 |
 | キャッチオールエンジン | ontology/rules/catchall_engine.py | ✅ 完成 |
-| FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ 2,184vec（2026-05-10再ビルド・entity_list除外・eccn_tech 20件追加）|
+| FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ **2,343vec**（Phase 14-A 再ビルド: 2,192→2,343 外為法通達・省令全件収録・2026-07-16）|
 | FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ **10,783vec**（JP 6,144 + US/EP 4,639・639 ECCN タイプ・CPC コード対応・2026-05-12）|
 | FAISS Layer C（HSコード） | services/faiss_e5_service.py | ✅ 5,476vec |
 | FAISS Layer D（学術論文） | services/faiss_e5_service.py | ✅ **5,765vec**（S2: 508 + OpenAlex: 5,257・**25/25 ECCN 全カバー**・2026-05-12）|
+| **FAISS Layer E（政策・戦略文書）** | **services/faiss_e5_service.py** | **✅ 61vec（Phase 14-B 新設: policy_doc:20 + emerging_tech:8 + keizai_anpo:15 + geopolitical_sc:18・2026-07-16）**|
 | asyncio 規制動向スケジューラー | main.py (_regulatory_scheduler) | ✅ 24h周期 |
-| **DAP 多層 RAG（Phase O-2）** | **modules/dap/app/routers/chat.py** | **✅ 2026-05-10 拡張** |
-| _rag_multilayer（Layer A + Ontology + Country Control + Layer B + Layer D 並列） | chat.py | ✅ ECCN/HS/IPC + 仕向国を自動抽出・5レイヤー並列検索 |
+| **DAP 多層 RAG（Phase O-2 + Phase 14-B）** | **modules/dap/app/routers/chat.py** | **✅ 2026-07-16 拡張（8レイヤー）** |
+| _rag_multilayer（Layer A + Ontology + Country Control + Layer B + Layer D + Layer E 並列） | chat.py | ✅ ECCN/HS/IPC + 仕向国を自動抽出・8レイヤー並列検索・Layer E オンデマンド |
 | _rag_country_control（ECCN × 仕向国 → ライセンス要否 RAG注入） | chat.py | ✅ 2026-05-10 新規追加 |
 | 説明チェーン（HS→ECCN→外為法→Layer B/D エビデンス） | /api/ontology/lookup | ✅ system prompt に注入 |
 | **NeuroSymbolic 該非判定エージェント UX 再設計（Phase O-3-1 付帯）** | **chat.py** | **✅ 2026-05-10 完了** |
@@ -978,5 +980,47 @@ Phase 10 で残存した4つの未接続箇所を全て実装・E2E確認済み�
 
 ---
 
-*更新: 2026-06-28（Phase 11: モジュール間リスク伝導・未接続箇所全実装完了）*
+---
+
+### ✅ Phase 12: 全7フロー連動連携・E2E完成（2026-06-28 完了）
+
+| タスク | 内容 | コミット |
+|--------|------|---------|
+| 全7フロー連動確認 | 品目登録→BOM→スクリーニング→AI取引審査→輸出許可→R&D→みなし輸出 全フロー E2E 完成 | `c9bdf91` |
+| E2E 22/22 全テスト合格 | scripts/verify_demos.py 含む全22テストケース PASS | `c9bdf91` |
+| ERP_WEBHOOK_URL 二重定義バグ修正 | ai_validation/modules/export_license の環境変数 Key 衝突解消 | `c9bdf91` |
+| PostgreSQL schema マイグレーション | 累積 Alembic migration 整合確認・スタンプ更新 | `c9bdf91` |
+
+---
+
+### ✅ Phase 14-A: Layer A 強化・FAISS 再ビルド（2026-07-16 完了）
+
+| タスク | 内容 | コミット |
+|--------|------|---------|
+| Layer A 再ビルド | 2,192 → 2,343vec（外為法通達・省令・CISTEC規制リスト完全収録）| `90a1410` |
+| build_layer_a.py 拡張 | 追加データソース対応・embed_text 品質改善 | `90a1410` |
+
+---
+
+### ✅ Phase 14-B: オントロジー3軸統合・Layer E 新設・DAP哲学モード（2026-07-16 完了）
+
+| タスク | 内容 | コミット |
+|--------|------|---------|
+| オントロジー3軸 seed 作成 | emerging_tech_taxonomy.json（8技術ドメイン）/ economic_security.json（経済安保推進法4本柱・14重要物資）/ geopolitical_sc.json（7チョークポイント・5同盟・6カ国技術覇権マップ） | `90a1410` |
+| ontology_graph.json v1.1 再構築 | 新フィールド追加: emerging_tech_domains/keizai_anpo_materials/geopolitical_chokepoints/alliance_ecosystems/tech_power_map/strategic_axes_xref | `90a1410` |
+| control_nodes.json v1.2 再構築 | 769 → 798ノード（+29戦略ノード: ET:8 + KA:14 + CP:7） | `90a1410` |
+| Layer E FAISS 新設 | 61vec（policy_doc:20 + emerging_tech:8 + keizai_anpo:15 + geopolitical_sc:18）/ GET /api/faiss/search/layer-e 追加 | `90a1410` |
+| DAP 哲学オンデマンドモード | _STRATEGIC_TRIGGER_TERMS（30語）検出時のみ Layer E RAG 起動・business-first システムプロンプト | `90a1410` |
+| scripts/build_layer_e.py 新設 | Layer E FAISS ビルドスクリプト（4ソース対応） | `90a1410` |
+| scripts/build_ontology.py 拡張 | build_strategic_axes() 追加・3軸 seed JSON 統合 | `90a1410` |
+
+**技術的負債（Phase 14 残存）**:
+| 問題 | 影響 | 優先度 |
+|------|------|--------|
+| BIS DPL 残 586件未取得 | CSL API offset 上限 1,000 により取得不能。eCFR Part 764 Suppl.1 は標準条件文のみ | 低（受入済み） |
+| EU Consolidated Sanctions 0件 | webgate.ec.europa.eu 403 Forbidden（IP制限）。OpenSanctions 有料プランが唯一の代替 | 低（受入済み） |
+
+---
+
+*更新: 2026-07-16（Phase 14-A/B: Layer A 2,343vec + オントロジー3軸統合 + Layer E 61vec + DAP哲学オンデマンドモード 完了）*
 *担当: Takehiro Sato + Claude Sonnet 4.6*

@@ -4,16 +4,21 @@
   GET  /api/fta/agreements              協定一覧
   GET  /api/fta/rates                   税率検索（hs_code × agreement_code）
   GET  /api/fta/check                   HS コードと仕向地国から適用可能な特恵税率を返す
+  GET  /api/fta/rules-of-origin         原産地規則一覧（協定別 × HS章別）
+  POST /api/fta/determine-origin        原産性判定（製造工程情報を評価）
+  GET  /api/fta/certificates            証明書要件（協定別）
   POST /api/fta/seed                    初期データ投入（管理者用）
   GET  /ui/fta-check                    UI ページ
 """
 
 import pathlib
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +29,281 @@ _TEMPLATES_DIR = pathlib.Path(__file__).parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 router = APIRouter(tags=["fta"])
+
+# ── 原産地規則（Rules of Origin）データ ────────────────────────────
+# 各協定の主要な原産地規則（HS章ベース、代表的規則）
+# rule_type: wholly_obtained | cc | ctsh | cts | rvc | specific
+_RULES_OF_ORIGIN: dict[str, list[dict[str, Any]]] = {
+    "JAEPA": [
+        {"hs_chapter": "01-24", "rule_type": "wholly_obtained",
+         "description": "第1-24類（農水産品）: 一般的に完全取得品（EU域内生産・漁獲）",
+         "rvc_threshold": None, "note": "加工基準（processing rule）が品目別に規定"},
+        {"hs_chapter": "25-49", "rule_type": "ctsh",
+         "description": "第25-49類（化学品・プラスチック・紙）: 関税番号変更（CTSH: 6桁）ルールが基本",
+         "rvc_threshold": None, "note": "一部品目は付加価値基準（RVC 45%）との選択制"},
+        {"hs_chapter": "50-63", "rule_type": "cc",
+         "description": "第50-63類（繊維・衣類）: 二工程ルール（糸→布→製品の加工を要求）",
+         "rvc_threshold": None, "note": "外装縫製による変更のみでは不可"},
+        {"hs_chapter": "64-83", "rule_type": "ctsh",
+         "description": "第64-83類（履物・金属製品）: CTSH（関税番号6桁変更）",
+         "rvc_threshold": None, "note": ""},
+        {"hs_chapter": "84-85", "rule_type": "rvc",
+         "description": "第84-85類（機械・電気機器）: 付加価値基準 RVC ≥ 40%（控除方式）またはCTSH",
+         "rvc_threshold": 40, "note": "最終製品価格に占める原産材料の割合"},
+        {"hs_chapter": "86-92", "rule_type": "ctsh",
+         "description": "第86-92類（輸送機器・精密機器）: CTSH または RVC ≥ 45%",
+         "rvc_threshold": 45, "note": "自動車（87類）は特別規定あり"},
+        {"hs_chapter": "93-99", "rule_type": "ctsh",
+         "description": "第93-99類（武器・芸術品等）: CTSH",
+         "rvc_threshold": None, "note": ""},
+    ],
+    "RCEP": [
+        {"hs_chapter": "01-24", "rule_type": "wholly_obtained",
+         "description": "第1-24類: 完全取得品または実質的変換（品目別規則 PSR）",
+         "rvc_threshold": None, "note": "RCEP PSRは品目別に細かく規定"},
+        {"hs_chapter": "25-83", "rule_type": "rvc",
+         "description": "第25-83類: RVC ≥ 40%（積み上げ方式）またはCTSH",
+         "rvc_threshold": 40, "note": "ASEAN原産材料も域内材料として算入可"},
+        {"hs_chapter": "84-85", "rule_type": "rvc",
+         "description": "第84-85類: RVC ≥ 40% または CTSH",
+         "rvc_threshold": 40, "note": "電気機器は特に注意（部品の原産性確認が重要）"},
+        {"hs_chapter": "86-97", "rule_type": "ctsh",
+         "description": "第86-97類: CTSH（6桁）または RVC ≥ 40%",
+         "rvc_threshold": 40, "note": ""},
+    ],
+    "CPTPP": [
+        {"hs_chapter": "01-24", "rule_type": "wholly_obtained",
+         "description": "第1-24類: 完全取得品またはPSR（品目別規則）",
+         "rvc_threshold": None, "note": "農産品は原則完全取得"},
+        {"hs_chapter": "25-49", "rule_type": "ctsh",
+         "description": "第25-49類: CTSH（関税番号6桁変更）が一般ルール",
+         "rvc_threshold": None, "note": ""},
+        {"hs_chapter": "50-63", "rule_type": "specific",
+         "description": "第50-63類（繊維）: 原則「糸から」ルール（yarns-forward）",
+         "rvc_threshold": None, "note": "TPPの繊維ルールは最も厳格なレベル"},
+        {"hs_chapter": "64-97", "rule_type": "rvc",
+         "description": "第64-97類: RVC ≥ 45%（純費用方式）または CTSH",
+         "rvc_threshold": 45, "note": "自動車（87類）は特別規則：RVC ≥ 45%（段階的引き上げ）"},
+    ],
+    "UKJFTA": [
+        {"hs_chapter": "01-97", "rule_type": "ctsh",
+         "description": "JAEPA と同等の原産地規則を維持",
+         "rvc_threshold": None, "note": "Brexit後、日英間はJAEPA相当水準を適用"},
+    ],
+    "USJTA": [
+        {"hs_chapter": "01-24", "rule_type": "wholly_obtained",
+         "description": "第1-24類（農産品中心）: 完全取得品",
+         "rvc_threshold": None, "note": "日米貿易協定の対象は農産品・工業品の一部"},
+        {"hs_chapter": "25-97", "rule_type": "ctsh",
+         "description": "第25-97類: CTSH または各品目の特別規定",
+         "rvc_threshold": None, "note": "包括的FTAではないため品目カバレッジに注意"},
+    ],
+    "JASINGFTA": [
+        {"hs_chapter": "01-97", "rule_type": "rvc",
+         "description": "一般規則: RVC ≥ 60%（FOB価格基準）",
+         "rvc_threshold": 60, "note": "特定品目はより低い閾値（40-50%）"},
+    ],
+    "JAMEPA": [
+        {"hs_chapter": "01-97", "rule_type": "rvc",
+         "description": "一般規則: RVC ≥ 40%（FOB価格基準）またはCC（4桁変更）",
+         "rvc_threshold": 40, "note": ""},
+    ],
+    "JAINDEPA": [
+        {"hs_chapter": "01-97", "rule_type": "rvc",
+         "description": "一般規則: RVC ≥ 35%（FOB価格基準）またはCTSH",
+         "rvc_threshold": 35, "note": "インドEPAは比較的低い付加価値要件"},
+    ],
+    "JAAUSFTA": [
+        {"hs_chapter": "01-24", "rule_type": "wholly_obtained",
+         "description": "第1-24類: 完全取得品",
+         "rvc_threshold": None, "note": ""},
+        {"hs_chapter": "25-97", "rule_type": "rvc",
+         "description": "第25-97類: RVC ≥ 40% またはCC",
+         "rvc_threshold": 40, "note": ""},
+    ],
+    "JATHAIEPA": [
+        {"hs_chapter": "01-97", "rule_type": "rvc",
+         "description": "一般規則: RVC ≥ 40%（FOB価格基準）またはCC",
+         "rvc_threshold": 40, "note": ""},
+    ],
+    "JAINDEPA2": [
+        {"hs_chapter": "01-97", "rule_type": "rvc",
+         "description": "一般規則: RVC ≥ 35% またはCTSH",
+         "rvc_threshold": 35, "note": ""},
+    ],
+}
+
+# ── 証明書要件データ ────────────────────────────────────────────────
+_CERTIFICATE_REQUIREMENTS: dict[str, dict[str, Any]] = {
+    "JAEPA": {
+        "certificate_name": "原産地申告（Statement on Origin）",
+        "certificate_code": "SOO",
+        "issuing_body": "承認輸出者（自己申告制度）または日本商工会議所",
+        "form_name": "原産地申告文（EUR.1形式に代わる自己申告）",
+        "validity_period_months": 12,
+        "threshold_eur": None,
+        "self_declaration": True,
+        "approved_exporter_required": True,
+        "required_documents": [
+            "原産地申告文（インボイス上に記載またはフォームB）",
+            "原産性を証明する書類（材料費内訳、製造工程記録）",
+            "承認輸出者番号（AEO/承認輸出者登録）",
+        ],
+        "notes": "JAEPA（日EU EPA）では EUR.1 様式廃止。自己申告制度（Statement on Origin）を採用。6,000ユーロ超の場合は承認輸出者のみ申告可。",
+    },
+    "RCEP": {
+        "certificate_name": "原産地証明書（RCEP様式）",
+        "certificate_code": "RCEP-FORM",
+        "issuing_body": "日本商工会議所（認定された発給機関）",
+        "form_name": "RCEP 原産地証明書（Form RCEP）",
+        "validity_period_months": 12,
+        "threshold_eur": None,
+        "self_declaration": True,
+        "approved_exporter_required": False,
+        "required_documents": [
+            "RCEP 原産地証明書（Form RCEP）または認定輸出者による原産地申告",
+            "インボイス（品名・数量・価格）",
+            "包装明細書（パッキングリスト）",
+            "原産性証明書類（材料の原産地証明・RVC計算書）",
+        ],
+        "notes": "2022年1月発効。第三者証明（商工会議所）または自己申告（認定輸出者）が選択可。累積規定（RCEP域内材料をすべて自国産として算入）活用可能。",
+    },
+    "CPTPP": {
+        "certificate_name": "原産地証明書（CPTPP自己申告）",
+        "certificate_code": "CPTPP-SD",
+        "issuing_body": "輸出者・生産者（自己申告制度）",
+        "form_name": "CPTPP 原産地申告（特定の様式なし、任意様式）",
+        "validity_period_months": 12,
+        "threshold_eur": None,
+        "self_declaration": True,
+        "approved_exporter_required": False,
+        "required_documents": [
+            "CPTPP 原産地証明書または原産地申告（インボイス、送り状等に記載）",
+            "原産資格申告（Certification of Origin）",
+            "原産性証明書類（製造記録・材料費内訳）",
+        ],
+        "notes": "CPTPP では特定様式の証明書は不要。輸出者・生産者・輸入者のいずれかが原産地申告（Certification）を作成できる。申告内容は最低限の必要記載事項を満たすこと。",
+    },
+    "UKJFTA": {
+        "certificate_name": "原産地申告（日英EPA）",
+        "certificate_code": "UKJFTA-SOO",
+        "issuing_body": "承認輸出者（自己申告）",
+        "form_name": "JAEPA 相当の原産地申告",
+        "validity_period_months": 12,
+        "threshold_eur": 6000,
+        "self_declaration": True,
+        "approved_exporter_required": True,
+        "required_documents": [
+            "原産地申告文（インボイス・デリバリーノートに記載）",
+            "承認輸出者番号",
+            "原産性証明書類",
+        ],
+        "notes": "日英EPA は JAEPA と同等水準の原産地規則・証明制度。6,000ポンド超は承認輸出者のみ自己申告可。",
+    },
+    "USJTA": {
+        "certificate_name": "原産地証明書（日米貿易協定）",
+        "certificate_code": "USJTA-COO",
+        "issuing_body": "日本商工会議所",
+        "form_name": "一般的な Certificate of Origin（COO）",
+        "validity_period_months": 12,
+        "threshold_eur": None,
+        "self_declaration": False,
+        "approved_exporter_required": False,
+        "required_documents": [
+            "原産地証明書（商工会議所発給）",
+            "インボイス",
+            "材料費内訳書",
+        ],
+        "notes": "日米貿易協定では第三者証明（商工会議所）が標準。自己申告制度は未整備。",
+    },
+    "JASINGFTA": {
+        "certificate_name": "Form JP（日シンガポールEPA）",
+        "certificate_code": "FORM-JP-SG",
+        "issuing_body": "日本商工会議所または自己申告（承認輸出者）",
+        "form_name": "Form JP",
+        "validity_period_months": 12,
+        "threshold_eur": None,
+        "self_declaration": True,
+        "approved_exporter_required": False,
+        "required_documents": [
+            "Form JP（原産地証明書）",
+            "インボイス",
+            "製品の原産性証明書類",
+        ],
+        "notes": "日本初のEPAとして2002年発効。Form JP は日本のEPA証明書の標準様式。",
+    },
+    "JAMEPA": {
+        "certificate_name": "Form JP（日マレーシアEPA）",
+        "certificate_code": "FORM-JP-MY",
+        "issuing_body": "日本商工会議所",
+        "form_name": "Form JP",
+        "validity_period_months": 12,
+        "threshold_eur": None,
+        "self_declaration": False,
+        "approved_exporter_required": False,
+        "required_documents": [
+            "Form JP",
+            "インボイス",
+            "パッキングリスト",
+            "RVC計算書（付加価値基準の場合）",
+        ],
+        "notes": "",
+    },
+    "RCEP": {
+        "certificate_name": "RCEP 原産地証明書",
+        "certificate_code": "FORM-RCEP",
+        "issuing_body": "日本商工会議所または認定輸出者（自己申告）",
+        "form_name": "Form RCEP",
+        "validity_period_months": 12,
+        "threshold_eur": None,
+        "self_declaration": True,
+        "approved_exporter_required": False,
+        "required_documents": [
+            "Form RCEP または原産地申告",
+            "インボイス",
+            "RVC計算書（必要な場合）",
+            "累積規定活用の場合は相手国原産証明",
+        ],
+        "notes": "RCEP では全加盟国向けに単一フォームを使用。",
+    },
+}
+
+# ── 原産性判定ロジック ──────────────────────────────────────────────
+
+class OriginDetermineRequest(BaseModel):
+    hs_code: str
+    agreement_code: str
+    origin_country: str = "JP"
+    rvc_pct: float | None = None          # 付加価値割合（%）
+    is_wholly_obtained: bool = False       # 完全取得品か
+    tariff_shift_satisfied: bool | None = None  # 関税番号変更基準を満たすか
+    manufacturing_description: str | None = None
+
+
+def _get_applicable_rules(agreement_code: str, hs_code: str) -> list[dict[str, Any]]:
+    rules = _RULES_OF_ORIGIN.get(agreement_code, [])
+    if not rules:
+        return []
+    # HS chapter（2桁）でマッチング
+    try:
+        hs_clean = hs_code.replace(".", "").replace(" ", "")
+        chapter = int(hs_clean[:2])
+    except (ValueError, IndexError):
+        return rules
+
+    matched = []
+    for rule in rules:
+        ch_range = rule.get("hs_chapter", "")
+        # "84-85" や "01-24" "01-97" 形式を解析
+        try:
+            parts = ch_range.split("-")
+            lo = int(parts[0])
+            hi = int(parts[1]) if len(parts) > 1 else lo
+            if lo <= chapter <= hi:
+                matched.append(rule)
+        except (ValueError, IndexError):
+            matched.append(rule)
+    return matched if matched else rules
 
 # ── シードデータ ────────────────────────────────────────────────────
 
@@ -480,6 +760,117 @@ async def fta_check(
         "best_rate": _serialize_rate(best_rate) if best_rate else None,
         "summary": " / ".join(summary_parts) if summary_parts else "税率データなし",
     }
+
+
+@router.get("/api/fta/rules-of-origin")
+async def get_rules_of_origin(
+    agreement_code: str | None = Query(None),
+    hs_code: str | None = Query(None),
+):
+    """原産地規則一覧を返す（協定コード・HSコードでフィルタ可）。"""
+    if agreement_code:
+        code = agreement_code.upper()
+        if hs_code:
+            rules = _get_applicable_rules(code, hs_code)
+        else:
+            rules = _RULES_OF_ORIGIN.get(code, [])
+        return {"agreement_code": code, "rules": rules}
+
+    result = {}
+    for code, rules in _RULES_OF_ORIGIN.items():
+        result[code] = rules
+    return result
+
+
+@router.post("/api/fta/determine-origin")
+async def determine_origin(req: OriginDetermineRequest):
+    """製造工程情報をもとに、指定協定での原産資格を判定する。"""
+    agreement_code = req.agreement_code.upper()
+    applicable_rules = _get_applicable_rules(agreement_code, req.hs_code)
+
+    if not applicable_rules:
+        return {
+            "qualified": None,
+            "reason": f"協定 {agreement_code} の原産地規則データが未登録です。",
+            "applicable_rules": [],
+            "certificate": None,
+        }
+
+    rule = applicable_rules[0]
+    rule_type = rule.get("rule_type", "")
+    qualified = False
+    reason_parts = []
+
+    # ① 完全取得品
+    if req.is_wholly_obtained:
+        qualified = True
+        reason_parts.append("✅ 完全取得品として原産資格あり")
+    # ② 付加価値基準
+    elif rule_type == "rvc" and req.rvc_pct is not None:
+        threshold = rule.get("rvc_threshold") or 40
+        if req.rvc_pct >= threshold:
+            qualified = True
+            reason_parts.append(f"✅ 付加価値基準（RVC）適合: {req.rvc_pct:.1f}% ≥ {threshold}%")
+        else:
+            reason_parts.append(f"❌ 付加価値基準（RVC）不適合: {req.rvc_pct:.1f}% < {threshold}%（閾値）")
+    # ③ 関税番号変更基準
+    elif rule_type in ("cc", "ctsh", "cts") and req.tariff_shift_satisfied is not None:
+        if req.tariff_shift_satisfied:
+            qualified = True
+            type_label = {"cc": "CC（4桁変更）", "ctsh": "CTSH（6桁変更）", "cts": "CTS（2桁変更）"}.get(rule_type, rule_type)
+            reason_parts.append(f"✅ 関税番号変更基準（{type_label}）適合")
+        else:
+            reason_parts.append(f"❌ 関税番号変更基準が未確認または不適合")
+    # ④ 複合基準（rvc + tariff_shift）
+    elif rule_type == "rvc":
+        if req.rvc_pct is None and req.tariff_shift_satisfied is None:
+            reason_parts.append("⚠ RVC（%）または関税番号変更の入力が必要です")
+        elif req.tariff_shift_satisfied:
+            qualified = True
+            reason_parts.append("✅ 関税番号変更基準（代替）で原産資格あり")
+        else:
+            reason_parts.append("⚠ 詳細な製造情報を入力してください")
+    else:
+        reason_parts.append(f"ℹ 規則タイプ「{rule_type}」: 上記の製造情報では判定が不確定です")
+
+    # 証明書情報
+    cert_info = _CERTIFICATE_REQUIREMENTS.get(agreement_code)
+
+    return {
+        "qualified": qualified,
+        "hs_code": req.hs_code,
+        "agreement_code": agreement_code,
+        "reason": " / ".join(reason_parts),
+        "applicable_rules": applicable_rules,
+        "certificate": cert_info,
+        "next_steps": (
+            [
+                f"原産地証明書「{cert_info['certificate_name']}」を準備する",
+                f"発給機関: {cert_info['issuing_body']}",
+                f"必要書類: " + "・".join(cert_info.get("required_documents", [])[:3]),
+            ]
+            if cert_info and qualified
+            else (
+                ["製造工程の見直しまたは非原産材料の調達先変更を検討"]
+                if not qualified
+                else ["原産地規則データを確認し、製造情報を入力してください"]
+            )
+        ),
+    }
+
+
+@router.get("/api/fta/certificates")
+async def get_certificate_requirements(
+    agreement_code: str | None = Query(None),
+):
+    """証明書要件を返す（協定コードでフィルタ可）。"""
+    if agreement_code:
+        code = agreement_code.upper()
+        cert = _CERTIFICATE_REQUIREMENTS.get(code)
+        if not cert:
+            raise HTTPException(status_code=404, detail=f"協定 {code} の証明書情報が見つかりません")
+        return {code: cert}
+    return _CERTIFICATE_REQUIREMENTS
 
 
 @router.post("/api/fta/seed", status_code=201)

@@ -3,42 +3,61 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EPA/FTA 特恵税率チェック — AI Trade Management</title>
+<title>EPA/FTA 特恵税率・原産性管理 — AI Trade Management</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; color: #1a1a2e; }
   .topbar { background: #1a1a2e; color: #fff; padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
   .topbar h1 { font-size: 1.1rem; font-weight: 600; }
   .topbar a { color: #90caf9; font-size: 0.85rem; text-decoration: none; }
-  .container { max-width: 960px; margin: 24px auto; padding: 0 20px 40px; }
+  .container { max-width: 1040px; margin: 24px auto; padding: 0 20px 40px; }
+  /* Tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; }
+  .tab { padding: 10px 20px; cursor: pointer; font-size: 0.88rem; font-weight: 600;
+         border-bottom: 2px solid transparent; margin-bottom: -2px; color: #666; transition: color .15s; }
+  .tab.active { border-bottom-color: #1976d2; color: #1976d2; }
+  .tab:hover:not(.active) { color: #1565c0; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  /* Card */
   .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; margin-bottom: 20px; }
-  .card-header { padding: 14px 20px; border-bottom: 1px solid #f0f0f0; }
+  .card-header { padding: 14px 20px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
   .card-header h2 { font-size: 0.95rem; font-weight: 600; }
   .card-body { padding: 20px; }
+  /* Form */
   .field-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
   .field { flex: 1; min-width: 160px; }
   .field label { display: block; font-size: 0.82rem; font-weight: 600; color: #555; margin-bottom: 4px; }
-  .field input, .field select {
+  .field input, .field select, .field textarea {
     width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.88rem;
+    background: #fff; color: #1a1a2e;
   }
-  .field input:focus, .field select:focus { outline: none; border-color: #1976d2; }
-  .btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.88rem; font-weight: 600; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #1976d2; }
+  .field textarea { resize: vertical; min-height: 60px; }
+  .field-checkbox { display: flex; align-items: center; gap: 8px; padding-bottom: 4px; }
+  .field-checkbox input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+  .field-checkbox label { font-size: 0.85rem; color: #333; cursor: pointer; }
+  .btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.88rem; font-weight: 600; transition: background .15s; }
   .btn-primary { background: #1976d2; color: #fff; }
   .btn-primary:hover { background: #1565c0; }
-  .btn-seed { background: #2e7d32; color: #fff; }
+  .btn-success { background: #2e7d32; color: #fff; }
+  .btn-success:hover { background: #1b5e20; }
+  .btn-secondary { background: #546e7a; color: #fff; }
+  .btn-secondary:hover { background: #37474f; }
   .hint { font-size: 0.76rem; color: #888; margin-top: 3px; }
-  /* Result */
-  .result-box { margin-top: 20px; }
+  /* Results */
+  .result-box { margin-top: 16px; }
   .summary-banner {
-    background: #e8f5e9; border-left: 4px solid #2e7d32; border-radius: 6px;
-    padding: 12px 16px; margin-bottom: 16px; font-size: 0.9rem; font-weight: 500; color: #1b5e20;
+    border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;
+    font-size: 0.9rem; font-weight: 500; display: flex; align-items: flex-start; gap: 10px;
   }
-  .summary-banner.no-fta {
-    background: #fff3e0; border-left-color: #e65100; color: #bf360c;
-  }
-  .summary-banner.no-data {
-    background: #f5f5f5; border-left-color: #9e9e9e; color: #555;
-  }
+  .summary-banner .icon { font-size: 1.2rem; flex-shrink: 0; }
+  .summary-banner.success { background: #e8f5e9; border-left: 4px solid #2e7d32; color: #1b5e20; }
+  .summary-banner.warning { background: #fff8e1; border-left: 4px solid #f9a825; color: #6d4c00; }
+  .summary-banner.error { background: #fce4ec; border-left: 4px solid #c62828; color: #7f0000; }
+  .summary-banner.info { background: #e3f2fd; border-left: 4px solid #1565c0; color: #0d3c61; }
+  .summary-banner.no-fta { background: #fff3e0; border-left: 4px solid #e65100; color: #bf360c; }
+  /* Tables */
   table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   th { background: #f5f7fa; padding: 9px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 1px solid #e0e0e0; }
   td { padding: 9px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
@@ -50,11 +69,16 @@
   .badge-C { background: #fce4ec; color: #c62828; }
   .badge-D { background: #fff3e0; color: #e65100; }
   .badge-TRQ { background: #f3e5f5; color: #6a1b9a; }
+  .badge-rvc { background: #e0f2f1; color: #00695c; }
+  .badge-ctsh { background: #e8eaf6; color: #283593; }
+  .badge-cc { background: #fce4ec; color: #880e4f; }
+  .badge-wholly { background: #f3e5f5; color: #4a148c; }
+  .badge-specific { background: #fff8e1; color: #f57f17; }
   .rate-good { color: #2e7d32; font-weight: 700; }
   .rate-ok { color: #1565c0; font-weight: 600; }
   .rate-neutral { color: #555; }
   .best-badge { background: #ffd700; color: #333; padding: 1px 6px; border-radius: 3px; font-size: 0.72rem; font-weight: 700; margin-left: 6px; }
-  /* Agreement list */
+  /* Agreement grid */
   .agr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
   .agr-card { background: #f9f9f9; border-radius: 8px; border: 1px solid #e0e0e0; padding: 12px 14px; font-size: 0.84rem; }
   .agr-card .agr-code { font-weight: 700; color: #1976d2; font-size: 0.9rem; }
@@ -63,65 +87,196 @@
   .agr-card .agr-partners { font-size: 0.75rem; color: #555; margin-top: 4px; line-height: 1.5; }
   .status-active { color: #2e7d32; font-weight: 600; }
   .status-provisional { color: #e65100; }
+  /* Rules of origin */
+  .rule-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; background: #fafafa; }
+  .rule-card .rule-range { font-weight: 700; color: #555; font-size: 0.82rem; }
+  .rule-card .rule-desc { color: #333; font-size: 0.86rem; margin-top: 4px; }
+  .rule-card .rule-note { color: #888; font-size: 0.76rem; margin-top: 4px; }
+  /* Certificate */
+  .cert-card { background: #fff8e1; border: 1px solid #f9a825; border-radius: 8px; padding: 16px 18px; margin-bottom: 14px; }
+  .cert-card h3 { color: #6d4c00; font-size: 0.95rem; margin-bottom: 8px; }
+  .cert-row { display: flex; gap: 6px; margin-bottom: 5px; font-size: 0.84rem; }
+  .cert-row .cert-label { color: #888; min-width: 120px; flex-shrink: 0; }
+  .cert-row .cert-val { color: #333; font-weight: 500; }
+  .docs-list { list-style: none; margin-top: 8px; }
+  .docs-list li { padding: 4px 0; font-size: 0.82rem; color: #333; display: flex; gap: 6px; }
+  .docs-list li::before { content: "📄"; flex-shrink: 0; }
+  /* Steps */
+  .steps { list-style: none; margin-top: 10px; }
+  .steps li { padding: 6px 0; font-size: 0.84rem; color: #333; display: flex; gap: 8px; align-items: flex-start; }
+  .steps li::before { content: "→"; color: #1976d2; font-weight: 700; flex-shrink: 0; }
+  /* Verdict */
+  .verdict { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: 700; margin-bottom: 12px; }
+  .verdict.qualified { background: #e8f5e9; color: #2e7d32; }
+  .verdict.not-qualified { background: #fce4ec; color: #c62828; }
+  .verdict.uncertain { background: #fff8e1; color: #f57f17; }
   /* Loading */
   .loading { text-align: center; color: #888; padding: 24px; }
+  /* Separator */
+  .sep { height: 1px; background: #e0e0e0; margin: 16px 0; }
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <h1>🌐 EPA/FTA 特恵税率チェック</h1>
+  <h1>🌐 EPA/FTA 特恵税率・原産性管理</h1>
   <a href="/ui">← ポータルへ戻る</a>
 </div>
 
 <div class="container">
 
-  <!-- 税率チェック -->
-  <div class="card">
-    <div class="card-header">
-      <h2>特恵税率 照会</h2>
-    </div>
-    <div class="card-body">
-      <div class="field-row">
-        <div class="field">
-          <label>HS コード</label>
-          <input id="hsCode" type="text" placeholder="例: 8542.31" />
-          <div class="hint">6桁・7桁どちらも可。ドット有無は問いません。</div>
-        </div>
-        <div class="field">
-          <label>仕向地国（ISO 2文字）</label>
-          <input id="destCountry" type="text" placeholder="例: CN, DE, US" maxlength="3" />
-        </div>
-        <div class="field" style="max-width:90px;">
-          <label>原産国</label>
-          <input id="originCountry" type="text" placeholder="JP" maxlength="3" value="JP" />
-          <div class="hint">輸出元国コード</div>
-        </div>
-        <div class="field" style="max-width:100px;">
-          <label>適用年</label>
-          <select id="year">
-            <option value="2024" selected>2024</option>
-            <option value="2025">2025</option>
-            <option value="2023">2023</option>
-          </select>
-        </div>
-        <div style="padding-bottom:1px;">
-          <button class="btn btn-primary" onclick="runCheck()">照会</button>
-        </div>
-      </div>
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('tab-rate', this)">📊 特恵税率照会</div>
+    <div class="tab" onclick="showTab('tab-origin', this)">🏭 原産性判定</div>
+    <div class="tab" onclick="showTab('tab-rules', this)">📋 原産地規則</div>
+    <div class="tab" onclick="showTab('tab-certs', this)">📜 証明書要件</div>
+    <div class="tab" onclick="showTab('tab-agreements', this)">🤝 協定一覧</div>
+  </div>
 
-      <div id="checkResult"></div>
+  <!-- ── Tab 1: 特恵税率照会 ── -->
+  <div id="tab-rate" class="tab-panel active">
+    <div class="card">
+      <div class="card-header"><h2>特恵税率 照会</h2></div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field">
+            <label>HS コード</label>
+            <input id="hsCode" type="text" placeholder="例: 8542.31" />
+            <div class="hint">6桁・7桁どちらも可。ドット有無は問いません。</div>
+          </div>
+          <div class="field">
+            <label>仕向地国（ISO 2文字）</label>
+            <input id="destCountry" type="text" placeholder="例: CN, DE, US" maxlength="3" />
+          </div>
+          <div class="field" style="max-width:90px;">
+            <label>原産国</label>
+            <input id="originCountry" type="text" placeholder="JP" maxlength="3" value="JP" />
+          </div>
+          <div class="field" style="max-width:100px;">
+            <label>適用年</label>
+            <select id="year">
+              <option value="2025">2025</option>
+              <option value="2024" selected>2024</option>
+              <option value="2023">2023</option>
+            </select>
+          </div>
+          <div style="padding-bottom:1px;">
+            <button class="btn btn-primary" onclick="runCheck()">照会</button>
+          </div>
+        </div>
+        <div id="checkResult"></div>
+      </div>
     </div>
   </div>
 
-  <!-- 協定一覧 -->
-  <div class="card">
-    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
-      <h2>締結済み EPA/FTA 一覧</h2>
-      <button class="btn btn-seed" style="font-size:.8rem;padding:5px 12px;" onclick="seedData()">初期データ投入</button>
+  <!-- ── Tab 2: 原産性判定 ── -->
+  <div id="tab-origin" class="tab-panel">
+    <div class="card">
+      <div class="card-header"><h2>🏭 原産性判定（原産地規則適合チェック）</h2></div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field">
+            <label>HS コード</label>
+            <input id="orig-hs" type="text" placeholder="例: 8471.30" />
+          </div>
+          <div class="field">
+            <label>対象協定</label>
+            <select id="orig-agreement">
+              <option value="">-- 協定を選択 --</option>
+              <option value="JAEPA">JAEPA（日EU EPA）</option>
+              <option value="RCEP">RCEP</option>
+              <option value="CPTPP">CPTPP</option>
+              <option value="UKJFTA">UKJFTA（日英EPA）</option>
+              <option value="USJTA">USJTA（日米貿易協定）</option>
+              <option value="JASINGFTA">JASINGFTA（日シンガポールEPA）</option>
+              <option value="JAMEPA">JAMEPA（日マレーシアEPA）</option>
+              <option value="JAINDEPA">JAINDEPA（日インドEPA）</option>
+              <option value="JAAUSFTA">JAAUSFTA（日豪EPA）</option>
+              <option value="JATHAIEPA">JATHAIEPA（日タイEPA）</option>
+            </select>
+          </div>
+          <div class="field" style="max-width:90px;">
+            <label>原産国</label>
+            <input id="orig-origin" type="text" value="JP" maxlength="3" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field" style="max-width: 180px;">
+            <label>付加価値割合（RVC）%</label>
+            <input id="orig-rvc" type="number" min="0" max="100" step="0.1" placeholder="例: 45.0" />
+            <div class="hint">FOB価格に占める原産材料割合（%）</div>
+          </div>
+          <div class="field" style="max-width: 200px;">
+            <div class="field-checkbox" style="margin-top: 22px;">
+              <input type="checkbox" id="orig-wholly" onchange="toggleWholly(this)" />
+              <label for="orig-wholly">完全取得品（Wholly Obtained）</label>
+            </div>
+          </div>
+          <div class="field" style="max-width: 220px;">
+            <label>関税番号変更（CC/CTSH）</label>
+            <select id="orig-tariff-shift">
+              <option value="">-- 未確認 --</option>
+              <option value="true">✅ 変更基準を満たす</option>
+              <option value="false">❌ 変更基準を満たさない</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>製造工程の概要（任意）</label>
+            <textarea id="orig-mfg" placeholder="例: 日本で設計・部品調達し、国内工場で組立。輸入部品はHSコード8473（第84類）からHSコード8471（第84類）への変更なし。"></textarea>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="runOriginCheck()">原産性を判定</button>
+        <div id="originResult" class="result-box"></div>
+      </div>
     </div>
-    <div class="card-body">
-      <div id="agreementList" class="loading">読み込み中...</div>
+  </div>
+
+  <!-- ── Tab 3: 原産地規則 ── -->
+  <div id="tab-rules" class="tab-panel">
+    <div class="card">
+      <div class="card-header"><h2>📋 原産地規則（Rules of Origin）一覧</h2></div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field" style="max-width:280px;">
+            <label>協定を選択</label>
+            <select id="rules-agreement" onchange="loadRules()">
+              <option value="JAEPA">JAEPA（日EU EPA）</option>
+              <option value="RCEP">RCEP</option>
+              <option value="CPTPP">CPTPP</option>
+              <option value="UKJFTA">UKJFTA（日英EPA）</option>
+              <option value="USJTA">USJTA（日米貿易協定）</option>
+              <option value="JASINGFTA">JASINGFTA（日シンガポールEPA）</option>
+              <option value="JAMEPA">JAMEPA（日マレーシアEPA）</option>
+            </select>
+          </div>
+        </div>
+        <div id="rulesList" class="loading">協定を選択してください</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 4: 証明書要件 ── -->
+  <div id="tab-certs" class="tab-panel">
+    <div class="card">
+      <div class="card-header"><h2>📜 原産地証明書 要件一覧</h2></div>
+      <div class="card-body">
+        <div id="certsList" class="loading">読み込み中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 5: 協定一覧 ── -->
+  <div id="tab-agreements" class="tab-panel">
+    <div class="card">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>🤝 締結済み EPA/FTA 一覧</h2>
+        <button class="btn btn-success" style="font-size:.8rem;padding:5px 12px;" onclick="seedData()">初期データ投入</button>
+      </div>
+      <div class="card-body">
+        <div id="agreementList" class="loading">読み込み中...</div>
+      </div>
     </div>
   </div>
 
@@ -134,14 +289,39 @@ function esc(s) {
 }
 
 const STAGING_LABEL = { A:'A（即時撤廃）', B:'B（段階削減）', C:'C（除外）', D:'D（特殊）', TRQ:'TRQ（関税割当）' };
+const RULE_TYPE_LABEL = {
+  wholly_obtained: '完全取得品',
+  cc: 'CC（4桁変更）',
+  ctsh: 'CTSH（6桁変更）',
+  cts: 'CTS（2桁変更）',
+  rvc: 'RVC（付加価値）',
+  specific: '特別規定',
+};
 
+function showTab(id, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+  if (id === 'tab-agreements') loadAgreements();
+  if (id === 'tab-certs') loadCerts();
+  if (id === 'tab-rules') loadRules();
+}
+
+function toggleWholly(cb) {
+  const rvc = document.getElementById('orig-rvc');
+  const ts = document.getElementById('orig-tariff-shift');
+  if (cb.checked) { rvc.disabled = true; ts.disabled = true; }
+  else { rvc.disabled = false; ts.disabled = false; }
+}
+
+// ── Tab1: 税率照会 ──
 async function runCheck() {
   const hs = document.getElementById('hsCode').value.trim();
   const dest = document.getElementById('destCountry').value.trim().toUpperCase();
   const origin = (document.getElementById('originCountry').value.trim().toUpperCase()) || 'JP';
   const year = document.getElementById('year').value;
   if (!hs || !dest) { alert('HS コードと仕向地国を入力してください'); return; }
-
   document.getElementById('checkResult').innerHTML = '<p class="loading">照会中...</p>';
   try {
     const r = await fetch(`/api/fta/check?hs_code=${encodeURIComponent(hs)}&destination_country=${encodeURIComponent(dest)}&origin_country=${encodeURIComponent(origin)}&year=${year}`);
@@ -155,20 +335,21 @@ async function runCheck() {
 function renderCheckResult(d) {
   const hasRates = d.rates && d.rates.length > 0;
   const noFta = !d.applicable_agreements || !d.applicable_agreements.length;
-
-  let bannerClass = hasRates ? '' : noFta ? 'no-fta' : 'no-data';
+  const bannerCls = hasRates ? 'success' : noFta ? 'no-fta' : 'info';
+  const icon = hasRates ? '✅' : noFta ? '⚠️' : 'ℹ️';
   let html = `<div class="result-box">
-    <div class="summary-banner ${bannerClass}">
-      🔍 HS: <strong>${esc(d.hs_code)}</strong> ／ 原産国: <strong>${esc(d.origin_country||'JP')}</strong> → 仕向地: <strong>${esc(d.destination_country)}</strong> ／ ${d.year}年<br/>
-      ${esc(d.summary)}
+    <div class="summary-banner ${bannerCls}">
+      <span class="icon">${icon}</span>
+      <div>
+        <strong>HS: ${esc(d.hs_code)}</strong> ／ 原産国: <strong>${esc(d.origin_country||'JP')}</strong> → 仕向地: <strong>${esc(d.destination_country)}</strong> ／ ${d.year}年<br/>
+        ${esc(d.summary)}
+      </div>
     </div>`;
-
   if (d.applicable_agreements && d.applicable_agreements.length) {
     html += `<p style="font-size:.82rem;color:#555;margin-bottom:8px;">適用可能な協定: <strong>${d.applicable_agreements.join(', ')}</strong></p>`;
   }
-
   if (hasRates) {
-    html += `<table>
+    html += `<div style="overflow-x:auto;"><table>
       <thead><tr><th>協定</th><th>MFN 税率</th><th>特恵税率</th><th>削減カテゴリ</th><th>完全撤廃</th><th>備考</th></tr></thead>
       <tbody>`;
     const bestCode = d.best_rate ? d.best_rate.agreement_code : null;
@@ -185,16 +366,173 @@ function renderCheckResult(d) {
         <td style="font-size:.78rem;color:#555;">${esc(rt.notes||'')}</td>
       </tr>`;
     });
-    html += `</tbody></table>`;
+    html += `</tbody></table></div>`;
   } else if (!noFta) {
-    html += `<p style="font-size:.84rem;color:#888;padding:12px 0;">この HS コードの税率データは未登録です。「初期データ投入」後、再度照会してください。</p>`;
+    html += `<p style="font-size:.84rem;color:#888;padding:12px 0;">この HS コードの税率データは未登録です。「協定一覧」タブ → 「初期データ投入」後、再度照会してください。</p>`;
   }
-
   html += `</div>`;
   document.getElementById('checkResult').innerHTML = html;
 }
 
+// ── Tab2: 原産性判定 ──
+async function runOriginCheck() {
+  const hs = document.getElementById('orig-hs').value.trim();
+  const agr = document.getElementById('orig-agreement').value;
+  const origin = document.getElementById('orig-origin').value.trim().toUpperCase() || 'JP';
+  if (!hs || !agr) { alert('HS コードと対象協定を選択してください'); return; }
+
+  const rvcVal = document.getElementById('orig-rvc').value;
+  const tsVal = document.getElementById('orig-tariff-shift').value;
+  const wholly = document.getElementById('orig-wholly').checked;
+  const mfg = document.getElementById('orig-mfg').value.trim();
+
+  const body = {
+    hs_code: hs,
+    agreement_code: agr,
+    origin_country: origin,
+    rvc_pct: rvcVal ? parseFloat(rvcVal) : null,
+    is_wholly_obtained: wholly,
+    tariff_shift_satisfied: tsVal === '' ? null : tsVal === 'true',
+    manufacturing_description: mfg || null,
+  };
+
+  document.getElementById('originResult').innerHTML = '<p class="loading">判定中...</p>';
+  try {
+    const r = await fetch('/api/fta/determine-origin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    renderOriginResult(d);
+  } catch(e) {
+    document.getElementById('originResult').innerHTML = `<p style="color:red;">エラー: ${esc(e.message)}</p>`;
+  }
+}
+
+function renderOriginResult(d) {
+  const q = d.qualified;
+  const verdictCls = q === true ? 'qualified' : q === false ? 'not-qualified' : 'uncertain';
+  const verdictIcon = q === true ? '✅' : q === false ? '❌' : '⚠️';
+  const verdictText = q === true ? '原産資格あり' : q === false ? '原産資格なし' : '判定不確定';
+
+  let html = `<div>
+    <div class="sep"></div>
+    <div class="verdict ${verdictCls}">${verdictIcon} ${verdictText}</div>
+    <div class="summary-banner ${q === true ? 'success' : q === false ? 'error' : 'warning'}">
+      <span class="icon">${verdictIcon}</span>
+      <div>${esc(d.reason || '')}</div>
+    </div>`;
+
+  if (d.applicable_rules && d.applicable_rules.length) {
+    html += `<h3 style="font-size:.88rem;margin-bottom:8px;color:#555;">適用原産地規則:</h3>`;
+    d.applicable_rules.forEach(r => {
+      const rtBadge = `badge-${r.rule_type||'ctsh'}`;
+      html += `<div class="rule-card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="rule-range">HS第${esc(r.hs_chapter)}類</span>
+          <span class="badge ${rtBadge}">${esc(RULE_TYPE_LABEL[r.rule_type]||r.rule_type)}</span>
+          ${r.rvc_threshold ? `<span style="font-size:.75rem;color:#00695c;font-weight:600;">≥${r.rvc_threshold}%</span>` : ''}
+        </div>
+        <div class="rule-desc">${esc(r.description)}</div>
+        ${r.note ? `<div class="rule-note">💡 ${esc(r.note)}</div>` : ''}
+      </div>`;
+    });
+  }
+
+  if (d.next_steps && d.next_steps.length) {
+    html += `<h3 style="font-size:.88rem;margin:12px 0 6px;color:#555;">次のアクション:</h3>
+    <ul class="steps">${d.next_steps.map(s => `<li>${esc(s)}</li>`).join('')}</ul>`;
+  }
+
+  if (d.certificate) {
+    const c = d.certificate;
+    html += `<div class="sep"></div>
+    <div class="cert-card">
+      <h3>📜 ${esc(c.certificate_name)}</h3>
+      <div class="cert-row"><span class="cert-label">証明書コード:</span><span class="cert-val">${esc(c.certificate_code||'—')}</span></div>
+      <div class="cert-row"><span class="cert-label">発給機関:</span><span class="cert-val">${esc(c.issuing_body)}</span></div>
+      <div class="cert-row"><span class="cert-label">自己申告:</span><span class="cert-val">${c.self_declaration ? '✅ 可能' : '❌ 不可'}</span></div>
+      <div class="cert-row"><span class="cert-label">有効期間:</span><span class="cert-val">${c.validity_period_months ? c.validity_period_months+'ヶ月' : '—'}</span></div>
+      ${c.threshold_eur ? `<div class="cert-row"><span class="cert-label">閾値:</span><span class="cert-val">${c.threshold_eur.toLocaleString()} EUR 超は承認輸出者のみ</span></div>` : ''}
+      ${c.required_documents && c.required_documents.length ? `
+      <ul class="docs-list">${c.required_documents.map(doc => `<li>${esc(doc)}</li>`).join('')}</ul>` : ''}
+      ${c.notes ? `<div style="margin-top:8px;font-size:.8rem;color:#6d4c00;">ℹ️ ${esc(c.notes)}</div>` : ''}
+    </div>`;
+  }
+
+  html += `</div>`;
+  document.getElementById('originResult').innerHTML = html;
+}
+
+// ── Tab3: 原産地規則一覧 ──
+async function loadRules() {
+  const agr = document.getElementById('rules-agreement').value;
+  if (!agr) return;
+  document.getElementById('rulesList').innerHTML = '<p class="loading">読み込み中...</p>';
+  try {
+    const r = await fetch(`/api/fta/rules-of-origin?agreement_code=${agr}`);
+    const d = await r.json();
+    const rules = d.rules || [];
+    if (!rules.length) {
+      document.getElementById('rulesList').innerHTML = '<p style="color:#888;">この協定の原産地規則データは未登録です。</p>';
+      return;
+    }
+    let html = `<div style="font-size:.82rem;color:#555;margin-bottom:12px;">協定: <strong>${esc(agr)}</strong> — ${rules.length} 区分</div>`;
+    rules.forEach(r => {
+      const rtBadge = `badge-${r.rule_type||'ctsh'}`;
+      html += `<div class="rule-card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="rule-range">第${esc(r.hs_chapter)}類</span>
+          <span class="badge ${rtBadge}">${esc(RULE_TYPE_LABEL[r.rule_type]||r.rule_type)}</span>
+          ${r.rvc_threshold ? `<span style="font-size:.75rem;color:#00695c;font-weight:600;">RVC ≥ ${r.rvc_threshold}%</span>` : ''}
+        </div>
+        <div class="rule-desc">${esc(r.description)}</div>
+        ${r.note ? `<div class="rule-note">💡 ${esc(r.note)}</div>` : ''}
+      </div>`;
+    });
+    document.getElementById('rulesList').innerHTML = html;
+  } catch(e) {
+    document.getElementById('rulesList').innerHTML = `<p style="color:red;">エラー: ${esc(e.message)}</p>`;
+  }
+}
+
+// ── Tab4: 証明書要件 ──
+async function loadCerts() {
+  document.getElementById('certsList').innerHTML = '<p class="loading">読み込み中...</p>';
+  try {
+    const r = await fetch('/api/fta/certificates');
+    const d = await r.json();
+    const entries = Object.entries(d);
+    if (!entries.length) {
+      document.getElementById('certsList').innerHTML = '<p style="color:#888;">データなし</p>';
+      return;
+    }
+    let html = '';
+    entries.forEach(([code, c]) => {
+      html += `<div class="cert-card" style="margin-bottom:14px;">
+        <h3>🤝 ${esc(code)} — ${esc(c.certificate_name)}</h3>
+        <div class="cert-row"><span class="cert-label">様式名:</span><span class="cert-val">${esc(c.form_name||'—')}</span></div>
+        <div class="cert-row"><span class="cert-label">発給機関:</span><span class="cert-val">${esc(c.issuing_body)}</span></div>
+        <div class="cert-row"><span class="cert-label">自己申告:</span><span class="cert-val">${c.self_declaration ? '✅ 可能' : '❌ 不可'}</span></div>
+        ${c.approved_exporter_required ? '<div class="cert-row"><span class="cert-label">承認輸出者:</span><span class="cert-val">必要</span></div>' : ''}
+        <div class="cert-row"><span class="cert-label">有効期間:</span><span class="cert-val">${c.validity_period_months ? c.validity_period_months+'ヶ月' : '—'}</span></div>
+        ${c.threshold_eur ? `<div class="cert-row"><span class="cert-label">金額閾値:</span><span class="cert-val">${c.threshold_eur.toLocaleString()} EUR 超は承認輸出者のみ自己申告可</span></div>` : ''}
+        ${c.required_documents && c.required_documents.length ? `
+        <div style="margin-top:8px;font-size:.8rem;font-weight:600;color:#6d4c00;">必要書類:</div>
+        <ul class="docs-list">${c.required_documents.map(doc => `<li>${esc(doc)}</li>`).join('')}</ul>` : ''}
+        ${c.notes ? `<div style="margin-top:8px;font-size:.8rem;color:#6d4c00;">ℹ️ ${esc(c.notes)}</div>` : ''}
+      </div>`;
+    });
+    document.getElementById('certsList').innerHTML = html;
+  } catch(e) {
+    document.getElementById('certsList').innerHTML = `<p style="color:red;">エラー: ${esc(e.message)}</p>`;
+  }
+}
+
+// ── Tab5: 協定一覧 ──
 async function loadAgreements() {
+  document.getElementById('agreementList').innerHTML = '<p class="loading">読み込み中...</p>';
   try {
     const r = await fetch('/api/fta/agreements');
     const items = await r.json();
@@ -235,8 +573,6 @@ async function seedData() {
   }
 }
 
-// 初期ロード
-loadAgreements();
 {% endraw %}
 </script>
 </body>
