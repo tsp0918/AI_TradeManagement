@@ -1,5 +1,5 @@
 # 開発ロードマップ — AI_TradeManagement
-# 2026-07-16 更新（Phase 15 完了: EU制裁5,893件・Layer E 101vec・DAP戦略コンテキストUI・fta_origin原産性判定API）
+# 2026-07-19 更新（Phase 16 完了: FAISS/オントロジー/制裁データ全面強化 — EU制裁DB投入・Layer A/E再ビルド・meta品質修正・2025改正ノード追加）
 
 > 本ドキュメントは実装済み機能の現状スナップショットと、今後の開発優先度を整理したものです。
 > 2026-06-26（2回目）追加: **Phase 5 完了** — ①Layer A FAISS 再ビルド（2,184→2,192vec、jp_fx_2025:3件 EL-7-24/25/26 EUVフォトレジスト/先端AI GPU/HBM反映）②Screeningバッチ結果 CSV エクスポート（クライアントサイド BOM付、タイムスタンプファイル名）③`./start.sh --verify-demos` CI連携（ワンコマンドDEMO全6本検証）④輸出許可申請双方向連携強化（linked_license_id書戻し・license-status PATCH エンドポイント・承認/却下コールバック・Transaction Detail ステータスパネル）⑤ERP Webhook Bearer認証完全適用（pull_review.py 4エンドポイント＋AITM_WEBHOOK_SECRET環境変数）⑥Red Flag 詳細入力UI（「該当」選択時テキストエリア展開・note値送信・判定結果にRF内容/根拠表示）
@@ -31,12 +31,12 @@
 
 | モジュール | ポート | DB | WAL | 安定性 | 備考 |
 |-----------|--------|-----|-----|--------|------|
-| platform-core | 8000 | PostgreSQL | — | ✅ | FAISS **5レイヤー**（A/B/C/D/E）・知識グラフ（798ノード・3軸統合）・規制スケジューラー（業務ロジック分離済） |
+| platform-core | 8000 | PostgreSQL | — | ✅ | FAISS **5レイヤー**（A:2,202/B:10,783/C:5,476/D:5,765/E:121）・知識グラフ（**807ノード**・3軸統合）・規制スケジューラー（業務ロジック分離済） |
 | ai_validation | 8011 | SQLite | ✅ | ✅ | キャッチオール Section 4・PDF報告書・HanteiAgent・AI run 後キャッチオール自動評価 |
 | ai_classification | 8002 | SQLite+PG | ✅ | ✅ | 品目管理・6種 item_type・輸入品プロファイル・BOM→SC自動同期・BOMグラフ可視化（cytoscape-dagre）・輸入品影響分析・ECCN付番フロー・US EAR再輸出申請トリガー・**サプライヤー→AI取引審査→BOM自動更新**・HS/ECCN申告+cert確認・手動証明書登録・Hyper-Admin mode・BOM US管理品比率（金額加重）・**国別HSサマリーテーブル・EPA/FTA優遇税率**|
 | rnd_assessment | 8003 | SQLite | ✅ | ✅ | R&D審査・リスクレベル算出・みなし輸出人物一覧 |
 | patent_search | 8004 | SQLite | ✅ | ✅ | BigQuery連携・J-PlatPatフォールバック |
-| screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS/UN/UK OFSI）・与信管理・ERP JSON一括インポート・FAISS 30,064件（BIS EL 3,415件 eCFR全件・UK OFSI 5,135件） |
+| screening | 8005 | PostgreSQL | — | ✅ | 制裁リストスクリーニング（OFAC/BIS/UN/UK OFSI/**EU Consolidated**）・与信管理・FAISS **55,093件**（EU制裁5,893件追加・自動sync 30日周期） |
 | hs_classifier | 8006 | — | — | ✅ | Layer C FAISS（5,476vec）・同期/非同期両対応 |
 | dap | 8010 | SQLite | ✅ | ✅ | 先輩担当者モード・ペルソナ追跡・ガイドバナー・全モジュール埋込済 |
 | export_license | 8012 | PostgreSQL | — | ✅ | EAR BIS-748P / 外為法様式第1 ドラフト生成・申請ライフサイクル（Phase 6B-1） |
@@ -53,7 +53,7 @@
 
 | コンポーネント | ファイル | 状態 |
 |-------------|---------|------|
-| **知識グラフ（798ノード）** | **data/unified/control_nodes.json** | **✅ Phase 14-B: +29戦略ノード（ET:8 + KA:14 + CP:7）** |
+| **知識グラフ（807ノード）** | **data/unified/control_nodes.json** | **✅ Phase 16: 807ノード(+9) — EL-7-24〜27/33/40・ET:AI-CHIP/量子センサー/量子暗号・ANPO:AI-Semiconductor/Enforcement（v1.3.0）** |
 | **輸出管理オントロジー v1.1（3軸統合）** | **data/ontology/ontology_graph.json** | **✅ 2026-07-16 新規: emerging_tech/keizai_anpo/geopolitical_sc 統合** |
 | **3軸戦略 seed JSON** | **platform-core/platform_core/ontology/seed/** | **✅ emerging_tech_taxonomy.json / economic_security.json / geopolitical_sc.json** |
 | ECCN 階層 JSON（637 ECCN・カテゴリ/PG/統制理由/CR） | data/ontology/eccn_hierarchy.json | ✅ 完成 |
@@ -77,11 +77,11 @@
 | HanteiAgent | agent/hantei_agent.py | ✅ 完成 |
 | AgentTools（FAISS呼出・キャッチオール詳細） | agent/tools.py | ✅ 完成 |
 | キャッチオールエンジン | ontology/rules/catchall_engine.py | ✅ 完成 |
-| FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ **2,343vec**（Phase 14-A 再ビルド: 2,192→2,343 外為法通達・省令全件収録・2026-07-16）|
-| FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ **10,783vec**（JP 6,144 + US/EP 4,639・639 ECCN タイプ・CPC コード対応・2026-05-12）|
-| FAISS Layer C（HSコード） | services/faiss_e5_service.py | ✅ 5,476vec |
-| FAISS Layer D（学術論文） | services/faiss_e5_service.py | ✅ **5,765vec**（S2: 508 + OpenAlex: 5,257・**25/25 ECCN 全カバー**・2026-05-12）|
-| **FAISS Layer E（政策・戦略文書）** | **services/faiss_e5_service.py** | **✅ 101vec（Phase 15-B 拡充: policy_doc:60 + emerging_tech:8 + keizai_anpo:15 + geopolitical_sc:18・2026-07-16）**|
+| FAISS Layer A（外為法/ECCN） | services/faiss_e5_service.py | ✅ **2,202vec**（Phase 16: 削除条文147件除去・jp_fx_2025拡充3→20件・EL-7-27〜43追加・2026-07-19）|
+| FAISS Layer B（特許チャンク） | services/faiss_e5_service.py | ✅ **10,783vec**（meta修正: eccnフィールド10,331件補完・ipc_codes正規化・2026-07-19）|
+| FAISS Layer C（HSコード） | services/faiss_e5_service.py | ✅ 5,476vec（meta修正: categoryタグ5,476件付与・HS章→18カテゴリ・2026-07-19）|
+| FAISS Layer D（学術論文） | services/faiss_e5_service.py | ✅ **5,765vec**（meta修正: eccnフィールド5,765件補完・2026-07-19）|
+| **FAISS Layer E（政策・戦略文書）** | **services/faiss_e5_service.py** | **✅ 121vec（Phase 16: 法執行事例20件追加 POL-061〜080 — Huawei/ZTE/Seagate/OFAC/Red Flag/VSP/みなし輸出等・2026-07-19）**|
 | asyncio 規制動向スケジューラー | main.py (_regulatory_scheduler) | ✅ 24h周期 |
 | **DAP 多層 RAG（Phase O-2 + Phase 14-B）** | **modules/dap/app/routers/chat.py** | **✅ 2026-07-16 拡張（8レイヤー）** |
 | _rag_multilayer（Layer A + Ontology + Country Control + Layer B + Layer D + Layer E 並列） | chat.py | ✅ ECCN/HS/IPC + 仕向国を自動抽出・8レイヤー並列検索・Layer E オンデマンド |

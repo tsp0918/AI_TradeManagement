@@ -475,6 +475,12 @@ def _fetch_eu_consolidated_opensanctions(timeout: int = 90) -> list[dict[str, An
     URL: https://data.opensanctions.org/datasets/latest/eu_fsf/targets.simple.csv
     形式: id, schema, name, aliases, birth_date, countries, addresses, identifiers,
           sanctions, phones, emails, program_ids, dataset, first_seen, last_seen, last_change
+
+    ⚠️ ライセンス注意: OpenSanctions の無料データは CC BY-NC（非商用限定）。
+    商用利用の場合は OpenSanctions 有償サービス（opensanctions.org/commercial）または
+    EU 公式の EEAS API（eeas.europa.eu）への切り替えを検討すること。
+    EU公式XMLは webgate.ec.europa.eu だが IP制限あり → 有料VPN/プロキシ経由で取得可能。
+    代替: EUR-Lex API + EU_FSF_URL への直接アクセス（cloudflared トンネル経由なら可能性あり）。
     """
     import io as _io
     logger.info("Fetching EU FSF from OpenSanctions: %s", EU_FSF_OPENSANCTIONS_URL)

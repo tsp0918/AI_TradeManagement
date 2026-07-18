@@ -51,7 +51,14 @@ _FEFTA_JSON     = _STAGING / "fefta_law_v5.json"
 _ECCN_JSON      = _STAGING / "ccl_eccn_entries_v8.json"
 _USML_JSON      = _STAGING / "usml_itar_entries.json"
 _EU_DU_JSON     = _STAGING / "eu_dual_use_entries.json"
+_EU_DU_EXP_JSON = _STAGING / "eu_dual_use_expanded_entries.json"   # Phase 14-A: EU DU 拡充
 _WA_ML_JSON     = _STAGING / "wassenaar_ml_entries.json"
+_UK_ML_JSON     = _STAGING / "uk_ml_entries.json"                  # Phase 14-A: UK ML
+_DSGL_JSON      = _STAGING / "australia_dsgl_entries.json"         # Phase 14-A: Australia DSGL
+_KEIZAI_ANPO_JSON = _STAGING / "jp_keizai_anpo_entries.json"       # Phase 14-A: 経済安保推進法
+_CHINA_ECL_JSON = _STAGING / "china_ecl_entries.json"              # Phase 14-A: China ECL
+_CISTEC_JSON    = _STAGING / "cistec_guideline_entries.json"        # Phase 14-A: CISTEC
+_JP_FX_2025_JSON = _STAGING / "jp_fx_2025_entries.json"            # Phase 16: 2025年改正追加品目
 _ECCN_TERMS_JSON = _ACADEMIC / "eccn_tech_terms.json"
 _OUT_INDEX      = _STAGING / "layer_a.index"
 _OUT_META       = _STAGING / "layer_a_meta.json"
@@ -60,6 +67,11 @@ _VALIDATION_DB  = _ROOT / "modules" / "ai_validation" / "app.db"
 
 # entity_list は制裁スクリーニング用途であり、品目規制判定には不要なため除外
 _SKIP_SOURCE_TYPES = frozenset({"entity_list"})
+
+# 削除条文・単純参照のみ（法的ノイズ）を除去する最低文字数しきい値
+# "passage: " prefix (9 chars) 込みで 40 文字未満、または "削除" を含む embed_text はスキップ
+_MIN_EMBED_LEN  = 40
+_NOISE_PATTERNS = ("削除", "Deleted", "Reserved")
 
 _MODEL_NAME     = "intfloat/multilingual-e5-large"
 _PASSAGE_PREFIX = "passage: "
@@ -129,6 +141,9 @@ def _load_records() -> list[dict]:
                 continue
             et = _embed_text_fefta(r)
             if not et:
+                continue
+            # 削除条文・単純参照ノイズを除去
+            if len(et) < _MIN_EMBED_LEN or any(p in et for p in _NOISE_PATTERNS):
                 continue
             records.append({
                 "source_type": src_type,
@@ -335,6 +350,228 @@ def _load_records() -> list[dict]:
                 "embed_text":  et,
             })
         logger.info("JP_FX 2025 amendments from DB: %d", len(seen))
+
+    # ── EU Dual-Use 拡充（サブカテゴリレベル詳細版） ───────────────────────
+    if not _EU_DU_EXP_JSON.exists():
+        logger.warning("EU DU expanded JSON not found: %s", _EU_DU_EXP_JSON)
+    else:
+        with open(_EU_DU_EXP_JSON, encoding="utf-8") as f:
+            eu_exp_data = json.load(f)
+        eu_exp_entries = eu_exp_data.get("entries", [])
+        logger.info("EU Dual-Use expanded entries: %d", len(eu_exp_entries))
+        for r in eu_exp_entries:
+            cat   = r.get("eu_category", "")
+            title = r.get("title", "")
+            desc  = r.get("description", "")
+            items = "; ".join(r.get("key_controlled_items", []))
+            full  = f"EU Dual-Use {cat}: {title}. {desc} Key items: {items}"
+            et    = _PASSAGE_PREFIX + full[:1200]
+            records.append({
+                "source_type": "eu_dual_use_expanded",
+                "source_name": "eu_regulation_2021_821_expanded",
+                "article_no":  f"EU-{cat}",
+                "title":       title,
+                "item_no":     f"EU-{cat}",
+                "item_label":  cat,
+                "chunk_level": "subcategory",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
+                "embed_text":  et,
+            })
+
+    # ── UK Military List ──────────────────────────────────────────────────────
+    if not _UK_ML_JSON.exists():
+        logger.warning("UK ML JSON not found: %s", _UK_ML_JSON)
+    else:
+        with open(_UK_ML_JSON, encoding="utf-8") as f:
+            uk_data = json.load(f)
+        uk_entries = uk_data.get("entries", [])
+        logger.info("UK ML entries: %d", len(uk_entries))
+        for r in uk_entries:
+            cat   = r.get("ml_category", "")
+            title = r.get("title", "")
+            desc  = r.get("description", "")
+            items = "; ".join(r.get("key_items", []))
+            full  = f"UK Military List {cat}: {title}. {desc} Key items: {items}"
+            et    = _PASSAGE_PREFIX + full[:1200]
+            records.append({
+                "source_type": "uk_ml",
+                "source_name": "uk_strategic_export_controls_2024",
+                "article_no":  f"UK-{cat}",
+                "title":       title,
+                "item_no":     f"UK-{cat}",
+                "item_label":  cat,
+                "chunk_level": "category",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
+                "embed_text":  et,
+            })
+
+    # ── Australia DSGL ────────────────────────────────────────────────────────
+    if not _DSGL_JSON.exists():
+        logger.warning("Australia DSGL JSON not found: %s", _DSGL_JSON)
+    else:
+        with open(_DSGL_JSON, encoding="utf-8") as f:
+            dsgl_data = json.load(f)
+        dsgl_entries = dsgl_data.get("entries", [])
+        logger.info("Australia DSGL entries: %d", len(dsgl_entries))
+        for r in dsgl_entries:
+            cat    = r.get("dsgl_category", "")
+            regime = r.get("regime", "")
+            title  = r.get("title", "")
+            desc   = r.get("description", "")
+            items  = "; ".join(r.get("key_items", []))
+            full   = f"Australia DSGL {cat} ({regime}): {title}. {desc} Key items: {items}"
+            et     = _PASSAGE_PREFIX + full[:1200]
+            records.append({
+                "source_type": "australia_dsgl",
+                "source_name": "australia_dsgl_2024",
+                "article_no":  f"DSGL-{cat}",
+                "title":       title,
+                "item_no":     f"DSGL-{cat}",
+                "item_label":  cat,
+                "chunk_level": "category",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
+                "embed_text":  et,
+            })
+
+    # ── 経済安全保障推進法 ─────────────────────────────────────────────────────
+    if not _KEIZAI_ANPO_JSON.exists():
+        logger.warning("経済安保推進法 JSON not found: %s", _KEIZAI_ANPO_JSON)
+    else:
+        with open(_KEIZAI_ANPO_JSON, encoding="utf-8") as f:
+            ka_data = json.load(f)
+        ka_entries = ka_data.get("entries", [])
+        logger.info("経済安保推進法 entries: %d", len(ka_entries))
+        for r in ka_entries:
+            anpo_id = r.get("anpo_id", "")
+            pillar  = r.get("pillar", "")
+            cat     = r.get("category", "")
+            title   = r.get("title", "")
+            desc    = r.get("description", "")
+            items   = "; ".join(r.get("key_items", []))
+            full    = (
+                f"経済安全保障推進法 {anpo_id}（{pillar}・{cat}）: {title}. "
+                f"{desc} 主要対象品目・事項: {items}"
+            )
+            et = _PASSAGE_PREFIX + full[:1200]
+            records.append({
+                "source_type": "jp_keizai_anpo",
+                "source_name": "jp_economic_security_act_2022",
+                "article_no":  anpo_id,
+                "title":       title,
+                "item_no":     anpo_id,
+                "item_label":  f"{pillar}/{cat}",
+                "chunk_level": "entry",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
+                "embed_text":  et,
+            })
+
+    # ── 中国輸出管理法（ECL 2020）────────────────────────────────────────────
+    if not _CHINA_ECL_JSON.exists():
+        logger.warning("China ECL JSON not found: %s", _CHINA_ECL_JSON)
+    else:
+        with open(_CHINA_ECL_JSON, encoding="utf-8") as f:
+            ecl_data = json.load(f)
+        ecl_entries = ecl_data.get("entries", [])
+        logger.info("China ECL entries: %d", len(ecl_entries))
+        for r in ecl_entries:
+            ecl_id = r.get("ecl_id", "")
+            cat    = r.get("category", "")
+            title  = r.get("title", "")
+            desc   = r.get("description", "")
+            items  = "; ".join(r.get("key_items", []))
+            full   = (
+                f"中国輸出管理法（ECL 2020）{ecl_id}（{cat}）: {title}. "
+                f"{desc} 対象品目: {items}"
+            )
+            et = _PASSAGE_PREFIX + full[:1200]
+            records.append({
+                "source_type": "china_ecl",
+                "source_name": "china_ecl_2020",
+                "article_no":  ecl_id,
+                "title":       title,
+                "item_no":     ecl_id,
+                "item_label":  cat,
+                "chunk_level": "entry",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
+                "embed_text":  et,
+            })
+
+    # ── CISTEC 安全保障輸出管理ガイドライン ──────────────────────────────────
+    if not _CISTEC_JSON.exists():
+        logger.warning("CISTEC guideline JSON not found: %s", _CISTEC_JSON)
+    else:
+        with open(_CISTEC_JSON, encoding="utf-8") as f:
+            cistec_data = json.load(f)
+        cistec_entries = cistec_data.get("entries", [])
+        logger.info("CISTEC guideline entries: %d", len(cistec_entries))
+        for r in cistec_entries:
+            gc_id  = r.get("gc_id", "")
+            cat    = r.get("category", "")
+            title  = r.get("title", "")
+            desc   = r.get("description", "")
+            items  = "; ".join(r.get("key_items", []))
+            full   = (
+                f"CISTEC安全保障輸出管理 {gc_id}（{cat}）: {title}. "
+                f"{desc} 実務ポイント: {items}"
+            )
+            et = _PASSAGE_PREFIX + full[:1200]
+            records.append({
+                "source_type": "cistec_guideline",
+                "source_name": "cistec_compliance_guideline_2024",
+                "article_no":  gc_id,
+                "title":       title,
+                "item_no":     gc_id,
+                "item_label":  cat,
+                "chunk_level": "entry",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
+                "embed_text":  et,
+            })
+
+    # ── 外為法輸出令別表第一 2025年改正追加品目（JP_FX 2025 JSON） ──────────
+    # validation DBから取込済の EL-7-24〜26 以外の追加品目を独立JSONファイルで管理
+    if not _JP_FX_2025_JSON.exists():
+        logger.warning("JP FX 2025 entries JSON not found: %s", _JP_FX_2025_JSON)
+    else:
+        with open(_JP_FX_2025_JSON, encoding="utf-8") as f:
+            fx25_data = json.load(f)
+        fx25_entries = fx25_data.get("entries", [])
+        logger.info("JP FX 2025 additional entries: %d", len(fx25_entries))
+        # validation DB から取込済の item_no と重複しないようにチェック
+        existing_jp25 = {r["item_no"] for r in records if r.get("source_type") == "jp_fx_2025"}
+        for r in fx25_entries:
+            item_no = r.get("item_no", "")
+            if item_no in existing_jp25:
+                continue
+            full = r.get("full_text") or r.get("requirement_text") or ""
+            et = _PASSAGE_PREFIX + full[:1200]
+            if len(et) < _MIN_EMBED_LEN:
+                continue
+            records.append({
+                "source_type": "jp_fx_2025",
+                "source_name": "jp_fx_amendment_2025",
+                "article_no":  item_no,
+                "title":       r.get("title", ""),
+                "item_no":     item_no,
+                "item_label":  "外為法輸出令別表第一",
+                "chunk_level": r.get("chunk_level", "amendment"),
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   full,
+                "embed_text":  et,
+            })
+            existing_jp25.add(item_no)
 
     logger.info("Total build records: %d", len(records))
     return records

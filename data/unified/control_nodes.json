@@ -1,6 +1,6 @@
 {
-  "schema_version": "1.2.0",
-  "generated_at": "2026-07-15T23:04:26.954886+00:00",
+  "schema_version": "1.3.0",
+  "generated_at": "2026-07-18T23:07:28.572018+00:00",
   "build_manifest": {
     "schema_version": "1.2.0",
     "generated_at": "2026-07-15T23:04:26.954886+00:00",
@@ -25,7 +25,7 @@
       "wassenaar_nodes": 146,
       "hs_nodes": 281,
       "strategic_nodes": 29,
-      "total_nodes": 798,
+      "total_nodes": 807,
       "db_enriched": 143,
       "fefta_xml_enriched": 168,
       "eccn_pdf_enriched": 28,
@@ -34,7 +34,10 @@
       "nodes_with_sem_link": 62,
       "patent_base": 2000,
       "patent_ingested_added": 4,
-      "patent_total": 2004
+      "patent_total": 2004,
+      "jp_fx_2025_nodes": 4,
+      "emerging_tech_nodes": 11,
+      "keizai_anpo_nodes": 16
     }
   },
   "nodes": [
@@ -28063,6 +28066,148 @@
       "source_refs": {
         "seed": "geopolitical_sc.json"
       }
+    },
+    {
+      "id": "EL-7-26",
+      "type": "regulation",
+      "regime": "fefta",
+      "regime_list": "別表第1 2025年改正",
+      "label": "高帯域幅メモリ（HBM）及び先端DRAMスタック（HBM3以降）",
+      "item_no": "EL-7-26",
+      "description": "HBM3以降またはこれに相当する帯域幅を有する高帯域幅メモリスタック。2025年4月外為法輸出令別表第一改正追加品目。AI演算チップに積層搭載される先端メモリ。",
+      "eccn_analogues": [
+        "3A001"
+      ],
+      "effective_date": "2025-04-01"
+    },
+    {
+      "id": "EL-7-27",
+      "type": "regulation",
+      "regime": "fefta",
+      "regime_list": "別表第1 2025年改正",
+      "label": "量子コンピュータ用超伝導制御回路（20mK以下動作、50qubit以上）",
+      "item_no": "EL-7-27",
+      "description": "量子ビット制御用極低温動作型超伝導集積回路。動作温度20mK以下・量子ビット制御チャネル50以上。2025年4月外為法改正追加品目。",
+      "eccn_analogues": [
+        "3A001"
+      ],
+      "effective_date": "2025-04-01"
+    },
+    {
+      "id": "EL-7-33",
+      "type": "regulation",
+      "regime": "fefta",
+      "regime_list": "別表第1 2025年改正",
+      "label": "量子センサー（原子干渉計型慣性センサー）",
+      "item_no": "EL-7-33",
+      "description": "冷却原子を使用した原子干渉計式重力計・加速度計・ジャイロスコープ。感度10⁻⁹g/Hz¹/²以下。GPS非依存型慣性航法・軍事用途への転用可能性あり。2025年4月改正追加。",
+      "eccn_analogues": [
+        "7A001",
+        "7A003"
+      ],
+      "effective_date": "2025-04-01"
+    },
+    {
+      "id": "EL-7-40",
+      "type": "regulation",
+      "regime": "fefta",
+      "regime_list": "別表第1 2025年改正",
+      "label": "量子暗号通信装置（QKD）及び量子メモリ",
+      "item_no": "EL-7-40",
+      "description": "量子鍵配送（QKD）システム。QBER3%以下、鍵生成速度1Mbps以上。軍事・政府通信の傍受不能暗号化に使用可能。2025年4月改正追加。",
+      "eccn_analogues": [
+        "5E002"
+      ],
+      "effective_date": "2025-04-01"
+    },
+    {
+      "id": "ET:ET-QUANTUM-SENSOR",
+      "type": "emerging_tech",
+      "label": "量子センシング",
+      "label_en": "Quantum Sensing & Metrology",
+      "item_no": "ET-QUANTUM-SENSOR",
+      "description": "原子干渉計・NV中心・光格子時計等を使用した量子センシング技術。GPS非依存航法・地下資源探査・重力計測に民需用途があるが、精密誘導兵器・潜水艦航法への転用可能性が高い。外為法EL-7-33対応。",
+      "dual_use_potential": 0.88,
+      "eccn_relevance": [
+        "7A001",
+        "7A003",
+        "7E001"
+      ],
+      "fefta_relevance": [
+        "EL-7-33"
+      ],
+      "related_agreements": [
+        "WA",
+        "MTCR"
+      ]
+    },
+    {
+      "id": "ET:ET-QUANTUM-CRYPTO",
+      "type": "emerging_tech",
+      "label": "量子暗号・量子通信",
+      "label_en": "Quantum Cryptography & QKD",
+      "item_no": "ET-QUANTUM-CRYPTO",
+      "description": "量子鍵配送（QKD）・量子テレポーテーション・量子ネットワーク技術。理論上解読不能な通信を実現。軍事・政府向け極秘通信インフラに転用可能。外為法EL-7-40対応。",
+      "dual_use_potential": 0.85,
+      "eccn_relevance": [
+        "5E002",
+        "5A002"
+      ],
+      "fefta_relevance": [
+        "EL-7-40"
+      ],
+      "related_agreements": [
+        "WA"
+      ]
+    },
+    {
+      "id": "ET:ET-AI-CHIP",
+      "type": "emerging_tech",
+      "label": "AI専用半導体（GPU/NPU/HBM）",
+      "label_en": "AI Accelerator Chips",
+      "item_no": "ET-AI-CHIP",
+      "description": "大規模AI訓練・推論に使用するGPU・NPU・TPUおよびHBM（高帯域幅メモリ）。米国EAR 3A090規制対象。フロンティアAIモデルの訓練に不可欠。外為法EL-7-25・EL-7-26対応。",
+      "dual_use_potential": 0.95,
+      "eccn_relevance": [
+        "3A090",
+        "3A001"
+      ],
+      "fefta_relevance": [
+        "EL-7-25",
+        "EL-7-26"
+      ],
+      "related_agreements": [
+        "WA"
+      ],
+      "us_restrictions": "BIS 3A090 export control Oct 2022; advanced computing rule"
+    },
+    {
+      "id": "ANPO:ANPO-AI-SEMICONDUCTOR",
+      "type": "keizai_anpo",
+      "label": "特定重要物資 — AI半導体・量子技術",
+      "item_no": "ANPO-AI-SEMICONDUCTOR",
+      "description": "経済安全保障推進法に基づく特定重要物資。AI演算用半導体・量子コンピュータ部品は2025年改正で追加指定対象。サプライチェーンの特定国依存リスク管理が求められる。",
+      "pillar": "サプライチェーン強靭化",
+      "key_items": [
+        "AI半導体（GPU/NPU）",
+        "量子コンピュータ制御IC",
+        "HBM"
+      ],
+      "legislation": "経済安全保障推進法第7条 特定重要物資指定（2025年改正）"
+    },
+    {
+      "id": "ANPO:ANPO-ENFORCEMENT",
+      "type": "keizai_anpo",
+      "label": "輸出管理法執行 — 経産省・BIS連携",
+      "item_no": "ANPO-ENFORCEMENT",
+      "description": "経産省とBISの輸出管理執行連携。エンティティリスト・キャッチオール規制の適用。法執行事例（ZTE・Huawei・Seagate）を踏まえた実務的コンプライアンス強化。",
+      "pillar": "経済安保コンプライアンス",
+      "key_items": [
+        "エンティティリスト照合",
+        "キャッチオール審査",
+        "VSP（自発的開示）"
+      ],
+      "legislation": "外為法70条（輸出禁止命令）、外為法71条（罰則）"
     }
   ],
   "patent_index": [

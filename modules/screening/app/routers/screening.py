@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import logging
@@ -427,9 +428,10 @@ async def sync_sanctions(
     synced_sources: list[str] = []
 
     # ── 1. データ取得 ─────────────────────────────────────────────────────
+    # asyncio.to_thread で同期 fetch 関数をスレッドプールで実行（EU 等の大量データも安全）
     for src_key in sorted(requested):
         try:
-            entries = ALL_SOURCES[src_key]()
+            entries = await asyncio.to_thread(ALL_SOURCES[src_key])
             all_new.extend(entries)
             result_stats[f"{src_key}_fetched"] = len(entries)
             synced_sources.append(src_key)
