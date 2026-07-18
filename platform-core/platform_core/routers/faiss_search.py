@@ -135,11 +135,11 @@ def search_layer_b_endpoint(
 ) -> LayerBSearchResponse:
     """FAISS Layer B（US 特許チャンク）を検索する。"""
     try:
-        from platform_core.services.faiss_e5_service import search_layer_b, is_ready, preload
+        from platform_core.services.faiss_e5_service import search_layer_b, layer_b_available, preload
     except ImportError as e:
         raise HTTPException(status_code=500, detail=f"FAISS service import error: {e}")
 
-    if not is_ready():
+    if not layer_b_available():
         try:
             preload(layers=frozenset({"b"}))
         except Exception:
@@ -166,6 +166,74 @@ def search_layer_b_endpoint(
             has_fefta_mapping=bool(r.get("has_fefta_mapping", False)),
         ))
     return LayerBSearchResponse(query=q, top_k=top_k, hits=results)
+
+
+class LayerCResult(BaseModel):
+    score: float
+    faiss_id: int
+    hs_code: str
+    hs_version: str
+    description: str
+    chapter: str
+    heading: str
+    subheading: str
+    level: str
+    category: str
+    fefta_items: list[dict[str, Any]]
+    has_fefta_mapping: bool
+
+
+class LayerCSearchResponse(BaseModel):
+    query: str
+    top_k: int
+    hits: list[LayerCResult]
+    error: str | None = None
+
+
+@router.get("/search/layer-c", response_model=LayerCSearchResponse)
+def search_layer_c_endpoint(
+    q: str = Query(..., description="検索クエリ（製品説明・HSコード等）"),
+    top_k: int = Query(5, ge=1, le=20),
+    fefta: str = Query(None, description="FEFTA 項番フィルター (カンマ区切り, 例: 7,10)"),
+) -> LayerCSearchResponse:
+    """FAISS Layer C（HS コード）を検索する。"""
+    try:
+        from platform_core.services.faiss_e5_service import search_layer_c, layer_c_available, preload
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"FAISS service import error: {e}")
+
+    if not layer_c_available():
+        try:
+            preload(layers=frozenset({"c"}))
+        except Exception:
+            pass
+
+    fefta_filter = [f.strip() for f in fefta.split(",") if f.strip()] if fefta else None
+
+    try:
+        hits = search_layer_c(q, top_k=top_k, fefta_filter=fefta_filter)
+    except Exception as e:
+        logger.warning("Layer C search failed: %s", e)
+        return LayerCSearchResponse(query=q, top_k=top_k, hits=[], error=str(e))
+
+    results = []
+    for h in hits:
+        r = h.__dict__ if hasattr(h, "__dict__") else {}
+        results.append(LayerCResult(
+            score=float(r.get("score", 0.0)),
+            faiss_id=int(r.get("faiss_id", 0)),
+            hs_code=str(r.get("hs_code", "")),
+            hs_version=str(r.get("hs_version", "")),
+            description=str(r.get("description", "")),
+            chapter=str(r.get("chapter", "")),
+            heading=str(r.get("heading", "")),
+            subheading=str(r.get("subheading", "")),
+            level=str(r.get("level", "")),
+            category=str(r.get("category", "")),
+            fefta_items=list(r.get("fefta_items", [])),
+            has_fefta_mapping=bool(r.get("has_fefta_mapping", False)),
+        ))
+    return LayerCSearchResponse(query=q, top_k=top_k, hits=results)
 
 
 @router.get("/search/layer-d", response_model=LayerDSearchResponse)

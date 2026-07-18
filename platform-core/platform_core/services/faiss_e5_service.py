@@ -284,6 +284,10 @@ def is_ready() -> bool:
     return _ready
 
 
+def layer_b_available() -> bool:
+    return _layer_b_index is not None and _layer_b_index.ntotal > 0
+
+
 def layer_c_available() -> bool:
     return _layer_c_index is not None and _layer_c_index.ntotal > 0
 

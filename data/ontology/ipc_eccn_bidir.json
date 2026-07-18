@@ -1,9 +1,9 @@
 {
   "_version": "1.0",
-  "_built_at": "2026-05-10T05:13:09+00:00",
+  "_built_at": "2026-07-15T22:59:39+00:00",
   "_note": "IPC-ECCN 双方向マッピング。forward: IPC→ECCN, reverse: ECCN→IPC",
-  "total_ipc_prefixes": 174,
-  "total_eccns": 637,
+  "total_ipc_prefixes": 186,
+  "total_eccns": 639,
   "forward": {
     "G21C": {
       "ipc_prefix": "G21C",
@@ -237,6 +237,71 @@
           "eccn": "6C001",
           "confidence": "medium",
           "rationale": "光学材料"
+        },
+        {
+          "eccn": "0C002",
+          "confidence": "medium",
+          "rationale": ""
+        }
+      ]
+    },
+    "B04B": {
+      "ipc_prefix": "B04B",
+      "eccns": [
+        {
+          "eccn": "0B001",
+          "confidence": "high",
+          "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+        },
+        {
+          "eccn": "2B122",
+          "confidence": "medium",
+          "rationale": "高速遠心分離機の機械的基本構造はB04B（遠心分離機）、軸受はF16C、スリップリングなどの電力伝送デバイスはH01R（電気コネクタ）に対応。"
+        }
+      ]
+    },
+    "G21K": {
+      "ipc_prefix": "G21K",
+      "eccns": [
+        {
+          "eccn": "0B001",
+          "confidence": "high",
+          "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+        },
+        {
+          "eccn": "6A002",
+          "confidence": "high",
+          "rationale": "光学・赤外線センサー・レーザー測距"
+        }
+      ]
+    },
+    "H05H": {
+      "ipc_prefix": "H05H",
+      "eccns": [
+        {
+          "eccn": "0B001",
+          "confidence": "high",
+          "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+        },
+        {
+          "eccn": "1B999",
+          "confidence": "medium",
+          "rationale": "電解槽(C25C)、粒子加速器(H05H)、産業プロセス制御(G05B)、複合材料(C08J)、化学繊維(D01F)に対応する複数の規制品目を包含"
+        },
+        {
+          "eccn": "3A231",
+          "confidence": "medium",
+          "rationale": "中性子発生管は核反応を利用した装置。G21Bは核反応装置、H05Hは高エネルギー粒子加速に関連し、静電加速による核融合反応に対応。"
+        },
+        {
+          "eccn": "3A999",
+          "confidence": "medium",
+          "rationale": "周波数変換器(H05H)、質量分析計(G01N)、X線装置(H01J)、パルス増幅器・時間遅延(H04L)に対応する多様な電子機器の集合体"
+        },
+        {
+          "eccn": "9B990",
+          "confidence": "medium",
+          "rationale": "振動試験装置は測定・試験機器であり、G01M（試験機器）が最適。G01B（長さ・角度測定）、H05H（プラズマ技術）も関連する可能性がある。"
         }
       ]
     },
@@ -247,6 +312,11 @@
           "eccn": "0C001",
           "confidence": "high",
           "rationale": "核物質（ウラン・プルトニウム化合物）"
+        },
+        {
+          "eccn": "0C002",
+          "confidence": "medium",
+          "rationale": ""
         }
       ]
     },
@@ -4140,6 +4210,91 @@
         }
       ]
     },
+    "H01S": {
+      "ipc_prefix": "H01S",
+      "eccns": [
+        {
+          "eccn": "3A001",
+          "confidence": "high",
+          "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+        },
+        {
+          "eccn": "6A002",
+          "confidence": "high",
+          "rationale": "光学・赤外線センサー・レーザー測距"
+        },
+        {
+          "eccn": "0A504",
+          "confidence": "high",
+          "rationale": "光学照準装置は光学要素（レンズ、プリズム）を含むため G02B、測距・照準機能は G01C、レーザー照準は H01S に該当。"
+        },
+        {
+          "eccn": "3A228",
+          "confidence": "high",
+          "rationale": "冷陰極管（クライトロン、スプリトロン）は電子放出素子であり、H01J（電子管）およびH01S（スイッチング素子）に分類されます。"
+        },
+        {
+          "eccn": "6A004",
+          "confidence": "high",
+          "rationale": "光学鏡・変形可能鏡はG02B（光学要素）、レーザー関連光学機器はH01S（レーザー）、変調器などはG02F（光学機器制御）に該当"
+        },
+        {
+          "eccn": "6A005",
+          "confidence": "high",
+          "rationale": "レーザー及び光学部品の輸出規制に対応。H01Sは半導体レーザー、G02Bは光学素子・光学系を分類する標準的なIPCコード"
+        },
+        {
+          "eccn": "6A205",
+          "confidence": "high",
+          "rationale": "ECCN 6A205は銅蒸気レーザー、アルゴンイオンレーザーなど特定出力のレーザーを規制。H01S（レーザー）とG02B（光学素子）が対応する主要IPC分類。"
+        },
+        {
+          "eccn": "6A995",
+          "confidence": "high",
+          "rationale": "CO2レーザーは光学デバイスであり、IPC H01S（レーザー）が最適。H01S3はガスレーザーを含む。"
+        },
+        {
+          "eccn": "6B995",
+          "confidence": "medium",
+          "rationale": "自由電子レーザー関連の製造・検査装置であり、レーザー技術（H01S）と精密加工・研削工具（B23B、B24B）が該当"
+        },
+        {
+          "eccn": "6C005",
+          "confidence": "high",
+          "rationale": "レーザー結晶材料(チタンドープサファイア)と希土類ドープファイバーの製造・材料に関連。C09Kは光学材料、H01Sはレーザー、C30Bは単結晶成長に対応。"
+        }
+      ]
+    },
+    "G11C": {
+      "ipc_prefix": "G11C",
+      "eccns": [
+        {
+          "eccn": "3A001",
+          "confidence": "high",
+          "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+        }
+      ]
+    },
+    "H01F": {
+      "ipc_prefix": "H01F",
+      "eccns": [
+        {
+          "eccn": "3A001",
+          "confidence": "high",
+          "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+        },
+        {
+          "eccn": "1C003",
+          "confidence": "high",
+          "rationale": "磁性金属材料の特性制御に関する技術。合金設計（C22C）、半導体・素子応用（H01L）、レーダー等防衛用途（G01S）に対応。"
+        },
+        {
+          "eccn": "3A201",
+          "confidence": "high",
+          "rationale": "パルス放電コンデンサと超伝導電磁石が対象。H01Fは電磁石、H01Gはコンデンサに対応する電気機器の基本分類。"
+        }
+      ]
+    },
     "G03F": {
       "ipc_prefix": "G03F",
       "eccns": [
@@ -5789,6 +5944,11 @@
           "rationale": "光学材料"
         },
         {
+          "eccn": "1C003",
+          "confidence": "high",
+          "rationale": "磁性金属材料の特性制御に関する技術。合金設計（C22C）、半導体・素子応用（H01L）、レーダー等防衛用途（G01S）に対応。"
+        },
+        {
           "eccn": "6C005",
           "confidence": "high",
           "rationale": "レーザー結晶材料(チタンドープサファイア)と希土類ドープファイバーの製造・材料に関連。C09Kは光学材料、H01Sはレーザー、C30Bは単結晶成長に対応。"
@@ -6640,6 +6800,36 @@
         }
       ]
     },
+    "H03L": {
+      "ipc_prefix": "H03L",
+      "eccns": [
+        {
+          "eccn": "5A001",
+          "confidence": "high",
+          "rationale": "通信機器（無線・衛星・SDR）"
+        },
+        {
+          "eccn": "7A001",
+          "confidence": "high",
+          "rationale": "加速度計・ジャイロスコープ・慣性航法"
+        }
+      ]
+    },
+    "G08C": {
+      "ipc_prefix": "G08C",
+      "eccns": [
+        {
+          "eccn": "5A001",
+          "confidence": "high",
+          "rationale": "通信機器（無線・衛星・SDR）"
+        },
+        {
+          "eccn": "7D003",
+          "confidence": "high",
+          "rationale": "ナビゲーション性能向上と測位誤差低減に特化したソフトウェア。測定・ナビゲーション(G01C)、レーダー・ソナー(G01S)、デジタル通信(H04L)が該当。"
+        }
+      ]
+    },
     "G09C": {
       "ipc_prefix": "G09C",
       "eccns": [
@@ -7360,6 +7550,26 @@
         }
       ]
     },
+    "H04R": {
+      "ipc_prefix": "H04R",
+      "eccns": [
+        {
+          "eccn": "6A001",
+          "confidence": "high",
+          "rationale": "音響センサー・ソナー（水中探知）"
+        }
+      ]
+    },
+    "G10K": {
+      "ipc_prefix": "G10K",
+      "eccns": [
+        {
+          "eccn": "6A001",
+          "confidence": "high",
+          "rationale": "音響センサー・ソナー（水中探知）"
+        }
+      ]
+    },
     "G02B": {
       "ipc_prefix": "G02B",
       "eccns": [
@@ -7445,56 +7655,6 @@
         }
       ]
     },
-    "H01S": {
-      "ipc_prefix": "H01S",
-      "eccns": [
-        {
-          "eccn": "6A002",
-          "confidence": "high",
-          "rationale": "光学・赤外線センサー・レーザー測距"
-        },
-        {
-          "eccn": "0A504",
-          "confidence": "high",
-          "rationale": "光学照準装置は光学要素（レンズ、プリズム）を含むため G02B、測距・照準機能は G01C、レーザー照準は H01S に該当。"
-        },
-        {
-          "eccn": "3A228",
-          "confidence": "high",
-          "rationale": "冷陰極管（クライトロン、スプリトロン）は電子放出素子であり、H01J（電子管）およびH01S（スイッチング素子）に分類されます。"
-        },
-        {
-          "eccn": "6A004",
-          "confidence": "high",
-          "rationale": "光学鏡・変形可能鏡はG02B（光学要素）、レーザー関連光学機器はH01S（レーザー）、変調器などはG02F（光学機器制御）に該当"
-        },
-        {
-          "eccn": "6A005",
-          "confidence": "high",
-          "rationale": "レーザー及び光学部品の輸出規制に対応。H01Sは半導体レーザー、G02Bは光学素子・光学系を分類する標準的なIPCコード"
-        },
-        {
-          "eccn": "6A205",
-          "confidence": "high",
-          "rationale": "ECCN 6A205は銅蒸気レーザー、アルゴンイオンレーザーなど特定出力のレーザーを規制。H01S（レーザー）とG02B（光学素子）が対応する主要IPC分類。"
-        },
-        {
-          "eccn": "6A995",
-          "confidence": "high",
-          "rationale": "CO2レーザーは光学デバイスであり、IPC H01S（レーザー）が最適。H01S3はガスレーザーを含む。"
-        },
-        {
-          "eccn": "6B995",
-          "confidence": "medium",
-          "rationale": "自由電子レーザー関連の製造・検査装置であり、レーザー技術（H01S）と精密加工・研削工具（B23B、B24B）が該当"
-        },
-        {
-          "eccn": "6C005",
-          "confidence": "high",
-          "rationale": "レーザー結晶材料(チタンドープサファイア)と希土類ドープファイバーの製造・材料に関連。C09Kは光学材料、H01Sはレーザー、C30Bは単結晶成長に対応。"
-        }
-      ]
-    },
     "G01J": {
       "ipc_prefix": "G01J",
       "eccns": [
@@ -7507,6 +7667,21 @@
           "eccn": "7B102",
           "confidence": "high",
           "rationale": "鏡の特性測定用機器（散乱計、反射率計、プロファイロメーター）は光学測定・分析装置であり、G01J（光学測定）とG01N（材料特性測定）が最適合。"
+        }
+      ]
+    },
+    "G02F": {
+      "ipc_prefix": "G02F",
+      "eccns": [
+        {
+          "eccn": "6A002",
+          "confidence": "high",
+          "rationale": "光学・赤外線センサー・レーザー測距"
+        },
+        {
+          "eccn": "6A004",
+          "confidence": "high",
+          "rationale": "光学鏡・変形可能鏡はG02B（光学要素）、レーザー関連光学機器はH01S（レーザー）、変調器などはG02F（光学機器制御）に該当"
         }
       ]
     },
@@ -7855,6 +8030,16 @@
         }
       ]
     },
+    "G04F": {
+      "ipc_prefix": "G04F",
+      "eccns": [
+        {
+          "eccn": "7A001",
+          "confidence": "high",
+          "rationale": "加速度計・ジャイロスコープ・慣性航法"
+        }
+      ]
+    },
     "F41G": {
       "ipc_prefix": "F41G",
       "eccns": [
@@ -7887,6 +8072,11 @@
           "eccn": "8A001",
           "confidence": "high",
           "rationale": "潜水艇・水中推進・海洋監視システム"
+        },
+        {
+          "eccn": "8A002",
+          "confidence": "medium",
+          "rationale": "船舶システム（推進・操舵）"
         },
         {
           "eccn": "8A620",
@@ -7928,6 +8118,11 @@
     "B63H": {
       "ipc_prefix": "B63H",
       "eccns": [
+        {
+          "eccn": "8A001",
+          "confidence": "high",
+          "rationale": "潜水艇・水中推進・海洋監視システム"
+        },
         {
           "eccn": "8A002",
           "confidence": "medium",
@@ -7972,6 +8167,21 @@
           "eccn": "9A990",
           "confidence": "high",
           "rationale": "ディーゼルエンジンと農業用トラクター関連。F02B内燃機関、F02D燃料供給制御、F16C軸受などが該当"
+        }
+      ]
+    },
+    "B63C": {
+      "ipc_prefix": "B63C",
+      "eccns": [
+        {
+          "eccn": "8A002",
+          "confidence": "medium",
+          "rationale": "船舶システム（推進・操舵）"
+        },
+        {
+          "eccn": "8A609",
+          "confidence": "medium",
+          "rationale": "水上艦艇の船体設計（B63B）、推進装置（B63H）、レーダー・ソナー等の検知システム（G01S）、無線通信システム（H04B）が該当する軍事用途の表面船舶に関連する技術領域。"
         }
       ]
     },
@@ -8625,6 +8835,16 @@
         }
       ]
     },
+    "F03H": {
+      "ipc_prefix": "F03H",
+      "eccns": [
+        {
+          "eccn": "9A004",
+          "confidence": "high",
+          "rationale": "宇宙打上げシステム・ロケットエンジン"
+        }
+      ]
+    },
     "B64C": {
       "ipc_prefix": "B64C",
       "eccns": [
@@ -8822,6 +9042,16 @@
           "eccn": "9E101",
           "confidence": "medium",
           "rationale": "9E101は9A012等の軍事転用可能な製品の開発・生産技術を対象。半導体製造、通信、航空宇宙、防御システム等の広範な技術領域に対応。"
+        }
+      ]
+    },
+    "B64U": {
+      "ipc_prefix": "B64U",
+      "eccns": [
+        {
+          "eccn": "9A012",
+          "confidence": "high",
+          "rationale": "無人機（UAV）・自律飛行システム"
         }
       ]
     },
@@ -9845,6 +10075,26 @@
         }
       ]
     },
+    "G21B": {
+      "ipc_prefix": "G21B",
+      "eccns": [
+        {
+          "eccn": "0E001",
+          "confidence": "high",
+          "rationale": "原子力技術に関する0E001は、原子炉(G21C)、有機金属化合物(C07F)、合金(C22C)など核関連物質・材料の開発・製造技術に該当。"
+        },
+        {
+          "eccn": "1B226",
+          "confidence": "medium",
+          "rationale": "電磁同位体分離器は、イオン源を備えた装置であり、イオンビーム生成に関する技術分野に該当。H01Jは電子放出、イオン、プラズマ装置に関連し、G21Bは核反応装置・同位体分離装置に対応する。"
+        },
+        {
+          "eccn": "3A231",
+          "confidence": "medium",
+          "rationale": "中性子発生管は核反応を利用した装置。G21Bは核反応装置、H05Hは高エネルギー粒子加速に関連し、静電加速による核融合反応に対応。"
+        }
+      ]
+    },
     "A62B": {
       "ipc_prefix": "A62B",
       "eccns": [
@@ -10017,6 +10267,11 @@
           "eccn": "1C991",
           "confidence": "high",
           "rationale": "ワクチン、免疫毒素、医療製品に関する分類。A61K(医薬品)、A61P(医療用途)、C07K(ペプチド・蛋白質)が対応する。"
+        },
+        {
+          "eccn": "1C352",
+          "confidence": "medium",
+          "rationale": ""
         }
       ]
     },
@@ -10175,21 +10430,6 @@
         }
       ]
     },
-    "G21B": {
-      "ipc_prefix": "G21B",
-      "eccns": [
-        {
-          "eccn": "1B226",
-          "confidence": "medium",
-          "rationale": "電磁同位体分離器は、イオン源を備えた装置であり、イオンビーム生成に関する技術分野に該当。H01Jは電子放出、イオン、プラズマ装置に関連し、G21Bは核反応装置・同位体分離装置に対応する。"
-        },
-        {
-          "eccn": "3A231",
-          "confidence": "medium",
-          "rationale": "中性子発生管は核反応を利用した装置。G21Bは核反応装置、H05Hは高エネルギー粒子加速に関連し、静電加速による核融合反応に対応。"
-        }
-      ]
-    },
     "F25J": {
       "ipc_prefix": "F25J",
       "eccns": [
@@ -10247,31 +10487,6 @@
           "eccn": "1B607",
           "confidence": "medium",
           "rationale": "化学兵器破壊施設・試験装置は廃棄物処理技術(B09B)、化学分離(B01D)、爆発物・火薬処理(C06B)に関連"
-        }
-      ]
-    },
-    "H05H": {
-      "ipc_prefix": "H05H",
-      "eccns": [
-        {
-          "eccn": "1B999",
-          "confidence": "medium",
-          "rationale": "電解槽(C25C)、粒子加速器(H05H)、産業プロセス制御(G05B)、複合材料(C08J)、化学繊維(D01F)に対応する複数の規制品目を包含"
-        },
-        {
-          "eccn": "3A231",
-          "confidence": "medium",
-          "rationale": "中性子発生管は核反応を利用した装置。G21Bは核反応装置、H05Hは高エネルギー粒子加速に関連し、静電加速による核融合反応に対応。"
-        },
-        {
-          "eccn": "3A999",
-          "confidence": "medium",
-          "rationale": "周波数変換器(H05H)、質量分析計(G01N)、X線装置(H01J)、パルス増幅器・時間遅延(H04L)に対応する多様な電子機器の集合体"
-        },
-        {
-          "eccn": "9B990",
-          "confidence": "medium",
-          "rationale": "振動試験装置は測定・試験機器であり、G01M（試験機器）が最適。G01B（長さ・角度測定）、H05H（プラズマ技術）も関連する可能性がある。"
         }
       ]
     },
@@ -10437,6 +10652,11 @@
           "eccn": "2D352",
           "confidence": "medium",
           "rationale": "遺伝子配列設計・合成ソフトウェアは、バイオインフォマティクス（G16B）、化学計算（G06F）、生物工学（C12N）に関連する技術"
+        },
+        {
+          "eccn": "1C352",
+          "confidence": "medium",
+          "rationale": ""
         }
       ]
     },
@@ -10462,6 +10682,11 @@
           "eccn": "1C991",
           "confidence": "high",
           "rationale": "ワクチン、免疫毒素、医療製品に関する分類。A61K(医薬品)、A61P(医療用途)、C07K(ペプチド・蛋白質)が対応する。"
+        },
+        {
+          "eccn": "1C352",
+          "confidence": "medium",
+          "rationale": ""
         }
       ]
     },
@@ -10805,16 +11030,6 @@
         }
       ]
     },
-    "B04B": {
-      "ipc_prefix": "B04B",
-      "eccns": [
-        {
-          "eccn": "2B122",
-          "confidence": "medium",
-          "rationale": "高速遠心分離機の機械的基本構造はB04B（遠心分離機）、軸受はF16C、スリップリングなどの電力伝送デバイスはH01R（電気コネクタ）に対応。"
-        }
-      ]
-    },
     "H01R": {
       "ipc_prefix": "H01R",
       "eccns": [
@@ -10860,6 +11075,16 @@
         }
       ]
     },
+    "B04C": {
+      "ipc_prefix": "B04C",
+      "eccns": [
+        {
+          "eccn": "2B350",
+          "confidence": "medium",
+          "rationale": "化学製造施設・設備の規制。反応器・反応容器は化学工業用機械であり、有機化合物製造装置に分類される。"
+        }
+      ]
+    },
     "A61B": {
       "ipc_prefix": "A61B",
       "eccns": [
@@ -10892,6 +11117,26 @@
     },
     "B01L": {
       "ipc_prefix": "B01L",
+      "eccns": [
+        {
+          "eccn": "2B352",
+          "confidence": "medium",
+          "rationale": "バイオセーフティ施設・機器は医療機器(A61B)、建築設備(E06B)、実験室機器(B01L)に分類される可能性が高い。"
+        }
+      ]
+    },
+    "C12M": {
+      "ipc_prefix": "C12M",
+      "eccns": [
+        {
+          "eccn": "2B352",
+          "confidence": "medium",
+          "rationale": "バイオセーフティ施設・機器は医療機器(A61B)、建築設備(E06B)、実験室機器(B01L)に分類される可能性が高い。"
+        }
+      ]
+    },
+    "C12P": {
+      "ipc_prefix": "C12P",
       "eccns": [
         {
           "eccn": "2B352",
@@ -11012,16 +11257,6 @@
           "eccn": "9D103",
           "confidence": "high",
           "rationale": "ミサイル設計・シミュレーション用ソフトウェアはコンピュータプログラムであり、G06F（電子デジタルデータ処理）またはG06G（アナログ/デジタルコンピュータ）に分類される。"
-        }
-      ]
-    },
-    "H01F": {
-      "ipc_prefix": "H01F",
-      "eccns": [
-        {
-          "eccn": "3A201",
-          "confidence": "high",
-          "rationale": "パルス放電コンデンサと超伝導電磁石が対象。H01Fは電磁石、H01Gはコンデンサに対応する電気機器の基本分類。"
         }
       ]
     },
@@ -11210,16 +11445,6 @@
         }
       ]
     },
-    "G02F": {
-      "ipc_prefix": "G02F",
-      "eccns": [
-        {
-          "eccn": "6A004",
-          "confidence": "high",
-          "rationale": "光学鏡・変形可能鏡はG02B（光学要素）、レーザー関連光学機器はH01S（レーザー）、変調器などはG02F（光学機器制御）に該当"
-        }
-      ]
-    },
     "H01S3": {
       "ipc_prefix": "H01S3",
       "eccns": [
@@ -11277,16 +11502,6 @@
           "eccn": "9D105",
           "confidence": "high",
           "rationale": "ロケット・ミサイル・無人航空機の制御ソフトウェアであり、宇宙機(B64G)、ナビゲーション(G01S)、自動制御(G05D)に関連する。"
-        }
-      ]
-    },
-    "B63C": {
-      "ipc_prefix": "B63C",
-      "eccns": [
-        {
-          "eccn": "8A609",
-          "confidence": "medium",
-          "rationale": "水上艦艇の船体設計（B63B）、推進装置（B63H）、レーダー・ソナー等の検知システム（G01S）、無線通信システム（H04B）が該当する軍事用途の表面船舶に関連する技術領域。"
         }
       ]
     },
@@ -11357,6 +11572,21 @@
       },
       {
         "ipc_prefix": "G21F",
+        "confidence": "high",
+        "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+      },
+      {
+        "ipc_prefix": "B04B",
+        "confidence": "high",
+        "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+      },
+      {
+        "ipc_prefix": "G21K",
+        "confidence": "high",
+        "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
+      },
+      {
+        "ipc_prefix": "H05H",
         "confidence": "high",
         "rationale": "核燃料生産設備（ウラン濃縮・再処理）"
       }
@@ -11510,6 +11740,21 @@
         "ipc_prefix": "H01J",
         "confidence": "high",
         "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+      },
+      {
+        "ipc_prefix": "H01S",
+        "confidence": "high",
+        "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+      },
+      {
+        "ipc_prefix": "G11C",
+        "confidence": "high",
+        "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
+      },
+      {
+        "ipc_prefix": "H01F",
+        "confidence": "high",
+        "rationale": "電子部品（集積回路・真空管・マイクロ波素子）"
       }
     ],
     "3B001": [
@@ -11624,6 +11869,16 @@
         "ipc_prefix": "H04M",
         "confidence": "high",
         "rationale": "通信機器（無線・衛星・SDR）"
+      },
+      {
+        "ipc_prefix": "H03L",
+        "confidence": "high",
+        "rationale": "通信機器（無線・衛星・SDR）"
+      },
+      {
+        "ipc_prefix": "G08C",
+        "confidence": "high",
+        "rationale": "通信機器（無線・衛星・SDR）"
       }
     ],
     "5A002": [
@@ -11687,6 +11942,16 @@
         "ipc_prefix": "B06B",
         "confidence": "high",
         "rationale": "音響センサー・ソナー（水中探知）"
+      },
+      {
+        "ipc_prefix": "H04R",
+        "confidence": "high",
+        "rationale": "音響センサー・ソナー（水中探知）"
+      },
+      {
+        "ipc_prefix": "G10K",
+        "confidence": "high",
+        "rationale": "音響センサー・ソナー（水中探知）"
       }
     ],
     "6A002": [
@@ -11707,6 +11972,16 @@
       },
       {
         "ipc_prefix": "G01J",
+        "confidence": "high",
+        "rationale": "光学・赤外線センサー・レーザー測距"
+      },
+      {
+        "ipc_prefix": "G02F",
+        "confidence": "high",
+        "rationale": "光学・赤外線センサー・レーザー測距"
+      },
+      {
+        "ipc_prefix": "G21K",
         "confidence": "high",
         "rationale": "光学・赤外線センサー・レーザー測距"
       }
@@ -11767,6 +12042,16 @@
         "ipc_prefix": "G01P",
         "confidence": "high",
         "rationale": "加速度計・ジャイロスコープ・慣性航法"
+      },
+      {
+        "ipc_prefix": "G04F",
+        "confidence": "high",
+        "rationale": "加速度計・ジャイロスコープ・慣性航法"
+      },
+      {
+        "ipc_prefix": "H03L",
+        "confidence": "high",
+        "rationale": "加速度計・ジャイロスコープ・慣性航法"
       }
     ],
     "7A003": [
@@ -11813,6 +12098,11 @@
         "ipc_prefix": "B63B",
         "confidence": "high",
         "rationale": "潜水艇・水中推進・海洋監視システム"
+      },
+      {
+        "ipc_prefix": "B63H",
+        "confidence": "high",
+        "rationale": "潜水艇・水中推進・海洋監視システム"
       }
     ],
     "8A002": [
@@ -11830,6 +12120,16 @@
         "ipc_prefix": "B63B",
         "confidence": "medium",
         "rationale": "船舶システム（推進・操舵）"
+      },
+      {
+        "ipc_prefix": "B63G",
+        "confidence": "medium",
+        "rationale": "船舶システム（推進・操舵）"
+      },
+      {
+        "ipc_prefix": "B63C",
+        "confidence": "medium",
+        "rationale": "船舶システム（推進・操舵）"
       }
     ],
     "9A004": [
@@ -11845,6 +12145,11 @@
       },
       {
         "ipc_prefix": "F02C",
+        "confidence": "high",
+        "rationale": "宇宙打上げシステム・ロケットエンジン"
+      },
+      {
+        "ipc_prefix": "F03H",
         "confidence": "high",
         "rationale": "宇宙打上げシステム・ロケットエンジン"
       }
@@ -11879,6 +12184,11 @@
       },
       {
         "ipc_prefix": "F41G",
+        "confidence": "high",
+        "rationale": "無人機（UAV）・自律飛行システム"
+      },
+      {
+        "ipc_prefix": "B64U",
         "confidence": "high",
         "rationale": "無人機（UAV）・自律飛行システム"
       }
@@ -12812,6 +13122,11 @@
       },
       {
         "ipc_prefix": "C22C",
+        "confidence": "high",
+        "rationale": "原子力技術に関する0E001は、原子炉(G21C)、有機金属化合物(C07F)、合金(C22C)など核関連物質・材料の開発・製造技術に該当。"
+      },
+      {
+        "ipc_prefix": "G21B",
         "confidence": "high",
         "rationale": "原子力技術に関する0E001は、原子炉(G21C)、有機金属化合物(C07F)、合金(C22C)など核関連物質・材料の開発・製造技術に該当。"
       }
@@ -13937,6 +14252,16 @@
       },
       {
         "ipc_prefix": "G01S",
+        "confidence": "high",
+        "rationale": "磁性金属材料の特性制御に関する技術。合金設計（C22C）、半導体・素子応用（H01L）、レーダー等防衛用途（G01S）に対応。"
+      },
+      {
+        "ipc_prefix": "C30B",
+        "confidence": "high",
+        "rationale": "磁性金属材料の特性制御に関する技術。合金設計（C22C）、半導体・素子応用（H01L）、レーダー等防衛用途（G01S）に対応。"
+      },
+      {
+        "ipc_prefix": "H01F",
         "confidence": "high",
         "rationale": "磁性金属材料の特性制御に関する技術。合金設計（C22C）、半導体・素子応用（H01L）、レーダー等防衛用途（G01S）に対応。"
       }
@@ -15928,6 +16253,11 @@
         "ipc_prefix": "B01J",
         "confidence": "medium",
         "rationale": "化学製造施設・設備の規制。反応器・反応容器は化学工業用機械であり、有機化合物製造装置に分類される。"
+      },
+      {
+        "ipc_prefix": "B04C",
+        "confidence": "medium",
+        "rationale": "化学製造施設・設備の規制。反応器・反応容器は化学工業用機械であり、有機化合物製造装置に分類される。"
       }
     ],
     "2B351": [
@@ -15955,6 +16285,16 @@
       },
       {
         "ipc_prefix": "B01L",
+        "confidence": "medium",
+        "rationale": "バイオセーフティ施設・機器は医療機器(A61B)、建築設備(E06B)、実験室機器(B01L)に分類される可能性が高い。"
+      },
+      {
+        "ipc_prefix": "C12M",
+        "confidence": "medium",
+        "rationale": "バイオセーフティ施設・機器は医療機器(A61B)、建築設備(E06B)、実験室機器(B01L)に分類される可能性が高い。"
+      },
+      {
+        "ipc_prefix": "C12P",
         "confidence": "medium",
         "rationale": "バイオセーフティ施設・機器は医療機器(A61B)、建築設備(E06B)、実験室機器(B01L)に分類される可能性が高い。"
       }
@@ -20227,6 +20567,11 @@
         "ipc_prefix": "H04L",
         "confidence": "high",
         "rationale": "ナビゲーション性能向上と測位誤差低減に特化したソフトウェア。測定・ナビゲーション(G01C)、レーダー・ソナー(G01S)、デジタル通信(H04L)が該当。"
+      },
+      {
+        "ipc_prefix": "G08C",
+        "confidence": "high",
+        "rationale": "ナビゲーション性能向上と測位誤差低減に特化したソフトウェア。測定・ナビゲーション(G01C)、レーダー・ソナー(G01S)、デジタル通信(H04L)が該当。"
       }
     ],
     "7D004": [
@@ -23059,6 +23404,35 @@
         "ipc_prefix": "F16C",
         "confidence": "high",
         "rationale": "ガスタービンエンジンロータ組立体用ガス軸受とロータブレード先端隙間制御システムは、ガスタービン技術とガス軸受技術に関連。"
+      }
+    ],
+    "0C002": [
+      {
+        "ipc_prefix": "G21G",
+        "confidence": "medium",
+        "rationale": ""
+      },
+      {
+        "ipc_prefix": "C01G",
+        "confidence": "medium",
+        "rationale": ""
+      }
+    ],
+    "1C352": [
+      {
+        "ipc_prefix": "C12N",
+        "confidence": "medium",
+        "rationale": ""
+      },
+      {
+        "ipc_prefix": "C07K",
+        "confidence": "medium",
+        "rationale": ""
+      },
+      {
+        "ipc_prefix": "A61K",
+        "confidence": "medium",
+        "rationale": ""
       }
     ]
   }
