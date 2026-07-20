@@ -29,7 +29,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from platform_core.db.session import get_db
 from platform_core.models.module_registry import ModuleRegistry
 from platform_core.models.regulatory_change import RegulatoryChange
-from platform_core.ontology.db.schema import AgentSessionORM
 
 router = APIRouter(prefix="/ui", tags=["ui"])
 
@@ -456,26 +455,6 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
     except Exception as exc:
         error = "AI取引審査モジュールに接続できません。起動しているか確認してください。"
 
-    # ── NeuroSymbolic エージェントセッション統計 ──
-    agent_stats: dict = {"active": 0, "ready": 0, "judged": 0, "abandoned": 0, "total": 0}
-    try:
-        rows = await db.execute(
-            select(AgentSessionORM.status, func.count(AgentSessionORM.id).label("cnt"))
-            .group_by(AgentSessionORM.status)
-        )
-        for status, cnt in rows.all():
-            agent_stats["total"] += cnt
-            if status == "active":
-                agent_stats["active"] = cnt
-            elif status == "ready_for_judgment":
-                agent_stats["ready"] = cnt
-            elif status == "judged":
-                agent_stats["judged"] = cnt
-            elif status == "abandoned":
-                agent_stats["abandoned"] = cnt
-    except Exception:
-        pass  # テーブル未作成でも画面は返す
-
     # ── 規制動向: 未読アラート (warn/danger) 最大5件 ──
     from sqlalchemy import or_, text as _text
 
@@ -513,7 +492,7 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
     return templates.TemplateResponse(
         request, "dashboard.html",
         {"transactions": transactions, "error": error,
-         "agent_stats": agent_stats, "reg_alerts": reg_alerts,
+         "reg_alerts": reg_alerts,
          "all_orgs": all_orgs, "x_org_id": x_org_id,
          "validation_public_url": validation_public_url},
     )

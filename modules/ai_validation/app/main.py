@@ -165,9 +165,6 @@ async def _ensure_columns() -> None:
                 ("fdpr_judgment_json",    "TEXT"),           # FDPR 判定結果 JSON
                 # 多拠点管理
                 ("org_id",               "VARCHAR(36)"),    # 担当拠点 UUID
-                # エージェント判定
-                ("agent_judgment_status","VARCHAR(32)"),    # controlled / not_controlled / requires_review
-                ("agent_judged_at",      "DATETIME"),       # エージェント判定日時
                 ("formal_submitted_at",  "DATETIME"),       # 正式審査提出日時
                 # サプライチェーン連携
                 ("supply_chain_node_id", "VARCHAR(36)"),    # plat_supply_chain_node UUID

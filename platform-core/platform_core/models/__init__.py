@@ -4,7 +4,6 @@ from platform_core.models.ux_event import UxEvent  # noqa: F401
 from platform_core.ontology.db.schema import (  # noqa: F401
     HanteiKubanbangORM,
     HanteiThresholdORM,
-    AgentSessionORM,
 )
 from platform_core.models.company import Company, CompanyScreeningHistory, CounterpartyCreditHistory
 from platform_core.models.item import Item

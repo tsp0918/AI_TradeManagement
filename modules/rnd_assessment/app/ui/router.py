@@ -870,9 +870,6 @@ def run_screening(
     return RedirectResponse(url=f"/ui/cases/{case_id}/profiles/latest", status_code=303)
 
 
-AI_CLASSIFICATION_BASE = _os.environ.get("MODULE_AI_CLASSIFICATION_URL", "http://localhost:8002")
-
-
 @router.post("/cases/{case_id}/profiles/{profile_id}/promote-to-item")
 def promote_to_item(
     case_id: str,

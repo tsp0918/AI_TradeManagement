@@ -59,10 +59,6 @@ class Transaction(Base, TimestampMixin):
     screening_result_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     screening_status: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
 
-    # 審査連鎖（証跡管理）
-    # エージェント判定結果
-    agent_judgment_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)   # controlled / not_controlled / requires_review
-    agent_judged_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     formal_submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # 正式審査提出日時
 
     # 審査連鎖（証跡管理）

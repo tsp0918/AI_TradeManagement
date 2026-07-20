@@ -333,7 +333,7 @@
 <!-- ── ページヘッダー ── -->
 <div class="page-header">
   <span class="page-title">📊 案件ダッシュボード</span>
-  <span class="page-sub">審査進行中 — 最新 {{ transactions|length }} 件 ／ NeuroSymbolic HanteiAgent 統合</span>
+  <span class="page-sub">審査進行中 — 最新 {{ transactions|length }} 件</span>
 
   <!-- 拠点フィルタートグル -->
   <div class="org-toggle">
@@ -352,8 +352,6 @@
   <button class="refresh-btn" onclick="location.reload()">↻ 更新</button>
 </div>
 
-<!-- ── NeuroSymbolic メトリクスパネル ── -->
-{% set ns = agent_stats or {} %}
 {% set tx_count = transactions|length %}
 {% set tx_screened = transactions|selectattr("screening_result_id")|list|length %}
 {% set tx_ai_done  = transactions|selectattr("has_ai_run")|list|length %}
@@ -367,16 +365,6 @@
     <span class="metric-label">AI判定完了</span>
     <span class="metric-value">{{ tx_ai_done }}</span>
     <span class="metric-sub">報告書出力可能</span>
-  </div>
-  <div class="metric-card accent-amber">
-    <span class="metric-label">HS 対話セッション</span>
-    <span class="metric-value">{{ (ns.get("active", 0) + ns.get("ready", 0)) }}</span>
-    <span class="metric-sub">進行中 {{ ns.get("active", 0) }} ／ 判定待ち {{ ns.get("ready", 0) }}</span>
-  </div>
-  <div class="metric-card accent-slate">
-    <span class="metric-label">HS 判定済セッション</span>
-    <span class="metric-value">{{ ns.get("judged", 0) }}</span>
-    <span class="metric-sub">累計 {{ ns.get("total", 0) }} セッション</span>
   </div>
 </div>
 

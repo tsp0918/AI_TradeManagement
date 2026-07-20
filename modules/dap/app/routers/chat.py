@@ -980,11 +980,6 @@ def _is_demo_trigger(message: str) -> tuple[bool, str]:
 
 
 # ── ヒアリングモード: トリガーキーワード ──────────────────────────────────────
-_ECCN_INTAKE_TRIGGERS = [
-    "ECCN", "該非判定", "該非確認", "規制対象か", "規制対象を確認",
-    "外為法に引っかかる", "輸出規制を確認", "品目判定", "対話で判定",
-    "NeuroSymbolic", "列規制",
-]
 _INTAKE_TRIGGERS = [
     "新規案件", "案件を登録", "輸出案件", "ヒアリング", "相談",
     "案件を作", "登録したい", "輸出したい", "どこから始め",
@@ -1002,8 +997,6 @@ _RND_INTAKE_TRIGGERS = [
 
 def _detect_intake_mode(message: str) -> str | None:
     """メッセージから Intake モードを検出する。None = Intake 不要"""
-    if any(kw in message for kw in _ECCN_INTAKE_TRIGGERS):
-        return "eccn_judgment"
     if any(kw in message for kw in _PRODUCT_INTAKE_TRIGGERS):
         return "product_registration"
     if any(kw in message for kw in _RND_INTAKE_TRIGGERS):
@@ -1039,14 +1032,6 @@ def _init_intake_state(mode: str = "export_transaction") -> dict:
             "end_users":           None,  # 研究者名／機関
             "foreign_researchers": None,  # 外国籍研究者の有無
             "tech_sensitivity":    None,  # public/controlled/restricted
-        }
-    if mode == "eccn_judgment":
-        return {**base,
-            "product_name":        None,  # 品目名/型番
-            "product_description": None,  # 技術仕様・性能数値
-            "declared_usage":      None,  # 用途（工程/装置/最終使用）
-            "destination_country": None,
-            "end_user":            None,
         }
     # export_transaction（既存動作）
     return {**base,
@@ -1159,48 +1144,6 @@ def _build_intake_system_prompt(intake: dict) -> str:
 【ルール】
 - reply: 口語体日本語。150字以内。先輩が後輩に話すような自然なトーン。
 - 必ず1つの核心的な質問か確認で終わる
-- choices は次の回答候補を2〜3件提示"""
-
-    # ────────── ECCN 該非判定モード ────────────────────────────────────
-    if mode == "eccn_judgment":
-        filled = []
-        if intake.get("product_name"):        filled.append(f"品目名/型番: {intake['product_name']}")
-        if intake.get("product_description"): filled.append(f"仕様: {intake['product_description'][:100]}...")
-        if intake.get("declared_usage"):      filled.append(f"用途: {intake['declared_usage'][:100]}...")
-        if intake.get("destination_country"): filled.append(f"仕向国: {intake['destination_country']}")
-        if intake.get("end_user"):            filled.append(f"需要者: {intake['end_user']}")
-        filled_block = "\n".join(f"  ✓ {f}" for f in filled) if filled else "  （まだヒアリング開始前）"
-        return f"""あなたは輸出管理コンプライアンス部門の先輩担当者です。
-後輩が品目の外為法/EAR規制該否（ECCN判定）を確認しようとしています。
-NeuroSymbolicエージェントによる対話形式判定を行う前に、品目の基本情報をヒアリングしてください。
-
-【重要ルール】
-- 業界・用途を先入観で決めつけない。ユーザーが述べた情報だけを使う
-- 半導体・軍事・化学などの特定業界を前提にした質問は絶対にしない
-- 品目名を聞いた後は、その品目に適した追加質問を考える
-
-【収集すべき情報（必須 3項目）】
-1. 品目名または型番（例: 「光学レンズ EX-200」「真空ポンプ VP-50L」「解析ソフトウェア」）
-2. 主な技術仕様・性能（品目の特徴を数値・機能で具体的に）
-3. 申告用途（誰が・どの工程で・何のために使うか）
-
-【任意で確認（判定精度向上）】
-- 仕向国・需要者名（判明している場合）
-
-【完了条件】
-品目名・技術仕様・用途の3項目が揃ったとき。
-完了時は is_intake_complete=true を設定する（action_plan は不要）。
-
-【現在のヒアリング状況】
-収集済み情報:
-{filled_block}
-
-ターン数: {intake.get('turn_count', 0)} / 4（目標完了ターン数）
-
-【ルール】
-- reply: 口語体日本語。120字以内。先輩が後輩に話すような自然なトーン。
-- 品目名が判明したら、その品目に関係する具体的な質問をすること（半導体前提・軍事前提は禁止）
-- 必ず1つの核心的な質問で終わる
 - choices は次の回答候補を2〜3件提示"""
 
     # ────────── 輸出案件モード（既存）──────────────────────────────────
@@ -1760,14 +1703,12 @@ def _build_system_prompt(ctx: dict[str, Any], prompt_supplement: str = "") -> st
 - 輸出案件ヒアリング: 「新規案件」「輸出したい」「ヒアリングして」「相談したい」→ AI取引審査に案件を自動作成
 - 品目登録ヒアリング: 「品目を登録したい」「新しい品目を追加したい」→ 品目管理に品目を自動作成
 - R&D起案ヒアリング: 「R&D起案したい」「研究プロジェクトを登録」「みなし輸出の相談」→ R&D評価システムに案件を自動作成
-- ECCN該非判定: 「該非判定したい」「ECCN確認」「規制対象か確認」→ 品目情報を収集後にNeuroSymbolicエージェントで判定
 ヒアリング開始後は専用AIが引き継ぎ、必要情報をすべて収集するまで対話を続ける。
 
 【ECCN 該非判定について】
 - ユーザーが「該非判定したい」「ECCN確認したい」「規制対象か確認したい」などと言った場合：
-  reply で「まず品目の情報をお聞きします」と案内し、choices に「品目情報を入力する」を含める
-- 該非判定はヒアリングモードが自動起動するので、actions に start_agent は含めない
-- 判定中は専門知識AIが順に質問するので、ユーザーはその都度回答すればよいと説明する
+  AI取引審査(8011)で取引を作成してAI判定を実行する手順を案内する。
+  navigate_to で取引審査画面へ誘導し、案件作成→AI判定実行の流れを説明する。
 
 【ユースケース別ナビゲーションガイド — 業務完結まで伴走する】
 
@@ -1916,16 +1857,14 @@ A: サプライヤーポータルのURL発行機能（UC7 Step1）でサプラ�
 
 【ECCN 該非判定について】
 - ユーザーが「該非判定したい」「ECCN確認したい」「規制対象か確認したい」などと言った場合：
-  reply で「まず品目の情報をお聞きします」と案内し、choices に「品目情報を入力する」を含める
-- 該非判定はヒアリングモードが自動起動するので、actions に start_agent は含めない
-- 判定中は専門知識AIが順に質問するので、ユーザーはその都度回答すればよいと説明する
+  AI取引審査(8011)で取引を作成してAI判定を実行する手順を案内する。
+  navigate_to で取引審査画面へ誘導し、案件作成→AI判定実行の流れを説明する。
 
-【対話ヒアリング機能（Intake）— 4モード】
+【対話ヒアリング機能（Intake）— 3モード】
 ユーザーが以下のような言葉を発したとき、DAPは対話形式でヒアリングを開始し、必要情報を収集してシステムに自動登録する。
 - 輸出案件ヒアリング: 「新規案件」「輸出したい」「ヒアリングして」「相談したい」→ AI取引審査に案件を自動作成
 - 品目登録ヒアリング: 「品目を登録したい」「新しい品目を追加したい」→ 品目管理に品目を自動作成
 - R&D起案ヒアリング: 「R&D起案したい」「研究プロジェクトを登録」「みなし輸出の相談」→ R&D評価システムに案件を自動作成
-- ECCN該非判定: 「該非判定したい」「ECCN確認」「規制対象か確認」→ 品目情報を収集後にNeuroSymbolicエージェントで判定
 ヒアリング開始後は専用AIが引き継ぎ、必要情報をすべて収集するまで対話を続ける。
 
 【ルール】
@@ -1939,42 +1878,6 @@ A: サプライヤーポータルのURL発行機能（UC7 Step1）でサプラ�
 - 規制の概要・判断参考情報は上記インテリジェンス情報をもとに提供可。最終的な法令解釈・規制判断は必ず専門家（法務・コンプライアンス担当者）への確認を案内する""" + (
         f"\n\n【管理者補足情報】\n{prompt_supplement}" if prompt_supplement.strip() else ""
     )
-
-
-# ── エンドポイント ────────────────────────────────────────────────────
-async def _call_agent_answer(agent_session_id: str, message: str) -> dict:
-    """platform-core の agent API に回答を送信し、次の質問または判定完了を返す"""
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(
-            f"{_PLATFORM_URL}/agent/sessions/{agent_session_id}/answer",
-            json={"answer": message},
-        )
-        resp.raise_for_status()
-        return resp.json()
-
-
-async def _call_agent_judge(agent_session_id: str) -> dict:
-    """最終判定を実行する"""
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(
-            f"{_PLATFORM_URL}/agent/sessions/{agent_session_id}/judge",
-        )
-        resp.raise_for_status()
-        return resp.json()
-
-
-async def _start_agent_session(initial_query: str, transaction_id: Optional[int] = None) -> dict:
-    """platform-core にエージェントセッションを開始する"""
-    payload: dict[str, Any] = {"initial_query": initial_query}
-    if transaction_id is not None:
-        payload["transaction_id"] = transaction_id
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(
-            f"{_PLATFORM_URL}/agent/sessions",
-            json=payload,
-        )
-        resp.raise_for_status()
-        return resp.json()
 
 
 # 国名 → ISO 2文字コード 簡易辞書
@@ -1995,194 +1898,6 @@ _COUNTRY_NAME_TO_ISO: dict[str, str] = {
 }
 
 
-async def _extract_attr_value(
-    user_message: str,
-    missing_attr: dict,
-    client: "anthropic.Anthropic",
-) -> str:
-    """
-    ユーザーの自然言語回答から属性値を抽出し、エージェントAPIが受け取れる形式に正規化する。
-    抽出失敗時は "unknown" を返す。
-    """
-    attr_key = missing_attr.get("attr_key", "")
-    label = missing_attr.get("label", "")
-    unit = missing_attr.get("unit", "")
-    example = missing_attr.get("example", "")
-
-    # 国名コード変換（ローカル辞書で先に試みる）
-    if attr_key == "destination_country":
-        msg_lower = user_message.strip().lower()
-        # 2文字大文字コードが直接入力された場合
-        import re as _re
-        iso_match = _re.search(r'\b([A-Z]{2})\b', user_message.upper())
-        for key, iso in _COUNTRY_NAME_TO_ISO.items():
-            if key.lower() in msg_lower:
-                return iso
-        if iso_match:
-            return iso_match.group(1)
-
-    # 数値属性: 単純なパース
-    if unit:
-        import re as _re
-        nums = _re.findall(r'[\d]+\.?[\d]*', user_message.replace(",", ""))
-        if nums:
-            return nums[0]
-
-    # LLM による抽出（Haiku - 低コスト）
-    # 属性ごとの有効値ヒント
-    _valid_hints: dict[str, str] = {
-        "end_use_type": "civilian(民生用), military(軍事用), weapons(武器), dual_use_military(デュアルユース), research(研究), government(政府), unknown(不明)",
-        "end_user_type": "commercial(民間企業), military_org(軍事組織), government(政府機関), research_inst(研究機関), individual(個人), unknown(不明)",
-        "substance_type": "cw_precursor(化学兵器前駆体), bw_agent(生物剤), cw_agent(化学剤), industrial_chemical(産業用化学品), pharmaceutical(医薬品)",
-    }
-    valid_hint = _valid_hints.get(attr_key, "")
-
-    extraction_prompt = f"""以下のユーザー回答から「{label}」の値を抽出してください。
-
-属性キー: {attr_key}
-{f'有効な値: {valid_hint}' if valid_hint else ''}
-{f'単位: {unit}' if unit else ''}
-{f'例: {example}' if example else ''}
-
-ユーザー回答:
-{user_message}
-
-【指示】
-- 上記の有効な値のいずれかに最もよく対応するものを1つだけ返してください
-- 数値の場合は数字のみ（単位なし）を返してください
-- 判断できない場合は "unknown" を返してください
-- 理由や説明は不要です。値のみを返してください"""
-
-    try:
-        resp = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=50,
-            messages=[{"role": "user", "content": extraction_prompt}],
-        )
-        extracted = resp.content[0].text.strip().split("\n")[0].strip()
-        # 空や長すぎる場合はフォールバック
-        if not extracted or len(extracted) > 50:
-            return "unknown"
-        return extracted
-    except Exception:
-        return user_message.strip()  # 抽出失敗時はそのまま渡す
-
-
-def _format_agent_turn(agent_resp: dict, initial_query: str = "") -> tuple[str, list[dict]]:
-    """
-    agent API レスポンスをチャット用 reply + choices に自然な形式で変換する。
-    戻り値: (reply, choices)
-    """
-    if agent_resp.get("is_ready_for_judgment"):
-        reply = (
-            "確認に必要な情報が揃いました。\n\n"
-            "収集した情報をもとに該非判定を実行します。"
-            "「判定を実行」ボタンを押すか、追加で確認したいことがあればお知らせください。"
-        )
-        choices = [
-            {"label": "判定を実行",       "message": "__hantei_execute_judge__"},
-            {"label": "判定前に確認したい", "message": "判定前にもう少し詳しく教えてください"},
-            {"label": "やり直す",          "message": "__hantei_cancel__"},
-        ]
-    else:
-        question = agent_resp.get("question", "")
-        missing_attr = agent_resp.get("missing_attr") or {}
-        label = missing_attr.get("label", "")
-
-        if not question:
-            question = "もう少し詳しく教えていただけますか？"
-
-        reply = question
-
-        # コンテキストに応じた選択肢
-        attr_key = missing_attr.get("attr_key", "")
-        if attr_key == "end_use_type":
-            choices = [
-                {"label": "民生・商業用途",  "message": "民間の商業目的での使用です"},
-                {"label": "研究・開発用途",  "message": "研究開発目的での使用です"},
-                {"label": "用途が不明",      "message": "具体的な用途はまだ決まっていません"},
-                {"label": "やめる",          "message": "__hantei_cancel__"},
-            ]
-        elif attr_key == "end_user_type":
-            choices = [
-                {"label": "民間企業",    "message": "民間企業が最終需要者です"},
-                {"label": "研究機関",    "message": "大学・研究機関が最終需要者です"},
-                {"label": "政府・官公庁", "message": "政府機関が最終需要者です"},
-                {"label": "不明",        "message": "最終需要者はまだ確定していません"},
-                {"label": "やめる",      "message": "__hantei_cancel__"},
-            ]
-        elif attr_key == "destination_country":
-            choices = [
-                {"label": "日本国内",      "message": "日本国内向けです"},
-                {"label": "米国",          "message": "アメリカ合衆国向けです"},
-                {"label": "EU域内",        "message": "EU加盟国向けです"},
-                {"label": "中国",          "message": "中国向けです"},
-                {"label": "仕向地不明",    "message": "仕向地はまだ決まっていません"},
-                {"label": "やめる",        "message": "__hantei_cancel__"},
-            ]
-        else:
-            choices = [
-                {"label": "わからない・確認中", "message": "この点についてはまだ確認できていません"},
-                {"label": "やめる",            "message": "__hantei_cancel__"},
-            ]
-    return reply, choices
-
-
-def _format_judge_result(judge_data: dict) -> tuple[str, list[dict]]:
-    """判定結果を自然言語でフォーマットする。戻り値: (reply, choices)"""
-    status = judge_data.get("overall_status", "pending")
-    summary = judge_data.get("summary", "")
-    controlled = judge_data.get("controlled_items", [])
-    excluded = judge_data.get("excluded_items", [])
-    reasons = judge_data.get("reasons", [])
-
-    # ステータスラベル
-    status_labels = {
-        "CLEAR":          "✅ 規制対象外（該当なし）",
-        "REVIEW":         "⚠️ 要確認（一部項目について追加調査が必要）",
-        "REQUIRES_PERMIT": "🔴 許可申請必要",
-        "CONTROLLED":     "🔴 規制品目に該当",
-        "pending":        "⏳ 判定保留中",
-    }
-    status_label = status_labels.get(status, f"判定結果: {status}")
-
-    lines = [f"**該非判定が完了しました。**", "", f"**総合判定: {status_label}**", ""]
-
-    if controlled:
-        # FEFTA/ECCN IDを読みやすく変換
-        controlled_readable = []
-        for item in controlled:
-            if item.startswith("FEFTA::"):
-                parts = item.split("::")
-                item_no = parts[1] if len(parts) > 1 else item
-                controlled_readable.append(f"外為法 輸出令別表第1 第{item_no}項")
-            elif item.startswith("ECCN::"):
-                eccn = item.replace("ECCN::", "")
-                controlled_readable.append(f"EAR ECCN {eccn}")
-            else:
-                controlled_readable.append(item)
-        lines.append(f"**規制対象項目:** {' / '.join(controlled_readable)}")
-        lines.append("")
-
-    if excluded:
-        lines.append(f"該当なし（除外）: {len(excluded)}件")
-        lines.append("")
-
-    if summary:
-        lines.append(summary)
-        lines.append("")
-
-    if status in ("REQUIRES_PERMIT", "CONTROLLED"):
-        lines.append("輸出許可証の申請または担当部門への確認が必要です。")
-    elif status == "REVIEW":
-        lines.append("一部項目について追加情報の収集または専門家への確認をお勧めします。")
-
-    choices = [
-        {"label": "判定根拠を確認",         "message": "今の判定結果の詳細と根拠を教えてください"},
-        {"label": "許可申請の手続きを確認", "message": "輸出許可申請はどのように進めればよいですか"},
-        {"label": "別の品目を判定する",     "message": "別の品目のECCN判定をしたいです"},
-    ]
-    return "\n".join(lines), choices
 
 
 @router.post("/api/chat", response_model=ChatResponse)
@@ -2216,77 +1931,6 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     if req.session_id:
         session_data["persona"] = persona
 
-    # ── NeuroSymbolic エージェントモード ────────────────────────────────────
-    agent_session_id: Optional[str] = session_data.get("hantei_agent_session_id")
-    if agent_session_id:
-        message = req.message.strip()
-
-        # キャンセル
-        if message == "__hantei_cancel__":
-            session_data["hantei_agent_session_id"] = None
-            session_data.pop("hantei_missing_attr", None)
-            if req.session_id:
-                _save_session(req.session_id, session_data)
-            return ChatResponse(
-                reply="該非判定を終了しました。いつでも再開できます。何か他にお手伝いできることがあればお気軽にどうぞ。",
-                actions=[],
-                choices=[
-                    {"label": "別の品目を判定", "message": "別の品目のECCN判定をしたいです"},
-                    {"label": "通常操作へ戻る",  "message": "次にすることを教えてください"},
-                ],
-            )
-
-        try:
-            if message == "__hantei_execute_judge__":
-                judge_data = await _call_agent_judge(agent_session_id)
-                session_data["hantei_agent_session_id"] = None
-                session_data.pop("hantei_missing_attr", None)
-                if req.session_id:
-                    _save_session(req.session_id, session_data)
-                reply, choices = _format_judge_result(judge_data)
-                return ChatResponse(reply=reply, actions=[], choices=choices)
-
-            # 自然言語 → 属性値 抽出（前回のmissing_attrを使用）
-            missing_attr = session_data.get("hantei_missing_attr") or {}
-            if missing_attr and missing_attr.get("attr_key"):
-                normalized = await _extract_attr_value(message, missing_attr, client)
-            else:
-                normalized = message
-
-            # 正規化した値をエージェントAPIに送信
-            agent_resp = await _call_agent_answer(agent_session_id, normalized)
-
-            # 次回の抽出のために missing_attr を保存
-            if agent_resp.get("missing_attr"):
-                session_data["hantei_missing_attr"] = agent_resp["missing_attr"]
-            else:
-                session_data.pop("hantei_missing_attr", None)
-
-            reply, choices = _format_agent_turn(agent_resp)
-
-            if req.session_id:
-                history_buf = session_data.get("history", [])
-                history_buf.append({"role": "user", "content": message})
-                history_buf.append({"role": "assistant", "content": reply})
-                session_data["history"] = history_buf[-_SESSION_MAX_HISTORY:]
-                _save_session(req.session_id, session_data)
-
-            return ChatResponse(reply=reply, actions=[], choices=choices)
-
-        except httpx.HTTPError as e:
-            session_data["hantei_agent_session_id"] = None
-            session_data.pop("hantei_missing_attr", None)
-            if req.session_id:
-                _save_session(req.session_id, session_data)
-            return ChatResponse(
-                reply="一時的に接続できませんでした。もう一度お試しいただくか、しばらく経ってから再開してください。",
-                actions=[],
-                choices=[
-                    {"label": "再起動",         "message": "該非判定エージェントをもう一度起動したい"},
-                    {"label": "通常操作を続ける", "message": "次にすることを教えてください"},
-                ],
-            )
-    # ── エージェントモードここまで ───────────────────────────────────────────
 
     # ── デモモード: キーワード検知 → start_workflow アクションを即返却 ──────────
     is_demo, demo_uc_id = _is_demo_trigger(req.message)
@@ -2488,44 +2132,9 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
                 {"label": "わからない", "message": "この項目はよくわかりません"},
             ]
 
-        # ヒアリング完了 → eccn_judgment は直接エージェント起動、他は確認待ち
+        # ヒアリング完了 → 確認待ち
         if is_complete:
-            if intake_state.get("mode") == "eccn_judgment" and req.session_id:
-                # 収集した品目情報からクエリを構築してエージェントセッションを開始
-                parts = []
-                if intake_state.get("product_name"):
-                    parts.append(f"品目: {intake_state['product_name']}")
-                if intake_state.get("product_description"):
-                    parts.append(f"仕様: {intake_state['product_description']}")
-                if intake_state.get("declared_usage"):
-                    parts.append(f"用途: {intake_state['declared_usage']}")
-                if intake_state.get("destination_country"):
-                    parts.append(f"仕向国: {intake_state['destination_country']}")
-                if intake_state.get("end_user"):
-                    parts.append(f"需要者: {intake_state['end_user']}")
-                initial_query = "。".join(parts)
-                try:
-                    agent_start = await _start_agent_session(initial_query)
-                    new_agent_session_id = agent_start["session_id"]
-                    session_data["hantei_agent_session_id"] = new_agent_session_id
-                    if agent_start.get("missing_attr"):
-                        session_data["hantei_missing_attr"] = agent_start["missing_attr"]
-                    intake_state["completed"] = True
-                    session_data["intake_state"] = intake_state
-                    _save_session(req.session_id, session_data)
-                    first_q = agent_start.get("question", "")
-                    reply_text = (
-                        "情報を確認しました。NeuroSymbolicエージェントで該非判定を開始します。\n\n"
-                        + (f"{first_q}\n\n" if first_q else "")
-                        + "日本語でも英語でも、自由に回答していただいて構いません。"
-                    )
-                    _, result_choices = _format_agent_turn(agent_start)
-                    _log_chat_turn(db, req.session_id, req.message, reply_text,
-                                   req.context, [], "eccn_judgment")
-                    return ChatResponse(reply=reply_text, actions=[], choices=result_choices)
-                except Exception as _e:
-                    reply_text += f"\n\n（エージェント起動に失敗しました: {str(_e)[:80]}）"
-            elif action_plan:
+            if action_plan:
                 intake_state["awaiting_confirm"] = True
                 intake_state["pending_action_plan"] = action_plan
                 result_choices = [
@@ -3051,8 +2660,7 @@ _COACHING_TEMPLATES: dict[str, dict] = {
             "1. 判定ステータスの解釈: intersection=黄（優先確認）/ core_only=青（リストヒット）/ expanded_only=灰（低リスク）\n"
             "2. スクリーニング実行前に取引先の英語正式法人名を確認するよう促してください\n"
             "3. 判定結果が CONTROLLED の場合は「経産省への許可申請 or 輸出禁止」を案内してください\n"
-            "4. NeuroSymbolic 該非判定エージェントを使うと対話形式で外為法・EAR 該当性を確認できることを教えてください\n"
-            "5. 案件の作成から CSV 出力までの5ステップを明確に案内してください"
+            "4. 案件の作成から CSV 出力までの5ステップを明確に案内してください"
         ),
     },
     "8002": {
@@ -3116,7 +2724,6 @@ _COACHING_TEMPLATES: dict[str, dict] = {
             "プラットフォームのトップ画面では全体フローの案内が主目的です:\n"
             "1. 標準ワークフロー: R&D審査(8003) → 品目管理(8002) → AI取引審査(8011) → スクリーニング(8005)\n"
             "2. 新規案件は R&D リスク管理から始めることを推奨してください\n"
-            "3. NeuroSymbolic 該非判定エージェントは AI 該非判定モジュール(8011)の取引詳細から起動できます\n"
             "4. 各モジュールが連携してデータを共有していることを説明してください\n"
             "5. UC一覧（📋ボタン）から「海外品目管理(UC3)」「BOM管理(UC7)」「出荷ライセンス管理(UC8)」も選べることを案内する\n"
             "6. ダッシュボードのアラート（ライセンス残高・期限切れ・規制動向）を定期確認するよう促してください"

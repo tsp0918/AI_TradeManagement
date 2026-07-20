@@ -427,70 +427,6 @@ def run_and_two_lists(
     }
 
 
-# ── エージェント判定結果の保存 ───────────────────────────────────────────
-
-class AgentJudgmentSaveRequest(BaseModel):
-    overall_status: str          # controlled / not_controlled / requires_review / pending
-    session_id: Optional[str] = None
-
-
-@router.post("/{transaction_id}/save-agent-judgment")
-def save_agent_judgment(
-    transaction_id: int,
-    body: AgentJudgmentSaveRequest,
-    db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    """
-    HanteiAgent の最終判定結果を Transaction に保存する。
-    判定完了後に status を in_review へ遷移させる。
-    """
-    tx = db.get(Transaction, transaction_id)
-    if not tx:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-
-    tx.agent_judgment_status = body.overall_status
-    tx.agent_judged_at = datetime.utcnow()
-
-    # draft の場合のみ in_review へ遷移（already in_review/approved はそのまま）
-    if tx.status == TransactionStatus.draft.value:
-        tx.status = TransactionStatus.in_review.value
-
-    db.commit()
-
-    # ERP に判定結果を通知（erp_case_no がある場合のみ）
-    _notify_erp_judgment(tx, body.overall_status)
-
-    # requires_permit 確定時: export_license モジュールへドラフトを自動作成
-    if body.overall_status == "requires_permit":
-        _auto_create_license_draft(
-            tx_id=transaction_id,
-            tx_case_no=tx.case_no,
-            product_code=tx.linked_product_code,
-            dest_country=tx.destination_country,
-            end_use=tx.end_use_description,
-        )
-
-    # 規制品 + 外国人エンドユーザー → みなし輸出人物登録
-    _DEEMED_EXPORT_STATUSES = {"controlled", "requires_review", "requires_permit"}
-    if body.overall_status in _DEEMED_EXPORT_STATUSES:
-        nat = (tx.end_user_country or tx.destination_country or "").upper()
-        if nat and nat != "JP":
-            _auto_register_deemed_export(
-                tx_id=transaction_id,
-                end_user_name=tx.end_user_name or tx.counterparty_name,
-                nationality=nat,
-                eccn=tx.linked_product_eccn,
-                case_no=tx.case_no,
-            )
-
-    return {
-        "ok": True,
-        "transaction_id": transaction_id,
-        "agent_judgment_status": tx.agent_judgment_status,
-        "status": tx.status,
-    }
-
-
 @router.post("/{transaction_id}/submit-formal-review")
 def submit_formal_review(
     transaction_id: int,
@@ -549,7 +485,6 @@ def get_review_checklist(
         AiRun.transaction_id == transaction_id,
         AiRun.run_type == RunType.matrix_match.value,
     ).first() is not None
-    has_agent_judgment = bool(tx.agent_judged_at)
     has_catchall = db.query(CatchallAssessment).filter(
         CatchallAssessment.transaction_id == transaction_id
     ).first() is not None
@@ -558,13 +493,14 @@ def get_review_checklist(
     # ティア対応の required_steps
     tier = tx.approval_tier
     required_steps = tx.required_steps or (["screening", "ai_run"] if tier is None else [])
+    # agent_judgment は廃止済み — required_steps に含まれていても常に done 扱い
+    required_steps = [s for s in required_steps if s != "agent_judgment"]
 
     checklist_map = {
-        "screening":        {"done": has_screening,      "label": "スクリーニング"},
-        "ai_run":           {"done": has_ai_run,         "label": "AI判定実行"},
-        "agent_judgment":   {"done": has_agent_judgment, "label": "エージェント判定"},
-        "catchall":         {"done": has_catchall,       "label": "キャッチオール自己判定"},
-        "formal_submitted": {"done": is_submitted,       "label": "正式審査提出"},
+        "screening":        {"done": has_screening, "label": "スクリーニング"},
+        "ai_run":           {"done": has_ai_run,    "label": "AI判定実行"},
+        "catchall":         {"done": has_catchall,  "label": "キャッチオール自己判定"},
+        "formal_submitted": {"done": is_submitted,  "label": "正式審査提出"},
     }
 
     required_done = all(checklist_map.get(s, {}).get("done", False) for s in required_steps)
@@ -578,7 +514,6 @@ def get_review_checklist(
         "required_steps": required_steps,
         "required_done": required_done,
         "checklist": checklist_map,
-        "agent_judgment_status": tx.agent_judgment_status,
         "formal_submitted_at": tx.formal_submitted_at.isoformat() if tx.formal_submitted_at else None,
     }
 

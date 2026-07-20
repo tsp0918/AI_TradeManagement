@@ -454,20 +454,8 @@ def get_stuck_transactions(
             AiRun.transaction_id == tx.id,
             AiRun.run_type == RunType.matrix_match.value,
         ).first() is not None
-        has_agent = bool(tx.agent_judged_at)
-
-        # AI判定済みだがエージェント判定未完了 → 止まっている
-        if has_ai_run and not has_agent:
-            stuck.append({
-                "id":       tx.id,
-                "case_no":  tx.case_no,
-                "title":    tx.title,
-                "status":   tx.status,
-                "reason":   "agent_judgment_pending",
-                "url":      f"{_BASE}/ui/transactions/{tx.id}",
-            })
         # AI判定もスクリーニングも未実施の古い案件（draft が続いている）
-        elif not has_ai_run and not tx.screening_status:
+        if not has_ai_run and not tx.screening_status:
             stuck.append({
                 "id":       tx.id,
                 "case_no":  tx.case_no,
@@ -492,7 +480,6 @@ class _WebhookPayload(BaseModel):
     erp_case_no: Optional[str] = None
     transaction_id: Optional[int] = None
     judgment: Optional[str] = None          # ERP 側の正規化値
-    agent_judgment_status: Optional[str] = None
     comment: Optional[str] = None
 
 
@@ -528,7 +515,7 @@ def receive_erp_webhook(
         "transaction_id": tx.id,
         "case_no": tx.case_no,
         "erp_case_no": tx.erp_case_no,
-        "current_judgment": _normalize_judgment(tx.status, tx.agent_judgment_status),
+        "current_judgment": _normalize_judgment(tx.status),
     }
 
 
@@ -557,14 +544,13 @@ def get_pending_erp_transactions(
 
     results = []
     for tx in txs:
-        j = _normalize_judgment(tx.status, tx.agent_judgment_status)
+        j = _normalize_judgment(tx.status)
         results.append({
             "id": tx.id,
             "case_no": tx.case_no,
             "erp_case_no": tx.erp_case_no,
             "status": tx.status,
             "judgment": j,
-            "agent_judgment_status": tx.agent_judgment_status,
             "is_pending": j == "PENDING",
             "updated_at": tx.updated_at.isoformat(),
         })
@@ -580,24 +566,18 @@ def get_pending_erp_transactions(
 # ── 判定ステータス正規化 (ERP 向け) ──────────────────────────────
 # /api/transactions/search は ui.py に実装済み（erp_case_no / q / 直近20件をサポート）
 
-_JUDGMENT_MAP: Dict[str, str] = {
-    "not_controlled":  "APPROVED",
-    "controlled":      "NEEDS_REVIEW",
-    "requires_review": "NEEDS_REVIEW",
-    "requires_permit": "REQUIRES_PERMIT",
+_STATUS_TO_JUDGMENT: Dict[str, str] = {
+    "approved": "APPROVED",
+    "rejected": "REJECTED",
 }
 
 
-def _normalize_judgment(tx_status: str, agent_judgment_status: Optional[str]) -> str:
+def _normalize_judgment(tx_status: str) -> str:
     """
-    AI_TM 内部値を ERP 向け正規化値に変換する。
-    APPROVED / NEEDS_REVIEW / REQUIRES_PERMIT / REJECTED / PENDING
+    AI_TM 内部ステータスを ERP 向け正規化値に変換する。
+    APPROVED / REJECTED / PENDING
     """
-    if tx_status == "rejected":
-        return "REJECTED"
-    if not agent_judgment_status:
-        return "PENDING"
-    return _JUDGMENT_MAP.get(agent_judgment_status.lower(), "PENDING")
+    return _STATUS_TO_JUDGMENT.get(tx_status, "PENDING")
 
 
 # ── De Minimis スナップショット保存 ───────────────────────────────
@@ -611,7 +591,7 @@ class SupplyChainLinkBody(BaseModel):
 def get_transaction_detail(tx_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     単一取引の詳細を返す（ai_classification 等の外部モジュール向け）。
-    status / agent_judgment_status / items[].item_name が主な参照フィールド。
+    status / items[].item_name が主な参照フィールド。
     """
     tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
     if tx is None:
@@ -628,9 +608,8 @@ def get_transaction_detail(tx_id: int, db: Session = Depends(get_db)) -> Dict[st
         "erp_case_no": tx.erp_case_no,
         "title": tx.title,
         "status": tx.status,
-        "agent_judgment_status": tx.agent_judgment_status,
-        # ERP 向け正規化判定値: APPROVED / NEEDS_REVIEW / REQUIRES_PERMIT / REJECTED / PENDING
-        "judgment": _normalize_judgment(tx.status, tx.agent_judgment_status),
+        # ERP 向け正規化判定値: APPROVED / REJECTED / PENDING
+        "judgment": _normalize_judgment(tx.status),
         "destination_country": tx.destination_country,
         "source_module": tx.source_module,
         "counterparty_name": tx.counterparty_name,
@@ -668,8 +647,7 @@ def coo_changed(
 
     対象: linked_product_code == body.product_code
           AND status IN ("in_review", "approved")
-    処置: agent_judgment_status → NULL, status → draft,
-          tier_reason に COO 変更メモを追記
+    処置: status → draft, tier_reason に COO 変更メモを追記
     """
     from datetime import datetime as _dt
     from sqlalchemy import or_
@@ -685,9 +663,7 @@ def coo_changed(
 
     reset_ids: List[int] = []
     for tx in targets:
-        tx.agent_judgment_status = None
-        tx.agent_judged_at       = None
-        tx.status                = "draft"
+        tx.status = "draft"
         note = (
             f"[COO変更 {_dt.utcnow().strftime('%Y-%m-%d')}] "
             f"原産国変更 {body.old_country or '?'} → {body.new_country} により自動再審査"
