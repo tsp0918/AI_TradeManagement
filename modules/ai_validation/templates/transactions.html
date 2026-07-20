@@ -58,17 +58,14 @@
               {% endif %}
             </td>
             <td>
-              {% if tx.agent_judgment_status == "not_controlled" %}
-                <span class="chip-agent agent-clear">非規制</span>
-              {% elif tx.agent_judgment_status == "controlled" %}
-                <span class="chip-agent agent-controlled">規制対象</span>
-              {% elif tx.agent_judgment_status == "requires_review" %}
-                <span class="chip-agent agent-review">要確認</span>
+              {% set ai_runs = tx.ai_runs if tx.ai_runs is defined else [] %}
+              {% if ai_runs and ai_runs|length > 0 %}
+                <span class="chip-agent agent-clear">実施済</span>
               {% else %}
-                <span class="muted small">未判定</span>
+                <span class="muted small">未実施</span>
               {% endif %}
             </td>
-            <td class="muted">{{ (tx.note or "-") }}</td>
+            <td class="muted">-</td>
             <td style="text-align:right">
               <a class="btn" href="/ui/transactions/{{ tx.id }}">詳細・2リスト</a>
             </td>

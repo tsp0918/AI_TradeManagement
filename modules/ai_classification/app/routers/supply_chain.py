@@ -934,7 +934,7 @@ async def sync_eccn_for_node(
     claimed_eccn = (node.judgment_evidence or {}).get("supplier_claimed_eccn")
     faiss_supports_claim = suggested_eccn and claimed_eccn and claimed_eccn.startswith(suggested_eccn)
 
-    judgment_status = tx.get("agent_judgment_status") or tx.get("status", "pending")
+    judgment_status = tx.get("status", "pending")
     ai_run_done = (tx.get("ai_run") or {}).get("status") == "success"
     is_completed = judgment_status not in ("draft", "pending", None) or (ai_run_done and faiss_supports_claim)
 
@@ -942,8 +942,7 @@ async def sync_eccn_for_node(
     evidence = node.judgment_evidence or {}
     evidence.update({
         "tx_url": f"{_AI_VALIDATION_PUBLIC_URL}/ui/transactions/{tx_id}",
-        "tx_status": tx.get("status"),
-        "agent_judgment_status": judgment_status,
+        "tx_status": judgment_status,
         "ai_suggested_eccn": suggested_eccn,
         "ai_verdict": ai_verdict,
         "synced_at": datetime.now(timezone.utc).isoformat(),

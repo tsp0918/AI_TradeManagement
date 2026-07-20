@@ -29,8 +29,9 @@ from platform_core.models.supplier_attestation import SupplierAttestation
 
 router = APIRouter(prefix="/api/compliance-lookup", tags=["compliance_lookup"])
 
-_AI_VALIDATION_URL = "http://localhost:8011"
-_AI_CLASSIFICATION_URL = "http://localhost:8002"
+import os as _os
+_AI_VALIDATION_URL    = _os.environ.get("MODULE_AI_VALIDATION_URL",    "http://localhost:8011")
+_AI_CLASSIFICATION_URL = _os.environ.get("MODULE_AI_CLASSIFICATION_URL", "http://localhost:8002")
 
 
 # ── ステージ定義 ─────────────────────────────────────────────────────────────

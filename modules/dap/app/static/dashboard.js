@@ -53,12 +53,10 @@
       const d = await fetch(DAP + '/proxy/platform/api/metrics/summary').then(r => r.json()).catch(() => null);
       if (!d) { el.innerHTML = '<div class="dash-error">KPI 取得失敗</div>'; return; }
       const llm = d.llm_usage_30d || {};
-      const ses = d.agent_sessions || {};
-      const jcr = ses.judgment_completion_rate_pct;
       el.innerHTML = `
         <div class="kpi-card">
-          <div class="kpi-val">${fmt(ses.total)}</div>
-          <div class="kpi-label">AI セッション総数</div>
+          <div class="kpi-val">${fmt(llm.total_requests)}</div>
+          <div class="kpi-label">LLM リクエスト (30日)</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-val">${fmt(llm.total_tokens)}</div>
@@ -69,8 +67,8 @@
           <div class="kpi-label">推定コスト (30日)</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-val">${jcr != null ? jcr.toFixed(1) + '%' : '—'}</div>
-          <div class="kpi-label">審査完了率</div>
+          <div class="kpi-val">${fmt(d.tx_count_30d)}</div>
+          <div class="kpi-label">新規案件 (30日)</div>
         </div>`;
     } catch (e) {
       el.innerHTML = '<div class="dash-error">KPI 取得失敗</div>';

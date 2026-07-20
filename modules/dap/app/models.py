@@ -185,6 +185,6 @@ class DapChatLog(Base):
     page_context: Mapped[dict] = mapped_column(JSON, default=dict)
     # レスポンスで返されたアクション (highlight / navigate_to 等)
     actions: Mapped[list] = mapped_column(JSON, default=list)
-    # ヒアリングモード中の場合のモード名（eccn_judgment, export_transaction 等）
+    # ヒアリングモード中の場合のモード名（export_transaction / product_registration / rnd_project）
     intake_mode: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

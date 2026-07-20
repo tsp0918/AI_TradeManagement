@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from platform_core.db.session import get_db
 from platform_core.models.audit import LlmUsageLog
+from platform_core.models.transaction_review import TransactionReview
 
 router = APIRouter(prefix="/api/metrics", tags=["metrics"])
 
@@ -54,7 +55,15 @@ async def metrics_summary(db: AsyncSession = Depends(get_db)):
             "cost_usd": round(c, 4),
             "api_calls": int(calls),
         })
+    total_requests = sum(m["api_calls"] for m in llm_by_module)
     llm_by_module.sort(key=lambda x: x["total_tokens"], reverse=True)
+
+    # ── 取引審査件数（直近 30 日） ────────────────────────────────
+    tx_count_row = await db.execute(
+        select(func.count(TransactionReview.id))
+        .where(TransactionReview.created_at >= since_30d)
+    )
+    tx_count_30d = int(tx_count_row.scalar() or 0)
 
     return {
         "generated_at": now.isoformat(),
@@ -62,6 +71,8 @@ async def metrics_summary(db: AsyncSession = Depends(get_db)):
         "llm_usage_30d": {
             "total_tokens": total_tokens,
             "total_cost_usd": round(total_cost, 4),
+            "total_requests": total_requests,
             "by_module": llm_by_module,
         },
+        "tx_count_30d": tx_count_30d,
     }

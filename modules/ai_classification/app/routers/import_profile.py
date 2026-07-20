@@ -519,17 +519,16 @@ async def sync_eccn_status(
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"ai_validation 連携エラー: {e}")
 
-    judgment = data.get("agent_judgment_status")
-    profile.eccn_judgment_status = judgment or data.get("status", "pending")
+    tx_status = data.get("status", "pending")
+    profile.eccn_judgment_status = tx_status
     await db.commit()
 
     return {
         "ok": True,
         "tx_id": profile.eccn_validation_tx_id,
-        "tx_status": data.get("status"),
-        "agent_judgment_status": judgment,
+        "tx_status": tx_status,
         "tx_url": f"{_AI_VALIDATION_PUBLIC_URL}/ui/transactions/{profile.eccn_validation_tx_id}",
-        "note": "ECCN が確定したら「ECCN申告値」欄を手動で更新してください。" if judgment else "",
+        "note": "ECCN が確定したら「ECCN申告値」欄を手動で更新してください。" if tx_status not in ("draft", "pending") else "",
     }
 
 

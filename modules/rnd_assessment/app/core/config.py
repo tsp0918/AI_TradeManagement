@@ -16,7 +16,10 @@ class Settings(BaseSettings):
     )
 
     # DB
-    database_url: str = "sqlite:///./rd_risk_app.db"
+    database_url: str = Field(
+        default="sqlite:///./rd_risk_app.db",
+        validation_alias=AliasChoices("database_url", "RND_DATABASE_URL"),
+    )
 
     # External services
     item_service_base_url: str = Field(
