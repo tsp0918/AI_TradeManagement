@@ -15,11 +15,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # DB
-    database_url: str = Field(
-        default="sqlite:///./rd_risk_app.db",
-        validation_alias=AliasChoices("database_url", "RND_DATABASE_URL"),
-    )
+    # DB (SQLite 専用 — DDL が DATETIME 型を使用しているため PostgreSQL 非対応)
+    database_url: str = "sqlite:///./rd_risk_app.db"
 
     # External services
     item_service_base_url: str = Field(
