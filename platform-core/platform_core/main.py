@@ -47,6 +47,7 @@ from platform_core.routers.fta import router as fta_router
 from platform_core.routers.organizations import router as organizations_router
 from platform_core.routers.erp_pull_proxy import router as erp_pull_proxy_router
 from platform_core.routers.ux_events import router as ux_events_router
+from platform_core.routers.minerals import router as minerals_router
 
 logger = logging.getLogger(__name__)
 _STATIC_DIR = pathlib.Path(__file__).parent / "static"
@@ -179,6 +180,7 @@ def create_app() -> FastAPI:
     app.include_router(organizations_router)
     app.include_router(erp_pull_proxy_router)
     app.include_router(ux_events_router)
+    app.include_router(minerals_router)
 
     @app.get("/", include_in_schema=False)
     async def root():

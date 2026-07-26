@@ -35,6 +35,8 @@ _PORTAL_MODULE_URLS: dict[str, str] = {
     "patent_search":    f"{_PLATFORM_URL}/proxy/patent_search",
     "screening":        f"{_PLATFORM_URL}/proxy/screening",
     "hs_classifier":    f"{_PLATFORM_URL}/proxy/hs_classifier",
+    "export_license":   f"{_PLATFORM_URL}/export-licenses",
+    "trade_gate":       f"{_PLATFORM_URL}/trade-gate",
 }
 
 # .env フォールバック（start.sh 経由でない単体起動時に ANTHROPIC_API_KEY を補完）
@@ -69,14 +71,15 @@ _WORKFLOW_STAGES: dict[str, str] = {
     "8004": "特許調査",
     "8000": "プラットフォーム",
 }
-_WORKFLOW_ORDER = ["8003", "8002", "8011", "8005"]  # 推奨フロー順
+_WORKFLOW_ORDER = ["8003", "8002", "8006", "8004", "8011", "8005", "export_license"]  # 推奨フロー順
 
 # ── サーバーサイド・セッションストア ─────────────────────────────────
-# {session_id: {"history": [...], "task": str}}
+# {session_id: {"history": [...], "task": str, "_last_access": float}}
 # OrderedDict で LRU 的に最大 200 セッションを保持
 _SESSION_STORE: OrderedDict[str, dict] = OrderedDict()
 _SESSION_MAX = 200
 _SESSION_MAX_HISTORY = 40  # 最大 20 往復
+_SESSION_TTL = 86400  # 24 時間でセッション期限切れ
 
 
 # ── 専門知識ベース（FAQ）────────────────────────────────────────────
@@ -141,17 +144,63 @@ def _select_faq_sections(message: str) -> str:
 
 
 def _get_session(session_id: str) -> dict:
+    import time as _time
     if session_id in _SESSION_STORE:
+        data = _SESSION_STORE[session_id]
+        last = data.get("_last_access", 0)
+        if _time.time() - last > _SESSION_TTL:
+            _SESSION_STORE.pop(session_id, None)
+            return {"history": [], "task": ""}
         _SESSION_STORE.move_to_end(session_id)
-        return _SESSION_STORE[session_id]
+        data["_last_access"] = _time.time()
+        return data
+    # L1 キャッシュミス → DB から復元
+    try:
+        from ..db import SessionLocal as _DBSession
+        from ..models import DapSession as _DapSession
+        with _DBSession() as _db:
+            row = _db.get(_DapSession, session_id)
+            if row:
+                data = {
+                    "history":      row.history or [],
+                    "task":         row.task or "",
+                    "persona":      row.persona or {},
+                    "intake_state": row.intake_state,
+                    "_last_access": _time.time(),
+                }
+                _SESSION_STORE[session_id] = data
+                _SESSION_STORE.move_to_end(session_id)
+                return data
+    except Exception:
+        pass
     return {"history": [], "task": ""}
 
 
 def _save_session(session_id: str, data: dict) -> None:
+    import time as _time
+    from datetime import datetime as _dt
+    data["_last_access"] = _time.time()
     _SESSION_STORE[session_id] = data
     _SESSION_STORE.move_to_end(session_id)
     while len(_SESSION_STORE) > _SESSION_MAX:
         _SESSION_STORE.popitem(last=False)
+    # write-through: DB へ永続化（非同期コンテキスト外なのでスレッドセーフな同期 DB を使用）
+    try:
+        from ..db import SessionLocal as _DBSession
+        from ..models import DapSession as _DapSession
+        with _DBSession() as _db:
+            row = _db.get(_DapSession, session_id)
+            if row is None:
+                row = _DapSession(session_id=session_id)
+                _db.add(row)
+            row.history      = data.get("history", [])
+            row.task         = data.get("task", "")[:500]
+            row.persona      = data.get("persona", {})
+            row.intake_state = data.get("intake_state")
+            row.last_access  = _dt.utcnow()
+            _db.commit()
+    except Exception:
+        pass
 
 
 def _log_chat_turn(
@@ -171,8 +220,8 @@ def _log_chat_turn(
         log = DapChatLog(
             session_id=session_id,
             turn_num=turn_num,
-            user_message=user_message[:4000],
-            assistant_reply=assistant_reply[:4000],
+            user_message=user_message[:8000],
+            assistant_reply=assistant_reply[:8000],
             page_context=page_ctx,
             actions=actions,
             intake_mode=intake_mode,
@@ -200,6 +249,7 @@ class ChatResponse(BaseModel):
     alert: Optional[dict[str, Any]] = None     # 自発的アラート {type, message, severity}
     persona_summary: Optional[dict[str, Any]] = None  # ユーザー理解状態
     strategic_context: Optional[str] = None   # Layer E RAG 結果（「なぜ？」系クエリ時のみ）
+    structured_cards: Optional[list[dict[str, Any]]] = None  # 構造化比較カード
 
 
 # ── モジュール別デフォルト choices（Claude が省略した場合のフォールバック）──────
@@ -257,6 +307,24 @@ _RAG_TRIGGER_TERMS = frozenset([
     "リスト規制", "EAR", "BIS", "みなし輸出", "技術的パラメータ", "数値閾値",
     "控制", "Wassenaar", "デュアルユース", "許可要件", "条件", "仕様",
     "HS", "IPC", "特許", "技術", "核", "半導体", "暗号", "センサー",
+    # ── Phase 17: 国際輸出管理レジーム ──────────────────────────────────
+    "NSG", "核供給国グループ", "Trigger List", "ツリガーリスト", "トリガーリスト",
+    "AG", "オーストラリアグループ", "化学兵器前駆体", "化学前駆体", "生物剤", "生物兵器剤",
+    "MTCR", "ミサイル技術管理", "弾道ミサイル", "ロケット", "UAV", "無人航空機",
+    "Zangger", "ツァンガー", "核燃料サイクル", "重水", "核分裂性",
+    # ── Phase 18: アジア太平洋各国輸出管理法令 ──────────────────────────
+    "KECO", "韓国輸出管理", "전략물자", "한국수출통제",
+    "SCOMET", "インド輸出管理", "インド規制",
+    "SHTC", "台湾輸出管理", "台湾規制",
+    "SGCA", "シンガポール輸出管理", "シンガポール規制",
+    "Canada ECL", "カナダ輸出管理", "カナダ規制", "ECL",
+    # ── Phase 19: 半導体・FDPR・CHIPS Act・BIS ──────────────────────────
+    "FDPR", "直接製品規則", "外国直接製品", "734.9", "foreign direct product",
+    "CHIPS法", "CHIPS Act", "FEOC", "懸念外国エンティティ",
+    "Part 744", "744.17", "744.21", "744.2", "744.10", "744.22",
+    "MEU", "軍事最終用途", "軍事エンドユーザー",
+    "HBM", "高帯域幅メモリ", "AIチップ", "先端半導体", "3A090",
+    "VEU", "Validated End User",
 ])
 
 # Layer E「なぜ？」トリガーキーワード
@@ -266,6 +334,21 @@ _STRATEGIC_TRIGGER_TERMS = frozenset([
     "経済安保", "地政学", "技術覇権", "国際秩序", "チョークポイント",
     "QUAD", "AUKUS", "Chip4", "レアアース", "半導体戦略", "量子安保",
     "AIリスク", "合成生物", "宇宙安保", "デカップリング", "デリスキング",
+    # ── Phase 20-22: SC DD / 国際レジーム / 重要鉱物 ────────────────────
+    "サプライチェーンDD", "サプライチェーン・デューデリジェンス",
+    "CSDDD", "企業持続可能性デューデリジェンス指令",
+    "LkSG", "供給網デューデリジェンス法", "ドイツ供給網法",
+    "UFLPA", "ウイグル強制労働防止法", "強制労働", "新疆",
+    "CBAM", "炭素国境調整メカニズム", "炭素税", "国境炭素",
+    "EUDR", "森林破壊規制", "森林伐採",
+    "国際レジーム", "多国間枠組み", "輸出管理レジーム",
+    "IPEF", "インド太平洋経済枠組み",
+    "G7広島", "G7", "MSP", "重要鉱物パートナーシップ",
+    "重要鉱物", "クリティカルミネラル", "critical mineral",
+    "CRMA", "重要原材料法", "EU重要原材料",
+    "IRA", "インフレ抑制法", "FEOCルール",
+    "ガリウム", "ゲルマニウム", "中国輸出規制", "グラファイト",
+    "WTO安全保障例外", "CPTPP", "多国間貿易秩序",
 ])
 
 # ECCN / HS / IPC / F-term コードを検出する正規表現
@@ -309,6 +392,57 @@ async def _rag_layer_a(message: str) -> str:
     if not lines:
         return ""
     return "【規制条文DB】\n" + "\n".join(lines[:3])
+
+
+_REGIME_TERMS: dict[str, frozenset[str]] = {
+    "nsg":      frozenset(["NSG", "核供給国", "Trigger List", "トリガーリスト", "核燃料"]),
+    "ag":       frozenset(["AG", "オーストラリアグループ", "化学前駆体", "生物剤"]),
+    "mtcr":     frozenset(["MTCR", "ミサイル技術", "弾道ミサイル", "UAV"]),
+    "zangger":  frozenset(["Zangger", "ツァンガー", "重水", "核分裂"]),
+    "keco":     frozenset(["KECO", "韓国輸出", "전략물자"]),
+    "scomet":   frozenset(["SCOMET", "インド輸出管理"]),
+    "shtc":     frozenset(["SHTC", "台湾輸出"]),
+    "sgca":     frozenset(["SGCA", "シンガポール輸出"]),
+    "canada_ecl": frozenset(["Canada ECL", "カナダ輸出"]),
+    "ear_744":  frozenset(["Part 744", "744.17", "744.21", "MEU", "軍事最終用途"]),
+    "fdpr":     frozenset(["FDPR", "直接製品規則", "外国直接製品"]),
+    "chips_act": frozenset(["CHIPS法", "CHIPS Act", "FEOC", "ガードレール"]),
+    "bis_semicon": frozenset(["3A090", "AIチップ", "HBM", "高帯域幅メモリ", "先端半導体"]),
+}
+
+async def _rag_layer_a_regime(message: str) -> str:
+    """Phase 17-19 レジーム別 Layer A 検索。メッセージに一致する source_type で絞り込む。"""
+    matched_type: str | None = None
+    for stype, terms in _REGIME_TERMS.items():
+        if any(t in message for t in terms):
+            matched_type = stype
+            break
+    if not matched_type:
+        return ""
+
+    url = f"{_PLATFORM_URL}/api/faiss/search/layer-a"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, params={"q": message[:200], "top_k": 5, "source_type": matched_type})
+        if resp.status_code != 200:
+            return ""
+        data = resp.json()
+    except Exception:
+        return ""
+
+    hits = data.get("hits", [])
+    lines = []
+    for h in hits:
+        if h.get("score", 0) < _RAG_MIN_SCORE:
+            continue
+        title = h.get("title") or h.get("item_no") or ""
+        text = h.get("full_text", "")[:150]
+        src = h.get("source_type", "")
+        lines.append(f"・[{src}] {title}: {text}")
+
+    if not lines:
+        return ""
+    return f"【レジーム規制DB ({matched_type})】\n" + "\n".join(lines[:3])
 
 
 async def _rag_ontology(message: str) -> str:
@@ -630,6 +764,7 @@ async def _rag_multilayer(message: str) -> tuple[str, str]:
     eccns_found = [e.upper() for e in _ECCN_PATTERN.findall(message)]
 
     layer_a_task    = asyncio.create_task(_rag_layer_a(message))
+    regime_a_task   = asyncio.create_task(_rag_layer_a_regime(message))
     ontology_task   = asyncio.create_task(_rag_ontology(message))
     country_task    = asyncio.create_task(_rag_country_control(message, eccns_found))
     fterm_task      = asyncio.create_task(_rag_fterm(message, eccns_found))
@@ -639,16 +774,70 @@ async def _rag_multilayer(message: str) -> tuple[str, str]:
     layer_e_task    = asyncio.create_task(_rag_strategic_context(message))
 
     results = await asyncio.gather(
-        layer_a_task, ontology_task, country_task, fterm_task,
+        layer_a_task, regime_a_task, ontology_task, country_task, fterm_task,
         graph_task, layer_b_task, layer_d_task, layer_e_task,
         return_exceptions=True,
     )
 
-    layer_e_result = results[7] if isinstance(results[7], str) else ""
+    layer_e_result = results[8] if isinstance(results[8], str) else ""
     blocks = [r for r in results if isinstance(r, str) and r.strip()]
     if not blocks:
         return ("", layer_e_result)
     return ("\n\n".join(blocks), layer_e_result)
+
+
+# ── 構造化カード生成 ──────────────────────────────────────────────────────────
+_REGIME_COMPARISON_KEYWORDS = frozenset(["NSG", "AG", "MTCR", "Zangger", "レジームを比較", "比較してほしい", "比較表"])
+_MINERAL_RISK_KEYWORDS = frozenset(["重要鉱物", "CRMA", "IRA FEOC", "鉱物スキャン", "FEOC", "ガリウム", "ゲルマニウム"])
+_SCDD_APPLICABILITY_KEYWORDS = frozenset(["CSDDD適用", "LkSG適用", "UFLPA適用", "SC DD適用", "どの法律が適用"])
+
+
+def _build_structured_cards(message: str, rag_context: str) -> list[dict] | None:
+    """メッセージ内容に応じて構造化比較カードを生成する。"""
+    cards: list[dict] = []
+
+    if any(kw in message for kw in _REGIME_COMPARISON_KEYWORDS):
+        cards.append({
+            "card_type": "regime_comparison",
+            "title": "国際輸出管理レジーム比較",
+            "columns": ["レジーム", "参加国", "対象品目", "外為法対応項"],
+            "rows": [
+                ["NSG", "48カ国", "核・核燃料サイクル", "1の項"],
+                ["AG", "43カ国", "化学前駆体・生物剤", "2〜3の項"],
+                ["MTCR", "35カ国", "ミサイル・UAV", "4の項"],
+                ["Wassenaar", "42カ国", "通常兵器・デュアルユース", "全般"],
+                ["Zangger", "38カ国", "Trigger List（核）", "1の項"],
+            ],
+        })
+
+    if any(kw in message for kw in _MINERAL_RISK_KEYWORDS):
+        cards.append({
+            "card_type": "mineral_risk",
+            "title": "重要鉱物リスク早見表",
+            "columns": ["鉱物", "中国輸出規制", "IRA FEOC", "EU CRMA SRM"],
+            "rows": [
+                ["ガリウム（Ga）", "⚠️ 許可必要", "✅ 対象外", "⚠️ SRM候補"],
+                ["ゲルマニウム（Ge）", "⚠️ 許可必要", "✅ 対象外", "✅ SRM指定"],
+                ["リチウム", "✅ 規制なし", "⚠️ FEOC対象", "⚠️ SRM指定"],
+                ["コバルト", "✅ 規制なし", "⚠️ FEOC対象", "⚠️ SRM指定"],
+                ["黒鉛（グラファイト）", "⚠️ 許可必要", "⚠️ FEOC対象", "⚠️ SRM指定"],
+            ],
+        })
+
+    if any(kw in message for kw in _SCDD_APPLICABILITY_KEYWORDS):
+        cards.append({
+            "card_type": "sc_dd_applicability",
+            "title": "SC DD 法令適用判定表",
+            "columns": ["法令", "適用条件", "主な義務", "罰則"],
+            "rows": [
+                ["CSDDD", "EU売上4億€超・従業員1,000人超", "Tier N DD・開示報告", "（執行国ごとに異なる）"],
+                ["LkSG", "ドイツ従業員1,000人超", "リスク分析・BAFA報告", "最大800万€または売上2%"],
+                ["UFLPA", "米国向け輸出・新疆関連品", "輸入禁止・反証義務", "輸入差止め・罰金"],
+                ["CBAM", "EU向け対象6品種輸出", "排出係数認証・四半期報告", "2026年から課徴金"],
+            ],
+        })
+
+    return cards if cards else None
 
 
 # ── User Persona Tracking ─────────────────────────────────────────────────────
@@ -745,7 +934,7 @@ def _persona_context_str(persona: dict, session_data: dict) -> str:
 
 # ── Workflow State Analysis ───────────────────────────────────────────────────
 
-def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
+async def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
     """
     ワークフロー全体の状態を分析して自発的アラートとギャップを返す。
     Returns: {stage, gap_modules, proactive_alerts}
@@ -834,7 +1023,8 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
     # 規制動向モニタリング — 未読の warn/danger 変更をアラート化
     try:
         import httpx as _httpx
-        r = _httpx.get(f"{_PLATFORM_URL}/api/regulatory/changes?limit=3", timeout=2)
+        async with _httpx.AsyncClient() as _client:
+            r = await _client.get(f"{_PLATFORM_URL}/api/regulatory/changes?limit=3", timeout=2)
         if r.status_code == 200:
             reg_changes = r.json().get("changes", [])
             for rc in reg_changes:
@@ -856,7 +1046,8 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
     _ai_val_url = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
     try:
         import httpx as _httpx
-        r = _httpx.get(f"{_ai_val_url}/api/transactions/stuck", timeout=3)
+        async with _httpx.AsyncClient() as _client:
+            r = await _client.get(f"{_ai_val_url}/api/transactions/stuck", timeout=3)
         if r.status_code == 200:
             stuck = r.json().get("stuck_transactions", [])
             if stuck:
@@ -876,7 +1067,8 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
     # 輸出許可証の期限・残高アラート (platform-core API 経由)
     try:
         import httpx as _httpx
-        r = _httpx.get(f"{_PLATFORM_URL}/api/export-licenses?status=approved&limit=20", timeout=2)
+        async with _httpx.AsyncClient() as _client:
+            r = await _client.get(f"{_PLATFORM_URL}/api/export-licenses?status=approved&limit=20", timeout=2)
         if r.status_code == 200:
             from datetime import datetime as _dt, timezone as _tz
             licenses = r.json() if isinstance(r.json(), list) else r.json().get("licenses", [])
@@ -918,7 +1110,8 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
     _ai_val_url = os.environ.get("MODULE_AI_VALIDATION_URL", "http://localhost:8011")
     try:
         import httpx as _httpx
-        r = _httpx.get(f"{_ai_val_url}/api/transactions?status=under_review&limit=20", timeout=3)
+        async with _httpx.AsyncClient() as _client:
+            r = await _client.get(f"{_ai_val_url}/api/transactions?status=under_review&limit=20", timeout=3)
         if r.status_code == 200:
             txs = r.json() if isinstance(r.json(), list) else r.json().get("transactions", [])
             indeterminate_txs = [
@@ -943,6 +1136,63 @@ def _analyze_workflow_state(session_data: dict, ctx: dict) -> dict:
                 })
     except Exception:
         pass
+
+    # ── P2-2: FDPR エクスポージャーアラート ────────────────────────────────
+    # 仕向国が RU/BY/CN かつ ECCN が EAR99 以外の案件を検出
+    if intake:
+        dest2 = (intake.get("destination_country") or "")[:2].upper()
+        eccn  = (intake.get("known_eccn") or "").upper()
+        if dest2 in {"RU", "BY", "CN"} and eccn and eccn != "EAR99":
+            alerts.append({
+                "type":        "fdpr_exposure",
+                "severity":    "danger",
+                "guide_id":    f"fdpr:{dest2}:{eccn}",
+                "message":     (
+                    f"品目 ECCN {eccn} の仕向国「{intake.get('destination_country')}」への輸出は"
+                    "外国直接製品規則（FDPR）の対象となる可能性があります。"
+                    "米国製技術・製造装置の使用比率および FDPR 例外適用可否を確認してください。"
+                ),
+                "action_hint": "「FDPR の詳細を教えて」と話しかけると確認手順を案内します",
+            })
+
+    # ── P2-2: UFLPA 調達リスクアラート ────────────────────────────────────
+    # 新疆ウイグル関連 HS コードまたは中国原産地の場合に警告
+    _UFLPA_HS_PREFIXES = {"6109", "6203", "6204", "2804", "8818", "2606", "2615", "0702"}
+    if intake:
+        hs = (intake.get("known_hs") or "").replace(".", "").replace(" ", "")[:4]
+        origin = (intake.get("destination_country") or intake.get("product_description") or "").upper()
+        if hs in _UFLPA_HS_PREFIXES or ("XUAR" in origin or "新疆" in origin or "ウイグル" in origin):
+            alerts.append({
+                "type":        "uflpa_sourcing",
+                "severity":    "warn",
+                "guide_id":    f"uflpa:{hs or 'xuar'}",
+                "message":     (
+                    "製品の調達経路に新疆ウイグル自治区（XUAR）との関連が疑われます。"
+                    "米国向け輸出ではUFLPA（ウイグル強制労働防止法）による輸入差し止めリスクがあります。"
+                    "サプライチェーン原産地の追跡調査を実施してください。"
+                ),
+                "action_hint": "「UFLPAの対応方法を教えて」と話しかけると手順を案内します",
+            })
+
+    # ── P2-2: 重要鉱物依存度警告 ────────────────────────────────────────
+    _CRITICAL_MINERAL_KEYWORDS = {
+        "ガリウム", "ゲルマニウム", "リチウム", "コバルト", "レアアース",
+        "グラファイト", "黒鉛", "ニオブ", "タングステン", "インジウム",
+        "gallium", "germanium", "lithium", "cobalt", "rare earth", "graphite",
+    }
+    _msg_check = (intake.get("product_description") or "") + " " + (intake.get("product_name") or "") if intake else ""
+    if any(kw.lower() in _msg_check.lower() for kw in _CRITICAL_MINERAL_KEYWORDS):
+        alerts.append({
+            "type":        "critical_mineral_risk",
+            "severity":    "warn",
+            "guide_id":    "critical_mineral:detected",
+            "message":     (
+                "製品に重要鉱物（ガリウム・ゲルマニウム・レアアース等）が含まれる可能性があります。"
+                "中国の輸出規制強化・EU CRMA・IRA FEOCルールへの対応が必要な場合があります。"
+                "調達ルートの多様化と原産地証明の取得を推奨します。"
+            ),
+            "action_hint": "「重要鉱物スキャンをしたい」と話しかけるとアセスメントを開始します",
+        })
 
     return {"stage": stage, "gap_modules": gap_modules, "proactive_alerts": alerts}
 
@@ -993,10 +1243,18 @@ _RND_INTAKE_TRIGGERS = [
     "研究開発を", "R&D起案", "RD起案", "プロジェクト起案", "R&Dを登録",
     "研究プロジェクト", "みなし輸出を相談", "R&D案件",
 ]
+_SC_DD_INTAKE_TRIGGERS = [
+    "サプライチェーンDD", "サプライチェーン・デューデリジェンス",
+    "SC DD評価", "SC DDアセスメント", "CSDDD対応", "LkSG対応",
+    "UFLPA対応", "サプライヤーDD", "調達DDを相談", "重要鉱物スキャン",
+    "供給網デューデリジェンス", "強制労働チェック",
+]
 
 
 def _detect_intake_mode(message: str) -> str | None:
     """メッセージから Intake モードを検出する。None = Intake 不要"""
+    if any(kw in message for kw in _SC_DD_INTAKE_TRIGGERS):
+        return "sc_dd_assessment"
     if any(kw in message for kw in _PRODUCT_INTAKE_TRIGGERS):
         return "product_registration"
     if any(kw in message for kw in _RND_INTAKE_TRIGGERS):
@@ -1032,6 +1290,16 @@ def _init_intake_state(mode: str = "export_transaction") -> dict:
             "end_users":           None,  # 研究者名／機関
             "foreign_researchers": None,  # 外国籍研究者の有無
             "tech_sensitivity":    None,  # public/controlled/restricted
+        }
+    if mode == "sc_dd_assessment":
+        return {**base,
+            "company_name":       None,   # 自社名または調査対象企業名
+            "sourcing_countries": None,   # 主要調達国リスト
+            "product_category":   None,   # 製品カテゴリ（電子部品/アパレル/農産品等）
+            "eu_annual_revenue":  None,   # EU年間売上（CSDDD/LkSG 適用判定）
+            "german_employees":   None,   # ドイツ従業員数（LkSG 適用判定）
+            "has_xuar_exposure":  None,   # 新疆ウイグル関連リスク有無（UFLPA）
+            "critical_minerals":  None,   # 重要鉱物使用の有無
         }
     # export_transaction（既存動作）
     return {**base,
@@ -1138,6 +1406,48 @@ def _build_intake_system_prompt(intake: dict) -> str:
 
 検出されたリスクフラグ:
 {risk_block}
+
+ターン数: {intake.get('turn_count', 0)} / 6（目標完了ターン数）
+
+【ルール】
+- reply: 口語体日本語。150字以内。先輩が後輩に話すような自然なトーン。
+- 必ず1つの核心的な質問か確認で終わる
+- choices は次の回答候補を2〜3件提示"""
+
+    # ────────── SC DD アセスメントモード ──────────────────────────────
+    if mode == "sc_dd_assessment":
+        filled = []
+        if intake.get("company_name"):       filled.append(f"企業名: {intake['company_name']}")
+        if intake.get("sourcing_countries"): filled.append(f"調達国: {intake['sourcing_countries']}")
+        if intake.get("product_category"):   filled.append(f"製品カテゴリ: {intake['product_category']}")
+        if intake.get("eu_annual_revenue"):  filled.append(f"EU年間売上: {intake['eu_annual_revenue']}")
+        if intake.get("german_employees"):   filled.append(f"ドイツ従業員数: {intake['german_employees']}")
+        if intake.get("has_xuar_exposure"):  filled.append(f"XUAR関連リスク: {intake['has_xuar_exposure']}")
+        if intake.get("critical_minerals"):  filled.append(f"重要鉱物使用: {intake['critical_minerals']}")
+        filled_block = "\n".join(f"  ✓ {f}" for f in filled) if filled else "  （まだヒアリング開始前）"
+        return f"""あなたは輸出管理コンプライアンス部門の先輩担当者です。
+後輩がサプライチェーン・デューデリジェンス（SC DD）の適用可能性評価をしようとしており、必要情報をヒアリングしています。
+
+【収集すべき情報（必須5項目）】
+1. 企業名（自社または調査対象企業）
+2. 主要調達国（製造・原材料調達国をカンマ区切りで）
+3. 製品カテゴリ（例: 電子部品、アパレル、農産品、化学品）
+4. EU年間売上（ユーロ金額 — CSDDD/LkSG 適用閾値判定用）
+5. ドイツ国内の従業員数（LkSG 適用閾値1,000人判定用）
+
+【追加確認（適用法令特定のため）】
+- 新疆ウイグル自治区（XUAR）との調達関連性有無（UFLPA判定）
+- ガリウム・ゲルマニウム・コバルト・リチウム等の重要鉱物使用有無（CRMA/IRA FEOC）
+
+【完了条件】
+5必須項目が揃ったとき。完了時は is_intake_complete=true を返し、action_plan に generate_sc_dd_report を含める。
+
+【現在のヒアリング状況】
+収集済み情報:
+{filled_block}
+
+未解決のギャップ:
+{gaps_block}
 
 ターン数: {intake.get('turn_count', 0)} / 6（目標完了ターン数）
 
@@ -1277,7 +1587,8 @@ _RESPOND_INTAKE_TOOL = {
                         "action_type": {"type": "string",
                                         "enum": ["create_transaction", "run_screening",
                                                  "run_ai_validation", "create_product",
-                                                 "create_rnd_case", "navigate_to", "manual"],
+                                                 "create_rnd_case", "generate_sc_dd_report",
+                                                 "navigate_to", "manual"],
                                         "description": "実行するアクション種別"},
                         "params":      {"type": "object", "description": "アクション実行パラメータ"},
                     },
@@ -1368,6 +1679,12 @@ async def _execute_action_plan(
                                  "result": "ok",
                                  "detail": f"ケースID: {case_id}"})
 
+            elif action_type == "generate_sc_dd_report":
+                report = _build_sc_dd_report(intake)
+                intake["sc_dd_report"] = report
+                results.append({"step": step["step"], "label": label,
+                                 "result": "ok", "detail": report[:200]})
+
             elif action_type == "navigate_to":
                 url = params.get("url", "")
                 results.append({"step": step["step"], "label": label,
@@ -1446,6 +1763,45 @@ async def _create_rnd_case(intake: dict, rnd_url: str) -> dict:
         )
         resp.raise_for_status()
         return resp.json()
+
+
+def _build_sc_dd_report(intake: dict) -> str:
+    """SC DD アセスメント結果サマリーを生成する（generate_sc_dd_report アクション用）"""
+    company      = intake.get("company_name", "不明")
+    countries    = intake.get("sourcing_countries", "不明")
+    category     = intake.get("product_category", "不明")
+    eu_rev       = intake.get("eu_annual_revenue") or "不明"
+    de_emp       = intake.get("german_employees") or "不明"
+    xuar         = intake.get("has_xuar_exposure") or "不明"
+    minerals     = intake.get("critical_minerals") or "不明"
+
+    laws = []
+    try:
+        rev_val = float(str(eu_rev).replace(",", "").replace("M", "000000").replace("億", "00000000"))
+        if rev_val >= 400_000_000:
+            laws.append("CSDDD（EU企業持続可能性デューデリジェンス指令）")
+    except Exception:
+        pass
+    try:
+        emp_val = int(str(de_emp).replace(",", "").replace("人", ""))
+        if emp_val >= 1000:
+            laws.append("LkSG（ドイツ供給網DD法）")
+    except Exception:
+        pass
+    if xuar not in ("なし", "no", "No", "不明"):
+        laws.append("UFLPA（ウイグル強制労働防止法）")
+    if minerals not in ("なし", "no", "No", "不明"):
+        laws.append("CRMA/IRA FEOC（重要原材料・FEOC規制）")
+    laws_str = "・".join(laws) if laws else "（閾値以下または情報不足のため判定保留）"
+
+    return (
+        f"【SC DD アセスメント結果】\n"
+        f"企業: {company} ／ 調達国: {countries} ／ 製品: {category}\n"
+        f"適用可能性が高い法令: {laws_str}\n"
+        f"XUAR関連: {xuar} ／ 重要鉱物: {minerals}\n"
+        f"次のステップ: 各法令の義務内容（リスク分析・契約条項・報告）を確認し、"
+        f"サプライヤーアンケートを実施することを推奨します。"
+    )
 
 
 async def _run_screening(company_name: str, platform_url: str) -> dict:
@@ -2180,7 +2536,7 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     port = str(ctx.get("port", ""))
 
     # ワークフロー分析
-    workflow = _analyze_workflow_state(session_data, ctx)
+    workflow = await _analyze_workflow_state(session_data, ctx)
     workflow_alerts = workflow.get("proactive_alerts", [])
     workflow_alert_str = "\n".join(
         f"⚠️ [{a['severity'].upper()}] {a['message']}" for a in workflow_alerts
@@ -2372,6 +2728,7 @@ async def chat(req: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
             "module_count":       len([v for v in persona.get("module_familiarity", {}).values() if v > 0]),
         },
         strategic_context=_layer_e_ctx if _layer_e_ctx else None,
+        structured_cards=_build_structured_cards(req.message, rag_context),
     )
 
 
@@ -2497,7 +2854,7 @@ async def proactive_greet(req: GreetRequest, db: Session = Depends(get_db)) -> C
         _save_session(req.session_id, session_data)
 
     # ワークフロー分析
-    workflow = _analyze_workflow_state(session_data, req.context)
+    workflow = await _analyze_workflow_state(session_data, req.context)
     alerts   = workflow.get("proactive_alerts", [])
 
     # 表示済みガイドをフィルタリング（同一セッションで同じアラートを繰り返さない）

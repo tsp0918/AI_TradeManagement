@@ -179,12 +179,25 @@ class DapChatLog(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
     turn_num: Mapped[int] = mapped_column(Integer, default=0)
-    user_message: Mapped[str] = mapped_column(String(4000), default="")
-    assistant_reply: Mapped[str] = mapped_column(String(4000), default="")
+    user_message: Mapped[str] = mapped_column(String(8000), default="")
+    assistant_reply: Mapped[str] = mapped_column(String(8000), default="")
     # ページ/モジュールコンテキスト（port, page_path, module_key 等）
     page_context: Mapped[dict] = mapped_column(JSON, default=dict)
     # レスポンスで返されたアクション (highlight / navigate_to 等)
     actions: Mapped[list] = mapped_column(JSON, default=list)
-    # ヒアリングモード中の場合のモード名（export_transaction / product_registration / rnd_project）
+    # ヒアリングモード中の場合のモード名
     intake_mode: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class DapSession(Base):
+    """セッション永続化テーブル。_SESSION_STORE の write-through ターゲット。"""
+    __tablename__ = "dap_sessions"
+
+    session_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    history: Mapped[list] = mapped_column(JSON, default=list)
+    task: Mapped[str] = mapped_column(String(500), default="")
+    persona: Mapped[dict] = mapped_column(JSON, default=dict)
+    intake_state: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    last_access: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

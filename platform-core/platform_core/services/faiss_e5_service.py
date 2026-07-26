@@ -309,8 +309,10 @@ def _encode_query(text: str) -> np.ndarray:
 
 
 # ── 検索 ──────────────────────────────────────────────────────────────────────
-def search_layer_a(query: str, top_k: int = 10) -> list[LayerAHit]:
-    """Layer A（外為法 + ECCN）をクエリで検索する。"""
+def search_layer_a(query: str, top_k: int = 10, source_type: str | None = None) -> list[LayerAHit]:
+    """Layer A（外為法 + ECCN）をクエリで検索する。
+    source_type を指定した場合はその種別のみを返す（FAISS 検索後にフィルタリング）。
+    """
     if _layer_a_index is None or _layer_a_index.ntotal == 0:
         logger.warning("Layer A index not ready")
         return []
@@ -318,14 +320,17 @@ def search_layer_a(query: str, top_k: int = 10) -> list[LayerAHit]:
     if not query:
         return []
     qv = _encode_query(query)
-    actual_k = min(top_k, _layer_a_index.ntotal)
-    D, I = _layer_a_index.search(qv, actual_k)
+    # source_type フィルターがある場合は多めに取得してフィルタリング
+    fetch_k = min(top_k * 5 if source_type else top_k, _layer_a_index.ntotal)
+    D, I = _layer_a_index.search(qv, fetch_k)
 
     hits: list[LayerAHit] = []
     for score, idx in zip(D[0].tolist(), I[0].tolist()):
         if idx < 0 or idx >= len(_layer_a_records):
             continue
         r = _layer_a_records[idx]
+        if source_type and r.get("source_type", "") != source_type:
+            continue
         hits.append(LayerAHit(
             score=float(score),
             faiss_id=int(r.get("faiss_id", idx)),
@@ -339,6 +344,8 @@ def search_layer_a(query: str, top_k: int = 10) -> list[LayerAHit]:
                    if k not in {"faiss_id", "source_type", "source_name",
                                 "item_no", "item_label", "full_text", "embed_text"}},
         ))
+        if len(hits) >= top_k:
+            break
     return hits
 
 

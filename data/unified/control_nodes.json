@@ -28208,6 +28208,397 @@
         "VSP（自発的開示）"
       ],
       "legislation": "外為法70条（輸出禁止命令）、外為法71条（罰則）"
+    },
+    {
+      "id": "REGIME:NSG",
+      "type": "international_regime",
+      "regime": "nsg",
+      "label": "核供給国グループ（NSG）",
+      "description": "48カ国が参加する核不拡散輸出管理レジーム。Part 1（核特定品目）とPart 2（デュアルユース）のガイドラインを維持。IAEA保障措置が輸出要件。",
+      "eccn_explicit": [
+        "0A001",
+        "0B001",
+        "0C001",
+        "0D001",
+        "0E001"
+      ],
+      "edges": {
+        "explicit": [
+          {
+            "target_type": "eccn",
+            "target_id": "0A001",
+            "relation": "regime_control",
+            "label": "核反応炉"
+          },
+          {
+            "target_type": "eccn",
+            "target_id": "0B001",
+            "relation": "regime_control",
+            "label": "核燃料製造設備"
+          }
+        ],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "REGIME:AG",
+      "type": "international_regime",
+      "regime": "ag",
+      "label": "オーストラリアグループ（AG）",
+      "description": "43カ国が参加する化学・生物兵器拡散防止レジーム。化学前駆体リスト（約54品目）・生物剤リスト・製造設備リストを維持。",
+      "eccn_explicit": [
+        "1C350",
+        "1C351",
+        "1C352",
+        "1C353",
+        "1C354",
+        "2B350"
+      ],
+      "edges": {
+        "explicit": [
+          {
+            "target_type": "eccn",
+            "target_id": "1C350",
+            "relation": "regime_control",
+            "label": "化学前駆体"
+          },
+          {
+            "target_type": "eccn",
+            "target_id": "2B350",
+            "relation": "regime_control",
+            "label": "化学製造設備"
+          }
+        ],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "REGIME:MTCR",
+      "type": "international_regime",
+      "regime": "mtcr",
+      "label": "ミサイル技術管理レジーム（MTCR）",
+      "description": "35カ国が参加するミサイル・WMD運搬手段拡散防止レジーム。Category I（射程300km超・500kg超）は推定否定原則。",
+      "eccn_explicit": [
+        "9A004",
+        "9B004",
+        "9B116",
+        "7A105"
+      ],
+      "edges": {
+        "explicit": [
+          {
+            "target_type": "eccn",
+            "target_id": "9A004",
+            "relation": "regime_control",
+            "label": "ロケット・ミサイルシステム"
+          }
+        ],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "REGIME:Zangger",
+      "type": "international_regime",
+      "regime": "zangger",
+      "label": "Zangger委員会（核輸出管理委員会）",
+      "description": "38カ国が参加。NPT第3条2項に基づくトリガーリスト（重水・核燃料サイクル機器等）を維持。NSGと相補的に機能。",
+      "eccn_explicit": [
+        "0C001",
+        "0B001"
+      ],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": [
+          {
+            "target_type": "international_regime",
+            "target_id": "REGIME:NSG",
+            "relation": "complementary",
+            "label": "NSGと相補"
+          }
+        ]
+      }
+    },
+    {
+      "id": "REGIME:KECO",
+      "type": "international_regime",
+      "regime": "keco",
+      "label": "韓国輸出管理（KECO）",
+      "description": "韓国戦略物資輸出入통제원。Wassenaar/NSG/MTCR/AG整合の品目リスト。Yestrade申請システムを運用。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "REGIME:SCOMET",
+      "type": "international_regime",
+      "regime": "scomet",
+      "label": "インドSCOMET",
+      "description": "インドDGFT管轄の輸出管理品目リスト。Cat 0〜8の9カテゴリ。軍事向けSPDLと連動。2024年ICP制度導入で厳格化。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "LAW:CSDDD",
+      "type": "sc_dd_regulation",
+      "regime": "eu",
+      "label": "EU企業持続可能性デューデリジェンス指令（CSDDD）",
+      "description": "Directive 2024/1760。EU売上4億€超・従業員1,000人超に適用。サプライチェーン全体の人権・環境DDが義務。2027年〜段階導入。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": [
+          {
+            "target_type": "sc_dd_regulation",
+            "target_id": "LAW:LKSG",
+            "relation": "harmonized",
+            "label": "LkSGと整合"
+          }
+        ]
+      }
+    },
+    {
+      "id": "LAW:LKSG",
+      "type": "sc_dd_regulation",
+      "regime": "de",
+      "label": "ドイツ供給網デューデリジェンス法（LkSG）",
+      "description": "2023年施行。ドイツ国内法人・1,000人超に適用。BAFA年次報告義務。違反時最大800万€またはグローバル売上2%。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": [
+          {
+            "target_type": "sc_dd_regulation",
+            "target_id": "LAW:CSDDD",
+            "relation": "precursor",
+            "label": "CSDDDの先行法"
+          }
+        ]
+      }
+    },
+    {
+      "id": "LAW:UFLPA",
+      "type": "sc_dd_regulation",
+      "regime": "us",
+      "label": "ウイグル強制労働防止法（UFLPA）",
+      "description": "Public Law 117-78。2022年施行。新疆産物品は強制労働なしの反証なければ米国輸入禁止。CBPが執行。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "LAW:CBAM",
+      "type": "sc_dd_regulation",
+      "regime": "eu",
+      "label": "EU炭素国境調整メカニズム（CBAM）",
+      "description": "Reg. 2023/956。2026年正式賦課。鉄鋼・アルミ・セメント・電力・肥料・水素の6品種に炭素関税。製造排出係数の第三者認証が必要。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "LAW:EUDR",
+      "type": "sc_dd_regulation",
+      "regime": "eu",
+      "label": "EU森林破壊規制（EUDR）",
+      "description": "Reg. 2023/1115。牛・大豆・コーヒー・カカオ・パーム油・木材・ゴム等の製品について、森林破壊地由来でないことの証明義務。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "LAW:CRMA",
+      "type": "mineral_regulation",
+      "regime": "eu",
+      "label": "EU重要原材料法（CRMA）",
+      "description": "Reg. 2024/1252。34種CRM・17種SRM指定。2030年目標：採掘10%・加工40%・リサイクル15%をEU域内で。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": [
+          {
+            "target_type": "mineral_regulation",
+            "target_id": "LAW:IRA-FEOC",
+            "relation": "parallel",
+            "label": "IRA FEOCと並行"
+          }
+        ]
+      }
+    },
+    {
+      "id": "LAW:IRA-FEOC",
+      "type": "mineral_regulation",
+      "regime": "us",
+      "label": "IRAインフレ抑制法FEOCルール",
+      "description": "IRA §30D。FEOC（懸念外国エンティティ）からの核電池素材を含むEVへの税額控除禁止（最大$7,500）。リチウム・コバルト・ニッケル・マンガン・黒鉛が対象。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "LAW:CHIPS-FEOC",
+      "type": "mineral_regulation",
+      "regime": "us",
+      "label": "CHIPS法ガードレール（FEOC）",
+      "description": "CHIPS and Science Act 2022。補助金受給企業は10年間、中国等への先進半導体製造能力の実質的拡張禁止。FEOC=中国・ロシア・北朝鮮・イランの政府等が25%超支配。",
+      "eccn_explicit": [
+        "3A090",
+        "4A090",
+        "3B001"
+      ],
+      "edges": {
+        "explicit": [
+          {
+            "target_type": "eccn",
+            "target_id": "3A090",
+            "relation": "guardrail",
+            "label": "先端AIチップ"
+          }
+        ],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "LAW:CN-EXPORT-CTRL",
+      "type": "mineral_regulation",
+      "regime": "cn",
+      "label": "中国ガリウム・ゲルマニウム輸出規制",
+      "description": "2023年8月施行。Ga/Ge輸出にMOFCOM許可が必要。2023年12月からグラファイト追加。世界生産の約80%を中国が占める。日本企業は代替調達源の確保が急務。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": [
+          {
+            "target_type": "mineral_regulation",
+            "target_id": "LAW:CRMA",
+            "relation": "supply_risk",
+            "label": "CRMA調達目標に直撃"
+          }
+        ]
+      }
+    },
+    {
+      "id": "LAW:FDPR",
+      "type": "sc_dd_regulation",
+      "regime": "us",
+      "label": "外国直接製品規則（FDPR）",
+      "description": "EAR §734.9。米国産技術・ソフトウェア使用の外国製品にEAR適用。2022年10月大幅強化（対中FDPR・軍事エンドユーザーFDPR）。RU/BY/CN向け先端半導体に原則禁止。",
+      "eccn_explicit": [
+        "3A090",
+        "4A090",
+        "3B001",
+        "3B002",
+        "3E001"
+      ],
+      "edges": {
+        "explicit": [
+          {
+            "target_type": "eccn",
+            "target_id": "3A090",
+            "relation": "fdpr_control",
+            "label": "AIチップFDPR"
+          },
+          {
+            "target_type": "eccn",
+            "target_id": "3B001",
+            "relation": "fdpr_control",
+            "label": "半導体製造装置FDPR"
+          }
+        ],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "LAW:EAR744",
+      "type": "sc_dd_regulation",
+      "regime": "us",
+      "label": "EAR Part 744（エンドユーザー規制）",
+      "description": "§744.21 軍事最終用途・エンドユーザー規制（RU/BY/CN対象）。§744.17 先端半導体国別規制。MEL掲載品目は対象国輸出原則禁止。VEU認定で中国・インド向け簡略化。",
+      "eccn_explicit": [
+        "3A090",
+        "4A090",
+        "7A005",
+        "9A004"
+      ],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "REGIME:SHTC",
+      "type": "international_regime",
+      "regime": "shtc",
+      "label": "台湾SHTC（戦略ハイテク品目）",
+      "description": "台湾外貿局（BOFT）管轄の輸出管理リスト。米国EAR CCLに準拠。対中特定品目には追加許可要件あり。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "REGIME:SGCA",
+      "type": "international_regime",
+      "regime": "sgca",
+      "label": "シンガポールSGCA（戦略物資管理法）",
+      "description": "Strategic Goods Control Act。Singapore Customs管轄。PFR（Permit-Free Re-export）スキームで再輸出許可の迅速化。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": []
+      }
+    },
+    {
+      "id": "LAW:MSA-UK",
+      "type": "sc_dd_regulation",
+      "regime": "gb",
+      "label": "英国現代奴隷法（UK Modern Slavery Act）",
+      "description": "2015年施行。英国内で年間売上3,600万ポンド超の事業者に強制労働・人身売買に関する年次声明の開示義務。",
+      "eccn_explicit": [],
+      "edges": {
+        "explicit": [],
+        "derived": [],
+        "semantic": [
+          {
+            "target_type": "sc_dd_regulation",
+            "target_id": "LAW:UFLPA",
+            "relation": "parallel",
+            "label": "UFLPA（米）と並行"
+          }
+        ]
+      }
     }
   ],
   "patent_index": [

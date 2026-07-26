@@ -83,11 +83,13 @@ class LayerDSearchResponse(BaseModel):
 def search_layer_a_endpoint(
     q: str = Query(..., description="検索クエリ"),
     top_k: int = Query(5, ge=1, le=20),
+    source_type: str | None = Query(None, description="絞り込む source_type（例: nsg, ag, mtcr, fdpr）"),
 ) -> LayerASearchResponse:
     """
     FAISS Layer A（外為法 + ECCN 規制テキスト）を検索する。
 
     DAP などの他モジュールが Claude の RAG コンテキスト生成に使用する。
+    source_type を指定すると、その種別のみに絞り込んだ結果を返す。
     """
     try:
         from platform_core.services.faiss_e5_service import search_layer_a, is_ready
@@ -103,7 +105,7 @@ def search_layer_a_endpoint(
             pass
 
     try:
-        hits = search_layer_a(q, top_k=top_k)
+        hits = search_layer_a(q, top_k=top_k, source_type=source_type)
     except Exception as e:
         logger.warning("Layer A search failed: %s", e)
         return LayerASearchResponse(query=q, top_k=top_k, hits=[], error=str(e))
