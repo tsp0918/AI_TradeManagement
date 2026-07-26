@@ -1,0 +1,164 @@
+{
+  "_source": "Supply Chain Due Diligence Laws and Trade Measures",
+  "_doc": "EU CSDDD / German LkSG / US UFLPA / EU CBAM / EU EUDR - 2024",
+  "chokepoints": [],
+  "alliance_ecosystems": [],
+  "sc_dd_frameworks": [
+    {
+      "framework_id": "SCDD-CSDDD",
+      "framework_name": "EU Corporate Sustainability Due Diligence Directive (CSDDD)",
+      "framework_name_ja": "EU企業持続可能性デューデリジェンス指令",
+      "legal_basis": "Directive (EU) 2024/1760",
+      "effective_date": "2024-07-25",
+      "strategic_axis": ["サプライチェーンDD", "経済安保"],
+      "description": "EU企業とEUで活動する企業に対し、バリューチェーン全体（直接・間接取引先含む）にわたる人権・環境デューデリジェンス義務を課す指令。2024年7月施行。大企業（EU：従業員1,000人・売上高4.5億ユーロ超）が対象。",
+      "key_requirements": [
+        "DD方針の策定・公表（バリューチェーン全体対象）",
+        "人権・環境リスクの特定・評価（ILO中核条約8条件・パリ協定適合）",
+        "具体的な予防・軽減措置の実施（取引停止を含む）",
+        "苦情処理メカニズムの設置",
+        "気候変動緩和計画（Net Zero移行計画）の策定・公表",
+        "EU加盟国当局による監督・制裁（売上高5%以上の罰金）",
+        "民事責任：被害者が欧州裁判所でDD不履行を根拠に損害賠償請求可能"
+      ],
+      "scope_entities": [
+        "EU企業（従業員1,000人超・純売上高4.5億EUR超）",
+        "非EU企業（EU市場での純売上高4.5億EUR超）",
+        "小規模高リスク企業（220人超・売上高40MEUR超 特定リスクセクター）"
+      ],
+      "impact_on_japan": "欧州市場向け輸出・欧州企業とのサプライチェーン関係を持つ日本企業に直接適用。欧州子会社の親会社責任も含む。",
+      "eccn_relevance": [],
+      "fefta_relevance": []
+    },
+    {
+      "framework_id": "SCDD-LKSG",
+      "framework_name": "German Supply Chain Due Diligence Act (LkSG)",
+      "framework_name_ja": "ドイツ供給連鎖デューデリジェンス法（Lieferkettensorgfaltspflichtengesetz）",
+      "legal_basis": "BGBl. I S. 2959 (2021)",
+      "effective_date": "2023-01-01",
+      "strategic_axis": ["サプライチェーンDD", "経済安保"],
+      "description": "ドイツ国内拠点を持つ企業（従業員1,000人以上）に対し、サプライチェーン全体の人権・環境デューデリジェンスを義務付け。2023年1月から1,000人以上企業に適用。",
+      "key_requirements": [
+        "リスク分析：自社直接サプライヤーの人権・環境リスク評価（年次）",
+        "予防措置：リスクを特定した場合の具体的行動計画策定",
+        "是正措置：実際の侵害発生時の即時対応義務",
+        "苦情メカニズム：外部からの苦情受付窓口設置",
+        "年次報告書：BAFA（連邦経済輸出統制庁）への提出義務",
+        "罰則：年間売上高2%以下の罰金 + 公共調達排除最大3年"
+      ],
+      "covered_rights": [
+        "強制労働・児童労働禁止（ILO条約29/105/138/182号）",
+        "結社の自由・団体交渉権（ILO条約87/98号）",
+        "労働安全衛生",
+        "水銀・POPs等有害物質使用禁止",
+        "環境：パリ協定義務（GHG削減計画）"
+      ],
+      "impact_on_japan": "ドイツを主要取引先または欧州拠点とする日本企業は一次サプライヤーとして問い合わせ・監査対応が必要。自動車・電機・化学セクターで広範影響。",
+      "eccn_relevance": [],
+      "fefta_relevance": []
+    },
+    {
+      "framework_id": "SCDD-UFLPA",
+      "framework_name": "US Uyghur Forced Labor Prevention Act (UFLPA)",
+      "framework_name_ja": "米国ウイグル強制労働防止法",
+      "legal_basis": "Public Law 117-78 (2021)",
+      "effective_date": "2022-06-21",
+      "strategic_axis": ["サプライチェーンDD", "経済安保", "地政学"],
+      "description": "新疆ウイグル自治区（XUAR）で全部または一部が製造された製品は強制労働を使用したと推定し、米国への輸入を禁止。否定するには明確かつ説得力のある証拠が必要（反証可能な推定）。",
+      "key_requirements": [
+        "輸入者の義務：新疆産品（または新疆関連企業産品）の証明責任",
+        "DHS UFLPAエンティティリスト：強制労働使用が確認された企業のリスト",
+        "CBP審査：税関で輸入差し止め・強制労働証拠の提出要求",
+        "適用対象：新疆産綿花・ポリシリコン・トマト・その他全製品",
+        "サプライチェーン可視化：原材料から完成品まで全ての加工工程証拠",
+        "対象企業: XUAR政府・UFLPAエンティティリスト関連企業"
+      ],
+      "high_risk_sectors": [
+        "綿花・紡績・繊維（XUAR産綿花 世界シェア85%）",
+        "ポリシリコン・太陽電池（XUAR産ポリシリコン 世界45%）",
+        "電子部品・半導体（新疆産レアアース・レアメタル）",
+        "自動車部品（XUAR産アルミニウム・鋼材）",
+        "食品（トマトペースト・チリ・砂糖）"
+      ],
+      "impact_on_japan": "日本企業のサプライチェーンに新疆原産材料が混入している場合、米国向け輸出が差し止められるリスク。特に太陽光パネル・電子部品・繊維製品に注意。",
+      "eccn_relevance": [],
+      "fefta_relevance": []
+    },
+    {
+      "framework_id": "SCDD-CBAM",
+      "framework_name": "EU Carbon Border Adjustment Mechanism (CBAM)",
+      "framework_name_ja": "EU炭素国境調整メカニズム",
+      "legal_basis": "Regulation (EU) 2023/956",
+      "effective_date": "2023-10-01 (transitional) / 2026-01-01 (full)",
+      "strategic_axis": ["サプライチェーンDD", "経済安保"],
+      "description": "EU外からのカーボン集約型製品輸入に、EU ETS炭素価格と同等のコストを課す仕組み。2023年10月移行期間開始、2026年1月全面施行。GHG漏れ防止が目的。",
+      "key_requirements": [
+        "CBAM申告者登録（EU内のCBAM認可申告者）",
+        "輸入品の内包炭素排出量（Embedded Carbon）の計算・報告",
+        "CBAM証書（Certificate）の購入（炭素価格と連動）",
+        "第三国での炭素価格支払い分は控除可能",
+        "移行期間（2023-2025）：四半期報告のみ（証書購入不要）",
+        "完全施行（2026〜）：CBAM証書購入義務・年次申告"
+      ],
+      "covered_sectors": [
+        "鉄鋼・鉄鋼製品（HS72/73）",
+        "アルミニウム・同製品（HS76）",
+        "セメント（HS25）",
+        "肥料（HS31）",
+        "電力（電力輸入 HS2716）",
+        "水素（HS2804.10 — 2026年以降）"
+      ],
+      "impact_on_japan": "日本鉄鋼・アルミニウム・セメントのEU輸出に影響。Scope 2/3排出量の可視化が必要。日本のカーボンプライシング（GX移行ロードマップ）との連動に注目。",
+      "eccn_relevance": [],
+      "fefta_relevance": []
+    },
+    {
+      "framework_id": "SCDD-EUDR",
+      "framework_name": "EU Deforestation Regulation (EUDR)",
+      "framework_name_ja": "EU森林破壊規制",
+      "legal_basis": "Regulation (EU) 2023/1115",
+      "effective_date": "2024-12-30",
+      "strategic_axis": ["サプライチェーンDD"],
+      "description": "特定品目（7品目）がEU市場で販売または輸出される場合、森林破壊に関与していないことと原産地の法令遵守を証明する義務。適用開始は2025年に延期（2024年11月EC提案）。",
+      "key_requirements": [
+        "デューデリジェンスステートメント（DDS）の提出",
+        "原産地（農地）のGPS座標の提出",
+        "2020年12月31日以降の森林破壊に関与していないことの証明",
+        "法令遵守（原産地の環境・労働・人権法）の確認",
+        "情報源：衛星画像・第三者認証・原産地国政府書類"
+      ],
+      "covered_commodities": [
+        "牛・牛肉製品（皮革含む）",
+        "可溶性大豆・大豆油（HS12）",
+        "パーム油・パーム核油（HS15）",
+        "木材・木材製品（紙・パルプ・木製家具含む）",
+        "コーヒー（HS09）",
+        "カカオ・チョコレート（HS18）",
+        "ゴム・ゴム製品（タイヤ含む）"
+      ],
+      "impact_on_japan": "日本企業の食品・木材・ゴム調達がEUDR対象に。特にパームオイル（食品・化粧品）・ゴム（自動車タイヤ）・木材（建設・家具）のサプライチェーン管理が必要。",
+      "eccn_relevance": [],
+      "fefta_relevance": []
+    },
+    {
+      "framework_id": "SCDD-UK-MSA",
+      "framework_name": "UK Modern Slavery Act 2015",
+      "framework_name_ja": "英国現代奴隷法",
+      "legal_basis": "Modern Slavery Act 2015 (c. 30)",
+      "effective_date": "2015-10-29",
+      "strategic_axis": ["サプライチェーンDD"],
+      "description": "英国での事業年間売上高3,600万ポンド以上の企業に対し、サプライチェーンにおける強制労働・人身売買防止のための措置声明の年次公表を義務付け。",
+      "key_requirements": [
+        "年次Modern Slavery声明の公表（GovUKに登録）",
+        "強制労働リスクの評価・特定",
+        "リスク軽減措置の実施報告",
+        "従業員向けトレーニングの実施",
+        "パフォーマンス指標（KPI）の設定・報告",
+        "CEOまたは取締役会の承認・署名"
+      ],
+      "impact_on_japan": "英国市場向け輸出または英国子会社を持つ日本企業が対象。日本の人権DD指針（2022年9月 経済産業省）との整合が求められる。",
+      "eccn_relevance": [],
+      "fefta_relevance": []
+    }
+  ]
+}

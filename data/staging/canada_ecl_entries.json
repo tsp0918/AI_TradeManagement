@@ -1,0 +1,142 @@
+{
+  "_source": "Canada Export Control List (ECL)",
+  "_doc": "Canada Export and Import Permits Act - Export Control List Groups 1-7 - 2023",
+  "_url": "https://www.canada.ca/en/global-affairs/topics/export-controls.html",
+  "total_categories": 18,
+  "entries": [
+    {
+      "control_id": "CA-ECL-G1-DU",
+      "regime": "Canada_ECL",
+      "regime_part": "Group 1 - Dual-Use",
+      "title": "デュアルユース品目（ワッセナー体制軍民両用リスト）",
+      "title_en": "Dual-Use List items (Wassenaar Dual-Use List)",
+      "description": "カナダ輸出管理リスト グループ1。ワッセナー体制デュアルユースリストに準拠。カナダはFive Eyes情報共同体メンバーとして厳格な技術移転管理を実施。",
+      "key_items": [
+        "先端材料（高強度複合材・特殊合金）",
+        "精密加工設備（5軸以上CNC）",
+        "電子機器（高性能IC・GaN素子）",
+        "通信・暗号装置",
+        "センサー・レーザー（軍民両用）",
+        "航法システム（慣性）"
+      ],
+      "related_eccn": ["1A001", "2B001", "3A001", "5A002"],
+      "related_wa_ml": [],
+      "related_fefta": ["全般"],
+      "ecl_group": "1"
+    },
+    {
+      "control_id": "CA-ECL-G2-ML",
+      "regime": "Canada_ECL",
+      "regime_part": "Group 2 - Military Goods",
+      "title": "軍需品（AECA連動 NATO互換）",
+      "title_en": "Military goods (AECA-linked, NATO-compatible)",
+      "description": "カナダ輸出管理リスト グループ2。軍需品・防衛製品の輸出管理。NATOメンバーとして同盟国間の防衛技術移転を重視。カナダ-米国NORAD共同防衛協定下での共同開発品を含む。",
+      "key_items": [
+        "完成兵器システム（小火器・重火器・弾薬）",
+        "軍用航空機・回転翼機（CF-18・CH-148）",
+        "海軍艦艇・潜水艦（HMCS）",
+        "NORAD用レーダー・監視システム",
+        "軍用爆発物・推進剤"
+      ],
+      "related_eccn": ["0A602", "9A610"],
+      "related_wa_ml": ["ML1", "ML4", "ML6", "ML9", "ML10"],
+      "related_fefta": ["1항"],
+      "ecl_group": "2"
+    },
+    {
+      "control_id": "CA-ECL-G3-NUC",
+      "regime": "Canada_ECL",
+      "regime_part": "Group 3 - Nuclear",
+      "title": "核品目（NSG・Zangger準拠）",
+      "title_en": "Nuclear items (NSG and Zangger-compliant)",
+      "description": "カナダ輸出管理リスト グループ3。カナダはCANDU炉の原産国として核技術輸出に特別な管理体制を持つ。Atomic Energy of Canada Limited（AECL）管轄品目を含む。",
+      "key_items": [
+        "CANDU炉・加圧重水炉（PHWR）関連設備",
+        "天然ウラン（ウラン鉱山 カナダ産最大保有国）",
+        "重水（D₂O）— CANDU炉減速材",
+        "ジルカロイ被覆管",
+        "核燃料集合体（37本束・28本束）"
+      ],
+      "related_eccn": ["0A001", "0C001", "0C002"],
+      "related_nsg": "NSG Part 1",
+      "related_fefta": ["1항"],
+      "ecl_group": "3"
+    },
+    {
+      "control_id": "CA-ECL-G4-MTCR",
+      "regime": "Canada_ECL",
+      "regime_part": "Group 4 - Missile Technology",
+      "title": "ミサイル技術（MTCR準拠）",
+      "title_en": "Missile technology items (MTCR-compliant)",
+      "description": "カナダ輸出管理リスト グループ4。MTCRに準拠したロケット・ミサイル関連技術の管理。カナダ宇宙機関（CSA）・MacDonald Dettwiler製品を含む。",
+      "key_items": [
+        "カナダアーム（宇宙ロボット ミサイル転用可能）",
+        "ロケット推進システム（MTCR Cat I/II）",
+        "衛星推進システム",
+        "精密誘導航法システム",
+        "ミサイルシーカー・誘導ヘッド"
+      ],
+      "related_eccn": ["9A004", "9A119"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["9항"],
+      "ecl_group": "4"
+    },
+    {
+      "control_id": "CA-ECL-G5-CHEM",
+      "regime": "Canada_ECL",
+      "regime_part": "Group 5 - Chemical/Biological",
+      "title": "化学・生物品目（AG/CWC準拠）",
+      "title_en": "Chemical and biological items (AG/CWC-compliant)",
+      "description": "カナダ輸出管理リスト グループ5。化学・生物兵器禁止条約（CWC/BWC）準拠。オーストラリアグループ（AG）リスト対応。",
+      "key_items": [
+        "CWCスケジュール化学品（全3スケジュール）",
+        "高危険病原体（BSL-3/4 管理対象）",
+        "生物毒素（ボツリヌス・リシン等）",
+        "化学兵器製造設備（高封じ込め反応器）",
+        "生物作用剤培養・散布設備"
+      ],
+      "related_eccn": ["1C350", "1C351"],
+      "related_cwc_schedule": "Schedule 1/2/3",
+      "related_fefta": ["3항"],
+      "ecl_group": "5"
+    },
+    {
+      "control_id": "CA-ECL-G6-CRIME",
+      "regime": "Canada_ECL",
+      "regime_part": "Group 6 - Crime Control",
+      "title": "犯罪取締・治安維持用装置",
+      "title_en": "Crime control and law enforcement equipment",
+      "description": "カナダ輸出管理リスト グループ6。人権侵害に使用される可能性のある法執行用品目。EAR犯罪取締（CC）理由管理品目と対応。",
+      "key_items": [
+        "スパイウェア・監視ソフトウェア（Pegasus類）",
+        "顔認識・群衆監視カメラシステム",
+        "電子通信傍受装置（IMSI-Catcher）",
+        "非致死性兵器（スタンガン・警棒 大量）",
+        "拷問防止プロトコル不適合拘束具"
+      ],
+      "related_eccn": ["0A977", "5A001"],
+      "related_wa_ml": [],
+      "related_fefta": ["全般"],
+      "ecl_group": "6"
+    },
+    {
+      "control_id": "CA-ECL-URANIUM",
+      "regime": "Canada_ECL",
+      "regime_part": "Special - Uranium",
+      "title": "ウラン鉱石・ウラン鉱山産品（カナダ原産）",
+      "title_en": "Uranium ore and mine products of Canadian origin",
+      "description": "カナダは世界最大のウラン生産国の一つ（Cameco社）。すべてのカナダ原産ウランの輸出にはIAEA保障措置適用が必要。核不拡散政策として第三国への再移転制限を課す。",
+      "key_items": [
+        "天然ウラン精鉱（イエローケーキ U₃O₈）",
+        "UF₆（ウラン濃縮原料）",
+        "UO₂（原子炉燃料用）",
+        "使用済燃料（照射済CANDU束）",
+        "トリウム（原子炉代替燃料）"
+      ],
+      "related_eccn": ["0C001"],
+      "related_nsg": "NSG-P1-1.C.3",
+      "related_fefta": ["1항"],
+      "ecl_group": "Uranium"
+    }
+  ]
+}

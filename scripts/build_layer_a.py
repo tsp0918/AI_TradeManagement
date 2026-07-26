@@ -60,6 +60,22 @@ _CHINA_ECL_JSON = _STAGING / "china_ecl_entries.json"              # Phase 14-A:
 _CISTEC_JSON    = _STAGING / "cistec_guideline_entries.json"        # Phase 14-A: CISTEC
 _JP_FX_2025_JSON = _STAGING / "jp_fx_2025_entries.json"            # Phase 16: 2025年改正追加品目
 _ECCN_TERMS_JSON = _ACADEMIC / "eccn_tech_terms.json"
+# Phase 17: 国際レジーム
+_NSG_JSON        = _STAGING / "nsg_entries.json"                    # Phase 17: NSG原子力供給国グループ
+_AG_JSON         = _STAGING / "ag_entries.json"                     # Phase 17: Australia Group CW/BW
+_MTCR_JSON       = _STAGING / "mtcr_entries.json"                   # Phase 17: ミサイル技術管制レジーム
+_ZANGGER_JSON    = _STAGING / "zangger_entries.json"                # Phase 17: Zangger委員会トリガーリスト
+# Phase 18: アジア太平洋各国輸出管理法令
+_KECO_JSON       = _STAGING / "keco_entries.json"                   # Phase 18: 韓国戦略物資
+_SCOMET_JSON     = _STAGING / "scomet_entries.json"                 # Phase 18: インドSCOMET
+_SHTC_JSON       = _STAGING / "shtc_entries.json"                   # Phase 18: 台湾SHTC
+_SGCA_JSON       = _STAGING / "sgca_entries.json"                   # Phase 18: シンガポールSGCA
+_CANADA_ECL_JSON = _STAGING / "canada_ecl_entries.json"             # Phase 18: カナダECL
+# Phase 19: 半導体・FDPR・CHIPS・BIS
+_EAR_744_JSON    = _STAGING / "ear_744_entries.json"                # Phase 19: EAR Part 744エンドユーザー規制
+_FDPR_JSON       = _STAGING / "fdpr_entries.json"                   # Phase 19: 外国直接製品規則
+_CHIPS_ACT_JSON  = _STAGING / "chips_act_entries.json"              # Phase 19: CHIPS法ガードレール
+_BIS_SEMICON_JSON = _STAGING / "bis_semicon_entries.json"           # Phase 19: BIS半導体規制
 _OUT_INDEX      = _STAGING / "layer_a.index"
 _OUT_META       = _STAGING / "layer_a_meta.json"
 # ai_validation SQLite DB (matrix_rules 2025年改正分)
@@ -572,6 +588,67 @@ def _load_records() -> list[dict]:
                 "embed_text":  et,
             })
             existing_jp25.add(item_no)
+
+    # ── 汎用ローダー（Phase 17-19 新ソース）────────────────────────────────
+    # JSON 形式: {"entries": [{"control_id":"...", "regime":"...", "regime_part":"...",
+    #                          "title":"...", "title_en":"...", "description":"...",
+    #                          "key_items":["..."], ...}]}
+    def _load_generic(path: "Path", source_type: str, source_name: str) -> int:
+        if not path.exists():
+            logger.warning("%s JSON not found: %s", source_type, path)
+            return 0
+        with open(path, encoding="utf-8") as _f:
+            _data = json.load(_f)
+        _entries = _data.get("entries", [])
+        _count = 0
+        for _r in _entries:
+            _control_id = _r.get("control_id", "")
+            _regime     = _r.get("regime", source_type.upper())
+            _part       = _r.get("regime_part", "")
+            _title      = _r.get("title", "")
+            _title_en   = _r.get("title_en", "")
+            _desc       = _r.get("description", "")
+            _items      = "; ".join(_r.get("key_items", []))
+            _full = (
+                f"{_regime} {_control_id}（{_part}）: {_title}（{_title_en}）. "
+                f"{_desc} 主要品目・事項: {_items}"
+            )
+            _et = _PASSAGE_PREFIX + _full[:1200]
+            if len(_et) < _MIN_EMBED_LEN or any(p in _et for p in _NOISE_PATTERNS):
+                continue
+            records.append({
+                "source_type": source_type,
+                "source_name": source_name,
+                "article_no":  _control_id,
+                "title":       _title,
+                "item_no":     _control_id,
+                "item_label":  _part,
+                "chunk_level": "item",
+                "value_mm":    None,
+                "value_unit":  None,
+                "full_text":   _full,
+                "embed_text":  _et,
+            })
+            _count += 1
+        logger.info("%s entries loaded: %d", source_type, _count)
+        return _count
+
+    # Phase 17: 国際レジーム
+    _load_generic(_NSG_JSON,        "nsg",         "nsg_guidelines_2023")
+    _load_generic(_AG_JSON,         "ag",          "australia_group_2023")
+    _load_generic(_MTCR_JSON,       "mtcr",        "mtcr_annex_2023")
+    _load_generic(_ZANGGER_JSON,    "zangger",     "zangger_trigger_list")
+    # Phase 18: アジア太平洋各国
+    _load_generic(_KECO_JSON,       "keco",        "korea_strategic_list_2023")
+    _load_generic(_SCOMET_JSON,     "scomet",      "india_scomet_2023")
+    _load_generic(_SHTC_JSON,       "shtc",        "taiwan_shtc_2023")
+    _load_generic(_SGCA_JSON,       "sgca",        "singapore_sgca_2023")
+    _load_generic(_CANADA_ECL_JSON, "canada_ecl",  "canada_ecl_2023")
+    # Phase 19: 半導体・FDPR・CHIPS
+    _load_generic(_EAR_744_JSON,    "ear_744",     "ear_part744_2024")
+    _load_generic(_FDPR_JSON,       "fdpr",        "ear_fdpr_734_9_2024")
+    _load_generic(_CHIPS_ACT_JSON,  "chips_act",   "us_chips_act_2023")
+    _load_generic(_BIS_SEMICON_JSON,"bis_semicon",  "bis_semicon_rules_2024")
 
     logger.info("Total build records: %d", len(records))
     return records

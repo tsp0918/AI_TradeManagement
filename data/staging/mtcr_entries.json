@@ -1,0 +1,240 @@
+{
+  "_source": "Missile Technology Control Regime",
+  "_doc": "MTCR Annex - Category I and Category II Items - 2023",
+  "_url": "https://www.mtcr.info/",
+  "total_categories": 25,
+  "entries": [
+    {
+      "control_id": "MTCR-I-1",
+      "regime": "MTCR",
+      "regime_part": "Category I",
+      "title": "完成ロケットシステム（射程300km以上、搭載量500kg以上）",
+      "title_en": "Complete rocket systems capable of delivering 500 kg payload to 300 km range",
+      "description": "核・化学・生物兵器の運搬に使用可能な弾道ミサイル・宇宙打ち上げロケットを含む完成システム。カテゴリIは最も厳格な輸出制限の対象。",
+      "key_items": [
+        "短距離弾道ミサイル（SRBM）— 射程300-1000km",
+        "中距離弾道ミサイル（MRBM）— 射程1000-3000km",
+        "宇宙打ち上げロケット（WMD搭載転用可能）",
+        "完成ロケットエンジン（固体・液体 推力条件対応）",
+        "サブオービタルロケット（弾頭模擬ペイロード300km射程達成可能）"
+      ],
+      "related_eccn": ["9A004", "9A105", "9A106"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["1項", "9項"],
+      "mtcr_control_type": "category_I"
+    },
+    {
+      "control_id": "MTCR-I-2",
+      "regime": "MTCR",
+      "regime_part": "Category I",
+      "title": "完成UAVシステム（射程300km以上）",
+      "title_en": "Complete unmanned aerial vehicle systems with 300 km range",
+      "description": "MTCR射程・搭載量基準（射程300km以上または搭載量500kg以上）を満たす無人航空機システム。巡航ミサイルを含む。",
+      "key_items": [
+        "巡航ミサイル（射程300km以上）",
+        "自律型攻撃UAV（UCAV）射程300km以上",
+        "偵察UAV（射程300km以上、高高度長時間滞空型）",
+        "完成無人ヘリコプター（搭載量500kg以上または射程300km以上）",
+        "スウォームUAVシステム（複数機協調 WMD散布可能）"
+      ],
+      "related_eccn": ["9A012"],
+      "related_wa_ml": ["ML10"],
+      "related_fefta": ["9項"],
+      "mtcr_control_type": "category_I"
+    },
+    {
+      "control_id": "MTCR-I-3",
+      "regime": "MTCR",
+      "regime_part": "Category I",
+      "title": "WMD弾頭・再突入体",
+      "title_en": "WMD warheads and re-entry vehicles",
+      "description": "核・化学・生物・放射線（CBRN）兵器の搭載・配送に設計された弾頭・再突入体。",
+      "key_items": [
+        "多弾頭独立目標再突入体（MIRV）",
+        "核弾頭（プルトニウム/HEU コア）",
+        "化学弾頭（剤充填・エアロゾル化機構付き）",
+        "高威力通常弾頭（500kg以上 弾道ミサイル用）",
+        "再突入体炭素-炭素熱シールドアッセンブリ"
+      ],
+      "related_eccn": ["0A002", "9A004"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["1項"],
+      "mtcr_control_type": "category_I"
+    },
+    {
+      "control_id": "MTCR-I-4",
+      "regime": "MTCR",
+      "regime_part": "Category I",
+      "title": "ミサイル製造施設・生産設備",
+      "title_en": "Missile manufacturing facilities and production equipment",
+      "description": "MTCR基準を満たす完成ミサイル・UAVの製造に特別に設計された生産施設・専用工作機械。",
+      "key_items": [
+        "液体推進剤ロケットエンジン製造設備（燃焼試験台含む）",
+        "固体燃料ロケットモーター製造設備（充填・硬化炉）",
+        "ミサイル胴体成形設備（カーボンファイバー積層・オートクレーブ）",
+        "弾道ミサイル誘導システム製造・試験設備",
+        "ミサイル組立・環境試験設備（振動・熱真空チャンバー）"
+      ],
+      "related_eccn": ["9B005", "9B105"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["1項", "9項"],
+      "mtcr_control_type": "category_I"
+    },
+    {
+      "control_id": "MTCR-II-1",
+      "regime": "MTCR",
+      "regime_part": "Category II",
+      "title": "ロケット推進システム（カテゴリII）",
+      "title_en": "Rocket propulsion systems Category II",
+      "description": "MTCR基準以下のロケット推進システムおよびサブシステム。転用可能性があるため管理対象。",
+      "key_items": [
+        "固体燃料ロケットモーター（推力2.5kN以上、射程300km未満向け）",
+        "液体推進剤ロケットエンジン（推力2.5kN以上）",
+        "ハイブリッドロケットモーター",
+        "ラムジェット・スクラムジェット推進モジュール",
+        "姿勢制御スラスタ（モノプロペラント/バイプロペラント）"
+      ],
+      "related_eccn": ["9A105", "9A106", "9A119"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["9項"],
+      "mtcr_control_type": "category_II"
+    },
+    {
+      "control_id": "MTCR-II-2",
+      "regime": "MTCR",
+      "regime_part": "Category II",
+      "title": "推進剤・酸化剤（ロケット用）",
+      "title_en": "Propellants and oxidizers for rockets",
+      "description": "ロケット推進に使用される燃料・酸化剤。APCP・UDMH・HNO₃等の高性能推進剤。",
+      "key_items": [
+        "過塩素酸アンモニウム（AP） — コンポジット固体推進剤酸化剤",
+        "シクロテトラメチレンテトラニトラミン（HMX）— 固体推進剤バインダー",
+        "非対称ジメチルヒドラジン（UDMH） — 液体燃料",
+        "四酸化二窒素（N₂O₄） — 酸化剤（自着火）",
+        "高密度液体酸素（LOX）— 低温酸化剤",
+        "モノメチルヒドラジン（MMH）— 低温推進剤",
+        "ヒドラジン（N₂H₄）— 姿勢制御スラスタ燃料"
+      ],
+      "related_eccn": ["1C011", "1C111"],
+      "related_wa_ml": ["ML8"],
+      "related_fefta": ["1項"],
+      "mtcr_control_type": "category_II"
+    },
+    {
+      "control_id": "MTCR-II-3",
+      "regime": "MTCR",
+      "regime_part": "Category II",
+      "title": "飛行制御・誘導航法システム",
+      "title_en": "Flight control and guidance/navigation systems",
+      "description": "MTCR基準を満たすロケット・UAVの精密誘導に使用可能な飛行制御・航法システム。",
+      "key_items": [
+        "慣性測定装置（IMU）— ドリフト率0.1°/h未満",
+        "リングレーザージャイロ（RLG）— 精度0.1°/h未満",
+        "光ファイバジャイロ（FOG）",
+        "GPS/INS統合誘導システム（反ジャミング機能付き）",
+        "地形参照誘導システム（TERCOM/DSMAC）",
+        "アクティブレーダーシーカー（誘導弾用）"
+      ],
+      "related_eccn": ["7A003", "7A103", "9A515"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["7項"],
+      "mtcr_control_type": "category_II"
+    },
+    {
+      "control_id": "MTCR-II-4",
+      "regime": "MTCR",
+      "regime_part": "Category II",
+      "title": "構造材料 — MTCR転用可能",
+      "title_en": "Structural materials applicable to MTCR systems",
+      "description": "ロケット・ミサイル・UAVの構造体・燃焼室・ノズルに使用される高性能材料。",
+      "key_items": [
+        "炭素繊維強化プラスチック（CFRP）— Tg 300°C以上、引張強度3.5GPa以上",
+        "炭素-炭素複合材（C/C）— ノズル/スロートライナー、耐熱3000°C以上",
+        "セラミックマトリックス複合材（CMC）— SiC/SiC",
+        "タングステン合金（比重17以上）— 弾頭構造・スラストチャンバーライナー",
+        "チタン合金（Ti-6Al-4V）— ロケットケーシング・フレーム",
+        "マレージング鋼（超高張力、引張2000MPa以上）"
+      ],
+      "related_eccn": ["1C010", "1C110"],
+      "related_wa_ml": ["ML12"],
+      "related_fefta": ["1項"],
+      "mtcr_control_type": "category_II"
+    },
+    {
+      "control_id": "MTCR-II-5",
+      "regime": "MTCR",
+      "regime_part": "Category II",
+      "title": "推進剤製造設備・試験設備",
+      "title_en": "Propellant production and testing equipment",
+      "description": "ロケット推進剤の製造・品質管理・燃焼試験に使用される専用設備。",
+      "key_items": [
+        "推進剤ミキサー（APCPコンポジット製造用 真空ミキサー）",
+        "固体ロケットモーター静的燃焼試験台（推力測定・スラストベクトル制御試験）",
+        "液体ロケットエンジン燃焼試験設備",
+        "推進剤力学試験設備（燃焼速度・比推力測定）",
+        "高圧酸化剤ポンプ試験設備"
+      ],
+      "related_eccn": ["9B115"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["9項"],
+      "mtcr_control_type": "category_II"
+    },
+    {
+      "control_id": "MTCR-II-6",
+      "regime": "MTCR",
+      "regime_part": "Category II",
+      "title": "再突入体材料・熱防護システム",
+      "title_en": "Reentry vehicle materials and thermal protection systems",
+      "description": "大気圏再突入時の極超音速加熱に耐える材料および熱防護システム（TPS）。",
+      "key_items": [
+        "アブレーティブ材料（フェノール系・カーボン系）",
+        "高温セラミックコーティング（ZrO₂・HfO₂系）",
+        "再突入体ノーズコーン成形技術",
+        "高エンタルピーアーク加熱炉（極超音速試験用）",
+        "衝撃波管試験設備（マッハ20以上の超音速試験）"
+      ],
+      "related_eccn": ["9C110"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["9項"],
+      "mtcr_control_type": "category_II"
+    },
+    {
+      "control_id": "MTCR-II-7",
+      "regime": "MTCR",
+      "regime_part": "Category II",
+      "title": "宇宙打上ロケット誘導部品（デュアルユース）",
+      "title_en": "Space launch vehicle guidance components dual-usable",
+      "description": "正当な宇宙打上用途を持つが弾道ミサイルへの転用が可能なサブシステム・部品。",
+      "key_items": [
+        "スタージャイロスコープ（宇宙機姿勢制御/ミサイル誘導転用可）",
+        "スターセンサー・地球センサー（自律誘導）",
+        "液体ロケットエンジン推力制御バルブ",
+        "FPGAベース自律誘導コンピュータ",
+        "分離機構（段間/ペイロード）"
+      ],
+      "related_eccn": ["9A004", "7A103"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["9項"],
+      "mtcr_control_type": "category_II"
+    },
+    {
+      "control_id": "MTCR-II-8",
+      "regime": "MTCR",
+      "regime_part": "Category II",
+      "title": "軍用UAV向けサブシステム・センサー",
+      "title_en": "Military UAV subsystems and sensors",
+      "description": "軍用UAV・自律型兵器システムに転用可能なサブシステム・センサー類。",
+      "key_items": [
+        "電気光学/赤外線ターゲティングシステム（EO/IR）",
+        "合成開口レーダー（SAR）— 地上目標識別",
+        "SIGINT/ELINT搭載システム（電波収集UAV）",
+        "リンク-16/Link-22データリンク",
+        "ターゲット指示レーザー（距離測定/照射）"
+      ],
+      "related_eccn": ["9A012", "6A003"],
+      "related_wa_ml": ["ML10", "ML11"],
+      "related_fefta": ["7項", "9項"],
+      "mtcr_control_type": "category_II"
+    }
+  ]
+}

@@ -1,0 +1,219 @@
+{
+  "_source": "Special Chemicals, Organisms, Materials, Equipment and Technologies (SCOMET)",
+  "_doc": "India SCOMET List - DGFT Schedule 2 to ITC (HS) - 2023",
+  "_url": "https://www.dgft.gov.in/",
+  "total_categories": 30,
+  "entries": [
+    {
+      "control_id": "SCOMET-CAT0",
+      "regime": "SCOMET",
+      "regime_part": "Category 0 - Nuclear Materials",
+      "title": "核物質・核関連設備・技術",
+      "title_en": "Nuclear materials, nuclear-related equipment and technology",
+      "description": "インドSCOMETカテゴリ0。核不拡散体制（NSG/Zangger委員会）に準拠した核物質・設備・技術の輸出管理。インドは2008年よりNSG条件付き参加。",
+      "key_items": [
+        "天然ウラン・濃縮ウラン・プルトニウム",
+        "原子炉（研究炉・動力炉）",
+        "ウラン濃縮・再処理プラント設備",
+        "核燃料製造設備",
+        "重水製造設備",
+        "核物質計量管理システム"
+      ],
+      "related_eccn": ["0A001", "0B001", "0C001"],
+      "related_nsg": "NSG Part 1",
+      "related_fefta": ["1항"],
+      "scomet_category": "0"
+    },
+    {
+      "control_id": "SCOMET-CAT1",
+      "regime": "SCOMET",
+      "regime_part": "Category 1 - Toxic Chemical Agents",
+      "title": "毒性化学剤・前駆体",
+      "title_en": "Toxic chemical agents and precursors",
+      "description": "インドSCOMETカテゴリ1。化学兵器禁止条約（CWC）スケジュール化学品に準拠した輸出管理。インドは1993年CWC加盟。",
+      "key_items": [
+        "スケジュール1A/1B化学品（神経剤・びらん剤前駆体）",
+        "スケジュール2化学品（有機リン化合物等）",
+        "スケジュール3化学品（ホスゲン・シアン化水素等）",
+        "生物由来毒素（リシン・ボツリヌス等）"
+      ],
+      "related_eccn": ["1C350", "1C351"],
+      "related_cwc_schedule": "Schedule 1/2/3",
+      "related_fefta": ["3항"],
+      "scomet_category": "1"
+    },
+    {
+      "control_id": "SCOMET-CAT2",
+      "regime": "SCOMET",
+      "regime_part": "Category 2 - Microorganisms and Toxins",
+      "title": "微生物・毒素（生物作用剤）",
+      "title_en": "Microorganisms and toxins (biological agents)",
+      "description": "インドSCOMETカテゴリ2。生物兵器禁止条約（BWC）対象の高危険病原体・毒素。インドのBSL-4施設管理対象。",
+      "key_items": [
+        "炭疽菌（Bacillus anthracis）",
+        "ペスト菌（Yersinia pestis）",
+        "エボラ・マールブルグウイルス",
+        "ボツリヌス毒素・リシン",
+        "牛疫ウイルス（FMD高病原性株）",
+        "インドで在来する農業関連高危険病原体"
+      ],
+      "related_eccn": ["1C351", "1C354"],
+      "related_bwc": "BWC Article I",
+      "related_fefta": ["3항"],
+      "scomet_category": "2"
+    },
+    {
+      "control_id": "SCOMET-CAT3",
+      "regime": "SCOMET",
+      "regime_part": "Category 3 - Materials",
+      "title": "先進材料（軍民両用）",
+      "title_en": "Advanced dual-use materials",
+      "description": "インドSCOMETカテゴリ3。ミサイル・核兵器・高度防衛システムに転用可能な先進材料。インドの宇宙・ミサイル産業に使用。",
+      "key_items": [
+        "高強度炭素繊維（比強度46.5MJ/kg以上）",
+        "アラミド繊維（比強度10MJ/kg以上）",
+        "マレージング鋼（引張強度2050MPa以上）",
+        "チタン合金（Ti-6Al-4V 核・航空宇宙用）",
+        "高純度ジルコニウム（核グレード Hf<100ppm）",
+        "炭素-炭素複合材（耐熱2000°C以上）"
+      ],
+      "related_eccn": ["1C010", "1C110"],
+      "related_wa_ml": ["ML12"],
+      "related_fefta": ["1항"],
+      "scomet_category": "3"
+    },
+    {
+      "control_id": "SCOMET-CAT4",
+      "regime": "SCOMET",
+      "regime_part": "Category 4 - Materials Processing Equipment",
+      "title": "材料加工設備",
+      "title_en": "Materials processing equipment",
+      "description": "インドSCOMETカテゴリ4。核・ミサイル・防衛用材料の製造に使用可能な精密加工設備。",
+      "key_items": [
+        "CNC精密工作機械（5軸以上）",
+        "等静圧プレス（400MPa以上）",
+        "真空熱処理炉（材料特性改善）",
+        "レーザー加工システム（核材料加工用）",
+        "電子ビーム溶接機（核部品製造用）"
+      ],
+      "related_eccn": ["2B001"],
+      "related_wa_ml": ["ML18"],
+      "related_fefta": ["2항"],
+      "scomet_category": "4"
+    },
+    {
+      "control_id": "SCOMET-CAT5",
+      "regime": "SCOMET",
+      "regime_part": "Category 5 - Electronics",
+      "title": "先端電子機器・半導体",
+      "title_en": "Advanced electronics and semiconductors",
+      "description": "インドSCOMETカテゴリ5。核・ミサイル・防衛システムに使用可能な先端電子機器・集積回路。インド国産半導体産業育成政策下で注目。",
+      "key_items": [
+        "高速ADC/DAC（12bit以上 200MSa/s以上）",
+        "GaN電力増幅器（周波数2GHz以上）",
+        "フェーズドアレイアンテナ制御チップ",
+        "耐放射線性IC（核環境使用）",
+        "高性能FPGA（軍事グレード）"
+      ],
+      "related_eccn": ["3A001", "3A002"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["7항"],
+      "scomet_category": "5"
+    },
+    {
+      "control_id": "SCOMET-CAT6A",
+      "regime": "SCOMET",
+      "regime_part": "Category 6A - Sensors",
+      "title": "センサー・レーザー",
+      "title_en": "Sensors and lasers",
+      "description": "インドSCOMETカテゴリ6A。軍事偵察・精密誘導・核施設監視に使用可能なセンサー・レーザー。インドISRO・DRDO管轄。",
+      "key_items": [
+        "高解像度光学カメラ（GSD 25cm以下、宇宙用）",
+        "SAR衛星センサー（X/C/L バンド）",
+        "近赤外線・中波赤外線センサー（冷却型）",
+        "核物質検出センサー（γ線・中性子）",
+        "高出力固体レーザー（1kW CW）"
+      ],
+      "related_eccn": ["6A002", "6A003"],
+      "related_wa_ml": ["ML5"],
+      "related_fefta": ["6항"],
+      "scomet_category": "6A"
+    },
+    {
+      "control_id": "SCOMET-CAT6B",
+      "regime": "SCOMET",
+      "regime_part": "Category 6B - Navigation",
+      "title": "航法・慣性センサー",
+      "title_en": "Navigation and inertial sensors",
+      "description": "インドSCOMETカテゴリ6B。インド国産ミサイル（アグニ・プリトビ・ブラモス）に使用される高精度航法システム。",
+      "key_items": [
+        "慣性航法システム（INS）— CEP 100m以内",
+        "リングレーザージャイロ（RLG）",
+        "光ファイバジャイロ（FOG）",
+        "MEMS加速度計（精度0.1mg以内）",
+        "天文航法システム（スタートラッカー）"
+      ],
+      "related_eccn": ["7A003"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["7항"],
+      "scomet_category": "6B"
+    },
+    {
+      "control_id": "SCOMET-CAT7",
+      "regime": "SCOMET",
+      "regime_part": "Category 7 - Aerospace and Propulsion",
+      "title": "航空宇宙・推進システム",
+      "title_en": "Aerospace and propulsion systems",
+      "description": "インドSCOMETカテゴリ7。ISROの宇宙打ち上げ（PSLV/GSLV）およびDRDOのミサイル計画（アグニ5 ICBM対応）に係る技術。",
+      "key_items": [
+        "固体ロケットモーター（推力900kN以上）",
+        "液体推進ロケットエンジン（クリオジェニック）",
+        "ラムジェット/スクラムジェット推進システム",
+        "ロケット推進剤（高エネルギー 固体・液体）",
+        "誘導制御コンピュータ（PSLV/GSLV向け飛行ソフト）"
+      ],
+      "related_eccn": ["9A004", "9A105"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["9항"],
+      "scomet_category": "7"
+    },
+    {
+      "control_id": "SCOMET-CAT8",
+      "regime": "SCOMET",
+      "regime_part": "Category 8 - Marine Technology",
+      "title": "海洋技術（潜水艦・魚雷関連）",
+      "title_en": "Marine technology - submarine and torpedo related",
+      "description": "インドSCOMETカテゴリ8。インド海軍（INS アリハント 原子力潜水艦含む）に係る海洋軍事技術。",
+      "key_items": [
+        "潜水艦用推進システム（AIP含む）",
+        "水中音響センサー（ソーナーシステム）",
+        "魚雷推進・誘導システム",
+        "機雷探知・掃海システム",
+        "深海耐圧容器（深さ600m以上対応）"
+      ],
+      "related_eccn": ["8A001"],
+      "related_wa_ml": ["ML9"],
+      "related_fefta": ["8항"],
+      "scomet_category": "8"
+    },
+    {
+      "control_id": "SCOMET-CAT9",
+      "regime": "SCOMET",
+      "regime_part": "Category 9 - Miscellaneous Dual-Use Items",
+      "title": "その他デュアルユース品目（爆発物・推進剤）",
+      "title_en": "Miscellaneous dual-use items - explosives and propellants",
+      "description": "インドSCOMETカテゴリ9。爆発物・推進剤・軍民両用品目。インドの防衛産業育成（DefExpo）政策下での移転管理。",
+      "key_items": [
+        "高性能爆薬（RDX/HMX/TATB 軍事グレード）",
+        "成形爆薬・線状爆薬システム",
+        "電気起爆装置（精密タイミング）",
+        "爆発物検知システム（ITMS/IMS）",
+        "過塩素酸アンモニウム（固体推進剤酸化剤）"
+      ],
+      "related_eccn": ["1C011", "1C992"],
+      "related_wa_ml": ["ML8"],
+      "related_fefta": ["1항"],
+      "scomet_category": "9"
+    }
+  ]
+}

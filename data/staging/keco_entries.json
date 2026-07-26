@@ -1,0 +1,220 @@
+{
+  "_source": "Korea Export Control List (전략물자수출입고시)",
+  "_doc": "Korean Strategic Materials Control List - Ministry of Trade, Industry and Energy 2023",
+  "_url": "https://www.yestrade.go.kr/",
+  "total_categories": 24,
+  "entries": [
+    {
+      "control_id": "KECO-0A201",
+      "regime": "KECO",
+      "regime_part": "0류 원자력",
+      "title": "원자로 및 원자로 특별설계·준비 장비",
+      "title_en": "Nuclear reactors and specially designed/prepared equipment",
+      "description": "한국 전략물자 수출입고시 0류. 원자력발전소·연구용 원자로·임계 실험로 및 관련 특별 설계·준비 장비. 바세나르체제 및 NSG 대응 품목.",
+      "key_items": [
+        "완성 원자로 시스템（경수로, 중수로, 고속로）",
+        "원자로 압력용기 및 내장품",
+        "원자로 냉각재 펌프·밸브",
+        "핵연료 피복관·집합체",
+        "원자로 제어 계통"
+      ],
+      "related_eccn": ["0A001"],
+      "related_wa_ml": [],
+      "related_fefta": ["1항"],
+      "keco_category": "0류"
+    },
+    {
+      "control_id": "KECO-1A201",
+      "regime": "KECO",
+      "regime_part": "1류 화학·생물·독소",
+      "title": "화학무기 전구물질 및 이중용도 화학물질",
+      "title_en": "Chemical weapons precursors and dual-use chemical substances",
+      "description": "한국 전략물자 1류. 화학무기금지협약（CWC）부속서의 스케줄 화학물질 및 호주그룹（AG）통제 품목. 독가스·신경작용제 전구체 포함.",
+      "key_items": [
+        "메틸포스포닐디플로라이드（DF, 사린 전구체）",
+        "0-에틸 0-2-디이소프로필아미노에틸 메틸포스포나이트（QL, VX 전구체）",
+        "티오디글리콜（머스타드가스 전구체）",
+        "삼염화인（PCl₃）",
+        "인산염 클로라이드（POCl₃）"
+      ],
+      "related_eccn": ["1C350"],
+      "related_wa_ml": [],
+      "related_fefta": ["3항"],
+      "keco_category": "1류"
+    },
+    {
+      "control_id": "KECO-1C351",
+      "regime": "KECO",
+      "regime_part": "1류 생물작용제",
+      "title": "생물작용제 및 독소（고위험 병원체）",
+      "title_en": "Biological agents and toxins - high risk pathogens",
+      "description": "한국 전략물자 1류. 생물무기협약（BWC）대상 고위험 병원체·독소. 호주그룹 생물작용제 리스트 대응.",
+      "key_items": [
+        "천연두 바이러스（Variola major）",
+        "탄저균（Bacillus anthracis）아포",
+        "페스트균（Yersinia pestis）",
+        "보툴리눔 독소",
+        "에볼라 바이러스",
+        "리신（Ricin）"
+      ],
+      "related_eccn": ["1C351"],
+      "related_wa_ml": [],
+      "related_fefta": ["3항"],
+      "keco_category": "1류"
+    },
+    {
+      "control_id": "KECO-3A001",
+      "regime": "KECO",
+      "regime_part": "3류 전자·반도체",
+      "title": "반도체·집적회로 및 전자부품",
+      "title_en": "Semiconductors, integrated circuits and electronic components",
+      "description": "한국 전략물자 3류. 첨단 반도체·IC 및 고성능 전자부품. 특히 한국이 주요 생산국인 메모리·시스템 반도체 관련 통제 품목.",
+      "key_items": [
+        "DRAM（16nm급 이하 공정）",
+        "HBM（High Bandwidth Memory, 2세대 이상）",
+        "첨단 로직칩（7nm 이하 공정）",
+        "GaN 고주파 전력증폭기（주파수 2GHz 이상）",
+        "SiC 파워반도체（내전압 1200V 이상）",
+        "양자점 단일광자원（단일광자 검출기）"
+      ],
+      "related_eccn": ["3A001"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["7항"],
+      "keco_category": "3류"
+    },
+    {
+      "control_id": "KECO-3B001",
+      "regime": "KECO",
+      "regime_part": "3류 반도체 제조장비",
+      "title": "반도체 제조장비 — EUV 리소그래피·식각",
+      "title_en": "Semiconductor manufacturing equipment - EUV lithography and etching",
+      "description": "한국 전략물자 3류. 한국 반도체 산업의 핵심 제조장비. EUV 노광기·원자층 증착·건식·습식 식각 장비.",
+      "key_items": [
+        "EUV 리소그래피 시스템（13.5nm 파장）",
+        "ArF 액침 리소그래피（193nm）— 이중·다중 패터닝",
+        "원자층 증착（ALD）장비",
+        "플라즈마 식각장비（HAR 고종횡비）",
+        "화학기계연마（CMP）장비",
+        "원자층 식각（ALE）장비"
+      ],
+      "related_eccn": ["3B001"],
+      "related_wa_ml": ["ML18"],
+      "related_fefta": ["7항"],
+      "keco_category": "3류"
+    },
+    {
+      "control_id": "KECO-4A003",
+      "regime": "KECO",
+      "regime_part": "4류 컴퓨터",
+      "title": "고성능 컴퓨터 및 AI 가속기",
+      "title_en": "High-performance computers and AI accelerators",
+      "description": "한국 전략물자 4류. 군사·핵무기 시뮬레이션에 전용 가능한 고성능 컴퓨터 및 AI 추론 가속기.",
+      "key_items": [
+        "고성능 컴퓨터（성능임계값 이상）",
+        "AI/ML 추론 가속기（TPU/GPU 클러스터）",
+        "양자 컴퓨터 시스템",
+        "슈퍼컴퓨터 인터커넥트（InfiniBand 200Gbps 이상）",
+        "FPGA（고기능 프로그래머블 로직）"
+      ],
+      "related_eccn": ["4A003"],
+      "related_wa_ml": [],
+      "related_fefta": ["7항"],
+      "keco_category": "4류"
+    },
+    {
+      "control_id": "KECO-5E002",
+      "regime": "KECO",
+      "regime_part": "5류 통신·암호",
+      "title": "암호기술 및 통신보안 장비",
+      "title_en": "Cryptographic technology and communications security equipment",
+      "description": "한국 전략물자 5류. 군사 통신 암호화·정보보안에 사용 가능한 암호기술 및 통신보안 장비.",
+      "key_items": [
+        "양자키 배포（QKD）시스템",
+        "하드웨어 보안 모듈（HSM）— 국방 등급",
+        "군용 암호화 통신 단말기",
+        "SIGINT 방어용 주파수 도약 통신장비",
+        "군사 위성통신 암호화 모뎀"
+      ],
+      "related_eccn": ["5E002"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["5항"],
+      "keco_category": "5류"
+    },
+    {
+      "control_id": "KECO-6A002",
+      "regime": "KECO",
+      "regime_part": "6류 센서·레이저",
+      "title": "광학·레이저 정밀 센서",
+      "title_en": "Optical precision sensors and lasers",
+      "description": "한국 전략물자 6류. 군사 표적획득·정밀유도·위성 관측에 사용 가능한 고성능 광학·레이저 센서.",
+      "key_items": [
+        "가이거-모드 APD 기반 3차원 레이저 레이더（LiDAR）",
+        "적외선 센서 어레이（냉각형 MWIR/LWIR）",
+        "합성개구레이더（SAR）탑재 센서",
+        "고출력 산업용 레이저（CW 1kW 이상）",
+        "주파수 안정화 레이저（원자시계/GPS 교란탐지용）"
+      ],
+      "related_eccn": ["6A002", "6A005"],
+      "related_wa_ml": ["ML5"],
+      "related_fefta": ["6항"],
+      "keco_category": "6류"
+    },
+    {
+      "control_id": "KECO-7A003",
+      "regime": "KECO",
+      "regime_part": "7류 항법·항공전자",
+      "title": "관성항법 및 항공전자 시스템",
+      "title_en": "Inertial navigation and avionics systems",
+      "description": "한국 전략물자 7류. 미사일·군용기·잠수함 항법에 전용 가능한 정밀 관성 항법 및 항공전자 시스템.",
+      "key_items": [
+        "링레이저 자이로（RLG）— 드리프트율 0.1°/h 미만",
+        "광섬유 자이로（FOG）",
+        "MEMS 관성측정장치（IMU）군사급",
+        "항법성능감시（RAIM）장착 GPS 수신기",
+        "GPS 재밍 방지 안테나（CRPA）"
+      ],
+      "related_eccn": ["7A003"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["7항"],
+      "keco_category": "7류"
+    },
+    {
+      "control_id": "KECO-9A101",
+      "regime": "KECO",
+      "regime_part": "9류 항공우주·추진",
+      "title": "로켓 추진시스템 및 우주발사체 부품",
+      "title_en": "Rocket propulsion systems and space launch vehicle components",
+      "description": "한국 전략물자 9류. MTCR 카테고리 II에 해당하는 로켓 엔진·추진제·우주발사체 부품. 한국 우주항공청 관련 기술이전 시 사전검토 필요.",
+      "key_items": [
+        "고체로켓 추진제（APCP 기반）",
+        "액체로켓 엔진（추력 2.5kN 이상）",
+        "로켓 단 분리장치（폭발 볼트·HOB）",
+        "발사체 페어링（복합재 구조）",
+        "발사체 추력벡터제어（TVC）장치"
+      ],
+      "related_eccn": ["9A119"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["9항"],
+      "keco_category": "9류"
+    },
+    {
+      "control_id": "KECO-DISP",
+      "regime": "KECO",
+      "regime_part": "방산물자",
+      "title": "방산물자 — K9 자주포·K2 전차 부품",
+      "title_en": "Defense materials - K9 howitzer and K2 tank components",
+      "description": "대한민국 방위사업청 고시 방산물자. 한국형 전차·자주포·함정 핵심 부품. 제3국 재수출 시 원산지국 승인 필요.",
+      "key_items": [
+        "K9 자주포 포탑·사격통제장치",
+        "K2 전차 파워팩（엔진·변속기）",
+        "군용 능동위상배열레이더（APAR）",
+        "국산 유도미사일（현궁·비궁）시스템",
+        "장갑강 판재（RHA 등가 700mm 이상）"
+      ],
+      "related_eccn": ["0A602", "1A607"],
+      "related_wa_ml": ["ML1", "ML2", "ML6"],
+      "related_fefta": ["1항"],
+      "keco_category": "방산물자"
+    }
+  ]
+}

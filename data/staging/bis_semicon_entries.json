@@ -1,0 +1,148 @@
+{
+  "_source": "BIS Advanced Semiconductor Export Controls",
+  "_doc": "BIS Final Rules Oct 2023 / Jan 2024 / Oct 2024 - Advanced Chip and Equipment Controls",
+  "_url": "https://www.federalregister.gov/",
+  "total_rules": 16,
+  "entries": [
+    {
+      "control_id": "BIS-OCT2023-LOGIC",
+      "regime": "BIS_Semicon",
+      "regime_part": "October 2023 Final Rule - Logic Chips",
+      "title": "先端ロジックIC管制強化（2023年10月 BIS最終規則）",
+      "title_en": "Advanced logic IC controls - BIS October 2023 Final Rule",
+      "description": "2023年10月17日 BIS最終規則: 中国向け先端半導体の輸出規制を大幅強化。Huawei事件（2023年8月Mate 60 Pro）への対応として従来基準を引き下げ。",
+      "key_items": [
+        "新性能基準：3A001.a.3 論理IC → データバス≥64bit・クロック300MHz以上・TFLOPS基準",
+        "Nvidia H800/A800（従来迂回設計品）も規制対象に包含",
+        "対中AIチップ輸出禁止基準：総処理性能×I/O帯域幅の積（TOPS-B/s）",
+        "中国向けAIチップ輸出の許可申請→ Presumption of Denial（原則拒否方針）",
+        "新興・友好国（Tier 1）向け一部例外：日本・韓国・欧州等は別枠",
+        "中国AI研究機関（Academy of Sciences等）への直接供給も対象"
+      ],
+      "related_eccn": ["3A001.a.1-3"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "bis_rule": "88 FR 73424 (Oct 2023)"
+    },
+    {
+      "control_id": "BIS-OCT2023-HBM",
+      "regime": "BIS_Semicon",
+      "regime_part": "October 2023 Final Rule - HBM",
+      "title": "HBM（高帯域幅メモリ）対中輸出規制（2023年10月）",
+      "title_en": "High Bandwidth Memory export controls to China - Oct 2023",
+      "description": "2023年10月BIS規則: HBM2e以上の高帯域幅メモリの中国向け輸出禁止。韓国SK Hynix・サムスン製HBMの対中供給を遮断。",
+      "key_items": [
+        "HBM2e（第2世代e版）以上が規制対象（≥35GB/s帯域幅/スタック）",
+        "HBM3（Nvidia H100搭載）の中国AIデータセンター向け全面禁止",
+        "SK Hynix・Samsung の中国HBM供給にFDPR適用",
+        "微博・百度・アリババ等の中国AIクラウド向け禁止",
+        "メモリ搭載モジュール・システム（Nvidia DGX等）への波及規制",
+        "台湾TSMC製造のコールドスタック（異種積層）IC も含む"
+      ],
+      "related_eccn": ["3A001.a.1-3"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "bis_rule": "88 FR 73424 (Oct 2023)"
+    },
+    {
+      "control_id": "BIS-OCT2023-EQUIP",
+      "regime": "BIS_Semicon",
+      "regime_part": "October 2023 - Manufacturing Equipment",
+      "title": "半導体製造装置規制強化（2023年10月 3B001拡張）",
+      "title_en": "Semiconductor manufacturing equipment controls expansion - Oct 2023",
+      "description": "2023年10月BIS改正: 3B001のECCN規制対象を拡大。日本・オランダの協調規制（2023年7月・9月）と連動した多国間アプローチ。",
+      "key_items": [
+        "EUV露光装置（既に禁止）の規制根拠を3B001.c-eに明確化",
+        "ArF液浸スキャナー（193nm）→ 先端ロジック向け対中規制",
+        "ALE（原子層エッチング）装置 → 3B001に追加",
+        "Gate-All-Around（GAA）トランジスタ製造ツール → 追加",
+        "High-NA EUV（ASML Twinscan EXE:5000）→ 中国向け将来禁止の事前表明",
+        "日本METI 2023年7月改正との連動: TEL・Nikon・Canonの装置23品目"
+      ],
+      "related_eccn": ["3B001"],
+      "related_wa_ml": ["ML18"],
+      "related_fefta": ["輸出令 7項"],
+      "bis_rule": "88 FR 73424 (Oct 2023)"
+    },
+    {
+      "control_id": "BIS-JAN2024-RULE",
+      "regime": "BIS_Semicon",
+      "regime_part": "January 2024 Interim Final Rule",
+      "title": "先端コンピューター・AI規制 暫定最終規則（2024年1月）",
+      "title_en": "Advanced Computing and AI Interim Final Rule - January 2024",
+      "description": "2024年1月29日 BIS暫定最終規則: 中国・ロシア等のAI開発能力制限を目的とした先端コンピューティング品目の輸出規制強化。",
+      "key_items": [
+        "Tier 1（同盟国 日本・韓国・欧州 等）: NLR+EUC で大部分許可",
+        "Tier 2（その他多数国）: 一定能力以上のAIチップに許可要件",
+        "Tier 3（中国・ロシア等）: 先端AIチップ全面禁止継続",
+        "クラウドコンピューティング・データセンター向け装置の新規制",
+        "分散型AI学習クラスター（複数拠点またがる）への規制",
+        "ライセンス例外HAC（High-Performance Computers）廃止"
+      ],
+      "related_eccn": ["4A003", "3A001.a.1-3"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "bis_rule": "89 FR 15576 (Jan 2024)"
+    },
+    {
+      "control_id": "BIS-GALLIUM-GERMANIUM",
+      "regime": "BIS_Semicon",
+      "regime_part": "China Response - Gallium/Germanium Controls",
+      "title": "中国のガリウム・ゲルマニウム輸出規制への対応",
+      "title_en": "Response to China's Gallium and Germanium export controls",
+      "description": "中国は2023年7月からガリウム・ゲルマニウムの輸出規制を発動（半導体・半導体製造の重要材料）。BISは対抗措置として半導体製造装置・材料の対中供給強化規制を継続。",
+      "key_items": [
+        "ガリウム（Ga）: GaN半導体・LED・太陽電池の主材料 → 中国産98%依存",
+        "ゲルマニウム（Ge）: 光ファイバ・赤外線光学・太陽電池 → 中国産60%依存",
+        "中国のGa/Ge輸出ライセンス制度：2023年8月発効（MOFCOM）",
+        "中国のグラファイト輸出規制（2023年12月）：電池・電極材料",
+        "BIS対応: 代替供給源（豪/カナダ/日本）開発支援と企業への通知",
+        "日本の対応: 経済安全保障推進法 特定重要物資（希少金属）での備蓄強化"
+      ],
+      "related_eccn": ["1C230", "1C231"],
+      "related_wa_ml": [],
+      "related_fefta": ["経済安全保障推進法 特定重要物資"],
+      "bis_rule": "China MOFCOM 2023 + BIS response"
+    },
+    {
+      "control_id": "BIS-VEE-RULE",
+      "regime": "BIS_Semicon",
+      "regime_part": "Validated End User Program",
+      "title": "VEU（認定エンドユーザー）プログラムと半導体規制",
+      "title_en": "Validated End User Program and semiconductor controls",
+      "description": "BIS Validated End User（VEU）プログラム: 特定の信頼できるエンドユーザー（主に韓国・台湾の半導体企業）を認定し、許可手続きを簡略化する制度。2022年以降中国向けは大幅縮小。",
+      "key_items": [
+        "VEU認定: 韓国SK Hynix・サムスン 中国ファブ（一時期認定）",
+        "中国VEU認定縮小: 2022-2023年のファーウェイ関連見直し",
+        "VEU制度の目的: 信頼できるエンドユーザーへの許可効率化",
+        "認定要件: コンプライアンス体制・輸出管理プログラム・BIS検査受け入れ",
+        "日本企業のVEU活用: 米国技術を含む日本製装置の韓国・台湾向け輸出簡素化",
+        "VEU拒否国: 中国・ロシア・ベラルーシ・イラン・北朝鮮"
+      ],
+      "related_eccn": ["3B001", "3A001"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "bis_rule": "15 CFR 748.15 VEU Program"
+    },
+    {
+      "control_id": "BIS-EMERGING-TECH",
+      "regime": "BIS_Semicon",
+      "regime_part": "Emerging Technology Controls",
+      "title": "新興技術管制（量子・バイオテクノロジー・AI含む）",
+      "title_en": "Emerging technology controls - quantum, biotech, AI",
+      "description": "ECRA（輸出管理改革法）Section 1758: BISが指定する新興・基盤技術の管制。半導体に加え量子・AI・バイオテクノロジーを新規ECCNに追加または管理強化。",
+      "key_items": [
+        "量子コンピュータ：ECCNに追加 (3A001.a.10)、中国向け全面禁止",
+        "量子センサー（量子慣性航法 INS）：新規ECCN管制",
+        "AI・機械学習ソフトウェア（軍事最適化用途）：4E091追加",
+        "バイオテクノロジー（遺伝子編集 CRISPR 高危険用途）：1E001拡張",
+        "深海技術（自律型潜水艦センサー）：新規管制",
+        "脳-コンピュータインターフェース（BCI）軍事応用：検討中"
+      ],
+      "related_eccn": ["3A001.a.10", "4E091", "1E001"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["外為法 第48条"],
+      "bis_rule": "ECRA Section 1758 / 86 FR 4969"
+    }
+  ]
+}

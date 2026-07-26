@@ -1,0 +1,186 @@
+{
+  "_source": "International Export Control Regimes and Multilateral Frameworks",
+  "_doc": "NSG/AG/MTCR/IPEF/Quad/AUKUS/G7/WTO Security Exceptions - 2024",
+  "multilateral_frameworks": [
+    {
+      "framework_id": "INTL-IPEF-SC",
+      "framework_name": "IPEF Supply Chain Agreement",
+      "framework_name_ja": "インド太平洋経済繁栄フレームワーク（IPEF）サプライチェーン協定",
+      "legal_basis": "IPEF Pillar II (Supply Chain) - signed May 2023",
+      "effective_date": "2024-02-24",
+      "strategic_axis": ["国際秩序", "経済安保", "geopolitical_sc"],
+      "description": "米国主導のIPEF（インド太平洋経済繁栄フレームワーク）のサプライチェーン合意（ピラーII）。14カ国が参加（日・印・豪・ASEAN等）。重要品目のサプライチェーン強靭化・透明化・多様化を目的とする。",
+      "key_provisions": [
+        "重要品目の特定：半導体・EV電池・重要鉱物・医薬品・農業",
+        "サプライチェーン危機対応ネットワーク（Supply Chain Council）の設置",
+        "早期警戒システム：重要品目の供給途絶リスクモニタリング",
+        "労働権保護：サプライチェーン全体でのILO中核条約遵守",
+        "能力構築：途上国メンバーへの技術支援",
+        "透明性：主要サプライチェーンのマッピング・公開"
+      ],
+      "member_countries": ["米国", "日本", "オーストラリア", "インド", "韓国", "ASEAN7カ国（ブルネイ・フィジー・インドネシア・マレーシア・NZ・フィリピン・シンガポール・タイ・ベトナム）"],
+      "eccn_relevance": ["半導体ECCN全般", "医薬品"],
+      "fefta_relevance": []
+    },
+    {
+      "framework_id": "INTL-QUAD-TECH",
+      "framework_name": "Quad Critical Technology Framework",
+      "framework_name_ja": "クアッド重要技術フレームワーク",
+      "legal_basis": "Quad Leaders' Summit Joint Statement 2023",
+      "effective_date": "2023-05",
+      "strategic_axis": ["国際秩序", "技術戦略", "geopolitical_sc"],
+      "description": "米・日・豪・印のQuad（四カ国安全保障協力）における重要・新興技術の協力フレームワーク。技術標準・輸出管理・投資審査・サプライチェーン強靭化を4カ国で協調。",
+      "key_provisions": [
+        "重要技術8分野: 5G/6G・AI・量子・半導体・バイオ・宇宙・クリーンエネルギー・海中技術",
+        "Quad Semiconductor Supply Chain Initiative: 4カ国サプライチェーン強靭化",
+        "Open RAN (5G): Quadメンバー間でのOpen RAN普及・Huawei排除協調",
+        "AI原則: 信頼できるAI開発ガイドライン（軍事AIガバナンス含む）",
+        "量子情報科学: QIS分野の協力・デュアルユース管理の調整",
+        "技術標準: ITU/ISOでのQuadメンバーの協調行動"
+      ],
+      "member_countries": ["米国", "日本", "オーストラリア", "インド"],
+      "eccn_relevance": ["3A001（半導体）", "4A003（計算機）", "5A002（暗号）"],
+      "fefta_relevance": ["7項", "9項"]
+    },
+    {
+      "framework_id": "INTL-AUKUS-P2",
+      "framework_name": "AUKUS Pillar II - Advanced Capabilities",
+      "framework_name_ja": "AUKUS ピラーII — 先進能力（AIR/量子/サイバー）",
+      "legal_basis": "AUKUS Partnership Announcement September 2021",
+      "effective_date": "2021-09-15",
+      "strategic_axis": ["国際秩序", "技術戦略", "地政学"],
+      "description": "米・英・豪の三カ国防衛・安全保障協力（AUKUS）のピラーII。原子力潜水艦（ピラーI）以外の先進軍事技術協力。AI・量子・サイバー・電子戦・水中技術を対象に技術移転規制の簡素化。",
+      "key_provisions": [
+        "AI・機械学習: 軍事AI協力（自律型システム・JADC2連携）",
+        "量子技術: 量子通信・量子センサー・量子暗号の共同開発",
+        "サイバー能力: 攻防一体サイバー作戦能力の共有",
+        "電子戦: EW（電子戦）・電磁スペクトル管理の協力",
+        "水中技術: UUV（無人水中ビークル）・海底センサーの共同開発",
+        "技術移転: ITAR/EARの豪への適用緩和（ITAR-Free待遇検討）"
+      ],
+      "member_countries": ["米国", "英国", "オーストラリア"],
+      "eccn_relevance": ["9A004（宇宙/ミサイル）", "4A003", "5A002", "6A005（レーザー）"],
+      "fefta_relevance": ["9項"]
+    },
+    {
+      "framework_id": "INTL-G7-HIROSHIMA",
+      "framework_name": "G7 Hiroshima Process - Technology Governance",
+      "framework_name_ja": "G7広島プロセス — 技術ガバナンス・経済安全保障",
+      "legal_basis": "G7 Hiroshima Leaders' Communiqué May 2023",
+      "effective_date": "2023-05-19",
+      "strategic_axis": ["国際秩序", "技術哲学", "経済安保"],
+      "description": "2023年広島G7サミットで採択された技術ガバナンス・経済安保に関するコミットメント。信頼できるAI（Hiroshima AI Process）・経済的威圧への対抗・重要インフラ保護の7カ国協調。",
+      "key_provisions": [
+        "広島AIプロセス: 責任あるAI開発の国際ルールメイキング（G20に拡大）",
+        "経済的威圧: 中国の経済的威圧（レアアース輸出規制等）への共同対抗手段",
+        "重要インフラ保護: 5G・海底ケーブル・港湾・電力网の保護協調",
+        "デリスキング: 中国との経済関係を管理しながら重要技術の依存軽減",
+        "輸出管理協調: WA/MTCR/NSG/AGの現代化と新興技術への適用",
+        "投資審査: CFIUS/FIRB/CIMEC等のG7投資審査機関の協調強化"
+      ],
+      "member_countries": ["米国", "英国", "日本", "フランス", "ドイツ", "イタリア", "カナダ", "EU"],
+      "eccn_relevance": ["3A001", "4A003", "5A002", "全般"],
+      "fefta_relevance": ["経済安全保障推進法"]
+    },
+    {
+      "framework_id": "INTL-WTO-XXI",
+      "framework_name": "WTO Article XXI National Security Exception",
+      "framework_name_ja": "WTO GATT 21条 安全保障例外と輸出管理の関係",
+      "legal_basis": "GATT Article XXI / WTO DS512 Russia-Traffic in Transit",
+      "effective_date": "1994 (WTO) / 2019 (DS512)",
+      "strategic_axis": ["国際秩序", "技術哲学"],
+      "description": "WTO GATT第21条の安全保障例外規定と輸出管理の関係。2019年DS512パネル報告（ロシア・ウクライナ案件）で初めて21条の解釈が確立。輸出管理はWTOルールの例外として認められるが「自己判断の余地は限定的」。",
+      "key_provisions": [
+        "GATT 21(b): 核分裂性物質・軍需品等の取引は安全保障例外が適用可能",
+        "GATT 21(c): 国際平和・安全保障のために必要な措置は例外",
+        "DS512: パネルは21条例外の客観的審査権限を有すると判断（自己判断を全面容認せず）",
+        "輸出管理の正当化根拠: 非拡散（NPT/CWC/BWC遵守）・制裁実施が21条適格",
+        "一方的輸出制限の限界: 競争上の理由による輸出制限はWTO違反リスク",
+        "複数国間協調の重要性: ユニラテラル措置より多国間体制（WA/NSG等）を通じた措置が望ましい"
+      ],
+      "member_countries": ["全WTO加盟国164カ国"],
+      "eccn_relevance": ["全ECCN（WTO安保例外との整合問題）"],
+      "fefta_relevance": ["外為法全般"]
+    },
+    {
+      "framework_id": "INTL-CPTPP",
+      "framework_name": "CPTPP Digital Trade and Investment Provisions",
+      "framework_name_ja": "CPTPP（環太平洋パートナーシップに関する包括的及び先進的な協定）デジタル貿易・投資章",
+      "legal_basis": "CPTPP (2018) Chapter 14, 9",
+      "effective_date": "2018-12-30",
+      "strategic_axis": ["国際秩序", "経済安保"],
+      "description": "CPTPP（CPTPPPの後継、米国不参加）のデジタル貿易・投資章。ソースコード開示禁止・アルゴリズム開示禁止・データ自由化がAI・半導体産業の輸出管理と交差する規律。",
+      "key_provisions": [
+        "ソースコード保護（14.17条）: 輸出条件としてのソースコード開示強制禁止",
+        "アルゴリズム非開示（14.17.2条）: 高度暗号・AIアルゴリズムの開示要求禁止",
+        "国境を越えるデータ移転（14.11条）: 情報・パーソナルデータの自由移転",
+        "データローカライゼーション制限（14.13条）: データ国内保存義務の制限",
+        "安全保障例外（29.2条）: 安全保障に不可欠な措置は除外（輸出管理と整合）",
+        "投資章（第9章）: ISDS（投資家対国家紛争解決）と輸出管理の関係"
+      ],
+      "member_countries": ["日本", "カナダ", "オーストラリア", "NZ", "シンガポール", "ベトナム", "マレーシア", "メキシコ", "ペルー", "チリ", "ブルネイ"],
+      "eccn_relevance": ["5D002（暗号ソフト）", "4D001"],
+      "fefta_relevance": ["外為法 第25条（役務取引）"]
+    },
+    {
+      "framework_id": "INTL-NSG-REGIME",
+      "framework_name": "Nuclear Suppliers Group (NSG) Overview",
+      "framework_name_ja": "原子力供給国グループ（NSG）概要と加盟国間移転規則",
+      "legal_basis": "INFCIRC/254/Part 1 and Part 2",
+      "effective_date": "1978 (established) / 2023 (latest guidelines)",
+      "strategic_axis": ["国際秩序", "地政学"],
+      "description": "NSG（核供給国グループ）は48カ国が参加する核不拡散輸出管理体制。NPT第III条2項を実施するための自主的な輸出管理協定。NSGトリガーリスト品目の全移転にIAEA保障措置が必要。",
+      "key_provisions": [
+        "保障措置要件：全ての核品目移転にIAEA保障措置協定が必要",
+        "包括的保障措置（CSA）要件：非核兵器国へのPart 1品目移転にはCSAが必要",
+        "再移転禁止：NSG加盟国の品目を第三国に移転する場合は提供国の事前同意",
+        "誘致防止（Trigger List）：特定品目の移転はWMD拡散の前兆として認識",
+        "インド例外（2008年）：NPT非加盟インドへの例外的核協力を容認（米印核協定）",
+        "加盟候補：中国の反対でインド・パキスタンのNSG加盟が阻まれている状況"
+      ],
+      "member_countries": ["48カ国（米・英・仏・露・中・日・独・韓・豪等）"],
+      "eccn_relevance": ["0A001", "0B001", "0C001", "0D001", "0E001"],
+      "fefta_relevance": ["1항"]
+    },
+    {
+      "framework_id": "INTL-AG-REGIME",
+      "framework_name": "Australia Group (AG) Overview",
+      "framework_name_ja": "オーストラリアグループ（AG）概要と化学・生物兵器前駆体管制",
+      "legal_basis": "AG Common Control Lists (informal)",
+      "effective_date": "1985 (established) / 2023 (latest lists)",
+      "strategic_axis": ["国際秩序", "地政学"],
+      "description": "AG（オーストラリアグループ）は43カ国が参加する化学兵器・生物兵器拡散防止のための非公式輸出管理体制。CWC/BWCの補完的措置として、前駆体・製造設備の輸出管理を協調。",
+      "key_provisions": [
+        "化学兵器前駆体リスト：CWCスケジュール1/2/3物質の輸出管理",
+        "生物作用剤リスト：高危険病原体・毒素の輸出管理",
+        "化学製造設備リスト：化学兵器製造に使用可能な設備",
+        "生物製造設備リスト：大量培養・散布設備",
+        "植物病原体リスト：農業用アグロテロリズム対象品",
+        "キャッチオール規定：リスト外品目でも兵器開発支援を知っている場合は移転禁止"
+      ],
+      "member_countries": ["43カ国（米・英・仏・独・日・韓・豪等 欧米中心）"],
+      "eccn_relevance": ["1C350", "1C351", "2B350", "2B352"],
+      "fefta_relevance": ["3항"]
+    },
+    {
+      "framework_id": "INTL-MTCR-REGIME",
+      "framework_name": "Missile Technology Control Regime (MTCR) Overview",
+      "framework_name_ja": "ミサイル技術管制レジーム（MTCR）概要と弾道ミサイル管制",
+      "legal_basis": "MTCR Guidelines and Annex (informal)",
+      "effective_date": "1987 (established) / 2023 (latest annex)",
+      "strategic_axis": ["国際秩序", "地政学"],
+      "description": "MTCR（ミサイル技術管制レジーム）は35カ国が参加する弾道ミサイル・クルーズミサイル・UAV拡散防止のための非公式輸出管理体制。射程300km以上・搭載量500kg以上のシステムへの高度管制。",
+      "key_provisions": [
+        "カテゴリI：完成ロケット/UAVシステム（射程300km以上/搭載500kg以上） — 強い推定拒否",
+        "カテゴリII：推進剤・材料・誘導部品 — ケースバイケース評価",
+        "無人機適用：軍用UAV（MQ-9等）もMTCR対象",
+        "宇宙打ち上げ例外：民間宇宙ロケットは非弾道用途を政策考慮できるが例外に限定",
+        "ガイドライン：強い推定拒否はカテゴリI（事実上禁止）",
+        "インド加盟（2016年）：インドのICBM技術交流がMTCR参加後に変化"
+      ],
+      "member_countries": ["35カ国（米・英・仏・独・日・韓・豪・インド等）"],
+      "eccn_relevance": ["1C111", "7A003", "9A004", "9A105"],
+      "fefta_relevance": ["9항"]
+    }
+  ]
+}

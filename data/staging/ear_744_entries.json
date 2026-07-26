@@ -1,0 +1,202 @@
+{
+  "_source": "Export Administration Regulations (EAR) Part 744 - Control Policy: End-User and End-Use Based",
+  "_doc": "15 CFR Part 744 - EAR End-User and End-Use Controls - BIS 2024",
+  "_url": "https://www.ecfr.gov/current/title-15/subtitle-B/chapter-VII/subchapter-C/part-744",
+  "total_sections": 24,
+  "entries": [
+    {
+      "control_id": "EAR-744.1",
+      "regime": "EAR",
+      "regime_part": "Part 744 - General",
+      "title": "エンドユーザー・エンドユース管理の概要",
+      "title_en": "General End-User and End-Use Controls Overview",
+      "description": "EAR Part 744は特定のエンドユーザーおよびエンドユースに対する輸出規制を定める。ECCNに関わらず、禁止されたエンドユーザー・エンドユースへの輸出には許可が必要。744.1は一般規則および適用範囲を定める。",
+      "key_items": [
+        "Part 744適用対象：EAR対象品目のすべての輸出・再輸出・国内移転",
+        "禁止エンドユーザー：WMD活動者・特定エンドユーザー・テロリスト組織",
+        "知識要件：転用リスクを『知っている』場合、許可なし輸出は禁止",
+        "Due Diligence義務：疑わしい状況（Red Flags）の調査義務",
+        "EUL（エンドユーザー宣誓書）の要求・審査義務"
+      ],
+      "related_eccn": ["EAR99", "全ECCN"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "ear_section": "744.1"
+    },
+    {
+      "control_id": "EAR-744.2",
+      "regime": "EAR",
+      "regime_part": "Part 744 - WMD",
+      "title": "大量破壊兵器（WMD）エンドユース禁止",
+      "title_en": "WMD End-Use Prohibition",
+      "description": "EAR 744.2: 核・化学・生物・放射線兵器の設計・開発・生産・備蓄・使用を支援するエンドユースへの輸出は許可なしに禁止。ECCNや仕向地に関わらず適用。",
+      "key_items": [
+        "核兵器・核爆発装置の設計・製造・試験への使用禁止",
+        "化学兵器の設計・製造・貯蔵・廃棄への使用禁止",
+        "生物兵器・毒素兵器の設計・製造への使用禁止",
+        "ロケット・ミサイル（WMD運搬手段）の開発・製造への使用禁止",
+        "放射線散布装置（Dirty Bomb）への転用禁止",
+        "エンドユーズ禁止は知識要件が低い（reasonable cause to believe）"
+      ],
+      "related_eccn": ["全ECCN"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条 1項"],
+      "ear_section": "744.2"
+    },
+    {
+      "control_id": "EAR-744.3",
+      "regime": "EAR",
+      "regime_part": "Part 744 - Rocket/Missile",
+      "title": "ロケット・ミサイル・無人機エンドユース禁止",
+      "title_en": "Rocket, Missile, and UAV End-Use Prohibition",
+      "description": "EAR 744.3: ロケット・ミサイル・無人兵器（射程300km以上）の設計・製造・開発を支援するエンドユースへの輸出禁止。MTCR基準との連動。",
+      "key_items": [
+        "射程300km以上・搭載量500kg以上のロケット/ミサイル開発支援禁止",
+        "UAV・巡航ミサイル（MTCR基準以上）の製造支援禁止",
+        "誘導システム・推進系の転用禁止",
+        "ロケット燃料・酸化剤（WMD搭載ミサイル向け）禁止",
+        "民間宇宙ロケット開発への転用も含む（デュアルユース評価が必要）"
+      ],
+      "related_eccn": ["1C111", "7A103", "9A004"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["外為法 第48条"],
+      "ear_section": "744.3"
+    },
+    {
+      "control_id": "EAR-744.4",
+      "regime": "EAR",
+      "regime_part": "Part 744 - Nuclear Activities",
+      "title": "核活動エンドユース禁止（保障措置外施設）",
+      "title_en": "Nuclear Activities End-Use Prohibition",
+      "description": "EAR 744.4: IAEA保障措置協定が存在しない原子力施設での使用、またはIAEA保障措置違反と判断された核活動を支援するエンドユースへの輸出禁止。",
+      "key_items": [
+        "無保障措置核施設（イラン・北朝鮮・シリア等）への輸出禁止",
+        "NSG認定外の核燃料サービス（濃縮・再処理）への転用禁止",
+        "保障措置対象外の核物質（Safeguarded材料）製造への支援禁止",
+        "未申告核施設への機器・技術供給禁止",
+        "BIS民間核審査（CNP）との連動"
+      ],
+      "related_eccn": ["0A001", "0B001", "0C001"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "ear_section": "744.4"
+    },
+    {
+      "control_id": "EAR-744.6",
+      "regime": "EAR",
+      "regime_part": "Part 744 - US Person Controls",
+      "title": "米国人エンドユース禁止（米国人活動規制）",
+      "title_en": "Proliferation Activities of US Persons",
+      "description": "EAR 744.6: 米国人（US Persons：米国市民・永住権者・米国法人）は、国内外を問わずWMD・ミサイル拡散活動への支援・資金提供・輸出を禁止される。",
+      "key_items": [
+        "米国人によるWMD拡散活動への財務的支援禁止",
+        "米国人による外国核・ミサイル計画への技術支援禁止",
+        "米国人がサービス・技術を提供する場合のライセンス義務",
+        "外国軍事エンドユーザー（MEU）への米国人サービス提供規制",
+        "クラウドサービス経由での技術提供も含む（2022年規則改正）"
+      ],
+      "related_eccn": ["全技術ECCN"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条・外為法 第25条"],
+      "ear_section": "744.6"
+    },
+    {
+      "control_id": "EAR-744.10",
+      "regime": "EAR",
+      "regime_part": "Part 744 - Listed Entity Controls",
+      "title": "リスト掲載エンティティへの輸出禁止（エンティティリスト）",
+      "title_en": "Restrictions on Exports to Listed Entities",
+      "description": "EAR 744.10/744.11: BISエンティティリスト（EL）掲載者への輸出には品目に関わらずBISライセンスが必要。ほぼすべての品目にLicence Required。",
+      "key_items": [
+        "Huawei Technologies（及び関係会社115社）",
+        "中国軍事企業（CCMC指定企業含む）",
+        "ロシア国防産業企業（2022年制裁後大量追加）",
+        "イラン核・ミサイル関連機関",
+        "北朝鮮核・ミサイル調達ネットワーク",
+        "中国軍民融合企業（軍事エンドユーザー/MEU指定）"
+      ],
+      "related_eccn": ["全ECCN（EAR99含む）"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "ear_section": "744.10-744.11"
+    },
+    {
+      "control_id": "EAR-744.17",
+      "regime": "EAR",
+      "regime_part": "Part 744 - Semiconductor Controls",
+      "title": "半導体製造品目の中国エンティティ向け輸出規制",
+      "title_en": "Semiconductor manufacturing items to China entity controls",
+      "description": "EAR 744.17（2022年10月 BIS改正規則追加）: 中国の先端半導体製造施設へのECCN 3A001/3B001/3D001等の輸出に包括的ライセンス義務付け。",
+      "key_items": [
+        "先端集積回路（3A001.a.1-3）中国製造者向け禁止",
+        "半導体製造装置（3B001）中国ファブ向け許可要件",
+        "先端コンピュータ（4A003）中国向け性能基準制限",
+        "軍事エンドユーザー（MEU）リスト掲載中国企業への全品禁止",
+        "EAR 744.23（中国軍事エンドユーザー規制）との連動"
+      ],
+      "related_eccn": ["3A001", "3B001", "4A003"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "ear_section": "744.17-744.23"
+    },
+    {
+      "control_id": "EAR-744.21",
+      "regime": "EAR",
+      "regime_part": "Part 744 - Russia/Belarus",
+      "title": "ロシア・ベラルーシ向けエンドユース規制（2022年制裁追加）",
+      "title_en": "Russia and Belarus End-Use Controls (2022 sanctions additions)",
+      "description": "EAR 744.21: ウクライナ侵攻（2022年2月）後に追加されたロシア・ベラルーシ向け包括的輸出規制。実質的にほぼすべての品目でBIS許可が必要。",
+      "key_items": [
+        "ロシア向けEAR99品目でもPolicy of Denial（拒否方針）",
+        "ベラルーシ向け軍民両用品目の包括的輸出禁止",
+        "ロシア国防産業・航空宇宙産業への支援禁止",
+        "ロシア向け半導体（IC・半導体製造装置）全面禁止",
+        "ロシア向け二次制裁：制裁違反品を含む製品の第三国経由再輸出も規制"
+      ],
+      "related_eccn": ["全ECCN・EAR99"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "ear_section": "744.21"
+    },
+    {
+      "control_id": "EAR-744-RED-FLAGS",
+      "regime": "EAR",
+      "regime_part": "Part 744 - Due Diligence",
+      "title": "Red Flags（疑わしい状況）デューデリジェンス基準",
+      "title_en": "Red Flags - Due Diligence Standards",
+      "description": "BIS Supplement No.3 to Part 732: 輸出者は疑わしい状況（Red Flags）を認識した場合、調査義務を負う。合理的な照会をせず輸出した場合、転用リスクの『知識』が認定される可能性。",
+      "key_items": [
+        "顧客が製品の仕様に無関心または技術支援を拒否",
+        "注文数量が事業規模に比して異常に大きい",
+        "顧客が支払方法・出荷先を最後まで変更する",
+        "製品がエンドユースの目的に明らかに不適合",
+        "仕向地国の制限を避けるための中間国経由を提案",
+        "製品がEAR規制対象かどうかの確認を避けようとする"
+      ],
+      "related_eccn": ["全ECCN"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "ear_section": "Supp.3 to Part 732"
+    },
+    {
+      "control_id": "EAR-744-MEU",
+      "regime": "EAR",
+      "regime_part": "Part 744 - Military End User",
+      "title": "軍事エンドユーザー（MEU）規制（中国・ロシア・ベネズエラ）",
+      "title_en": "Military End User (MEU) Controls - China/Russia/Venezuela",
+      "description": "EAR 744.22: 中国・ロシア・ベネズエラの軍事エンドユーザー（MEU指定機関・軍部直属機関）への品目供給は広範な許可要件が適用される。MEUリストはBISが定期更新。",
+      "key_items": [
+        "中国PLA（人民解放軍）直属機関・研究所",
+        "中国国防科技工業委員会傘下企業",
+        "ロシア軍・連邦保安庁（FSB）・外国情報庁（SVR）関係機関",
+        "MEU指定機関への品目供給にはAT：License Required",
+        "民生向けECCN（4A003等）も軍事エンドユーザーには規制強化",
+        "2022年追加：ロシア国防省・軍事エンドユーザー全機関"
+      ],
+      "related_eccn": ["3A001", "4A003", "5A002"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "ear_section": "744.22"
+    }
+  ]
+}

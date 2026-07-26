@@ -177,6 +177,109 @@ def _load_records() -> list[dict]:
         logger.info("keizai_anpo entries: %d", len(records) - start_count)
     start_count = len(records)
 
+    # ── サプライチェーンDD (supply_chain_dd) ─────────────────────────────────
+    scdd_path = _SEED_DIR / "supply_chain_dd.json"
+    if scdd_path.exists():
+        scdd = json.loads(scdd_path.read_text(encoding="utf-8"))
+        for fw in scdd.get("sc_dd_frameworks", []):
+            fw_id    = fw.get("framework_id", "")
+            name_ja  = fw.get("framework_name_ja", "")
+            name_en  = fw.get("framework_name", "")
+            basis    = fw.get("legal_basis", "")
+            desc     = fw.get("description", "").strip()
+            axes     = "・".join(fw.get("strategic_axis", []))
+            reqs     = "; ".join(fw.get("key_requirements", fw.get("feoc_rules", fw.get("benchmarks_2030", fw.get("controlled_items", fw.get("key_commitments", [])))))[:4])
+            impact   = fw.get("impact_on_japan", "")
+            full_text = (
+                f"サプライチェーンDD枠組み: {name_ja}（{name_en}）— {basis}。"
+                f"{desc} 主要要件: {reqs}。日本への影響: {impact}"
+            )
+            embed_text = _PASSAGE_PREFIX + full_text[:1200]
+            records.append({
+                "source_type":    "sc_dd",
+                "source_name":    "supply_chain_dd_frameworks",
+                "doc_id":         fw_id,
+                "category":       "サプライチェーンDD",
+                "title":          name_ja,
+                "subtitle":       name_en,
+                "keywords":       [name_ja, name_en, basis],
+                "eccn_relevance": fw.get("eccn_relevance", []),
+                "fefta_relevance": fw.get("fefta_relevance", []),
+                "strategic_axis": fw.get("strategic_axis", []),
+                "full_text":      full_text[:2000],
+                "embed_text":     embed_text,
+            })
+        logger.info("sc_dd entries: %d", len(records) - start_count)
+    start_count = len(records)
+
+    # ── 国際レジーム (international_regimes) ────────────────────────────────
+    ir_path = _SEED_DIR / "international_regimes.json"
+    if ir_path.exists():
+        ir = json.loads(ir_path.read_text(encoding="utf-8"))
+        for fw in ir.get("multilateral_frameworks", []):
+            fw_id    = fw.get("framework_id", "")
+            name_ja  = fw.get("framework_name_ja", "")
+            name_en  = fw.get("framework_name", "")
+            basis    = fw.get("legal_basis", "")
+            desc     = fw.get("description", "").strip()
+            members  = "・".join(fw.get("member_countries", [])[:8])
+            provs    = "; ".join(fw.get("key_provisions", fw.get("key_commitments", []))[:4])
+            full_text = (
+                f"国際レジーム: {name_ja}（{name_en}）— {basis}。"
+                f"{desc} 主要条項: {provs}。参加国: {members}"
+            )
+            embed_text = _PASSAGE_PREFIX + full_text[:1200]
+            records.append({
+                "source_type":    "intl_regime",
+                "source_name":    "international_regimes",
+                "doc_id":         fw_id,
+                "category":       "国際レジーム",
+                "title":          name_ja,
+                "subtitle":       name_en,
+                "keywords":       [name_ja, name_en, basis],
+                "eccn_relevance": fw.get("eccn_relevance", []),
+                "fefta_relevance": fw.get("fefta_relevance", []),
+                "strategic_axis": fw.get("strategic_axis", []),
+                "full_text":      full_text[:2000],
+                "embed_text":     embed_text,
+            })
+        logger.info("intl_regime entries: %d", len(records) - start_count)
+    start_count = len(records)
+
+    # ── 重要鉱物 (critical_minerals) ─────────────────────────────────────────
+    crm_path = _SEED_DIR / "critical_minerals.json"
+    if crm_path.exists():
+        crm = json.loads(crm_path.read_text(encoding="utf-8"))
+        for fw in crm.get("critical_mineral_frameworks", []):
+            fw_id    = fw.get("framework_id", "")
+            name_ja  = fw.get("framework_name_ja", "")
+            name_en  = fw.get("framework_name", "")
+            basis    = fw.get("legal_basis", "")
+            desc     = fw.get("description", "").strip()
+            items    = fw.get("strategic_raw_materials", fw.get("controlled_items", fw.get("priority_minerals", fw.get("key_commitments", []))))
+            items_str = "; ".join(str(i) for i in items[:5])
+            full_text = (
+                f"重要鉱物枠組み: {name_ja}（{name_en}）— {basis}。"
+                f"{desc} 主要鉱物・措置: {items_str}"
+            )
+            embed_text = _PASSAGE_PREFIX + full_text[:1200]
+            records.append({
+                "source_type":    "critical_mineral",
+                "source_name":    "critical_minerals_frameworks",
+                "doc_id":         fw_id,
+                "category":       "重要鉱物",
+                "title":          name_ja,
+                "subtitle":       name_en,
+                "keywords":       [name_ja, name_en, basis],
+                "eccn_relevance": fw.get("eccn_relevance", []),
+                "fefta_relevance": fw.get("fefta_relevance", []),
+                "strategic_axis": fw.get("strategic_axis", []),
+                "full_text":      full_text[:2000],
+                "embed_text":     embed_text,
+            })
+        logger.info("critical_mineral entries: %d", len(records) - start_count)
+    start_count = len(records)
+
     # ── 地政学SC軸 (geopolitical_sc) ─────────────────────────────────────────
     geo_path = _SEED_DIR / "geopolitical_sc.json"
     if geo_path.exists():

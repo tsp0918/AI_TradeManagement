@@ -1,0 +1,443 @@
+{
+  "_source": "Nuclear Suppliers Group Guidelines and Trigger List",
+  "_doc": "NSG Part 1 (INFCIRC/254/Part 1) and Part 2 (INFCIRC/254/Part 2) - 2023",
+  "_url": "https://www.nuclearsuppliersgroup.org/",
+  "total_categories": 48,
+  "entries": [
+    {
+      "control_id": "NSG-P1-1.A.1",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "原子炉・反応炉",
+      "title_en": "Nuclear reactors",
+      "description": "完成した原子炉および核反応が持続可能な自立連鎖反応を維持するよう設計または準備された機器。民生用原子力発電炉・研究炉を含む。",
+      "key_items": [
+        "臨界質量を超える核分裂性物質を保持するよう設計された装置",
+        "連続的な核分裂連鎖反応を維持する設計の反応炉容器",
+        "一次冷却材システム",
+        "制御棒システム",
+        "炉心支持構造",
+        "原子炉格納容器"
+      ],
+      "related_eccn": ["0A001"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.A.2",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "非核材料 — 減速材",
+      "title_en": "Non-nuclear materials for reactors - moderators",
+      "description": "原子炉において中性子の速度を低下させるために使用される重水・純粋黒鉛・ベリリウム等の減速材。",
+      "key_items": [
+        "重水（同位体組成D₂O：99.75%以上）",
+        "純粋黒鉛（ホウ素相当不純物5ppm未満）",
+        "ベリリウム金属・ベリリウム合金（核用途）",
+        "原子炉グレードジルコニウム（ハフニウム含有量0.010%未満）"
+      ],
+      "related_eccn": ["0C001", "0C002", "1C231"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.A.3",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "原子炉用圧力容器・熱交換器",
+      "title_en": "Reactor pressure vessels and heat exchangers",
+      "description": "原子炉の炉心を収容するよう設計または準備された金属製圧力容器、および原子炉一次冷却材回路に使用される熱交換器。",
+      "key_items": [
+        "原子炉圧力容器（動作圧1MPa以上）",
+        "炉心支持構造を持つ圧力管式容器",
+        "一次回路蒸気発生器・熱交換器",
+        "炉心シュラウド・炉心バレル"
+      ],
+      "related_eccn": ["0A001"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.A.4",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "原子炉燃料製造設備",
+      "title_en": "Nuclear fuel fabrication equipment",
+      "description": "核燃料要素（燃料棒・燃料集合体）の製造に特別に設計または準備された機器。UO₂ペレット製造・被覆管充填・燃料棒密封設備を含む。",
+      "key_items": [
+        "UO₂粉末焼結炉",
+        "燃料ペレット製造・品質検査装置",
+        "ジルカロイ被覆管充填・密封設備",
+        "燃料集合体組立装置",
+        "使用済燃料集合体解体装置（再処理前処理）"
+      ],
+      "related_eccn": ["0B006"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.A.5",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "同位体分離・ウラン濃縮設備",
+      "title_en": "Isotope separation and uranium enrichment equipment",
+      "description": "天然ウランを濃縮するため、またはウラン同位体（U-235/U-238）を分離するために設計または準備された機器・施設。",
+      "key_items": [
+        "ガス遠心分離機（ウラン濃縮用）",
+        "ガス拡散プラント用機器（多孔質バリア、大型ブロワー）",
+        "空気力学的分離機器（流体ノズル・旋回管）",
+        "電磁分離機器（カルトロン等のイオン源・収集器）",
+        "化学交換・イオン交換分離設備",
+        "レーザー同位体分離（AVLIS/MLIS）用装置"
+      ],
+      "related_eccn": ["0B001"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.A.6",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "使用済燃料再処理設備",
+      "title_en": "Spent fuel reprocessing plant equipment",
+      "description": "照射済み核燃料から核分裂性物質（Pu、U-233）を回収するための設備。PUREXプロセスおよびその代替プロセス用設備を含む。",
+      "key_items": [
+        "照射済燃料解体・溶解設備（剪断機・溶解槽）",
+        "プルトニウム精製溶媒抽出器（ミキサーセトラー・パルスカラム）",
+        "プルトニウム硝酸塩から金属への転換設備",
+        "高放射性廃液取り扱い設備",
+        "臨界安全設計のタンク・移送ライン"
+      ],
+      "related_eccn": ["0B005"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.A.7",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "重水・重水素化合物製造設備",
+      "title_en": "Heavy water and deuterium compound production equipment",
+      "description": "天然水から重水（D₂O）を濃縮・製造するために特別に設計または準備された設備。",
+      "key_items": [
+        "水素硫化物-水交換塔（GS法）",
+        "水素-水蒸留塔（CECE法）",
+        "モノメチルアミン-水交換設備",
+        "電解セル（重水製造用大型）",
+        "触媒交換反応器"
+      ],
+      "related_eccn": ["0B004"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.C.1",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "特殊核物質 — ウラン濃縮関連化学品",
+      "title_en": "Special nuclear materials - uranium enrichment chemicals",
+      "description": "ウラン濃縮プロセスに使用される特殊化学品。六フッ化ウラン（UF₆）変換およびフッ素化に関連する材料。",
+      "key_items": [
+        "六フッ化ウラン（UF₆）— ガス遠心法・ガス拡散法の作業流体",
+        "フッ化水素（HF）— 核グレード（ppbレベル不純物）",
+        "フッ素ガス（F₂）— 高純度核用途",
+        "三フッ化塩素（ClF₃）— 配管パッシベーション",
+        "フッ化ナトリウム（NaF）— UF₆トラップ材料"
+      ],
+      "related_eccn": ["0C001", "1C350"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.C.2",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "特殊核物質 — プルトニウム・濃縮ウラン",
+      "title_en": "Special fissile materials - plutonium, enriched uranium",
+      "description": "NPT第III条の保障措置トリガーとなる特殊核物質。すべての移転にIAEA保障措置協定が必要。",
+      "key_items": [
+        "プルトニウム（同位体組成80%以上Pu-238を除く）",
+        "濃縮ウラン（U-235が20%以上 - 高濃縮ウラン HEU）",
+        "U-233（人工核分裂性同位体）",
+        "Pu-238以外のプルトニウム同位体混合物",
+        "特殊核分裂性物質含有化合物・混合物"
+      ],
+      "related_eccn": ["0C001"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.D.1",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "核設計用ソフトウェア",
+      "title_en": "Nuclear design software",
+      "description": "原子炉炉心設計・臨界計算・核燃料燃焼解析・核分裂性物質臨界評価に特別に設計されたソフトウェア。",
+      "key_items": [
+        "臨界計算コード（MCNP/Serpent等の汎用モンテカルロコード 核用特化版）",
+        "炉心設計・中性子輸送計算コード",
+        "燃料燃焼計算コード",
+        "遮蔽計算コード（核施設設計用）",
+        "プルトニウム生産計算コード"
+      ],
+      "related_eccn": ["0D001"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.E.1",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "核技術・濃縮・再処理の技術",
+      "title_en": "Nuclear technology for enrichment and reprocessing",
+      "description": "ウラン濃縮・核燃料再処理・重水製造に特別に適用される技術（設計・製造・試験・動作の情報）。",
+      "key_items": [
+        "遠心分離機ローター設計・製造技術（カーボンファイバー複合材）",
+        "マルチプルバリア（多孔質拡散バリア）設計技術",
+        "PUREX溶媒抽出プロセス技術",
+        "核臨界安全設計技術",
+        "使用済燃料再処理化学技術"
+      ],
+      "related_eccn": ["0E001"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P2-2.1",
+      "regime": "NSG",
+      "regime_part": "Part 2",
+      "title": "先進的材料（核関連デュアルユース）",
+      "title_en": "Advanced materials with nuclear applications",
+      "description": "NSG Part 2デュアルユース品目。核活動への潜在的用途を持つ先進材料。",
+      "key_items": [
+        "マレージング鋼（引張強度2050MPa以上）— 遠心分離機ローター素材",
+        "高強度アルミニウム合金（Al-2219等）— 遠心分離機部品",
+        "チタン合金（Ti-6Al-4V）— 臨界用途",
+        "炭素繊維・アラミド繊維 — 遠心分離機ローター",
+        "フルオロポリマー（PTFE/PVDF）— UF₆耐性コーティング",
+        "高強度炭素繊維複合材（比強度46.5MPa m³/kg以上）"
+      ],
+      "related_eccn": ["1C010", "1C210"],
+      "related_wa_ml": ["ML12"],
+      "related_fefta": ["7項"],
+      "nsg_control_type": "dual_use"
+    },
+    {
+      "control_id": "NSG-P2-2.2",
+      "regime": "NSG",
+      "regime_part": "Part 2",
+      "title": "材料加工設備（核デュアルユース）",
+      "title_en": "Materials processing equipment with nuclear applications",
+      "description": "NSG Part 2デュアルユース。核活動に使用可能な精密加工・計測設備。",
+      "key_items": [
+        "精密工作機械（CNC 旋盤・フライス、軸数5以上）",
+        "等静圧プレス（核燃料ペレット製造用）",
+        "高真空溶解炉（特殊核材料用）",
+        "レーザー加工システム（核同位体分離用途）",
+        "質量分析計（同位体分析用）"
+      ],
+      "related_eccn": ["2B001", "2B004"],
+      "related_wa_ml": ["ML18"],
+      "related_fefta": ["2項"],
+      "nsg_control_type": "dual_use"
+    },
+    {
+      "control_id": "NSG-P2-2.3",
+      "regime": "NSG",
+      "regime_part": "Part 2",
+      "title": "電子機器・核デュアルユース",
+      "title_en": "Electronics with nuclear applications",
+      "description": "NSG Part 2。核施設での制御・計装に使用可能な電子機器。",
+      "key_items": [
+        "高速デジタル-アナログ変換器（核パルス信号処理用）",
+        "周波数制御機器（遠心分離機駆動用精密電源）",
+        "中性子ミューオン検出器・核計装システム",
+        "放射線防護計装（高線量域サーベイメータ）",
+        "核セキュリティ機器（核物質計量管理システム）"
+      ],
+      "related_eccn": ["3A001", "3A002"],
+      "related_wa_ml": [],
+      "related_fefta": ["7項"],
+      "nsg_control_type": "dual_use"
+    },
+    {
+      "control_id": "NSG-P2-2.4",
+      "regime": "NSG",
+      "regime_part": "Part 2",
+      "title": "センサー・核デュアルユース",
+      "title_en": "Sensors with nuclear applications",
+      "description": "NSG Part 2。核活動の探知・計測に応用可能なセンサー・計測器。",
+      "key_items": [
+        "中性子線量計・中性子フラックスモニター",
+        "Ge半導体γ線検出器（核物質同定用）",
+        "ヘリウム-3検出器（中性子計数）",
+        "大面積シンチレーション検出器（核セキュリティ）",
+        "質量分析計（核物質同位体分析用、同位体比測定精度0.1%以内）"
+      ],
+      "related_eccn": ["6A008"],
+      "related_wa_ml": [],
+      "related_fefta": ["6項"],
+      "nsg_control_type": "dual_use"
+    },
+    {
+      "control_id": "NSG-P2-2.5",
+      "regime": "NSG",
+      "regime_part": "Part 2",
+      "title": "航法・誘導（核デュアルユース）",
+      "title_en": "Navigation and guidance with nuclear weapons applications",
+      "description": "NSG Part 2。核弾頭搭載ミサイルの誘導・航法システムに転用可能な機器。",
+      "key_items": [
+        "慣性航法装置（CEP 100m以内、射程300km以上のシステム用）",
+        "精密加速度計（核武器搭載用設計・準備）",
+        "高精度ジャイロスコープ（ドリフト率0.01°/h未満）",
+        "GPS誘導システム（軍用暗号受信機含む）"
+      ],
+      "related_eccn": ["7A003", "7A004"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["7項"],
+      "nsg_control_type": "dual_use"
+    },
+    {
+      "control_id": "NSG-P2-2.6",
+      "regime": "NSG",
+      "regime_part": "Part 2",
+      "title": "爆発物・起爆システム（核デュアルユース）",
+      "title_en": "Explosives and initiation systems with nuclear weapons applications",
+      "description": "NSG Part 2。核爆発装置の起爆システムに転用可能な爆発物・電子起爆装置。",
+      "key_items": [
+        "高精度爆発物成形体（核インプロージョン型に使用可能な高密度爆発物）",
+        "精密電気式起爆装置（一斉起爆システム、タイミング精度1μs以内）",
+        "クライトロン・スパイラトロン（高電圧・高速スイッチング素子）",
+        "高速カメラ・閃光X線装置（爆発実験用）",
+        "圧力センサー（超高圧、GPa域計測）"
+      ],
+      "related_eccn": ["1C992", "3A228", "3A229"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "dual_use"
+    },
+    {
+      "control_id": "NSG-P2-2.7",
+      "regime": "NSG",
+      "regime_part": "Part 2",
+      "title": "航空宇宙・核デュアルユース（再突入ビークル・ノーズコーン）",
+      "title_en": "Aerospace items - reentry vehicles and nose cones",
+      "description": "NSG Part 2。核弾頭を搭載した再突入体・ノーズコーンの製造に使用可能な材料・設備。",
+      "key_items": [
+        "炭素-炭素複合材アブレーター（再突入体熱遮蔽）",
+        "高温セラミック材料（HfO₂/ZrO₂系 耐熱1500℃以上）",
+        "精密成形金型（ノーズコーン製造用）",
+        "再突入体エアロシェル設計ソフトウェア"
+      ],
+      "related_eccn": ["9A004", "9C110"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["9項"],
+      "nsg_control_type": "dual_use"
+    },
+    {
+      "control_id": "NSG-P2-2.8",
+      "regime": "NSG",
+      "regime_part": "Part 2",
+      "title": "情報セキュリティ・核施設制御（デュアルユース）",
+      "title_en": "Information security for nuclear facility control systems",
+      "description": "NSG Part 2。核施設の制御・保護システムに使用されるサイバーセキュリティ・通信暗号機器。",
+      "key_items": [
+        "核施設デジタル制御システム（DCS/SCADA）",
+        "原子炉安全系保護システム（原子炉緊急停止自動システム）",
+        "核物質計量管理ソフトウェア（IAEA SSAC準拠）",
+        "核セキュリティ物理防護システム（センサー統合・侵入検知）"
+      ],
+      "related_eccn": ["5A002", "0D001"],
+      "related_wa_ml": [],
+      "related_fefta": ["5項"],
+      "nsg_control_type": "dual_use"
+    },
+    {
+      "control_id": "NSG-P1-1.B.1",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "遠心分離機製造用機器（トライオルナル関連）",
+      "title_en": "Equipment for manufacturing gas centrifuges",
+      "description": "ウラン濃縮用ガス遠心分離機の製造に特別に設計または準備された専用工作機械・治具・検査設備。",
+      "key_items": [
+        "カーボンファイバーローター製造・試験装置",
+        "分子ポンプ・真空ベアリング製造設備",
+        "磁気軸受（アキシャル・ラジアル合計 super-precision）組立装置",
+        "精密バランシングマシン（分離機ローター用）",
+        "ローター端部キャップ・スクープ成形装置"
+      ],
+      "related_eccn": ["0B001"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.B.2",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "ガス拡散濃縮プラント用設備",
+      "title_en": "Equipment for gaseous diffusion enrichment plants",
+      "description": "ガス拡散法によるウラン濃縮に特別に設計または準備された多孔質バリア・大型コンプレッサー・軸封装置。",
+      "key_items": [
+        "多孔質金属バリア（UF₆透過用 細孔径制御）",
+        "大型ガスブロワー・圧縮機（UF₆耐性、200 kW以上）",
+        "ロータリーシャフトシール（UF₆ガス漏洩防止）",
+        "ガスクーラー・熱交換器（UF₆耐性材）",
+        "UF₆耐性バルブ・フィッティング（Ni/Monel製）"
+      ],
+      "related_eccn": ["0B002"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P1-1.C.3",
+      "regime": "NSG",
+      "regime_part": "Part 1",
+      "title": "源泉物質 — 天然ウラン・トリウム",
+      "title_en": "Source materials - natural uranium and thorium",
+      "description": "NPT第III条2項の保障措置の適用が義務付けられる天然ウラン（U-235 0.711%）・低濃縮ウラン・トリウムの移転。",
+      "key_items": [
+        "天然ウラン金属・合金（全量）",
+        "天然ウラン化合物（UF₄、UO₂、UO₃、UF₆、硝酸ウラニル等）",
+        "低濃縮ウラン（U-235が20%未満）",
+        "トリウム金属・化合物（全量 — Th-232/Th-230含む）",
+        "ウラン鉱石精鉱（イエローケーキ）"
+      ],
+      "related_eccn": ["0C001"],
+      "related_wa_ml": [],
+      "related_fefta": ["1項"],
+      "nsg_control_type": "nuclear_specific"
+    },
+    {
+      "control_id": "NSG-P2-2.9",
+      "regime": "NSG",
+      "regime_part": "Part 2",
+      "title": "レーザー技術（同位体分離デュアルユース）",
+      "title_en": "Laser technology for isotope separation",
+      "description": "NSG Part 2。レーザー同位体分離（AVLIS/SILEX/MLIS）に使用可能なレーザー・光学系。",
+      "key_items": [
+        "Cu蒸気レーザー（511nm/578nm、CW出力40W以上）",
+        "色素レーザー（チューナブル、570-640nm域高出力）",
+        "Nd:YAGレーザー（1064nm 50W以上 Q-スイッチ）",
+        "CO₂レーザー（10.6μm 2kW以上）",
+        "同位体選択的光電離のための光学システム"
+      ],
+      "related_eccn": ["6A005"],
+      "related_wa_ml": ["ML5"],
+      "related_fefta": ["6項"],
+      "nsg_control_type": "dual_use"
+    }
+  ]
+}

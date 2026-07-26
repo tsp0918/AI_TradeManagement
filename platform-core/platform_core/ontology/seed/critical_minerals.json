@@ -1,0 +1,145 @@
+{
+  "_source": "Critical Minerals Frameworks and Resource Security",
+  "_doc": "EU CRM Act / IRA Minerals / Japan Critical Mineral Strategy / G7 Minerals - 2024",
+  "critical_mineral_frameworks": [
+    {
+      "framework_id": "CRM-EU-ACT",
+      "framework_name": "EU Critical Raw Materials Act (CRMA)",
+      "framework_name_ja": "EU重要原材料法",
+      "legal_basis": "Regulation (EU) 2024/1252",
+      "effective_date": "2024-05-23",
+      "strategic_axis": ["経済安保", "geopolitical_sc"],
+      "description": "EU重要原材料法（CRMA）: 2030年までにEUの重要原材料調達を多様化し、特定国（中国）への依存度を引き下げる。34鉱物を「重要原材料」として指定、10鉱物を「戦略的原材料」に選定。",
+      "benchmarks_2030": [
+        "EU域内採掘で需要の10%以上供給",
+        "EU域内加工で需要の40%以上処理",
+        "EU域内リサイクルで需要の15%以上回収",
+        "単一第三国からの調達が戦略的原材料の65%以下"
+      ],
+      "critical_raw_materials": [
+        "リチウム（EV電池 中国精製60%）",
+        "コバルト（電池 コンゴ産60%・中国精製80%）",
+        "ニッケル（EV電池・ステンレス インドネシア産急増）",
+        "グラファイト（電池負極材 中国産80%）",
+        "マンガン（電池・鉄鋼 南アフリカ・中国）",
+        "レアアース（磁石 NdFeB 中国精製85%）",
+        "ガリウム（半導体・LEDGaAs/GaN 中国産98%）",
+        "ゲルマニウム（光ファイバ・IR光学 中国産60%）",
+        "インジウム（薄膜太陽電池・LCD 中国産75%）",
+        "タングステン（切削工具・フィラメント 中国産82%）",
+        "アンチモン（難燃剤・半導体 中国産77%）",
+        "バリウム・ストロンチウム",
+        "ボーキサイト・アルミニウム",
+        "ビスマス（医薬品 中国産82%）",
+        "ボロン・フルオリウム",
+        "チタン（航空宇宙・化学 ロシア・中国）",
+        "バナジウム（電池・鉄鋼 中国・ロシア）"
+      ],
+      "strategic_raw_materials": [
+        "銅（電力・EV 世界分散）",
+        "リチウム（EV中核材料）",
+        "ニッケル",
+        "コバルト",
+        "マンガン",
+        "グラファイト（天然・合成）",
+        "シリコン（金属 太陽電池・半導体 中国産80%）",
+        "ボーキサイト（アルミ原料）",
+        "PGM（白金族 南アフリカ産約70%）",
+        "ウラン（核燃料 カザフスタン・カナダ）"
+      ],
+      "eccn_relevance": ["1C230", "1C231", "1C232"],
+      "fefta_relevance": ["経済安全保障推進法 特定重要物資（重要鉱物）"]
+    },
+    {
+      "framework_id": "CRM-IRA",
+      "framework_name": "US Inflation Reduction Act - Critical Mineral Provisions",
+      "framework_name_ja": "米国インフレ削減法（IRA）重要鉱物条項",
+      "legal_basis": "IRA Section 30D (Clean Vehicle Credit) / 45X (Manufacturing Credit)",
+      "effective_date": "2023-01-01",
+      "strategic_axis": ["経済安保", "geopolitical_sc"],
+      "description": "IRACセクション30D: EVクレジット（最大7,500ドル）の適用条件として、電池鉱物・電池部品のFEOC除外要件。中国・ロシア・イラン・北朝鮮関連企業からの鉱物は除外対象。",
+      "feoc_rules": [
+        "FEOC（懸念外国エンティティ）: 中国・ロシア・イラン・北朝鮮の政府・軍が25%以上所有・支配する企業",
+        "鉱物要件（2025年〜）: EV電池の重要鉱物の50%以上をFEOC除外国から調達",
+        "部品要件（2024年〜）: EV電池の部品の60%以上をFEOC除外国から製造",
+        "適用対象鉱物: リチウム・コバルト・ニッケル・マンガン・黒鉛・希土類・バナジウム等",
+        "フリートレードアグリーメント（FTA）例外: 日本はIRA FTA交渉で重要鉱物協定締結（2023年3月）",
+        "日米重要鉱物協定（JMPA）: 日本からの鉱物調達をIRAクレジット対象に"
+      ],
+      "impact_on_japan": "日本自動車産業（トヨタ・本田等）の米国EV市場参入にIRA鉱物条項が直撃。日米重要鉱物協定（JMPA）締結でFTA相当扱いを獲得。日本の重要鉱物確保外交が加速。",
+      "eccn_relevance": [],
+      "fefta_relevance": ["経済安全保障推進法 特定重要物資"]
+    },
+    {
+      "framework_id": "CRM-JAPAN",
+      "framework_name": "Japan Critical Minerals Strategy",
+      "framework_name_ja": "日本重要鉱物確保戦略",
+      "legal_basis": "経済安全保障推進法 / 資源・エネルギー庁 鉱物資源確保戦略 2023",
+      "effective_date": "2023-03",
+      "strategic_axis": ["経済安保", "geopolitical_sc"],
+      "description": "日本経済産業省の重要鉱物確保戦略（2023年3月）。EV・半導体・再エネを支える重要鉱物について、特定国（中国）依存を軽減し多様な供給源を確保する国家戦略。",
+      "priority_minerals": [
+        "リチウム（豪・チリ・カナダ・アルゼンチンとの連携）",
+        "コバルト（コンゴ・フィリピンとの安定供給協定）",
+        "ニッケル（インドネシア・フィリピン・豪）",
+        "希土類（豪・カナダ・インド・モンゴルとの供給多様化）",
+        "ガリウム・ゲルマニウム（代替供給源開発: カナダ・豪・欧州）",
+        "グラファイト（モザンビーク・豪での開発支援）"
+      ],
+      "policy_tools": [
+        "経済安全保障推進法: 重要鉱物を「特定重要物資」に指定（安定供給確保計画）",
+        "JOGMEC（石油天然ガス・金属鉱物資源機構）: 資源権益取得・探鉱支援",
+        "2国間投資保護協定（EPA/IPA）: 鉱山国との権益保護",
+        "備蓄強化: METI系独立行政法人による戦略備蓄拡充",
+        "リサイクル: 都市鉱山（廃家電・廃車）からのレアメタル回収",
+        "代替技術: 希土類フリー磁石・レアメタル代替材料の研究開発"
+      ],
+      "eccn_relevance": ["1C231（ベリリウム）", "1C230（タングステン等）"],
+      "fefta_relevance": ["経済安全保障推進法 第7条"]
+    },
+    {
+      "framework_id": "CRM-CHINA-EXPORT",
+      "framework_name": "China Critical Mineral Export Controls",
+      "framework_name_ja": "中国重要鉱物輸出規制（対抗措置）",
+      "legal_basis": "中国商務部 商務部令第7号 2023 / 輸出管理法第2条",
+      "effective_date": "2023-08-01",
+      "strategic_axis": ["地政学", "経済安保", "geopolitical_sc"],
+      "description": "中国は米国の半導体規制への対抗措置として、半導体・先端技術に不可欠な重要鉱物の輸出規制を強化。ガリウム・ゲルマニウム（2023年8月）・グラファイト（2023年12月）を輸出許可制に移行。",
+      "controlled_items": [
+        "ガリウム（Ga）: 8月1日から輸出ライセンス制。中国産世界98%、GaN半導体・LED・HF太陽電池に不可欠",
+        "ゲルマニウム（Ge）: 8月1日から輸出ライセンス制。光ファイバ・赤外線光学・太陽電池に使用",
+        "グラファイト（黒鉛）: 12月1日から輸出許可制。リチウムイオン電池負極材（EVへの影響大）",
+        "アンチモン（Sb）: 2024年9月から輸出規制強化予告（半導体・難燃剤・軍事用途）",
+        "ネオジム・永久磁石技術（EV・風力発電用モーター）: 技術輸出制限検討中"
+      ],
+      "geopolitical_implications": [
+        "中国の「Resource Weapon」戦略: 重要鉱物を外交交渉の手段として使用",
+        "2010年のレアアース対日輸出規制事件（尖閣領土紛争）の再演リスク",
+        "米国・同盟国の反応: 代替供給源開発・備蓄拡充・中国外産業への移転支援",
+        "WTO紛争: EUが中国のガリウム規制をWTOに提訴の動き",
+        "日本への影響: 半導体産業（GaAsウェーハ）・光ファイバ製造（Ge）に直撃"
+      ],
+      "eccn_relevance": ["1C230", "1C231"],
+      "fefta_relevance": ["経済安全保障推進法 特定重要物資"]
+    },
+    {
+      "framework_id": "CRM-G7-PACT",
+      "framework_name": "G7 Critical Minerals Compact",
+      "framework_name_ja": "G7重要鉱物コンパクト",
+      "legal_basis": "G7 Hiroshima Leaders' Communiqué 2023 / Minerals Security Partnership (MSP)",
+      "effective_date": "2022-06 (MSP) / 2023-05 (G7)",
+      "strategic_axis": ["国際秩序", "経済安保"],
+      "description": "G7が主導する重要鉱物のサプライチェーン強靭化のための国際協力枠組み。米国主導のMSP（鉱物安全保障パートナーシップ）とG7コミットメントが連動。中国依存からの脱却を目標。",
+      "key_commitments": [
+        "MSP（鉱物安全保障パートナーシップ）: 14カ国（日本含む）で重要鉱物プロジェクトへの公的資金協調",
+        "環境・社会基準: 採掘プロジェクトへのIFC（国際金融公社）環境・社会パフォーマンス基準適用",
+        "鉱山国パートナーシップ: カナダ・豪・チリ・南アフリカ・DR コンゴとの協力協定",
+        "技術移転: 精製技術の鉱山国への移転（製錬加工の多様化）",
+        "資金：公的開発金融（JBIC・DEG・DFC等）の協調融資",
+        "透明性: EITI（採掘産業透明性イニシアティブ）準拠の鉱山国への参加支援"
+      ],
+      "eccn_relevance": ["1C230", "1C231"],
+      "fefta_relevance": ["経済安全保障推進法 特定重要物資"]
+    }
+  ]
+}

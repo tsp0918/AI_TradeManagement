@@ -1,0 +1,177 @@
+{
+  "_source": "Zangger Committee Trigger List",
+  "_doc": "INFCIRC/209/Rev.1 - Zangger Committee Trigger List",
+  "_url": "https://www.iaea.org/topics/nuclear-non-proliferation/",
+  "total_categories": 18,
+  "entries": [
+    {
+      "control_id": "ZC-1",
+      "regime": "Zangger",
+      "regime_part": "Trigger List",
+      "title": "源泉物質（天然ウラン・トリウム）",
+      "title_en": "Source materials - natural uranium and thorium",
+      "description": "NPT第III条2項に基づき、すべての移転にIAEA保障措置が義務付けられる源泉物質。Zangger委員会トリガーリスト第1号。",
+      "key_items": [
+        "天然ウラン金属・合金（1kg以上）",
+        "天然ウラン化合物（UO₂/UO₃/UF₄/UF₆/硝酸ウラニル）",
+        "低濃縮ウラン（U-235が20%未満）",
+        "トリウム金属・化合物（1kg以上）",
+        "使用済核燃料（照射済UO₂燃料集合体）"
+      ],
+      "related_eccn": ["0C001"],
+      "related_nsg": "NSG-P1-1.C.3",
+      "related_fefta": ["1項"],
+      "zc_item": "1"
+    },
+    {
+      "control_id": "ZC-2",
+      "regime": "Zangger",
+      "regime_part": "Trigger List",
+      "title": "特殊核分裂性物質",
+      "title_en": "Special fissile materials",
+      "description": "高濃縮ウラン（HEU）・プルトニウム・ウラン-233の移転にはIAEA保障措置協定が必要。Zanggerトリガーリスト第2号。",
+      "key_items": [
+        "濃縮ウラン（U-235が20%以上 — HEU）",
+        "プルトニウム-239（反応炉グレードおよび兵器グレード）",
+        "ウラン-233（Thorium燃料サイクル産生）",
+        "プルトニウム/HEU含有化合物・混合物（核兵器使用に適した組成）"
+      ],
+      "related_eccn": ["0C001"],
+      "related_nsg": "NSG-P1-1.C.2",
+      "related_fefta": ["1項"],
+      "zc_item": "2"
+    },
+    {
+      "control_id": "ZC-3",
+      "regime": "Zangger",
+      "regime_part": "Trigger List",
+      "title": "原子炉（核反応炉）",
+      "title_en": "Nuclear reactors",
+      "description": "核燃料の連続的な核分裂連鎖反応を維持する原子炉。動力炉・研究炉・実験炉を含む。",
+      "key_items": [
+        "軽水炉（BWR/PWR）",
+        "重水炉（CANDU型）",
+        "高速増殖炉（FBR）",
+        "研究炉・試験炉（プールタイプ・タンクタイプ）",
+        "実験的先進炉（溶融塩炉・高温ガス炉）"
+      ],
+      "related_eccn": ["0A001"],
+      "related_nsg": "NSG-P1-1.A.1",
+      "related_fefta": ["1項"],
+      "zc_item": "3"
+    },
+    {
+      "control_id": "ZC-4",
+      "regime": "Zangger",
+      "regime_part": "Trigger List",
+      "title": "原子炉の非核部品",
+      "title_en": "Non-nuclear components of nuclear reactors",
+      "description": "原子炉の動作に不可欠な非核部品。圧力容器・制御棒・炉心支持構造等。",
+      "key_items": [
+        "核グレード圧力容器（動作圧力10MPa以上、放射線耐性鋼）",
+        "制御棒・ドライブ機構（B4C・Hf・Ag-In-Cd）",
+        "一次冷却材ポンプ・弁（核グレード、密封型）",
+        "炉心シュラウド・バレル・グリッド（中性子照射耐性）",
+        "蒸気発生器・加圧器（PWR主要設備）"
+      ],
+      "related_eccn": ["0A001"],
+      "related_nsg": "NSG-P1-1.A.3",
+      "related_fefta": ["1項"],
+      "zc_item": "4"
+    },
+    {
+      "control_id": "ZC-5",
+      "regime": "Zangger",
+      "regime_part": "Trigger List",
+      "title": "同位体分離プラント機器",
+      "title_en": "Isotope separation plant equipment",
+      "description": "ウラン同位体分離（濃縮）に特別に設計または準備された機器。すべての分離技術を対象とする。",
+      "key_items": [
+        "ガス遠心分離機ローター・ベアリング・スクープ",
+        "多孔質拡散バリア（ガス拡散法）",
+        "電磁分離機器（EMIS）",
+        "化学交換分離塔",
+        "フッ素化炉・脱フッ素化炉"
+      ],
+      "related_eccn": ["0B001"],
+      "related_nsg": "NSG-P1-1.A.5",
+      "related_fefta": ["1項"],
+      "zc_item": "5"
+    },
+    {
+      "control_id": "ZC-6",
+      "regime": "Zangger",
+      "regime_part": "Trigger List",
+      "title": "核燃料製造プラント",
+      "title_en": "Plants for the fabrication of fuel elements",
+      "description": "照射前核燃料要素の製造に特別に設計または準備された完全な製造ライン。",
+      "key_items": [
+        "UO₂粉末転換・焼結ライン",
+        "燃料棒被覆管充填・密封装置",
+        "燃料集合体組立ライン",
+        "核燃料品質検査・試験装置",
+        "ジルカロイ管・構造材製造設備"
+      ],
+      "related_eccn": ["0B006"],
+      "related_nsg": "NSG-P1-1.A.4",
+      "related_fefta": ["1項"],
+      "zc_item": "6"
+    },
+    {
+      "control_id": "ZC-7",
+      "regime": "Zangger",
+      "regime_part": "Trigger List",
+      "title": "再処理プラント",
+      "title_en": "Plants for reprocessing irradiated fuel elements",
+      "description": "照射済核燃料からプルトニウム・U-233を分離する再処理施設。PUREXプロセス・その代替プロセス設備。",
+      "key_items": [
+        "照射済燃料貯蔵設備（水中冷却プール）",
+        "燃料解体・切断設備（ホットセル）",
+        "水溶解槽（臨界安全設計）",
+        "溶媒抽出設備（PUREX混合沈降装置）",
+        "プルトニウム転換・精製設備"
+      ],
+      "related_eccn": ["0B005"],
+      "related_nsg": "NSG-P1-1.A.6",
+      "related_fefta": ["1項"],
+      "zc_item": "7"
+    },
+    {
+      "control_id": "ZC-8",
+      "regime": "Zangger",
+      "regime_part": "Trigger List",
+      "title": "重水製造プラント",
+      "title_en": "Plants for the production of heavy water",
+      "description": "天然水から重水（D₂O）を製造するための特別に設計または準備された設備。",
+      "key_items": [
+        "Girdler-Sulfide（GS）プロセス塔",
+        "Monothermal/Bithermal化学交換塔",
+        "電解セル（大型重水製造用）",
+        "水素-水蒸気触媒交換反応器（CECE法）"
+      ],
+      "related_eccn": ["0B004"],
+      "related_nsg": "NSG-P1-1.A.7",
+      "related_fefta": ["1項"],
+      "zc_item": "8"
+    },
+    {
+      "control_id": "ZC-9",
+      "regime": "Zangger",
+      "regime_part": "Trigger List",
+      "title": "特定核用途材料（グラファイト・ベリリウム）",
+      "title_en": "Specific nuclear-grade materials - graphite, beryllium",
+      "description": "原子炉減速材・反射材として使用される核グレード黒鉛・ベリリウム。中性子増倍効果を持つため管理対象。",
+      "key_items": [
+        "核グレード黒鉛（ホウ素不純物5ppm未満、密度1.5g/cm³以上）",
+        "ベリリウム金属（純度98%以上）— 中性子反射材",
+        "ベリリウム酸化物（BeO）",
+        "ベリリウム合金（Be含有量50%超）",
+        "核グレード黒鉛製品（モデレーターブロック等）"
+      ],
+      "related_eccn": ["0C004", "1C231"],
+      "related_nsg": "NSG-P1-1.A.2",
+      "related_fefta": ["1項"],
+      "zc_item": "9"
+    }
+  ]
+}

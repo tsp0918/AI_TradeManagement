@@ -1,0 +1,128 @@
+{
+  "_source": "US CHIPS and Science Act (H.R. 4346) and EU Chips Act",
+  "_doc": "CHIPS Act (Public Law 117-167) Guardrails and Investment Restrictions - 2023/2024",
+  "_url": "https://www.chips.gov/",
+  "total_categories": 15,
+  "entries": [
+    {
+      "control_id": "CHIPS-GUARDRAIL-1",
+      "regime": "CHIPS_Act",
+      "regime_part": "CHIPS Act - National Security Guardrails",
+      "title": "CHIPSガードレール — 懸念外国エンティティ（FEOC）制限",
+      "title_en": "CHIPS Guardrails - Foreign Entity of Concern (FEOC) Restrictions",
+      "description": "2022年8月成立US CHIPS法 527条：CHIPS補助金・インセンティブ受給企業は、懸念外国エンティティ（FEOC）への先端半導体製造能力の実質的な拡張を10年間禁止。",
+      "key_items": [
+        "FEOCの定義：中国・ロシア・イラン・北朝鮮の政府・軍・諜報機関が所有/管理する企業",
+        "禁止行為：FEOC向け28nm以下（先端）ロジック半導体の製造能力拡張",
+        "禁止行為：FEOC向けDRAM（18nm以下）・NAND（128層以上）製造能力拡張",
+        "補助金返還：ガードレール違反の場合、受給補助金全額返還義務",
+        "合弁・分社化による回避防止：実質的支配権（Significant Transaction基準）",
+        "例外：従来の中国合弁（レガシー施設）は段階的縮小を条件に一定期間許可"
+      ],
+      "related_eccn": ["3A001", "3B001"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条", "経済安全保障推進法"],
+      "chips_provision": "Section 9902 / 10A USC"
+    },
+    {
+      "control_id": "CHIPS-GUARDRAIL-2",
+      "regime": "CHIPS_Act",
+      "regime_part": "CHIPS Act - Technology Clawback",
+      "title": "CHIPSガードレール — 先端半導体定義と禁止技術",
+      "title_en": "CHIPS Guardrails - Advanced semiconductor definitions and prohibited technologies",
+      "description": "CHIPS法ガードレール規則（最終規則2024年9月）: 先端半導体の具体的定義と、FEOC向け製造・共同研究禁止技術の範囲。",
+      "key_items": [
+        "先端ロジック：28nm（第3世代 EUV不使用先端）以下 → 全面禁止",
+        "先端DRAM：18nm（LPDDR4X同等以下）→ 禁止",
+        "先端NAND：128層以上（3D NAND最先端）→ 禁止",
+        "禁止共同研究：FEOCとの合同R&D・IP共有・技術ライセンス",
+        "許可範囲：28nm超（レガシー）の中国製造は制限付きで許可（従来能力維持）",
+        "モニタリング：受給企業は10年間の年次コンプライアンス報告義務"
+      ],
+      "related_eccn": ["3A001.a.1-3", "3B001"],
+      "related_wa_ml": [],
+      "related_fefta": ["経済安全保障推進法 特定重要技術研究開発"],
+      "chips_provision": "15 CFR Part 231 Final Rule 2024"
+    },
+    {
+      "control_id": "CHIPS-US-INVEST",
+      "regime": "CHIPS_Act",
+      "regime_part": "CHIPS Act - US Investment Incentives",
+      "title": "CHIPS法 米国国内投資インセンティブ",
+      "title_en": "CHIPS Act US Domestic Investment Incentives",
+      "description": "CHIPS and Science Act: 米国国内半導体製造・研究に527億ドル補助。商務省管轄。日本・韓国・欧州半導体企業の米国工場建設への補助金。",
+      "key_items": [
+        "半導体製造インセンティブ（CHIPS Incentives）: 390億ドル",
+        "半導体研究開発（CHIPS R&D）: 110億ドル",
+        "TSMC Arizona（AZ）工場：2026年2nm工場、補助金66億ドル",
+        "Samsung Texas工場：Austin・Taylor 補助金64億ドル",
+        "Intel Ohio/Arizona工場：補助金最大85億ドル",
+        "マイクロン Idaho工場：補助金61.5億ドル（DRAM）"
+      ],
+      "related_eccn": [],
+      "related_wa_ml": [],
+      "related_fefta": ["経済安全保障推進法 特定重要物資（半導体）"],
+      "chips_provision": "Section 9902 Appropriations"
+    },
+    {
+      "control_id": "CHIPS-EU",
+      "regime": "CHIPS_Act",
+      "regime_part": "EU Chips Act",
+      "title": "EU Chips Act — 欧州半導体主権強化",
+      "title_en": "EU Chips Act - European semiconductor sovereignty",
+      "description": "EU Chips Act（規則 EU 2023/1781）: 2030年までに欧州の世界半導体生産シェアを10%→20%に倍増。TSMC欧州工場（ドレスデン）・Intel欧州工場（マグデブルク）を支援。",
+      "key_items": [
+        "First Chips（研究）: 欧州量子半導体・2nm以下技術研究",
+        "Chips for Europe（設計・製造）: ファブ建設補助 TSMC Dresden 50億ユーロ",
+        "Chips Act 規制（モニタリング）: 半導体不足の早期警戒システム",
+        "Integrated Production Facility（IPF）: EU独自ファブ認定",
+        "Open EU Foundry（OUEF）: 欧州外企業向け受託製造機能",
+        "欧州半導体主権: ASML EUV技術とともに欧州の非対称アドバンテージ"
+      ],
+      "related_eccn": ["3B001"],
+      "related_wa_ml": [],
+      "related_fefta": ["経済安全保障推進法"],
+      "chips_provision": "EU Regulation 2023/1781"
+    },
+    {
+      "control_id": "CHIPS-JAPAN",
+      "regime": "CHIPS_Act",
+      "regime_part": "Japan Semiconductor Strategy",
+      "title": "日本半導体戦略（経済安全保障推進法・Rapidus）",
+      "title_en": "Japan Semiconductor Strategy - Economic Security Act and Rapidus",
+      "description": "日本の半導体製造能力回復戦略。経済安全保障推進法下のTSMC熊本工場（JASM）補助・Rapidus（IBM協力 2nm）・ラピダス。",
+      "key_items": [
+        "TSMC熊本JASM工場: 政府補助4,760億円（第1・第2工場）",
+        "Rapidus（2nm）: 政府支援3,300億円 IBM・imec連携",
+        "マイクロン広島工場：2,000億円支援 DRAM製造継続",
+        "半導体産業を経済安全保障推進法「特定重要物資」に指定",
+        "半導体サプライチェーン強靱化：供給安定確保計画の策定義務",
+        "日米半導体協力：DoC-METI ハーモナイゼーション"
+      ],
+      "related_eccn": ["3B001", "3A001"],
+      "related_wa_ml": [],
+      "related_fefta": ["経済安全保障推進法 第7条 特定重要物資"],
+      "chips_provision": "経済安全保障推進法 / 産業競争力強化法"
+    },
+    {
+      "control_id": "CHIPS-IRA-MINERALS",
+      "regime": "CHIPS_Act",
+      "regime_part": "IRA - Semiconductor Materials",
+      "title": "IRA（インフレ削減法）鉱物条項との連携",
+      "title_en": "IRA Inflation Reduction Act mineral provisions and semiconductor materials",
+      "description": "2022年インフレ削減法（IRA）30D条：EV電池向け重要鉱物のFEOC除外。半導体材料（ポリシリコン等）への適用拡大が検討中。",
+      "key_items": [
+        "FEOC（懸念外国エンティティ）からの鉱物禁止：中国・ロシア・イラン・北朝鮮",
+        "半導体製造用シリコン（ポリシリコン）: 新疆産FEOC規定（UFLPA連動）",
+        "ガリウム・ゲルマニウム：中国の輸出規制（2023年7月）との相互作用",
+        "タングステン：半導体スパッタリングターゲット → 中国産集中リスク",
+        "ネオン・アルゴン・クリプトン：ウクライナ産依存 → 代替供給源確保",
+        "半導体材料サプライチェーンの多様化：日本・韓国・欧州との連携"
+      ],
+      "related_eccn": ["1C210"],
+      "related_wa_ml": [],
+      "related_fefta": ["経済安全保障推進法 特定重要物資"],
+      "chips_provision": "IRA Section 30D / 45X"
+    }
+  ]
+}

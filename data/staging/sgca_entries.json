@@ -1,0 +1,123 @@
+{
+  "_source": "Singapore Strategic Goods Control Act (SGCA)",
+  "_doc": "Singapore Customs Strategic Goods Control Order 2023",
+  "_url": "https://www.customs.gov.sg/businesses/strategic-goods-control/",
+  "total_categories": 15,
+  "entries": [
+    {
+      "control_id": "SGCA-NUC",
+      "regime": "SGCA",
+      "regime_part": "Part I - Nuclear",
+      "title": "核関連物資・設備（NSG準拠）",
+      "title_en": "Nuclear-related goods and equipment (NSG-compliant)",
+      "description": "シンガポール戦略物資管理法 核関連品目。NSGトリガーリスト準拠。シンガポールは核不拡散体制の支持国として包括的IAEAアドバンスド保障措置協定を締結。",
+      "key_items": [
+        "源泉物質（天然ウラン・トリウム）",
+        "特殊核分裂性物質（HEU/プルトニウム）",
+        "原子炉・主要設備",
+        "ウラン濃縮・再処理設備",
+        "重水・核グレード黒鉛"
+      ],
+      "related_eccn": ["0A001", "0C001"],
+      "related_nsg": "NSG Part 1",
+      "related_fefta": ["1항"],
+      "sgca_category": "Nuclear"
+    },
+    {
+      "control_id": "SGCA-ML",
+      "regime": "SGCA",
+      "regime_part": "Part II - Military Goods",
+      "title": "軍需品リスト（Wassenaar ML準拠）",
+      "title_en": "Military goods list (Wassenaar ML-based)",
+      "description": "シンガポール SGCA 軍需品リスト。ワッセナー体制軍需品リスト（ML1-ML22）に準拠。シンガポールはワッセナー体制参加国（2020年加入）。",
+      "key_items": [
+        "完成兵器システム（火器・弾薬 ML1/ML2/ML3）",
+        "爆弾・魚雷・ミサイル（ML4）",
+        "火器・砲身製造設備（ML18）",
+        "軍用航空機・ヘリコプター（ML10）",
+        "軍用車両（ML6）",
+        "水上戦闘艦艇・潜水艦（ML9）"
+      ],
+      "related_eccn": ["0A602"],
+      "related_wa_ml": ["ML1", "ML4", "ML6", "ML9", "ML10"],
+      "related_fefta": ["1항"],
+      "sgca_category": "ML"
+    },
+    {
+      "control_id": "SGCA-DU-3",
+      "regime": "SGCA",
+      "regime_part": "Part III - Dual-Use Goods",
+      "title": "デュアルユース品目 — 電子機器・半導体",
+      "title_en": "Dual-use goods - electronics and semiconductors",
+      "description": "シンガポール SGCA デュアルユース電子機器。ワッセナー体制デュアルユースリスト準拠。シンガポールはアジア太平洋の電子部品流通センター。",
+      "key_items": [
+        "高周波GaN増幅器（2GHz以上）",
+        "高性能FPGA（Xilinx/Intel 軍事グレード）",
+        "先端メモリ素子（HBM/LPDDR5）",
+        "量子センサー・量子コンピュータ部品",
+        "電気光学ターゲティングシステム部品"
+      ],
+      "related_eccn": ["3A001", "3A002"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["7항"],
+      "sgca_category": "DU-Electronics"
+    },
+    {
+      "control_id": "SGCA-DU-5",
+      "regime": "SGCA",
+      "regime_part": "Part III - Dual-Use Telecom",
+      "title": "デュアルユース品目 — 通信・情報セキュリティ",
+      "title_en": "Dual-use goods - telecommunications and information security",
+      "description": "シンガポール SGCA デュアルユース通信・暗号品目。アジア太平洋デジタルハブとしての役割から特別注意。5G通信機器の中継・再輸出に厳格な許可制度。",
+      "key_items": [
+        "5G基地局コアネットワーク機器（Huawei/ZTE 特別審査）",
+        "衛星通信端末（VSAT 暗号対応）",
+        "量子鍵配送（QKD）装置",
+        "エンドツーエンド暗号化通信サーバー",
+        "サイバー攻撃・侵入テストソフトウェア"
+      ],
+      "related_eccn": ["5A002", "5E002"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["5항"],
+      "sgca_category": "DU-Telecom"
+    },
+    {
+      "control_id": "SGCA-CHEM",
+      "regime": "SGCA",
+      "regime_part": "Chemical Weapons Precursors",
+      "title": "化学兵器前駆体（CWC準拠）",
+      "title_en": "Chemical weapons precursors (CWC-compliant)",
+      "description": "シンガポール SGCA 化学兵器関連品目。CWCスケジュール化学品の移転にはICAD許可が必要。シンガポールは石油化学産業の重要拠点。",
+      "key_items": [
+        "CWCスケジュール1化学品（全品目）",
+        "CWCスケジュール2化学品（特定量以上）",
+        "CWCスケジュール3化学品（特定量以上）",
+        "化学兵器用前駆体製造設備",
+        "高封じ込め反応設備（10L以上 腐食耐性）"
+      ],
+      "related_eccn": ["1C350"],
+      "related_cwc_schedule": "Schedule 1/2/3",
+      "related_fefta": ["3항"],
+      "sgca_category": "Chemical"
+    },
+    {
+      "control_id": "SGCA-AEROSPACE",
+      "regime": "SGCA",
+      "regime_part": "Aerospace",
+      "title": "航空宇宙・ロケット関連（MTCR準拠）",
+      "title_en": "Aerospace and rocket items (MTCR-compliant)",
+      "description": "シンガポール SGCA 航空宇宙品目。MTCR基準に準拠したロケット・UAV・宇宙システム管制。シンガポール航空MROセンターとの連動規制。",
+      "key_items": [
+        "ロケット推進剤・酸化剤（MTCR基準）",
+        "慣性航法装置（ミサイル転用可能）",
+        "衛星姿勢制御システム",
+        "軍用UAV（射程300km以上）",
+        "再突入体構造材料"
+      ],
+      "related_eccn": ["9A004", "9A105"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["9항"],
+      "sgca_category": "Aerospace"
+    }
+  ]
+}

@@ -1,0 +1,308 @@
+{
+  "_source": "Australia Group Control Lists",
+  "_doc": "AG Common Control Lists - Chemical Weapons Precursors, Biological Agents, Equipment 2023",
+  "_url": "https://www.australiagroup.net/",
+  "total_categories": 42,
+  "entries": [
+    {
+      "control_id": "AG-CW-S1-A",
+      "regime": "AG",
+      "regime_part": "Chemical Weapons Precursors - Schedule 1A",
+      "title": "CW前駆体 スケジュール1A — 神経剤関連",
+      "title_en": "CW Precursor List Schedule 1A - Nerve agent precursors",
+      "description": "化学兵器禁止条約（CWC）スケジュール1に該当する最も危険な神経剤前駆体。直接的な化学兵器生産に使用される物質。",
+      "key_items": [
+        "メチルホスホン酸ジフルオリド（DF） — サリン前駆体",
+        "O-エチル O-2-ジイソプロピルアミノエチル メチルホスホナイト（QL） — VX前駆体",
+        "クロロサリン（GB-2成分）",
+        "クロロソマン（GD-2成分）",
+        "ジホスゲン（CG-2成分）"
+      ],
+      "related_eccn": ["1C350"],
+      "related_cwc_schedule": "Schedule 1",
+      "related_fefta": ["3項"],
+      "ag_control_type": "chemical_weapons_precursor"
+    },
+    {
+      "control_id": "AG-CW-S1-B",
+      "regime": "AG",
+      "regime_part": "Chemical Weapons Precursors - Schedule 1B",
+      "title": "CW前駆体 スケジュール1B — マスタード・ルイサイト関連",
+      "title_en": "CW Precursor List 1B - Blister agent precursors",
+      "description": "びらん剤（マスタードガス・ルイサイト等）の製造に直接使用される前駆体物質。",
+      "key_items": [
+        "チオジグリコール（HD前駆体）",
+        "2-クロロエタノール（マスタード前駆体）",
+        "2-ジエチルアミノエタノール（VX前駆体）",
+        "ビス（2-クロロエチル）エーテル",
+        "三塩化ヒ素（レウィサイト前駆体）",
+        "ジフェニルクロロアルシン（スニーズガス）"
+      ],
+      "related_eccn": ["1C350"],
+      "related_cwc_schedule": "Schedule 1",
+      "related_fefta": ["3項"],
+      "ag_control_type": "chemical_weapons_precursor"
+    },
+    {
+      "control_id": "AG-CW-S2",
+      "regime": "AG",
+      "regime_part": "Chemical Weapons Precursors - Schedule 2",
+      "title": "CW前駆体 スケジュール2 — 有機リン系・アルキルアミン系",
+      "title_en": "CW Precursor Schedule 2 - Organophosphorus and alkylamino compounds",
+      "description": "CWCスケジュール2物質。化学兵器生産に使用可能で、限定的な商業的用途を持つ前駆体。",
+      "key_items": [
+        "アミトン（O,O-ジエチル S-[2-(ジエチルアミノ)エチル] ホスホロチオラート）",
+        "PFIB（ペルフルオロイソブチレン）",
+        "BZ（3-クイヌクリジニルベンジレート）",
+        "アルキルホスホン酸ジクロリド類（クロロサリン前駆体群）",
+        "ジアルキルN,N-ジアルキルアミドフォスフォラート",
+        "三フッ化窒素（NF₃）"
+      ],
+      "related_eccn": ["1C350"],
+      "related_cwc_schedule": "Schedule 2",
+      "related_fefta": ["3項"],
+      "ag_control_type": "chemical_weapons_precursor"
+    },
+    {
+      "control_id": "AG-CW-S3",
+      "regime": "AG",
+      "regime_part": "Chemical Weapons Precursors - Schedule 3",
+      "title": "CW前駆体 スケジュール3 — 工業的前駆体",
+      "title_en": "CW Precursor Schedule 3 - Industrial chemicals with CW production potential",
+      "description": "CWCスケジュール3物質。正当な工業的用途を持つが化学兵器生産に転用可能な物質群。",
+      "key_items": [
+        "ホスゲン（COCl₂）— 窒息剤・工業化学品",
+        "シアン化水素（HCN）— 血液剤・工業化学品",
+        "塩化シアン（CNCl）— 血液剤前駆体",
+        "三塩化リン（PCl₃）— 神経剤前駆体",
+        "五塩化リン（PCl₅）— 神経剤前駆体",
+        "オキシ塩化リン（POCl₃）— サリン前駆体",
+        "トリエタノールアミン（HN-3マスタード前駆体）",
+        "チオニルクロライド（SOCl₂）— マスタード前駆体"
+      ],
+      "related_eccn": ["1C350"],
+      "related_cwc_schedule": "Schedule 3",
+      "related_fefta": ["3項"],
+      "ag_control_type": "chemical_weapons_precursor"
+    },
+    {
+      "control_id": "AG-BW-A1",
+      "regime": "AG",
+      "regime_part": "Biological Agents - Tier 1",
+      "title": "生物剤 ティア1 — 人獣共通ウイルス（最高危険度）",
+      "title_en": "Biological Agents Tier 1 - Highest risk human/animal pathogens",
+      "description": "生物兵器条約（BWC）対象の最高危険度病原体。大量散布・高致死率・治療困難なウイルス・細菌・毒素。",
+      "key_items": [
+        "天然痘ウイルス（Variola major/minor） — WHO認定保管施設のみ",
+        "エボラウイルス（Sudan/Zaire株） — BSL-4",
+        "マールブルグウイルス",
+        "ラッサウイルス",
+        "チクングニアウイルス（高毒性変異株）",
+        "クリミア・コンゴ出血熱ウイルス",
+        "日本脳炎ウイルス（高毒性）",
+        "H5N1 高病原性鳥インフルエンザ"
+      ],
+      "related_eccn": ["1C351"],
+      "related_bwc": "BWC Article I",
+      "related_fefta": ["3項"],
+      "ag_control_type": "biological_agent"
+    },
+    {
+      "control_id": "AG-BW-A2",
+      "regime": "AG",
+      "regime_part": "Biological Agents - Bacteria",
+      "title": "生物剤 — 最高危険度細菌（炭疽菌・ペスト菌等）",
+      "title_en": "Biological Agents - High-risk bacteria (Anthrax, Plague, etc.)",
+      "description": "生物兵器に使用された歴史を持つ最高危険度細菌病原体。エアロゾル散布による大量被害の可能性。",
+      "key_items": [
+        "炭疽菌（Bacillus anthracis） — Sterne株以外の胞子",
+        "ペスト菌（Yersinia pestis） — すべての株",
+        "野兎病菌（Francisella tularensis） — Type A",
+        "ブルセラ属菌（Brucella melitensis/suis） — 高病原性株",
+        "ボツリヌス菌（Clostridium botulinum） — 毒素産生株",
+        "ウェルシュ菌毒素産生株",
+        "天然痘類似ウイルス（サル痘等）産生細菌"
+      ],
+      "related_eccn": ["1C351"],
+      "related_bwc": "BWC Article I",
+      "related_fefta": ["3項"],
+      "ag_control_type": "biological_agent"
+    },
+    {
+      "control_id": "AG-BW-TOX",
+      "regime": "AG",
+      "regime_part": "Biological Agents - Toxins",
+      "title": "生物毒素 — ボツリヌス毒素・リシン・サキシトキシン等",
+      "title_en": "Biological Toxins - Botulinum, Ricin, Saxitoxin",
+      "description": "生物由来の高毒性毒素。CWCとBWCの両方で規制対象となる物質。",
+      "key_items": [
+        "ボツリヌス毒素（LD₅₀ 1.3-2.1 ng/kg 静脈注射）",
+        "リシン（Ricinus communis由来、LD₅₀ 22μg/kg 注射）",
+        "サキシトキシン（麻痺性貝毒の主成分 STX）",
+        "コノトキシン（Conus属貝の毒素群）",
+        "テトロドトキシン（フグ毒素）",
+        "アブリン（トウアズキ由来、毒性リシン同等）",
+        "Clostridium perfringens イプシロン毒素",
+        "Staphylococcal enterotoxin（黄色ブドウ球菌毒素）"
+      ],
+      "related_eccn": ["1C351"],
+      "related_cwc_schedule": "Schedule 1",
+      "related_fefta": ["3項"],
+      "ag_control_type": "biological_toxin"
+    },
+    {
+      "control_id": "AG-EQ-CW1",
+      "regime": "AG",
+      "regime_part": "Chemical Equipment",
+      "title": "化学兵器製造関連設備 — 封じ込め反応装置",
+      "title_en": "Chemical weapons related equipment - containment reactors",
+      "description": "化学兵器前駆体・剤の製造・充填に使用可能な特定設備。化学兵器生産施設に使用される可能性がある機器。",
+      "key_items": [
+        "グラスライニング反応槽（容量10L以上、高腐食性化学品対応）",
+        "ハステロイC/モネル製撹拌式反応器（フッ化物・塩化物耐性）",
+        "PTFE/PFA ライニング反応器（HF・有機フッ素化合物製造用）",
+        "加圧式反応装置（10MPa以上、化学兵器剤合成用）",
+        "真空蒸留・精製装置（高純度化学兵器剤精製用）"
+      ],
+      "related_eccn": ["2B350"],
+      "related_cwc": "Verification Annex Part VI",
+      "related_fefta": ["2項"],
+      "ag_control_type": "chemical_equipment"
+    },
+    {
+      "control_id": "AG-EQ-CW2",
+      "regime": "AG",
+      "regime_part": "Chemical Equipment",
+      "title": "化学兵器充填・散布設備",
+      "title_en": "Chemical weapons filling and dispersal equipment",
+      "description": "化学兵器剤の兵器充填・エアロゾル化・散布に使用可能な設備。",
+      "key_items": [
+        "スプレードライヤー・流動層乾燥機（粒子径制御）",
+        "マイクロカプセル化設備（化学剤安定化・放出制御）",
+        "高圧充填設備（砲弾・爆弾への化学剤充填）",
+        "エアロゾル発生器（粒子径1-10μm生成、肺胞到達可能）",
+        "防護服・陽圧試験室（化学剤取り扱い用）"
+      ],
+      "related_eccn": ["2B350"],
+      "related_cwc": "Verification Annex",
+      "related_fefta": ["2項"],
+      "ag_control_type": "chemical_equipment"
+    },
+    {
+      "control_id": "AG-EQ-BW1",
+      "regime": "AG",
+      "regime_part": "Biological Equipment",
+      "title": "生物兵器関連設備 — 封じ込め培養装置",
+      "title_en": "Biological weapons related equipment - containment fermenters",
+      "description": "危険病原体・生物毒素の大量培養・生産に使用可能な高封じ込め設備。",
+      "key_items": [
+        "完全密閉式発酵槽（容量10L以上、BSL-3/4対応 Class II/III安全キャビネット統合）",
+        "連続流フロー遠心分離機（病原体・胞子の濃縮収集）",
+        "噴霧乾燥機（病原体粉末化・エアロゾル化）",
+        "凍結乾燥機（病原体長期保存・兵器化処理）",
+        "高封じ込め排気・廃水処理システム（HEPA×3段）"
+      ],
+      "related_eccn": ["2B352"],
+      "related_bwc": "BWC Article II",
+      "related_fefta": ["3項"],
+      "ag_control_type": "biological_equipment"
+    },
+    {
+      "control_id": "AG-EQ-BW2",
+      "regime": "AG",
+      "regime_part": "Biological Equipment",
+      "title": "生物兵器関連設備 — 遺伝子工学・合成生物学",
+      "title_en": "Biological weapons related equipment - genetic engineering",
+      "description": "病原体の遺伝的改変・毒性強化・ワクチン耐性付与に使用可能な設備。",
+      "key_items": [
+        "DNAシンセサイザー（200nt以上の連続合成）",
+        "高速遺伝子シーケンサー（ロングリード、完全ゲノム解析）",
+        "CRISPR-Cas9編集システム（複数遺伝子同時編集）",
+        "ウイルスベクター製造設備（アデノ随伴ウイルス・レンチウイルス）",
+        "プロテイン発現・精製システム（高毒性タンパク質製造）",
+        "フローサイトメトリー（病原体解析・選別）"
+      ],
+      "related_eccn": ["2B352"],
+      "related_bwc": "BWC Review Conference",
+      "related_fefta": ["3項"],
+      "ag_control_type": "biological_equipment"
+    },
+    {
+      "control_id": "AG-EQ-CW3",
+      "regime": "AG",
+      "regime_part": "Chemical Equipment",
+      "title": "検知・試験設備（CW用途転用可能）",
+      "title_en": "Detection and testing equipment dual-usable for CW",
+      "description": "化学兵器剤の製造品質管理・効果試験に転用可能な分析機器。",
+      "key_items": [
+        "GC/MS（ガスクロマトグラフ/質量分析計） — CW剤同定・品質確認",
+        "NMR分光器（高分解能 600MHz以上） — 化学構造確認",
+        "赤外線分光器（FTIR） — 化学剤指紋同定",
+        "ICP/MS（誘導結合プラズマ質量分析） — 痕跡金属分析",
+        "化学兵器剤検出センサーシステム（ATP/IMS）"
+      ],
+      "related_eccn": ["2B350", "3A999"],
+      "related_cwc": "Verification Annex",
+      "related_fefta": ["2項"],
+      "ag_control_type": "chemical_detection"
+    },
+    {
+      "control_id": "AG-EQ-BW3",
+      "regime": "AG",
+      "regime_part": "Biological Equipment",
+      "title": "動物実験施設（生物剤毒性試験用）",
+      "title_en": "Animal testing facilities for biological agent toxicity testing",
+      "description": "生物剤の毒性・致死量（LD₅₀）・感染性の試験に使用可能な高封じ込め動物実験設備。",
+      "key_items": [
+        "高封じ込め動物飼育室（ABSL-3/4）",
+        "霊長類動物実験施設（サルモデル）",
+        "エアロゾルチャンバー（吸入曝露試験）",
+        "実験動物用除染システム",
+        "動物解剖・組織保管設備（BSL-3以上）"
+      ],
+      "related_eccn": ["2B352"],
+      "related_bwc": "Article I",
+      "related_fefta": ["3項"],
+      "ag_control_type": "biological_equipment"
+    },
+    {
+      "control_id": "AG-EQ-CHEM4",
+      "regime": "AG",
+      "regime_part": "Chemical Equipment",
+      "title": "個人防護装備（化学剤対応）",
+      "title_en": "Personal protective equipment for chemical agents",
+      "description": "化学兵器製造・試験時の作業員防護に使用される防護服・呼吸用保護具。",
+      "key_items": [
+        "陽圧全身防護服（完全密閉型、CWC検証アネックスB参照）",
+        "CBAスーツ（化学・生物・放射線）レベルA",
+        "活性炭フィルタースーツ（吸着型 MOPP-4）",
+        "SCBAユニット（自給式呼吸装置 30分以上）",
+        "化学剤耐性手袋（ブチルゴム/ラミネート）"
+      ],
+      "related_eccn": ["1A004"],
+      "related_cwc": "Verification Annex",
+      "related_fefta": ["3項"],
+      "ag_control_type": "chemical_protection"
+    },
+    {
+      "control_id": "AG-PLANT-SEQ",
+      "regime": "AG",
+      "regime_part": "Biological Equipment",
+      "title": "植物病原体・農業用生物剤",
+      "title_en": "Plant pathogens and agricultural biological agents",
+      "description": "農業・食料安全保障に対する生物的攻撃（アグロテロリズム）に使用可能な植物病原体。",
+      "key_items": [
+        "サトウキビコウキン病菌（Ustilago scitaminea）",
+        "イネいもち病菌（Magnaporthe oryzae）高毒性株",
+        "コムギさび病菌（Puccinia graminis）Ug99系統",
+        "ジャガイモ疫病菌（Phytophthora infestans）メタラキシル耐性株",
+        "柑橘類グリーニング病菌（Candidatus Liberibacter asiaticus）",
+        "植物ウイルス（Tobacco Mosaic Virus高毒性変異体）"
+      ],
+      "related_eccn": ["1C354"],
+      "related_bwc": "Article I",
+      "related_fefta": ["3項"],
+      "ag_control_type": "plant_pathogen"
+    }
+  ]
+}

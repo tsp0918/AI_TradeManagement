@@ -1,0 +1,147 @@
+{
+  "_source": "Foreign Direct Product Rule (FDPR) - EAR 15 CFR 734.9",
+  "_doc": "EAR 734.9 Foreign Direct Product Rule - Comprehensive 2024",
+  "_url": "https://www.ecfr.gov/current/title-15/subtitle-B/chapter-VII/subchapter-C/part-734",
+  "total_scenarios": 18,
+  "entries": [
+    {
+      "control_id": "FDPR-GENERAL",
+      "regime": "FDPR",
+      "regime_part": "734.9 - General Rule",
+      "title": "外国直接製品規則（FDPR）— 一般規則",
+      "title_en": "Foreign Direct Product Rule - General Provisions",
+      "description": "EAR 734.9: 米国原産のソフトウェア・技術を使用して外国（米国外）で製造された製品は、一定条件下でEARの適用対象となる。1959年制定、2020年以降大幅強化。",
+      "key_items": [
+        "FDPR発動要件：（1）米国原産技術・ソフトウェアを使用（2）外国で製造（3）当該製品の仕向地・エンドユーザーが規制対象",
+        "対象技術：EAR管理下のCAD/CAM・設計ソフトウェア・製造プロセス技術",
+        "対象製品：半導体・半導体製造装置・電子機器・コンピュータ・通信機器",
+        "当初は旧ソ連向けの半導体管理として制定、2020年Huawei向けに抜本強化",
+        "日本企業への適用：TSMC/Samsung台湾/韓国工場の対中輸出にも適用される可能性"
+      ],
+      "related_eccn": ["全ECCN（FDPRトリガー対象）"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条（外国産品への適用問題）"],
+      "fdpr_type": "general"
+    },
+    {
+      "control_id": "FDPR-HUAWEI",
+      "regime": "FDPR",
+      "regime_part": "734.9(e) - Huawei FDPR",
+      "title": "Huawei向け特別FDPR（Entity List連動）",
+      "title_en": "Huawei-specific FDPR (Entity List-linked)",
+      "description": "EAR 734.9(e): 2020年5月に制定・8月強化。Huawei（ファーウェイ）およびエンティティリスト掲載関係会社への外国製半導体供給を規制。TSMC等の台湾ファブの対Huawei供給を遮断。",
+      "key_items": [
+        "Huawei・HiSilicon向けの外国製ICは米国技術1%以上含有でEAR対象",
+        "エンティティリスト掲載全Huawei関係会社（120社以上）に適用",
+        "TSMC・Samsung・SK Hynix・マイクロン等の外国ファブからの供給も禁止",
+        "ARM（英国）が設計したCPUコアを含む製品も対象",
+        "2022年追加：5G NR基地局IC・AI推論チップも含む",
+        "日本・韓国・欧州からのTSMCウェーハ・チップも対象"
+      ],
+      "related_eccn": ["3A001", "3B001"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "fdpr_type": "huawei_specific"
+    },
+    {
+      "control_id": "FDPR-RUSSIA",
+      "regime": "FDPR",
+      "regime_part": "734.9(f) - Russia FDPR",
+      "title": "ロシア向けFDPR（2022年ウクライナ侵攻後強化）",
+      "title_en": "Russia-specific FDPR (2022 Ukraine invasion enhancement)",
+      "description": "EAR 734.9(f): 2022年2月ウクライナ侵攻を受けた包括的なロシア向けFDPR。軍事・航空宇宙・海洋・エネルギー産業向けの幅広い品目に適用。",
+      "key_items": [
+        "ロシア軍・防衛産業向け外国製電子機器・IC全面禁止",
+        "ロシア航空産業向け航空機部品・電子機器FDPR適用",
+        "ロシア海洋産業向け船舶推進・電子システム禁止",
+        "ロシア向けロシア・ルーブル以外の外国通貨決済のIC輸出",
+        "ロシア向けEAR99品目も対象（軍事エンドユース疑い）",
+        "第三国（UAE/トルコ/中国等）経由のロシア向け再輸出も禁止"
+      ],
+      "related_eccn": ["3A001", "5A001", "9A610"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "fdpr_type": "russia_specific"
+    },
+    {
+      "control_id": "FDPR-CHINA-ADVANCED",
+      "regime": "FDPR",
+      "regime_part": "734.9(g) - Advanced Computing/Chips China FDPR",
+      "title": "中国向け先端コンピューティング・半導体FDPR（Oct 2023）",
+      "title_en": "China Advanced Computing and Semiconductor FDPR (Oct 2023)",
+      "description": "2023年10月 BIS改正規則: 中国向け先端半導体・AIチップ・HBMのFDPRを大幅強化。従来のA100/H100禁止に加えH800/A800等の『迂回設計』チップも規制対象に。",
+      "key_items": [
+        "対象：総処理性能（TFLOPS）・帯域積（BW×FLOPS）基準を超えるAIチップ",
+        "H100/A100/H800/A800/L40/L40S — 中国向け全面禁止",
+        "HBM2e以上の全高帯域メモリ — 中国半導体ファブ向け禁止",
+        "外国製であっても米国技術含有率にかかわらず適用（特定条件下）",
+        "2024年1月追加: HBM3の一部 + 将来の先端AIチップも自動適用",
+        "TSMC/Samsung/SK Hynix製造品の中国AIデータセンター向け禁止"
+      ],
+      "related_eccn": ["3A001.a.1-3", "4A003"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "fdpr_type": "china_advanced_chips"
+    },
+    {
+      "control_id": "FDPR-SEMICON-EQUIP",
+      "regime": "FDPR",
+      "regime_part": "734.9 - Semiconductor Equipment",
+      "title": "半導体製造装置FDPR（日本・オランダ・韓国連携）",
+      "title_en": "Semiconductor Manufacturing Equipment FDPR (Japan/Netherlands/Korea coordination)",
+      "description": "2023年10月BIS改正: 先端半導体製造装置の中国ファブへの供給を対象としたFDPR。日本（METI）・オランダ（CCVD）との協調で適用範囲を拡大。",
+      "key_items": [
+        "EUV露光装置（ASML）→ 中国向けは2023年以前から禁止済み",
+        "ArF液浸露光装置（ASML/Nikon/Canon）→ 中国ファブ向け追加規制",
+        "高性能エッチング装置（AMAT/Lam/Tokyo Electron）→ 16/14nm以下対象",
+        "ALD/CVD堆積装置（5nm以下プロセス向け）→ 中国向け禁止",
+        "日本のMETI輸出令改正（2023年7月）との連動: 23品目の対中許可要件強化",
+        "韓国・台湾が協力: 自国のFABから中国向けFDPR品供給を禁止"
+      ],
+      "related_eccn": ["3B001"],
+      "related_wa_ml": ["ML18"],
+      "related_fefta": ["7項"],
+      "fdpr_type": "semiconductor_equipment"
+    },
+    {
+      "control_id": "FDPR-DE-MINIMIS",
+      "regime": "FDPR",
+      "regime_part": "734.9 - De Minimis Rule",
+      "title": "デミニミス規則とFDPRの相互作用",
+      "title_en": "De Minimis Rule interaction with FDPR",
+      "description": "EAR 734.4 デミニミス規則: 外国製品に含まれる米国原産コントロールド品目の価値が総価値の一定割合（通常10%・一部国向け25%）未満の場合、EAR適用免除。ただし特定仕向地・エンティティはデミニミス適用不可。",
+      "key_items": [
+        "通常のデミニミス閾値：10%（EAR管理品目の対米国品比率）",
+        "輸出優遇国（EAA国リスト）向け：25%閾値（日本・EU・オーストラリア等）",
+        "デミニミス適用不可仕向地：キューバ・イラン・北朝鮮・シリア（EAR制裁国）",
+        "デミニミス適用不可エンティティ：エンティティリスト掲載者（Huawei等）",
+        "ソフトウェア・技術はデミニミス計算から除外される場合がある",
+        "日本企業への実務: 米国製EDA（設計ツール）使用の場合FDPRトリガーに注意"
+      ],
+      "related_eccn": ["全ECCN"],
+      "related_wa_ml": [],
+      "related_fefta": ["外為法 第48条"],
+      "fdpr_type": "de_minimis"
+    },
+    {
+      "control_id": "FDPR-JAPAN-IMPACT",
+      "regime": "FDPR",
+      "regime_part": "734.9 - Japan Impact Assessment",
+      "title": "FDPRの日本企業・日本製品への影響",
+      "title_en": "FDPR Impact Assessment on Japanese Companies and Products",
+      "description": "外国直接製品規則が日本企業に及ぼす実務的影響。半導体装置メーカー（東京エレクトロン、ニコン、キヤノン等）および半導体素材メーカーへの影響。",
+      "key_items": [
+        "東京エレクトロン（TEL）：米国EDA・CAD使用の製造装置は中国ファブ向けにFDPR適用",
+        "ニコン・キヤノン：ArF液浸露光装置の中国向け許可要件",
+        "SUMCO・信越化学：シリコンウェーハに米国技術含有の確認義務",
+        "JSR・信越・Tokyo Ohka：先端フォトレジストの対中供給制限",
+        "日本企業の義務：米国技術・ソフトウェアの含有率管理・FDPRトリガー判定",
+        "METIとBISのFirst Responder連携：FDPRハーモナイゼーション"
+      ],
+      "related_eccn": ["3B001", "3C004"],
+      "related_wa_ml": [],
+      "related_fefta": ["輸出令 7項", "外為法 第48条"],
+      "fdpr_type": "japan_impact"
+    }
+  ]
+}

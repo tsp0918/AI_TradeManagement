@@ -1,0 +1,143 @@
+{
+  "_source": "Strategic High-Tech Commodities (SHTC) Control List",
+  "_doc": "Taiwan Bureau of Foreign Trade - Strategic High-Tech Commodities Export Control 2023",
+  "_url": "https://www.trade.gov.tw/",
+  "total_categories": 20,
+  "entries": [
+    {
+      "control_id": "SHTC-3A001",
+      "regime": "SHTC",
+      "regime_part": "Category 3 - Electronics",
+      "title": "先端半導体・集積回路（台湾製）",
+      "title_en": "Advanced semiconductors and integrated circuits - Taiwan produced",
+      "description": "台湾戦略高科技貨品管制。世界最先端の半導体製造技術（TSMC等）により生産される先端IC。軍事・核兵器・ミサイル計画への転用を防止するための管制。",
+      "key_items": [
+        "先端ロジックIC（3nm/5nm/7nm TSMCプロセス）",
+        "HBM2E/HBM3 高帯域メモリ（SK Hynix/Samsung台湾向け）",
+        "AI/ML専用チップ（NvidiaA100/H100等 TSMC製造）",
+        "GaAs/GaN マイクロ波IC（レーダー・通信用）",
+        "光子集積回路（PIC）",
+        "フォトマスク（EUV対応 6インチ以上）"
+      ],
+      "related_eccn": ["3A001"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["7항"],
+      "shtc_category": "3"
+    },
+    {
+      "control_id": "SHTC-3B001",
+      "regime": "SHTC",
+      "regime_part": "Category 3B - Production Equipment",
+      "title": "半導体製造装置（台湾製・台湾向け）",
+      "title_en": "Semiconductor manufacturing equipment in Taiwan",
+      "description": "台湾SHTC。TSMC・UMC等が使用する最先端半導体製造装置の輸出管理。ASMLのEUV装置・応用材料のエッチング装置等。",
+      "key_items": [
+        "EUV露光装置（ASML NXE:3600D等）",
+        "ArF液浸スキャナー（台湾拠点向け）",
+        "マルチパターニング用オーバーレイ計測装置",
+        "高アスペクト比エッチング（HARC）装置",
+        "原子層堆積（ALD）システム",
+        "チェンバークリーニングガス供給システム"
+      ],
+      "related_eccn": ["3B001"],
+      "related_wa_ml": ["ML18"],
+      "related_fefta": ["7항"],
+      "shtc_category": "3B"
+    },
+    {
+      "control_id": "SHTC-4A003",
+      "regime": "SHTC",
+      "regime_part": "Category 4 - Computers",
+      "title": "高性能コンピューティング・AI加速器",
+      "title_en": "High-performance computing and AI accelerators",
+      "description": "台湾SHTC。台湾製造のAI加速器・高性能コンピューティングシステム。米国BIS半導体規制（Oct 2023）との連携規制。",
+      "key_items": [
+        "Nvidia H100/A100 GPU（TSMC製造）",
+        "AI ASIC（Google TPU v4/Meta MTIA等）",
+        "HPC クラスタ向けネットワークスイッチ",
+        "高性能ファブリックインターコネクト（200Gbps/port以上）",
+        "量子コンピューティング制御エレクトロニクス"
+      ],
+      "related_eccn": ["4A003"],
+      "related_wa_ml": [],
+      "related_fefta": ["7항"],
+      "shtc_category": "4"
+    },
+    {
+      "control_id": "SHTC-5A002",
+      "regime": "SHTC",
+      "regime_part": "Category 5 - Telecom/Crypto",
+      "title": "暗号・情報セキュリティ技術",
+      "title_en": "Cryptography and information security technology",
+      "description": "台湾SHTC。軍事通信・情報セキュリティに使用可能な暗号装置・セキュリティソフトウェア。",
+      "key_items": [
+        "ハードウェアセキュリティモジュール（HSM）",
+        "量子鍵配送（QKD）通信装置",
+        "ゼロトラストネットワーク認証システム",
+        "軍事グレード衛星通信端末",
+        "サイドチャネル攻撃耐性チップ"
+      ],
+      "related_eccn": ["5A002"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["5항"],
+      "shtc_category": "5"
+    },
+    {
+      "control_id": "SHTC-6A002",
+      "regime": "SHTC",
+      "regime_part": "Category 6 - Sensors/Lasers",
+      "title": "光学センサー・精密計測レーザー",
+      "title_en": "Optical sensors and precision measurement lasers",
+      "description": "台湾SHTC。軍事偵察・精密誘導・核施設監視に転用可能な精密光学センサー・レーザー。",
+      "key_items": [
+        "InGaAs近赤外線センサーアレイ（1.0-1.7μm）",
+        "MCT（HgCdTe）中波赤外線センサー（3-5μm 冷却型）",
+        "ゲルマニウムγ線検出器（核物質同定用）",
+        "光周波数コム（精密計測・分光）",
+        "高出力半導体レーザーモジュール（CW 10W以上）"
+      ],
+      "related_eccn": ["6A002"],
+      "related_wa_ml": ["ML5"],
+      "related_fefta": ["6항"],
+      "shtc_category": "6"
+    },
+    {
+      "control_id": "SHTC-7A003",
+      "regime": "SHTC",
+      "regime_part": "Category 7 - Navigation",
+      "title": "航法・慣性測定システム",
+      "title_en": "Navigation and inertial measurement systems",
+      "description": "台湾SHTC。台湾国産ミサイル（雄三巡航ミサイル・天弓防空等）および中共軍事転用防止のための航法管制。",
+      "key_items": [
+        "微小慣性測定装置（MEMS IMU）軍事グレード",
+        "光ファイバジャイロ（FOG 精度0.01°/h）",
+        "GPS誘導モジュール（反ジャミング 軍用）",
+        "AHRS（姿勢方位基準装置）航空軍用",
+        "デジタルマップマッチング誘導ソフトウェア"
+      ],
+      "related_eccn": ["7A003"],
+      "related_wa_ml": ["ML11"],
+      "related_fefta": ["7항"],
+      "shtc_category": "7"
+    },
+    {
+      "control_id": "SHTC-9A004",
+      "regime": "SHTC",
+      "regime_part": "Category 9 - Aerospace",
+      "title": "宇宙・推進システム（MTCR管理品）",
+      "title_en": "Space and propulsion systems under MTCR controls",
+      "description": "台湾SHTC。台湾宇宙機関（TASA）・国家中山科学研究院が使用するロケット・衛星部品。MTCR基準に準拠した管制。",
+      "key_items": [
+        "宇宙打上ロケット用固体モーター（台湾製）",
+        "衛星姿勢制御スラスタ（ヒドラジン系）",
+        "リモートセンシング衛星光学系（解像度1m未満）",
+        "衛星搭載データリンク（Ku/Ka バンド）",
+        "ロケットエンジン燃焼試験用センサー"
+      ],
+      "related_eccn": ["9A004"],
+      "related_wa_ml": ["ML4"],
+      "related_fefta": ["9항"],
+      "shtc_category": "9"
+    }
+  ]
+}
