@@ -341,7 +341,7 @@
         <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
           <span class="label" style="margin:0; font-size:.82rem;">判定明細</span>
           <button type="button" class="btn-transfer" onclick="transferFromAI()"
-                  title="外部AI判定の matrix_matches_top を転記">🤖 外部AI判定から転記</button>
+                  title="外部AIが保存した候補（スコア順上位・AI根拠なし）を転記。AI根拠付き判定はページ下部の「AI 該非審査」パネルを使用してください。">📋 外部AI候補を参照</button>
           <button type="button" class="btn-action-sm" onclick="addEcRow()">＋ 行を追加</button>
         </div>
 
@@ -1069,63 +1069,44 @@
       var mm = inner.matrix_matches_top;
       if (!Array.isArray(mm) || mm.length === 0) { alert('外部AI判定結果に matrix_matches_top が見つかりませんでした。'); return; }
 
-      // Ollama で matrix_matches_top を再評価してから転記
-      var btn = document.querySelector('button.btn-transfer');
-      if(btn){ btn.disabled=true; btn.textContent='⏳ AI精査中…'; }
-
-      // evidence フィールドを FilterItem 形式に変換
-      var filterItems = mm.slice(0,20).map(function(m){
-        var ev = (m.evidence && typeof m.evidence === 'object') ? m.evidence : {};
-        return {
-          item_no:          ev.rule_item_no || ev.item_no || '',
-          item_label:       ev.rule_title || ev.item_label || ev.item_no || '',
-          source_type:      ev.source_type || '',
-          regulation_text:  ev.text_snippet || ev.rule_snippet || '',
-          usage_text:       ev.usage_text || ev.usage_requirement_text || '',
-          match_score:      typeof m.match_score === 'number' ? m.match_score : 0,
-        };
-      });
-
-      fetch(_PLATFORM+'/api/compliance/filter-items', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          items: filterItems,
-          product_desc: _PROD_DESC,
-          product_eccn: _PROD_ECCN,
-          hs_code:      _PROD_HS,
-        })
-      })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if(btn){ btn.disabled=false; btn.textContent='🤖 外部AI判定から転記'; }
-        var t1 = d.critical || [], t2 = d.review || [];
-        if(t1.length===0 && t2.length===0){
-          alert('AI精査の結果、実質的な規制該当項目が見つかりませんでした。\n（'+d.llm_summary+'）'); return;
-        }
-
-        // 転記モード選択（AI サマリー付き）
-        var msg = 'AI精査結果: '+d.llm_summary+'\n\n'
-          +'[1] 要精査のみ転記（'+t1.length+'件・AI: APPLICABLE HIGH/MEDIUM）\n'
-          +'[2] 要精査＋要確認を転記（'+(t1.length+t2.length)+'件）\n'
-          +'[3] キャンセル\n';
-        var choice = window.prompt(msg, '1');
-        if(!choice || choice.trim()==='3'){ return; }
-        var toTransfer = (choice.trim()==='2') ? t1.concat(t2) : t1;
-        if(toTransfer.length===0){ alert('要精査の項目がありません。「2」を選択して要確認も含めてください。'); return; }
-
-        var rows = toTransfer.map(function(r){
-          var comment = (r.item_label || r.item_no || '') + ' [' + (r.source_type||'') + ']'
-            + (r.llm_reason ? ' AI:'+r.llm_reason.slice(0,60) : '');
-          return { rule_item_no: r.item_no||'', decision: r.tier==='critical'?'controlled':'needs_review',
-                   comment: comment, recorded_at: '' };
+      // スコア順に並べ直し、item_no があるものを優先、上位8件を重複除去
+      var seen = {};
+      var ranked = [];
+      mm.slice().sort(function(a,b){ return (b.match_score||0)-(a.match_score||0); })
+        .forEach(function(m){
+          var ev = (m.evidence && typeof m.evidence === 'object') ? m.evidence : {};
+          var rawNo = ev.rule_item_no || ev.item_no || '';
+          var label = ev.rule_title || ev.item_label || '';
+          var srcType = ev.source_type || '';
+          var snippet = ev.text_snippet || ev.rule_snippet || '';
+          var score = typeof m.match_score === 'number' ? m.match_score : 0;
+          var key = rawNo || label;
+          if(!key || seen[key]) return;
+          seen[key] = true;
+          ranked.push({ rawNo:rawNo, label:label, srcType:srcType, snippet:snippet, score:score });
         });
-        renderRows(rows);
-      })
-      .catch(function(e){
-        if(btn){ btn.disabled=false; btn.textContent='🤖 外部AI判定から転記'; }
-        alert('AI精査失敗: '+e.message);
+      ranked = ranked.slice(0,8);
+
+      if(ranked.length === 0){
+        alert('外部AI判定の結果に項番情報が含まれていません。\nページ下部の「🤖 AI 該非審査」をご利用ください。'); return;
+      }
+
+      // 候補一覧をダイアログで確認
+      var listText = ranked.map(function(r,i){
+        return (i+1)+'. ['+r.rawNo+'] '+(r.label||'').slice(0,30)+' score='+r.score.toFixed(3);
+      }).join('\n');
+      var msg = '外部AI判定の上位候補（スコア順・重複除去）:\n\n'+listText
+        +'\n\n※ AI根拠付きの精査は「AI 該非審査」パネルをご利用ください。\n\n転記する判定結果を選択:\n[1] 要精査（controlled）\n[2] 要確認（needs_review）\n[3] キャンセル';
+      var choice = window.prompt(msg, '1');
+      if(!choice || choice.trim()==='3'){ return; }
+      var dec = choice.trim()==='2' ? 'needs_review' : 'controlled';
+
+      var rows = ranked.map(function(r){
+        return { rule_item_no: r.rawNo, decision: dec,
+                 comment: (r.label||r.rawNo||'')+'[外部AI]',
+                 recorded_at: '' };
       });
+      renderRows(rows);
     };
 
     window.collectItemsJson = function() {
