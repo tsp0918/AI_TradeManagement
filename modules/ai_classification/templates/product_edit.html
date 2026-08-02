@@ -1007,6 +1007,9 @@
       return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
     }
 
+    // 他スクリプトから呼び出せるようにグローバルに公開
+    window.renderRows = renderRows;
+
     window.addEcRow = function() {
       var tbody = document.getElementById('ecItemsBody');
       var tr = document.createElement('tr');
@@ -1065,44 +1068,59 @@
       if (payload.payload && typeof payload.payload === 'object') inner = payload.payload;
       var mm = inner.matrix_matches_top;
       if (!Array.isArray(mm) || mm.length === 0) { alert('外部AI判定結果に matrix_matches_top が見つかりませんでした。'); return; }
-      var decisionMap = { 'hit':'controlled', 'intersection':'controlled', 'core_only':'needs_review', 'list2_only':'needs_review' };
-      var raw = mm
-        .filter(function(m) { var d = m.decision || ''; return d !== 'not_matched'; })
-        .map(function(m) {
+
+      // 外部AI判定の decision を3ティアに分類
+      // Tier1(要精査): hit/intersection → controlled
+      // Tier2(要確認): core_only/list2_only → needs_review
+      // その他(not_matchedを除く): 参考情報として除外
+      var tierMap = { 'hit':'critical','intersection':'critical','core_only':'review','list2_only':'review' };
+      var decisionMap = { 'hit':'controlled','intersection':'controlled','core_only':'needs_review','list2_only':'needs_review' };
+
+      var allItems = {};  // rawNo → best item (dedup by item_no)
+      mm.filter(function(m){ return tierMap[m.decision||'']; })
+        .forEach(function(m) {
           var ev = (m.evidence && typeof m.evidence === 'object') ? m.evidence : {};
-          var itemNo   = _fmtItemNo(ev);                          // 公式表記の項番
-          var rawNo    = ev.rule_item_no || ev.item_no || '';    // dedupキー用（元の値）
-          // 品目名: rule_title（旧形式）→ item_label（新形式）の順で取得
-          var title    = ev.rule_title || ev.item_label || '';   // 例: レジスト / 電子部品・集積回路・半導体
-          var dec      = m.decision || ev.decision || '';
-          var mapped   = decisionMap[dec] || '';
-          var rawScore = (typeof m.match_score === 'number') ? m.match_score : -1;
-          var scoreTxt = rawScore >= 0 ? ' score=' + rawScore.toFixed(3) : '';
-          // コメント: 品目名のみ（規制・項番は専用列に表示）→ "レジスト [hit] score=0.873"
-          var desc = title || '';
-          var comment = desc
-            ? (desc + ' [' + dec + ']' + scoreTxt)
-            : (dec + scoreTxt);
-          return { rule_item_no: itemNo, _raw_no: rawNo, decision: mapped, comment: comment, recorded_at: '', _score: rawScore };
+          var itemNo = _fmtItemNo(ev);
+          var rawNo  = ev.rule_item_no || ev.item_no || '';
+          var title  = ev.rule_title || ev.item_label || ev.item_no || '';
+          var dec    = m.decision || '';
+          var tier   = tierMap[dec] || 'info';
+          var rawScore = (typeof m.match_score === 'number') ? m.match_score : 0;
+          // クリーンなコメント: 品目名 + 判定種別（生スコアは非表示）
+          var comment = title ? title + (dec ? ' [' + dec + ']' : '') : dec;
+          var item = { rule_item_no: itemNo, _raw_no: rawNo, tier: tier,
+                       decision: decisionMap[dec]||'', comment: comment,
+                       recorded_at: '', _score: rawScore };
+          var key = rawNo || itemNo;
+          if (!key) return;
+          if (!allItems[key] || rawScore > allItems[key]._score) allItems[key] = item;
         });
-      // 元の item_no をキーに最高スコア1件を残す（同一項番の重複排除）
-      var bestMap = {};
-      var noKeyItems = [];
-      raw.forEach(function(item) {
-        var key = item._raw_no;
-        if (!key) { noKeyItems.push(item); return; }
-        var cur = bestMap[key];
-        if (!cur || item._score > cur._score) { bestMap[key] = item; }
+
+      var t1 = [], t2 = [];
+      Object.values(allItems).forEach(function(it){
+        if(it.tier==='critical') t1.push(it);
+        else t2.push(it);
       });
-      var items = Object.keys(bestMap).sort().map(function(k) {
-        var r = bestMap[k]; return { rule_item_no: r.rule_item_no, decision: r.decision, comment: r.comment, recorded_at: '' };
-      }).concat(noKeyItems.map(function(r) {
-        return { rule_item_no: r.rule_item_no, decision: r.decision, comment: r.comment, recorded_at: '' };
-      }));
-      if (items.length === 0) { alert('転記対象の規制合致項目（hit/intersection/core_only/list2_only）が見つかりませんでした。'); return; }
-      if (confirm('外部AI判定の ' + items.length + ' 件を転記します（項番ごとに最高スコア1件）。現在の入力内容は上書きされます。よろしいですか？')) {
-        renderRows(items);
+      t1.sort(function(a,b){ return b._score-a._score; });
+      t2.sort(function(a,b){ return b._score-a._score; });
+
+      if(t1.length===0 && t2.length===0){
+        alert('転記対象の規制合致項目（hit/intersection/core_only/list2_only）が見つかりませんでした。'); return;
       }
+
+      // 転記モード選択
+      var msg = '外部AI判定の転記内容を選択してください:\n\n'
+        +'[1] 要精査のみ転記（'+t1.length+'件・hit/intersection）\n'
+        +'[2] 要精査＋要確認を転記（'+(t1.length+t2.length)+'件）\n'
+        +'[3] キャンセル\n';
+      var choice = window.prompt(msg, '1');
+      if(!choice || choice.trim()==='3'){ return; }
+      var toTransfer = (choice.trim()==='2') ? t1.concat(t2) : t1;
+      if(toTransfer.length===0){ alert('要精査の項目がありません。「2」を選択して要確認も含めてください。'); return; }
+      var rows = toTransfer.map(function(r){
+        return { rule_item_no: r.rule_item_no, decision: r.decision, comment: r.comment, recorded_at: '' };
+      });
+      renderRows(rows);
     };
 
     window.collectItemsJson = function() {
@@ -1681,6 +1699,273 @@
     setTimeout(() => { btn.textContent = "🔄 SC同期"; btn.disabled = false; }, 4000);
   }
   </script>
+
+<!-- ===== AI 法令チェック + 該非判定候補パネル ===== -->
+<div style="background:#fff;border:1px solid #e5e7eb;border-left:4px solid #f97316;border-radius:10px;padding:18px 20px;margin-top:14px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:.95rem;">🛡️</span>
+      <span style="font-size:.9rem;font-weight:800;color:#1e293b;">AI 法令チェック + 該非判定候補（ECCN / 外為法 / 制裁）</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button id="cls-risk-btn" onclick="runClassificationRisk()"
+        style="padding:6px 14px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;">
+        ▶ リスク評価
+      </button>
+      <button id="cls-hantei-btn" onclick="runHanteiCheck()"
+        style="padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;">
+        🤖 AI 該非審査
+      </button>
+    </div>
+  </div>
+
+  <!-- 5軸リスク評価結果 -->
+  <div id="cls-risk-body">
+    <div style="color:#94a3b8;font-size:.82rem;">「▶ リスク評価」でECCN・外為法・制裁の5軸評価、「🤖 AI 該非審査」でローカルAIが規制の実質的な適用可否を推論して分類します（所要時間：約10〜30秒）。</div>
+  </div>
+
+  <!-- 3ティア 該非判定候補パネル（初期非表示）-->
+  <div id="hantei-panel" style="display:none; margin-top:16px; border-top:1px solid #e5e7eb; padding-top:14px;">
+    <div style="font-size:.82rem;font-weight:700;color:#374151;margin-bottom:10px;">
+      📋 該非判定候補（文脈考慮スコア順）
+      <span id="hantei-summary" style="font-size:.74rem;font-weight:400;color:#6b7280;margin-left:8px;"></span>
+    </div>
+
+    <!-- Tier 1: 要精査 -->
+    <div id="hantei-t1-wrap" style="border:1.5px solid #fca5a5;border-radius:8px;margin-bottom:8px;overflow:hidden;">
+      <div style="background:#fef2f2;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div>
+          <span style="font-size:.85rem;font-weight:800;color:#dc2626;">🔴 要精査</span>
+          <span style="font-size:.73rem;color:#7f1d1d;margin-left:6px;">高リスク — 輸出規制に直接該当する可能性あり</span>
+        </div>
+        <button onclick="transferHanteiTier('critical','controlled')"
+          style="padding:4px 11px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:.76rem;font-weight:700;cursor:pointer;white-space:nowrap;">
+          全件転記 →
+        </button>
+      </div>
+      <div id="hantei-t1-body" style="padding:10px 14px;font-size:.8rem;"></div>
+    </div>
+
+    <!-- Tier 2: 要確認（折りたたみ） -->
+    <details id="hantei-t2-details" style="border:1.5px solid #fcd34d;border-radius:8px;margin-bottom:8px;overflow:hidden;">
+      <summary style="background:#fffbeb;padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none;outline:none;">
+        <div>
+          <span style="font-size:.85rem;font-weight:800;color:#d97706;">🟡 要確認</span>
+          <span style="font-size:.73rem;color:#92400e;margin-left:6px;">確認が推奨される項目（任意）</span>
+        </div>
+        <button onclick="event.preventDefault();event.stopPropagation();transferHanteiTier('review','needs_review')"
+          style="padding:4px 11px;background:#d97706;color:#fff;border:none;border-radius:6px;font-size:.76rem;font-weight:700;cursor:pointer;white-space:nowrap;">
+          追加転記 →
+        </button>
+      </summary>
+      <div id="hantei-t2-body" style="padding:10px 14px;font-size:.8rem;"></div>
+    </details>
+
+    <!-- Tier 3: 参考情報（折りたたみ・デフォルト閉じ） -->
+    <details id="hantei-t3-details" style="border:1.5px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <summary style="background:#f9fafb;padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none;outline:none;">
+        <span style="font-size:.85rem;font-weight:700;color:#6b7280;">⚪ 参考情報</span>
+        <span style="font-size:.73rem;color:#9ca3af;">関連度が低い項目（通常は転記不要）</span>
+      </summary>
+      <div id="hantei-t3-body" style="padding:10px 14px;font-size:.8rem;"></div>
+    </details>
+  </div>
+</div>
+
+<script>
+(function(){
+  var _PLATFORM = '{{ platform_url }}';
+  var _PROD_DESC = '{{ (product.description or product.name or "") | replace("'", "\\'") }}';
+  var _PROD_ECCN = '{{ (product.eccn or "") }}';
+  var _PROD_HS   = '{{ (product.hs_code or "") }}';
+
+  // 直近の該非判定候補（転記時に使用）
+  var _hanteiData = null;
+
+  function pct(s){ return Math.round((s||0)*100); }
+  function clrOf(s){ return s>=0.65?'#dc2626':s>=0.35?'#d97706':'#6b7280'; }
+  function bar(s){
+    var c=clrOf(s); var p=pct(s);
+    return '<span style="display:inline-flex;align-items:center;gap:5px;">'
+      +'<span style="display:inline-block;width:64px;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;">'
+      +'<span style="display:inline-block;width:'+p+'%;height:100%;background:'+c+';border-radius:3px;"></span></span>'
+      +'<b style="font-size:.73rem;font-family:monospace;color:'+c+';">'+p+'%</b></span>';
+  }
+
+  // ── 5軸リスク評価 ────────────────────────────────────────────────────────
+  window.runClassificationRisk = function(){
+    var btn  = document.getElementById('cls-risk-btn');
+    var body = document.getElementById('cls-risk-body');
+    btn.disabled = true; btn.textContent='⏳ 評価中…';
+    body.innerHTML = '<div style="color:#94a3b8;font-size:.82rem;">Layer A/D/F + 仕向国 + 外為法 を並列検索中…</div>';
+
+    fetch(_PLATFORM+'/api/compliance/assess',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({query:_PROD_DESC, eccn:_PROD_ECCN, hs_code:_PROD_HS, product_eccn:_PROD_ECCN, context:'item'})
+    })
+    .then(r=>r.json())
+    .then(d=>{
+      var c=d.components||{}; var clr=d.risk_color||'#6b7280';
+      var rows = [
+        ['CCL/ECCN 規制', c.regulation],
+        ['外為法',        c.fefta],
+        ['制裁執行事例',  c.sanctions],
+        ['先端技術論文',  c.technology],
+      ].map(function(pair){
+        var lbl=pair[0]; var comp=pair[1];
+        if(!comp) return '';
+        var topHit = (comp.hits||[]).slice(0,1).map(function(h){
+          var lbl2 = (h.item_no||h.entity||h.title||h.source_type||'').slice(0,60);
+          var txt = h.text ? ' — '+h.text.slice(0,70) : '';
+          return '<div style="font-size:.72rem;color:#64748b;margin-top:2px;">→ '+lbl2+txt+' ('+pct(h.score)+'%)</div>';
+        }).join('');
+        return '<tr><td style="padding:4px 8px;font-size:.78rem;font-weight:600;white-space:nowrap;">'+lbl+'</td>'
+          +'<td style="padding:4px 8px;">'+bar(comp.score||0)+'</td>'
+          +'<td style="padding:4px 8px;font-size:.75rem;color:#64748b;">'+comp.detail+topHit+'</td></tr>';
+      }).join('');
+
+      var actions=(d.action_required||[]);
+      var actHtml = actions.length
+        ? '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:8px 10px;margin-top:10px;">'
+          +'<b style="font-size:.74rem;color:#c2410c;">⚠ 推奨アクション:</b>'
+          +actions.map(function(a){ return '<div style="font-size:.78rem;color:#7c2d12;margin-top:2px;">・'+a+'</div>'; }).join('')
+          +'</div>' : '';
+
+      var lvlMap={critical:'🔴 超高リスク',high:'🟠 高リスク',medium:'🟡 中リスク',low:'🟢 低リスク'};
+      body.innerHTML =
+        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
+        +'<div style="font-size:1.6rem;font-weight:900;color:'+clr+';">'+pct(d.overall_risk||0)+'%</div>'
+        +'<div><div style="font-weight:800;color:'+clr+';">'+(lvlMap[d.risk_level||'']||'')+'</div>'
+          +'<div style="font-size:.72rem;color:#64748b;">文脈考慮コンプライアンスリスクスコア</div></div>'
+        +'</div>'
+        +'<table style="width:100%;border-collapse:collapse;">'
+        +'<thead><tr><th style="padding:4px 8px;text-align:left;font-size:.7rem;color:#94a3b8;">評価軸</th>'
+        +'<th style="padding:4px 8px;text-align:left;font-size:.7rem;color:#94a3b8;">スコア</th>'
+        +'<th style="padding:4px 8px;text-align:left;font-size:.7rem;color:#94a3b8;">根拠</th></tr></thead>'
+        +'<tbody>'+rows+'</tbody></table>'
+        + actHtml;
+      btn.textContent='🔄 再評価'; btn.disabled=false;
+    })
+    .catch(function(e){
+      body.innerHTML='<div style="color:#ef4444;font-size:.82rem;">評価失敗: '+e.message+'</div>';
+      btn.textContent='▶ リスク評価'; btn.disabled=false;
+    });
+  };
+
+  // ── 該非判定候補取得 ─────────────────────────────────────────────────────
+  window.runHanteiCheck = function(){
+    var btn = document.getElementById('cls-hantei-btn');
+    btn.disabled = true; btn.textContent = '⏳ AI審査中…';
+    document.getElementById('hantei-panel').style.display = 'none';
+
+    fetch(_PLATFORM+'/api/compliance/hantei',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({query:_PROD_DESC, eccn:_PROD_ECCN, hs_code:_PROD_HS, product_eccn:_PROD_ECCN, context:'item'})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      _hanteiData = d;
+      _renderHanteiTiers(d);
+      document.getElementById('hantei-panel').style.display = 'block';
+      btn.textContent = '🔄 再審査'; btn.disabled = false;
+    })
+    .catch(function(e){
+      alert('候補取得失敗: '+e.message);
+      btn.textContent = '🎯 AI 該非審査'; btn.disabled = false;
+    });
+  };
+
+  function _srcLabel(st){
+    var m={
+      eccn_detail:'ECCN詳細',eccn:'ECCN',eccn_tech:'ECCN技術',
+      usml_itar:'USML/ITAR',ear_744:'EAR §744',fdpr:'FDPR',
+      chips_act:'CHIPS法',bis_semicon:'BIS半導体',
+      eu_dual_use_expanded:'EU二重用途',australia_dsgl:'豪州DSGL',
+      law:'法令',tsutatsu:'通達',parameter:'外為法パラメータ',jp_fx_2025:'外為法2025',
+    };
+    return m[st]||st;
+  }
+
+  function _verdictBadge(v, conf){
+    var cfg = {
+      APPLICABLE:    {bg:'#fee2e2',cl:'#991b1b',lbl:'該当'},
+      REVIEW_NEEDED: {bg:'#fef9c3',cl:'#854d0e',lbl:'要確認'},
+      NOT_APPLICABLE:{bg:'#dcfce7',cl:'#166534',lbl:'非該当'},
+      SKIPPED:       {bg:'#f1f5f9',cl:'#475569',lbl:'—'},
+    };
+    var c = cfg[v] || cfg.SKIPPED;
+    var confTag = conf && conf!=='LOW' ? '' : conf==='LOW'
+      ? '<span style="font-size:.62rem;color:#94a3b8;margin-left:2px;">(低信頼)</span>' : '';
+    return '<span style="background:'+c.bg+';color:'+c.cl
+      +';font-size:.68rem;font-weight:700;padding:2px 6px;border-radius:4px;">'+c.lbl+'</span>'+confTag;
+  }
+
+  function _renderTierBody(containerId, items){
+    var el = document.getElementById(containerId);
+    if(!items||items.length===0){
+      el.innerHTML='<div style="color:#9ca3af;font-style:italic;">該当なし</div>';
+      return;
+    }
+    el.innerHTML = items.map(function(it){
+      var srcBg = it.source_type.startsWith('eccn')||it.source_type==='fdpr'||it.source_type==='usml_itar'
+        ? '#fef3c7' : '#f0f9ff';
+      var srcCl = it.source_type.startsWith('eccn')||it.source_type==='fdpr'||it.source_type==='usml_itar'
+        ? '#92400e' : '#1e40af';
+      var reasonHtml = it.llm_reason
+        ? '<div style="background:#f8fafc;border-left:3px solid #cbd5e1;padding:5px 8px;margin-top:5px;font-size:.74rem;color:#334155;line-height:1.45;">'
+          +'<b style="color:#64748b;font-size:.68rem;">AI判定根拠:</b> '+it.llm_reason
+          +(it.llm_key_question?'<br><b style="color:#64748b;font-size:.68rem;">要確認:</b> '+it.llm_key_question:'')
+          +'</div>' : '';
+      return '<div style="border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px;margin-bottom:6px;background:#fff;">'
+        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">'
+        +'<code style="font-size:.8rem;font-weight:700;color:#1e293b;">'+(it.item_no||'—')+'</code>'
+        +'<span style="font-size:.76rem;color:#374151;">'+(it.item_label&&it.item_label!==it.item_no?it.item_label:'')+'</span>'
+        +'<span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;">'
+        +_verdictBadge(it.llm_verdict, it.llm_confidence)
+        +'<span style="background:'+srcBg+';color:'+srcCl+';font-size:.68rem;padding:1px 5px;border-radius:4px;">'+_srcLabel(it.source_type)+'</span>'
+        +'</span></div>'
+        + reasonHtml
+        +'</div>';
+    }).join('');
+  }
+
+  function _renderHanteiTiers(d){
+    var t = d.tiers||{};
+    var c1=(t.critical||[]).length, c2=(t.review||[]).length, c3=(t.info||[]).length;
+    var aiSummary = d.llm_summary
+      ? d.llm_summary
+      : '要精査 '+c1+'件 / 要確認 '+c2+'件 / 参考 '+c3+'件';
+    document.getElementById('hantei-summary').textContent =
+      aiSummary + '（ECCN: '+(d.product_eccn||'未設定')+'）';
+
+    _renderTierBody('hantei-t1-body', t.critical||[]);
+    _renderTierBody('hantei-t2-body', t.review||[]);
+    _renderTierBody('hantei-t3-body', t.info||[]);
+
+    document.getElementById('hantei-t1-wrap').style.opacity = c1===0?'0.55':'1';
+    if(c2>0) document.getElementById('hantei-t2-details').open = true;
+  }
+
+  // ── 転記 ─────────────────────────────────────────────────────────────────
+  window.transferHanteiTier = function(tierKey, decision){
+    if(!_hanteiData){ alert('先に「🎯 該非候補を取得」を実行してください。'); return; }
+    var items = (_hanteiData.tiers||{})[tierKey] || [];
+    if(items.length===0){ alert('この層には転記対象がありません。'); return; }
+    if(!confirm(items.length+'件を判定明細テーブルに追加転記します。よろしいですか？')){ return; }
+    var rows = items.map(function(it){
+      var base = (it.item_label && it.item_label !== it.item_no ? it.item_label : it.item_no||'')
+        + ' ['+_srcLabel(it.source_type)+']';
+      var aiNote = it.llm_reason ? ' AI:'+it.llm_reason.slice(0,60) : '';
+      var comment = base + aiNote;
+      return { rule_item_no: it.item_no||'', decision: decision, comment: comment, recorded_at: '' };
+    });
+    // 既存行と結合して転記（重複 item_no は上書き）
+    renderRows(rows);
+  };
+})();
+</script>
 
 </section>
 {% endblock %}
