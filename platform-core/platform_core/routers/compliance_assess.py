@@ -556,3 +556,145 @@ async def hantei(req: AssessRequest) -> HanteiResponse:
         llm_excluded=llm_excluded,
         llm_summary=llm_summary,
     )
+
+
+# ── 外部AI判定 matrix_matches_top を Ollama で再評価 ──────────────────────────
+
+class FilterItem(BaseModel):
+    item_no: str = ""
+    item_label: str = ""
+    source_type: str = ""
+    regulation_text: str = ""   # evidence.text_snippet
+    usage_text: str = ""        # evidence.usage_text（品目の用途記述）
+    match_score: float = 0.0
+
+
+class FilterItemResult(BaseModel):
+    item_no: str
+    item_label: str
+    source_type: str
+    regulation_text: str
+    usage_text: str
+    match_score: float
+    llm_verdict: str
+    llm_confidence: str
+    llm_reason: str
+    llm_key_question: str
+    tier: str      # "critical" | "review"
+
+
+class FilterItemsRequest(BaseModel):
+    items: list[FilterItem]
+    product_desc: str = Field("", description="品目名・説明")
+    product_eccn: str = Field("", description="品目ECCN")
+    hs_code: str      = Field("", description="品目HSコード")
+
+
+class FilterItemsResponse(BaseModel):
+    critical: list[FilterItemResult]
+    review:   list[FilterItemResult]
+    llm_evaluated: int
+    llm_excluded: int
+    llm_summary: str
+
+
+async def _ollama_evaluate_filter_item(
+    client: httpx.AsyncClient,
+    sem: asyncio.Semaphore,
+    product_desc: str,
+    product_eccn: str,
+    hs_code: str,
+    item: FilterItem,
+) -> dict:
+    """matrix_matches_top の1件を Ollama で評価する（_ollama_evaluate_hit の dict 版）。"""
+    h = {
+        "item_no":    item.item_no,
+        "title":      item.item_label,
+        "source_type": item.source_type,
+        "full_text":  f"{item.regulation_text}\n用途: {item.usage_text}".strip(),
+    }
+    return await _ollama_evaluate_hit(client, sem, product_desc, product_eccn, hs_code, h)
+
+
+@router.post("/filter-items", response_model=FilterItemsResponse)
+async def filter_items(req: FilterItemsRequest) -> FilterItemsResponse:
+    """
+    外部AI判定の matrix_matches_top を Ollama で再評価し、実質該当のみ返す。
+
+    - 入力: matrix_matches_top の各 evidence フィールドをマッピングした items リスト
+    - 処理: qwen2.5:7b が各候補の規制適用可否を推論
+    - 出力: APPLICABLE → critical/review、NOT_APPLICABLE → 除外
+    - 目的: 生 FAISS スコア 0.75 閾値による全件 "hit" 問題を解消
+    """
+    # top-8 unique by item_no
+    seen: set[str] = set()
+    candidates: list[FilterItem] = []
+    for it in sorted(req.items, key=lambda x: x.match_score, reverse=True):
+        key = it.item_no or it.item_label
+        if key and key in seen:
+            continue
+        if key:
+            seen.add(key)
+        candidates.append(it)
+        if len(candidates) >= 8:
+            break
+
+    sem = asyncio.Semaphore(3)
+    async with httpx.AsyncClient(timeout=120.0) as ollama_client:
+        tasks = [
+            _ollama_evaluate_filter_item(
+                ollama_client, sem,
+                req.product_desc, req.product_eccn, req.hs_code, it
+            )
+            for it in candidates
+        ]
+        llm_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    critical: list[FilterItemResult] = []
+    review:   list[FilterItemResult] = []
+    llm_excluded = 0
+
+    for it, result in zip(candidates, llm_results):
+        if isinstance(result, Exception):
+            result = {"verdict": "REVIEW_NEEDED", "confidence": "LOW",
+                      "reason": "AI評価エラー", "key_question": ""}
+
+        verdict    = str(result.get("verdict",      "REVIEW_NEEDED"))
+        confidence = str(result.get("confidence",   "LOW"))
+        reason     = str(result.get("reason",       ""))
+        key_q      = str(result.get("key_question", ""))
+
+        if verdict == "NOT_APPLICABLE":
+            llm_excluded += 1
+            continue
+
+        tier = ("critical"
+                if verdict == "APPLICABLE" and confidence in ("HIGH", "MEDIUM")
+                else "review")
+
+        rec = FilterItemResult(
+            item_no=it.item_no, item_label=it.item_label,
+            source_type=it.source_type, regulation_text=it.regulation_text,
+            usage_text=it.usage_text, match_score=it.match_score,
+            llm_verdict=verdict, llm_confidence=confidence,
+            llm_reason=reason, llm_key_question=key_q,
+            tier=tier,
+        )
+        if tier == "critical":
+            critical.append(rec)
+        else:
+            review.append(rec)
+
+    total = len(candidates)
+    shown = len(critical) + len(review)
+    summary = (
+        f"AI が {total} 件を精査 → "
+        f"{llm_excluded} 件を非該当として除外、"
+        f"{shown} 件が該当候補"
+    )
+
+    return FilterItemsResponse(
+        critical=critical, review=review,
+        llm_evaluated=total, llm_excluded=llm_excluded,
+        llm_summary=summary,
+    )

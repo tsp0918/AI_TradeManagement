@@ -1069,58 +1069,63 @@
       var mm = inner.matrix_matches_top;
       if (!Array.isArray(mm) || mm.length === 0) { alert('外部AI判定結果に matrix_matches_top が見つかりませんでした。'); return; }
 
-      // 外部AI判定の decision を3ティアに分類
-      // Tier1(要精査): hit/intersection → controlled
-      // Tier2(要確認): core_only/list2_only → needs_review
-      // その他(not_matchedを除く): 参考情報として除外
-      var tierMap = { 'hit':'critical','intersection':'critical','core_only':'review','list2_only':'review' };
-      var decisionMap = { 'hit':'controlled','intersection':'controlled','core_only':'needs_review','list2_only':'needs_review' };
+      // Ollama で matrix_matches_top を再評価してから転記
+      var btn = document.querySelector('button.btn-transfer');
+      if(btn){ btn.disabled=true; btn.textContent='⏳ AI精査中…'; }
 
-      var allItems = {};  // rawNo → best item (dedup by item_no)
-      mm.filter(function(m){ return tierMap[m.decision||'']; })
-        .forEach(function(m) {
-          var ev = (m.evidence && typeof m.evidence === 'object') ? m.evidence : {};
-          var itemNo = _fmtItemNo(ev);
-          var rawNo  = ev.rule_item_no || ev.item_no || '';
-          var title  = ev.rule_title || ev.item_label || ev.item_no || '';
-          var dec    = m.decision || '';
-          var tier   = tierMap[dec] || 'info';
-          var rawScore = (typeof m.match_score === 'number') ? m.match_score : 0;
-          // クリーンなコメント: 品目名 + 判定種別（生スコアは非表示）
-          var comment = title ? title + (dec ? ' [' + dec + ']' : '') : dec;
-          var item = { rule_item_no: itemNo, _raw_no: rawNo, tier: tier,
-                       decision: decisionMap[dec]||'', comment: comment,
-                       recorded_at: '', _score: rawScore };
-          var key = rawNo || itemNo;
-          if (!key) return;
-          if (!allItems[key] || rawScore > allItems[key]._score) allItems[key] = item;
+      // evidence フィールドを FilterItem 形式に変換
+      var filterItems = mm.slice(0,20).map(function(m){
+        var ev = (m.evidence && typeof m.evidence === 'object') ? m.evidence : {};
+        return {
+          item_no:          ev.rule_item_no || ev.item_no || '',
+          item_label:       ev.rule_title || ev.item_label || ev.item_no || '',
+          source_type:      ev.source_type || '',
+          regulation_text:  ev.text_snippet || ev.rule_snippet || '',
+          usage_text:       ev.usage_text || ev.usage_requirement_text || '',
+          match_score:      typeof m.match_score === 'number' ? m.match_score : 0,
+        };
+      });
+
+      fetch(_PLATFORM+'/api/compliance/filter-items', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          items: filterItems,
+          product_desc: _PROD_DESC,
+          product_eccn: _PROD_ECCN,
+          hs_code:      _PROD_HS,
+        })
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(btn){ btn.disabled=false; btn.textContent='🤖 外部AI判定から転記'; }
+        var t1 = d.critical || [], t2 = d.review || [];
+        if(t1.length===0 && t2.length===0){
+          alert('AI精査の結果、実質的な規制該当項目が見つかりませんでした。\n（'+d.llm_summary+'）'); return;
+        }
+
+        // 転記モード選択（AI サマリー付き）
+        var msg = 'AI精査結果: '+d.llm_summary+'\n\n'
+          +'[1] 要精査のみ転記（'+t1.length+'件・AI: APPLICABLE HIGH/MEDIUM）\n'
+          +'[2] 要精査＋要確認を転記（'+(t1.length+t2.length)+'件）\n'
+          +'[3] キャンセル\n';
+        var choice = window.prompt(msg, '1');
+        if(!choice || choice.trim()==='3'){ return; }
+        var toTransfer = (choice.trim()==='2') ? t1.concat(t2) : t1;
+        if(toTransfer.length===0){ alert('要精査の項目がありません。「2」を選択して要確認も含めてください。'); return; }
+
+        var rows = toTransfer.map(function(r){
+          var comment = (r.item_label || r.item_no || '') + ' [' + (r.source_type||'') + ']'
+            + (r.llm_reason ? ' AI:'+r.llm_reason.slice(0,60) : '');
+          return { rule_item_no: r.item_no||'', decision: r.tier==='critical'?'controlled':'needs_review',
+                   comment: comment, recorded_at: '' };
         });
-
-      var t1 = [], t2 = [];
-      Object.values(allItems).forEach(function(it){
-        if(it.tier==='critical') t1.push(it);
-        else t2.push(it);
+        renderRows(rows);
+      })
+      .catch(function(e){
+        if(btn){ btn.disabled=false; btn.textContent='🤖 外部AI判定から転記'; }
+        alert('AI精査失敗: '+e.message);
       });
-      t1.sort(function(a,b){ return b._score-a._score; });
-      t2.sort(function(a,b){ return b._score-a._score; });
-
-      if(t1.length===0 && t2.length===0){
-        alert('転記対象の規制合致項目（hit/intersection/core_only/list2_only）が見つかりませんでした。'); return;
-      }
-
-      // 転記モード選択
-      var msg = '外部AI判定の転記内容を選択してください:\n\n'
-        +'[1] 要精査のみ転記（'+t1.length+'件・hit/intersection）\n'
-        +'[2] 要精査＋要確認を転記（'+(t1.length+t2.length)+'件）\n'
-        +'[3] キャンセル\n';
-      var choice = window.prompt(msg, '1');
-      if(!choice || choice.trim()==='3'){ return; }
-      var toTransfer = (choice.trim()==='2') ? t1.concat(t2) : t1;
-      if(toTransfer.length===0){ alert('要精査の項目がありません。「2」を選択して要確認も含めてください。'); return; }
-      var rows = toTransfer.map(function(r){
-        return { rule_item_no: r.rule_item_no, decision: r.decision, comment: r.comment, recorded_at: '' };
-      });
-      renderRows(rows);
     };
 
     window.collectItemsJson = function() {
