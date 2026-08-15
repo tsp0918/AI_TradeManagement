@@ -104,6 +104,13 @@ class Transaction(Base, TimestampMixin):
     hs_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)                 # HSコード
     incoterms: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)               # インコタームズ（CIF/FOB 等）
 
+    # AI エージェント判定（Alembic: c1d2e3f4a5b6）
+    agent_judgment_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    agent_judged_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # FDPR 判定結果（EAR §734.9 外国直接製品規制）
+    fdpr_judgment_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     items: Mapped[List["TransactionItem"]] = relationship(
         back_populates="transaction",
         cascade="all, delete-orphan",
@@ -159,7 +166,7 @@ class UsageRequirement(Base):
     )
 
     transaction_item_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("transaction_items.id", ondelete="SET NULL"),
+        ForeignKey("transaction_items.id", ondelete="CASCADE"),
         index=True,
         nullable=True,
     )

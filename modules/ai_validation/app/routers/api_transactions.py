@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -31,6 +32,8 @@ _logger = logging.getLogger(__name__)
 _BASE = _os.environ.get("MODULE_AI_VALIDATION_PUBLIC_URL", "https://validation.tsp-aitrademanagement.com")
 # サーバー間通信（スクリーニング照合 POST）用内部 URL
 _SCREENING_BASE = _os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
+# IF-22 ライセンス消費枠の戻し入れ先（export_license モジュール）
+_EXPORT_LICENSE_URL = _os.environ.get("MODULE_EXPORT_LICENSE_URL", "http://localhost:8012")
 # スクリーニング結果確認リンク（ブラウザ向け）
 _SCREENING_PUBLIC = _os.environ.get("MODULE_SCREENING_PUBLIC_URL", "https://screening.tsp-aitrademanagement.com")
 # ERP outbound webhook
@@ -290,6 +293,20 @@ class TransactionCreateRequest(BaseModel):
     intended_use: Optional[str] = None        # 最終用途（AI 判定品質向上のため推奨）
     hs_code: Optional[str] = None             # HSコード
     incoterms: Optional[str] = None           # インコタームズ（CIF/FOB 等）
+
+
+def _make_case_no_crm(review_type: str) -> str:
+    """CRM 由来の審査 case_no を生成する。
+
+    provisional → CRM-PROV-YYYYMM-NNNNNN
+    formal      → CRM-FORM-YYYYMM-NNNNNN
+    """
+    import datetime
+    import random
+    prefix = "PROV" if review_type == "provisional" else "FORM"
+    ym = datetime.date.today().strftime("%Y%m")
+    seq = random.randint(100000, 999999)
+    return f"CRM-{prefix}-{ym}-{seq}"
 
 
 def _make_case_no_api() -> str:
@@ -935,3 +952,184 @@ def save_supply_chain_link(
     tx.de_minimis_result = body.de_minimis_result
     db.commit()
     return {"ok": True, "tx_id": tx_id}
+
+
+class _WithdrawBody(BaseModel):
+    reason_code: str                       # opportunity_lost | quote_discarded | contract_cancelled
+    reason: Optional[str] = None
+    withdrawn_by: Optional[str] = None
+
+
+@router.post("/{tx_id}/withdraw")
+def withdraw_transaction(
+    tx_id: int,
+    body: _WithdrawBody,
+    db: Session = Depends(get_db),
+):
+    """IF-08: 審査取下げ。CRM 案件の失注・キャンセル時に呼ぶ。
+
+    - status を 'withdrawn' に変更
+    - source_module='crm' の場合のみ受け付ける
+    - 既に完了・却下済みの場合は 409
+    """
+    tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
+    if tx is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    _TERMINAL = {"approved", "rejected", "withdrawn"}
+    if tx.status in _TERMINAL:
+        raise HTTPException(
+            status_code=409,
+            detail=f"status='{tx.status}' の審査は取下げできません",
+        )
+
+    tx.status = "withdrawn"
+    notes_entry = (
+        f"[取下げ {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC] "
+        f"理由コード: {body.reason_code}"
+        + (f" / {body.reason}" if body.reason else "")
+        + (f" （by {body.withdrawn_by}）" if body.withdrawn_by else "")
+    )
+    db.commit()
+    _logger.info(
+        "withdraw: tx_id=%d case_no=%s reason_code=%s by=%s",
+        tx_id, tx.case_no, body.reason_code, body.withdrawn_by,
+    )
+    return {
+        "ok": True,
+        "tx_id": tx_id,
+        "case_no": tx.case_no,
+        "status": "withdrawn",
+        "reason_code": body.reason_code,
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# IF-22: 返品・再輸出の審査
+# ──────────────────────────────────────────────────────────────────────────────
+
+class _ReturnItem(BaseModel):
+    product_code: str
+    quantity: float
+
+
+class _ReturnReviewBody(BaseModel):
+    erp_return_number: Optional[str] = None
+    original_delivery_number: Optional[str] = None
+    reason_code: Optional[str] = None               # quality_defect | etc.
+    items: List[_ReturnItem] = []
+    return_destination_country: Optional[str] = None
+    disposition: str                                 # return_to_origin | reship_to_other | scrap
+    allocation_no: Optional[str] = None             # 元の引当番号（指定時に消費枠を戻し入れ）
+    returned_amount_usd: Optional[float] = None
+
+
+def _rollback_license_allocation_bg(allocation_no: str, returned_qty: float, returned_usd: Optional[float]) -> None:
+    """バックグラウンドで export_license モジュールへ消費枠の戻し入れを通知する。"""
+    def _post():
+        try:
+            with httpx.Client(timeout=10) as c:
+                c.post(
+                    f"{_EXPORT_LICENSE_URL}/api/licenses/allocations/{allocation_no}/return",
+                    json={
+                        "returned_quantity": returned_qty,
+                        "returned_amount_usd": returned_usd,
+                    },
+                )
+        except Exception as exc:
+            _logger.warning("IF-22 license rollback failed: %s", exc)
+    threading.Thread(target=_post, daemon=True).start()
+
+
+@router.post("/{tx_id}/return-review")
+def return_review(
+    tx_id: int,
+    body: _ReturnReviewBody,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """IF-22: 出荷後の返品・再輸出の審査。
+
+    disposition:
+      return_to_origin — 日本への輸入規制確認（情報提供のみ）
+      reship_to_other  — 別仕向地への再輸出 → 新規取引審査 TX を起票
+      scrap            — 廃棄 → ライセンス消費枠の戻し入れのみ
+
+    全ケースで allocation_no が指定されている場合はライセンス消費枠を戻し入れる。
+    """
+    tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
+    if tx is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    disposition = body.disposition
+    if disposition not in {"return_to_origin", "reship_to_other", "scrap"}:
+        raise HTTPException(status_code=422, detail=f"不正な disposition: {disposition}")
+
+    # ライセンス消費枠の戻し入れ（allocation_no が指定されている場合）
+    license_rollback = None
+    if body.allocation_no:
+        total_qty = sum(i.quantity for i in body.items)
+        _rollback_license_allocation_bg(body.allocation_no, total_qty, body.returned_amount_usd)
+        license_rollback = {
+            "allocation_no": body.allocation_no,
+            "returned_quantity": total_qty,
+            "returned_amount_usd": body.returned_amount_usd,
+        }
+
+    result: Dict[str, Any] = {
+        "original_tx_id": tx_id,
+        "original_case_no": tx.case_no,
+        "disposition": disposition,
+        "erp_return_number": body.erp_return_number,
+        "license_rollback": license_rollback,
+    }
+
+    if disposition == "scrap":
+        result["action"] = "scrap_recorded"
+
+    elif disposition == "return_to_origin":
+        result["action"] = "import_regulation_check"
+        result["notice"] = (
+            "日本へのリターン輸入として輸入規制（関税・化審法・REACH等）を確認してください。"
+            " 再輸出を伴う場合は disposition='reship_to_other' で再度起票してください。"
+        )
+
+    elif disposition == "reship_to_other":
+        # 別仕向地への再輸出 → 新規 TX を起票
+        dest = body.return_destination_country or tx.destination_country or "XX"
+        new_case_no = _make_case_no_return(tx.case_no)
+
+        new_tx = Transaction(
+            case_no=new_case_no,
+            title=(
+                f"[返品再輸出] {tx.title or tx.case_no}"
+                f" / {body.erp_return_number or ''} → {dest}"
+            ),
+            source_module=tx.source_module or "erp",
+            status="in_review",
+            erp_case_no=body.erp_return_number,
+            counterparty_name=tx.counterparty_name,
+            destination_country=dest,
+            linked_product_code=body.items[0].product_code if body.items else tx.linked_product_code,
+            end_use_description=(
+                f"[返品再輸出] 元案件: {tx.case_no}"
+                f" / 元納入番号: {body.original_delivery_number or '-'}"
+                f" / 返品番号: {body.erp_return_number or '-'}"
+                f" / 理由: {body.reason_code or '-'}"
+            ),
+        )
+        db.add(new_tx)
+        db.commit()
+        db.refresh(new_tx)
+        result["action"] = "new_tx_created"
+        result["new_case_no"] = new_case_no
+        result["new_tx_id"] = new_tx.id
+        _logger.info("IF-22 reship_to_other: new TX %s (parent=%s)", new_case_no, tx.case_no)
+
+    return result
+
+
+def _make_case_no_return(parent_case_no: str) -> str:
+    import datetime as _dt, random as _rnd
+    ym = _dt.date.today().strftime("%Y%m")
+    seq = _rnd.randint(100000, 999999)
+    return f"RET-{ym}-{seq}"

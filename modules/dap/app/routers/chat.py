@@ -714,6 +714,50 @@ async def _rag_country_control(message: str, eccns: list[str]) -> str:
     return "【Country Control ライセンス要否】\n" + "\n".join(lines)
 
 
+_SANCTIONS_CASE_TERMS = frozenset([
+    "制裁事例", "BIS enforcement", "BIS執行", "civil penalty", "民事制裁金",
+    "Denial Order", "輸出禁止命令", "SDN", "OFAC指定", "consent agreement",
+    "同意令", "ITAR違反", "EAR違反", "輸出規制違反", "違反事例",
+    "ZTE", "Huawei", "SMIC", "Mahan Air", "Cosco制裁", "RUSAL",
+    "外為法違反", "行政処分", "METI処分",
+])
+
+
+async def _rag_sanctions_cases(message: str) -> str:
+    """Layer F（制裁執行事例）RAG。Phase 29。
+    BIS/OFAC/ITAR/METI の具体的執行事例を検索して回答コンテキストに追加する。
+    """
+    if not any(t in message for t in _SANCTIONS_CASE_TERMS):
+        return ""
+    url = f"{_PLATFORM_URL}/api/faiss/search/layer-f"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, params={"q": message[:300], "top_k": 3})
+        if resp.status_code != 200:
+            return ""
+        data = resp.json()
+    except Exception:
+        return ""
+    hits = data.get("hits", [])
+    if not hits:
+        return ""
+    lines = []
+    for h in hits:
+        if h.get("score", 0) < 0.50:
+            continue
+        entity    = h.get("entity", "")
+        stype     = h.get("source_type", "")
+        risk      = h.get("risk_level", "")
+        text      = h.get("full_text", "")[:250]
+        eccns     = " / ".join(h.get("related_eccn", []))
+        penalty   = h.get("penalty_usd")
+        pfmt      = f"（罰金: ${penalty:,}）" if penalty else ""
+        lines.append(f"・[{stype}][{risk}] {entity}{pfmt}: {text}" + (f" ECCN: {eccns}" if eccns else ""))
+    if not lines:
+        return ""
+    return "【制裁執行事例コンテキスト（類似違反パターン）】\n" + "\n".join(lines[:3])
+
+
 async def _rag_strategic_context(message: str) -> str:
     """
     Layer E（政策・戦略文書 / 技術哲学）RAG。
@@ -754,10 +798,10 @@ async def _rag_strategic_context(message: str) -> str:
 
 async def _rag_multilayer(message: str) -> tuple[str, str]:
     """
-    多層 RAG（8レイヤー）:
+    多層 RAG（9レイヤー）:
       Layer A（規制） + オントロジー分類 + Country Control + F-term分類 +
-      グラフ接続関係 + Layer B（特許） + Layer D（論文）を並列に検索し統合。
-      「なぜ？」系クエリの場合は Layer E（戦略・哲学）も追加。
+      グラフ接続関係 + Layer B（特許） + Layer D（論文） + Layer E（政策） +
+      Layer F（制裁執行事例）を並列に検索し統合。Phase 29 で Layer F 追加。
     戻り値: (全RAGコンテキスト結合文字列, Layer-E のみの文字列)
     """
     import asyncio
@@ -772,10 +816,11 @@ async def _rag_multilayer(message: str) -> tuple[str, str]:
     layer_b_task    = asyncio.create_task(_rag_layer_b(message, eccns_found))
     layer_d_task    = asyncio.create_task(_rag_layer_d(message, eccns_found))
     layer_e_task    = asyncio.create_task(_rag_strategic_context(message))
+    layer_f_task    = asyncio.create_task(_rag_sanctions_cases(message))
 
     results = await asyncio.gather(
         layer_a_task, regime_a_task, ontology_task, country_task, fterm_task,
-        graph_task, layer_b_task, layer_d_task, layer_e_task,
+        graph_task, layer_b_task, layer_d_task, layer_e_task, layer_f_task,
         return_exceptions=True,
     )
 

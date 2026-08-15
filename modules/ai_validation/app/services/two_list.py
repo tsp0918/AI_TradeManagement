@@ -310,9 +310,15 @@ def _get_item_key(rule: MatrixRule) -> str:
 
 def _compact_item_label(rule: MatrixRule) -> str:
     ids = _extract_item_ids(getattr(rule, "item_no", None))
+    list_name = (getattr(rule, "list_name", None) or "").strip()
     if ids:
-        return " / ".join(ids)
+        label = " / ".join(ids)
+        if list_name and list_name not in label:
+            label = f"{label}（{list_name}）"
+        return label
     s = (getattr(rule, "item_no", "") or "").strip()
+    if list_name:
+        return f"{list_name}（{s}）" if s else list_name
     return s[:80] + ("…" if len(s) > 80 else "")
 
 

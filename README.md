@@ -11,7 +11,7 @@
 AI_TradeManagement/
 ├── platform-core/          # 共通基盤 (認証・DB・モジュールレジストリ・ポータル UI)
 ├── modules/
-│   ├── ai_validation/      # 🔐 AI取引審査         (port 8001)
+│   ├── ai_validation/      # 🔐 AI取引審査         (port 8011)
 │   ├── ai_classification/  # 📦 品目管理            (port 8002)
 │   ├── rnd_assessment/     # 🔬 R&Dリスク評価       (port 8003)
 │   ├── patent_search/      # 📋 AI特許検索          (port 8004)

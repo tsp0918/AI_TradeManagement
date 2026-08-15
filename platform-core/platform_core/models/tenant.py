@@ -45,6 +45,16 @@ class Tenant(PlatformBase):
     # 表示用フラグ絵文字（例: "🇯🇵", "🇺🇸"）— UI 表示用
     flag_emoji: Mapped[str | None] = mapped_column(String(8), nullable=True)
 
+    # ── 3システム連携マッピング（Phase 0, 2026-08-15）────────────────────────
+    # CRM テナント識別子（CRM システムから受信するリクエストのテナント照合に使用）
+    crm_tenant_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # ERP テナントコード（ERP システムとのマッピング）
+    erp_tenant_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # CRM からの受信 Webhook 署名検証シークレット（HMAC-SHA256）
+    crm_signing_secret: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    # ERP からの受信 Webhook 署名検証シークレット（HMAC-SHA256）
+    erp_signing_secret: Mapped[str | None] = mapped_column(String(256), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -376,6 +376,7 @@ class HanteiItem(BaseModel):
 
 class HanteiResponse(BaseModel):
     tiers: dict[str, list[HanteiItem]]  # {"critical":[], "review":[], "info":[]}
+    excluded: list[HanteiItem] = []     # NOT_APPLICABLE items (high FAISS score, but Ollama said not applicable)
     product_eccn: str
     query: str
     total_hits: int
@@ -499,6 +500,7 @@ async def hantei(req: AssessRequest) -> HanteiResponse:
 
     # Build tiers from LLM verdicts
     tiers: dict[str, list[HanteiItem]] = {"critical": [], "review": [], "info": []}
+    excluded_items: list[HanteiItem] = []
     llm_excluded = 0
 
     for h, result in zip(unique_candidates, llm_results):
@@ -510,9 +512,26 @@ async def hantei(req: AssessRequest) -> HanteiResponse:
         confidence = str(result.get("confidence",   "LOW"))
         reason     = str(result.get("reason",       ""))
         key_q      = str(result.get("key_question", ""))
+        adj        = _context_score(h, product_eccn)
+        item_label = str(h.get("title", "") or h.get("item_label", "") or h.get("item_no", "")).strip()
 
         if verdict == "NOT_APPLICABLE":
             llm_excluded += 1
+            excluded_items.append(HanteiItem(
+                item_no=str(h.get("item_no", "")),
+                item_label=item_label,
+                source_type=str(h.get("source_type", "")),
+                source_name=str(h.get("source_name", "")),
+                raw_score=round(float(h.get("score", 0)), 3),
+                adj_score=adj,
+                tier="excluded",
+                regulation_text=str(h.get("full_text", "") or h.get("chunk_text", ""))[:300],
+                decision="non_controlled",
+                llm_verdict="NOT_APPLICABLE",
+                llm_confidence=confidence,
+                llm_reason=reason,
+                llm_key_question=key_q,
+            ))
             continue
 
         # Tier from LLM verdict
@@ -521,8 +540,6 @@ async def hantei(req: AssessRequest) -> HanteiResponse:
         else:
             tier = "review"
 
-        adj        = _context_score(h, product_eccn)
-        item_label = str(h.get("title", "") or h.get("item_label", "") or h.get("item_no", "")).strip()
         tiers[tier].append(HanteiItem(
             item_no=str(h.get("item_no", "")),
             item_label=item_label,
@@ -549,6 +566,7 @@ async def hantei(req: AssessRequest) -> HanteiResponse:
 
     return HanteiResponse(
         tiers=tiers,
+        excluded=excluded_items,
         product_eccn=product_eccn,
         query=req.query,
         total_hits=total_evaluated,

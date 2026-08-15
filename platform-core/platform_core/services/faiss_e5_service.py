@@ -76,6 +76,8 @@ _LAYER_D_INDEX = _staging_dir() / "layer_d.index"
 _LAYER_D_META  = _staging_dir() / "layer_d_meta.json"
 _LAYER_E_INDEX = _staging_dir() / "layer_e.index"
 _LAYER_E_META  = _staging_dir() / "layer_e_meta.json"
+_LAYER_F_INDEX = _staging_dir() / "layer_f.index"
+_LAYER_F_META  = _staging_dir() / "layer_f_meta.json"
 
 # ── グローバルキャッシュ ──────────────────────────────────────────────────────
 _model: SentenceTransformer | None = None
@@ -89,6 +91,8 @@ _layer_d_index: faiss.Index | None = None
 _layer_d_records: list[dict[str, Any]] = []
 _layer_e_index: faiss.Index | None = None
 _layer_e_records: list[dict[str, Any]] = []
+_layer_f_index: faiss.Index | None = None
+_layer_f_records: list[dict[str, Any]] = []
 _ready: bool = False
 
 
@@ -167,6 +171,22 @@ class LayerEHit:
     full_text: str
 
 
+@dataclass
+class LayerFHit:
+    score: float
+    faiss_id: int
+    case_id: str
+    source_type: str        # ofac_sdn / bis_denial / bis_civil_penalty / itar_consent / meti_action
+    entity: str
+    action_date: str
+    authority: str
+    risk_level: str
+    penalty_usd: int | None
+    keywords: list[str]
+    related_eccn: list[str]
+    full_text: str
+
+
 # ── ロード ────────────────────────────────────────────────────────────────────
 def _load_model() -> SentenceTransformer:
     global _model
@@ -239,24 +259,36 @@ def _load_layer_e() -> tuple[faiss.Index, list[dict]] | None:
     return index, records
 
 
+def _load_layer_f() -> tuple[faiss.Index, list[dict]] | None:
+    """Layer F（制裁執行事例）は optional。Phase 29 新設。"""
+    if not _LAYER_F_INDEX.exists() or not _LAYER_F_META.exists():
+        logger.warning("Layer F files not found — sanctions search unavailable: %s", _LAYER_F_INDEX)
+        return None
+    index = faiss.read_index(str(_LAYER_F_INDEX))
+    meta = json.loads(_LAYER_F_META.read_text(encoding="utf-8"))
+    records = meta["records"] if isinstance(meta, dict) else meta
+    logger.info("Layer F loaded: ntotal=%d", index.ntotal)
+    return index, records
+
+
 def preload(layers: frozenset[str] | None = None) -> None:
     """起動時に呼ぶ。モデルと指定レイヤーをメモリにロードする。
 
     Args:
         layers: ロードするレイヤーのセット。None（デフォルト）は全レイヤー。
                 例: frozenset({"c"}) → Layer C のみ（hs_classifier 用）
-                    frozenset({"a", "b", "c"}) → Layer A/B/C
-                    frozenset({"a", "b", "c", "d", "e"}) → 全レイヤー（Layer E 含む）
+                    frozenset({"a", "b", "c", "d", "e", "f"}) → 全レイヤー（Layer F 含む）
     """
     global _layer_a_index, _layer_a_records
     global _layer_b_index, _layer_b_records
     global _layer_c_index, _layer_c_records
     global _layer_d_index, _layer_d_records
     global _layer_e_index, _layer_e_records
+    global _layer_f_index, _layer_f_records
     global _ready
 
     if layers is None:
-        layers = frozenset({"a", "b", "c", "d", "e"})
+        layers = frozenset({"a", "b", "c", "d", "e", "f"})
 
     _load_model()
 
@@ -276,6 +308,10 @@ def preload(layers: frozenset[str] | None = None) -> None:
         result_e = _load_layer_e()
         if result_e is not None:
             _layer_e_index, _layer_e_records = result_e
+    if "f" in layers:
+        result_f = _load_layer_f()
+        if result_f is not None:
+            _layer_f_index, _layer_f_records = result_f
 
     _ready = True
 
@@ -298,6 +334,10 @@ def layer_d_available() -> bool:
 
 def layer_e_available() -> bool:
     return _layer_e_index is not None and _layer_e_index.ntotal > 0
+
+
+def layer_f_available() -> bool:
+    return _layer_f_index is not None and _layer_f_index.ntotal > 0
 
 
 # ── エンコード ────────────────────────────────────────────────────────────────
@@ -560,6 +600,55 @@ def search_layer_e(
             fefta_relevance=list(r.get("fefta_relevance") or []),
             strategic_axis=list(axes),
             full_text=str(r.get("full_text", ""))[:500],
+        ))
+        if len(hits) >= top_k:
+            break
+    return hits
+
+
+def search_layer_f(
+    query: str,
+    top_k: int = 5,
+    source_type_filter: str | None = None,
+) -> list[LayerFHit]:
+    """Layer F（制裁執行事例・BIS Denial・ITAR同意令）をクエリで検索する。Phase 29。
+
+    Args:
+        query:              制裁事例の検索クエリ（企業名・規制品目・違反パターン等）
+        top_k:              返す件数（デフォルト5）
+        source_type_filter: ofac_sdn / bis_denial / bis_civil_penalty /
+                            itar_consent / meti_action でフィルタ
+    """
+    if _layer_f_index is None or _layer_f_index.ntotal == 0:
+        logger.warning("Layer F index not ready (run scripts/build_layer_f.py)")
+        return []
+    query = (query or "").strip()
+    if not query:
+        return []
+    qv = _encode_query(query)
+    fetch_k = min(top_k * 4 if source_type_filter else top_k, _layer_f_index.ntotal)
+    D, I = _layer_f_index.search(qv, fetch_k)
+
+    hits: list[LayerFHit] = []
+    for score, idx in zip(D[0].tolist(), I[0].tolist()):
+        if idx < 0 or idx >= len(_layer_f_records):
+            continue
+        r = _layer_f_records[idx]
+        if source_type_filter and r.get("source_type") != source_type_filter:
+            continue
+        hits.append(LayerFHit(
+            score=float(score),
+            faiss_id=int(idx),
+            case_id=str(r.get("case_id", "")),
+            source_type=str(r.get("source_type", "")),
+            entity=str(r.get("entity", "")),
+            action_date=str(r.get("action_date", "")),
+            authority=str(r.get("authority", "")),
+            risk_level=str(r.get("risk_level", "medium")),
+            penalty_usd=r.get("penalty_usd"),
+            keywords=list(r.get("keywords") or []),
+            related_eccn=list(r.get("related_eccn") or []),
+            full_text=str(r.get("full_text", ""))[:600],
         ))
         if len(hits) >= top_k:
             break

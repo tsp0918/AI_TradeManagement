@@ -20,6 +20,8 @@ from app.routers.admin import router as admin_router
 from app.routers.api_transactions import router as api_transactions_router
 from app.routers.service_control import router as service_control_router
 from app.routers.icp_diagnosis import router as icp_diagnosis_router
+from app.routers.crm_review import router as crm_review_router
+from app.routers.compliance_override import router as compliance_override_router
 from app.db.session import engine
 
 
@@ -194,6 +196,21 @@ async def _ensure_columns() -> None:
                 if col_name not in existing_tx:
                     conn.execute(text(f"ALTER TABLE transactions ADD COLUMN {col_name} {col_type}"))
 
+            # ── CRM 連携 Phase 0 カラム（2026-08-15）─────────────────────
+            for col_name, col_type in [
+                ("review_type",        "VARCHAR(20)"),   # 'provisional' | 'formal'
+                ("parent_case_no",     "VARCHAR(64)"),   # 仮審査 case_no への文字列参照
+                ("review_key_hash",    "VARCHAR(64)"),   # SHA256 of review key fields
+                ("valid_until",        "DATETIME"),       # 仮審査有効期限（30日）
+                ("inherited_from",     "VARCHAR(64)"),   # hash-match で継承元 case_no
+                ("revision",           "INTEGER"),        # CRM 見積改訂番号
+                ("crm_quote_id",       "VARCHAR(64)"),   # CRM 見積 ID
+                ("crm_contract_id",    "VARCHAR(64)"),   # CRM 契約 ID
+                ("crm_engagement_id",  "VARCHAR(64)"),   # CRM 案件 ID
+            ]:
+                if col_name not in existing_tx:
+                    conn.execute(text(f"ALTER TABLE transactions ADD COLUMN {col_name} {col_type}"))
+
         # ── service_transactions テーブル作成（役務取引管理）────────────────────
         if not insp.has_table("service_transactions"):
             conn.execute(text("""
@@ -234,6 +251,25 @@ async def _ensure_columns() -> None:
                 "CREATE UNIQUE INDEX IF NOT EXISTS ix_service_tx_case_no "
                 "ON service_transactions(case_no)"
             ))
+
+        # ── compliance_override テーブル作成（Phase 3: オーバーライド管理）──
+        if not insp.has_table("compliance_override"):
+            conn.execute(text("""
+                CREATE TABLE compliance_override (
+                    id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+                    transaction_id           INTEGER REFERENCES transactions(id) ON DELETE CASCADE,
+                    overridden_by            VARCHAR(128) NOT NULL,
+                    approver_name            VARCHAR(128) NOT NULL,
+                    approver_title           VARCHAR(128) NOT NULL,
+                    approver_email           VARCHAR(256) NOT NULL,
+                    reason                   TEXT NOT NULL,
+                    scope                    VARCHAR(20) NOT NULL,
+                    valid_until              DATETIME NOT NULL,
+                    evidence_path            TEXT,
+                    department_head_approval INTEGER NOT NULL DEFAULT 0,
+                    created_at               DATETIME NOT NULL DEFAULT (datetime('now'))
+                )
+            """))
 
         # ── system_settings テーブル作成（管理者設定 KV ストア）──────────────
         if not insp.has_table("system_settings"):
@@ -378,3 +414,5 @@ app.include_router(admin_router)
 app.include_router(api_transactions_router)
 app.include_router(service_control_router)
 app.include_router(icp_diagnosis_router)
+app.include_router(crm_review_router)
+app.include_router(compliance_override_router)

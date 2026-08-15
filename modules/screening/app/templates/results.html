@@ -218,6 +218,11 @@ async function load() {
         <td colspan="6">
           <div class="detail-inner">
             ${renderDetail(r.matches)}
+            <div id="enf-${safeId}" style="margin-top:10px;"></div>
+            ${r.result_status !== 'clear' ? `<button onclick="loadEnfCases('${safeId}','${r.query_name.replace(/'/g,"\\'")}','${r.query_country||""}')"
+              style="margin-top:8px;padding:4px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;font-size:.76rem;font-weight:600;color:#c2410c;cursor:pointer;">
+              ⚖ 類似制裁執行事例を検索
+            </button>` : ''}
           </div>
         </td>
       </tr>`;
@@ -235,5 +240,48 @@ async function load() {
 }
 
 load();
+
+const _PLATFORM_URL = 'http://localhost:8000';
+
+async function loadEnfCases(safeId, queryName, queryCountry) {
+  const el  = document.getElementById('enf-' + safeId);
+  el.innerHTML = '<span style="font-size:.78rem;color:#94a3b8;">制裁執行事例を検索中…</span>';
+  try {
+    const r = await fetch(_PLATFORM_URL + '/api/faiss/search/layer-f?q=' + encodeURIComponent(queryName) + '&top_k=3');
+    const d = await r.json();
+    const hits = (d.hits || []).filter(h => h.score >= 0.55);
+    if (!hits.length) {
+      el.innerHTML = '<div style="font-size:.78rem;color:#94a3b8;">類似制裁執行事例なし</div>';
+      return;
+    }
+    const rows = hits.map(h => {
+      const rl  = h.risk_level || 'medium';
+      const clr = {critical:'#dc2626',high:'#f97316',medium:'#eab308',low:'#22c55e'}[rl] || '#6b7280';
+      const pct = Math.round((h.score||0)*100);
+      return `<tr>
+        <td style="padding:4px 8px;font-size:.76rem;white-space:nowrap;color:${clr};font-weight:700;">${rl.toUpperCase()}</td>
+        <td style="padding:4px 8px;font-size:.76rem;font-weight:600;">${h.entity||''}</td>
+        <td style="padding:4px 8px;font-size:.74rem;color:#64748b;">${h.source_type||''} / ${h.authority||''}</td>
+        <td style="padding:4px 8px;font-size:.74rem;color:#64748b;">${(h.full_text||'').slice(0,100)}</td>
+        <td style="padding:4px 8px;font-size:.76rem;font-family:monospace;color:${clr};font-weight:700;">${pct}%</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `<div style="margin-top:8px;">
+      <div style="font-size:.74rem;font-weight:700;color:#c2410c;margin-bottom:4px;">⚖ 類似制裁執行事例（Layer F）</div>
+      <table style="width:100%;border-collapse:collapse;font-size:.76rem;">
+        <thead><tr style="font-size:.7rem;color:#94a3b8;">
+          <th style="padding:3px 8px;text-align:left;">リスク</th>
+          <th style="padding:3px 8px;text-align:left;">エンティティ</th>
+          <th style="padding:3px 8px;text-align:left;">種別/当局</th>
+          <th style="padding:3px 8px;text-align:left;">概要</th>
+          <th style="padding:3px 8px;text-align:right;">類似度</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  } catch(e) {
+    el.innerHTML = '<div style="font-size:.78rem;color:#ef4444;">事例取得失敗</div>';
+  }
+}
 </script>
 {% endblock %}

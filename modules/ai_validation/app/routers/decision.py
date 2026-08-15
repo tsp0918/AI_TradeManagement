@@ -23,6 +23,32 @@ _logger_dec = _logging.getLogger(__name__)
 router = APIRouter(prefix="/decision", tags=["decision"])
 
 
+def _notify_crm_status_changed(tx: Transaction, new_status: str) -> None:
+    """CRM 由来案件の status 変更を platform-core Webhook Dispatcher 経由で CRM に通知する。
+    fire-and-forget スレッドで実行（失敗しても審査フローは止めない）。
+    """
+    _PLATFORM_BASE = _os.environ.get("MODULE_PLATFORM_URL", "http://localhost:8000")
+
+    def _post() -> None:
+        try:
+            import httpx
+            payload = {
+                "case_no": tx.case_no,
+                "status": new_status,
+                "judgment_no": getattr(tx, "judgment_no", None),
+                "review_type": None,  # SQLite 非ORM列。DB照会コストを避けるため省略
+            }
+            with httpx.Client(timeout=5) as client:
+                client.post(
+                    f"{_PLATFORM_BASE}/internal/webhooks/dispatch",
+                    json={"event_type": "review.status_changed", "payload": payload, "target_system": "crm"},
+                )
+        except Exception as exc:
+            _logger_dec.debug("CRM status_changed webhook failed (non-critical): %s", exc)
+
+    threading.Thread(target=_post, daemon=True).start()
+
+
 def _notify_erp_judgment(tx: Transaction, judgment_status: str) -> None:
     """
     判定完了時に ERP の /gts/webhook/judgment-updated へ結果を通知する。
@@ -414,6 +440,9 @@ def run_and_two_lists(
 
     db.commit()
 
+    if auto_approved and getattr(tx, "source_module", None) == "crm":
+        _notify_crm_status_changed(tx, "approved")
+
     return {
         "ok": True,
         "transaction_id": transaction_id,
@@ -455,6 +484,11 @@ def submit_formal_review(
         tx.judgment_no = f"JDG-{tx.case_no}-{submitted_at.strftime('%Y%m%d')}"
 
     db.commit()
+
+    # CRM 由来案件は status_changed イベントを通知
+    if getattr(tx, "source_module", None) == "crm":
+        _notify_crm_status_changed(tx, "approved")
+
     return {
         "ok": True,
         "transaction_id": transaction_id,
@@ -560,10 +594,7 @@ def run_fdpr_check(
         judgment = evaluate_fdpr(ctx)
         jdict = judgment.to_dict()
 
-        db.execute(
-            text("UPDATE transactions SET fdpr_judgment_json = :j WHERE id = :tid"),
-            {"j": _json.dumps(jdict, ensure_ascii=False), "tid": transaction_id},
-        )
+        tx.fdpr_judgment_json = _json.dumps(jdict, ensure_ascii=False)
         db.commit()
         return {"ok": True, "transaction_id": transaction_id, "fdpr_judgment": jdict}
 
@@ -576,18 +607,13 @@ def run_fdpr_check(
 def get_fdpr_result(transaction_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """最新の FDPR 判定結果を取得する。"""
     import json as _json
-    from sqlalchemy import text
 
-    row = db.execute(
-        text("SELECT fdpr_judgment_json FROM transactions WHERE id = :tid"),
-        {"tid": transaction_id},
-    ).fetchone()
-
-    if not row or not row[0]:
+    tx = db.get(Transaction, transaction_id)
+    if not tx or not tx.fdpr_judgment_json:
         return {"available": False, "transaction_id": transaction_id}
 
     try:
-        jdict = _json.loads(row[0]) if isinstance(row[0], str) else row[0]
+        jdict = _json.loads(tx.fdpr_judgment_json) if isinstance(tx.fdpr_judgment_json, str) else tx.fdpr_judgment_json
     except Exception:
         return {"available": False, "transaction_id": transaction_id}
 

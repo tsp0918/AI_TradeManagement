@@ -518,7 +518,7 @@ def transaction_detail_page(
             "faiss_ready": getattr(request.app.state, "faiss_ready", False),
             "hs_suggestions": hs_suggestions,
             "latest_catchall": latest_catchall,
-            "platform_url": __import__("os").getenv("MODULE_PLATFORM_URL", "http://localhost:8000"),
+            "platform_url": __import__("os").getenv("MODULE_PLATFORM_PUBLIC_URL", __import__("os").getenv("MODULE_PLATFORM_URL", "http://localhost:8000")),
             "MODULE_EXPORT_LICENSE_PUBLIC_URL": __import__("os").getenv(
                 "MODULE_EXPORT_LICENSE_PUBLIC_URL", "http://localhost:8012"
             ),

@@ -21,6 +21,10 @@ from platform_core.models.item_version import ItemVersion, ComplianceChangeEvent
 from platform_core.models.transaction_review import TransactionReview  # noqa: F401
 from platform_core.models.fta import FtaAgreement, FtaRate  # noqa: F401
 from platform_core.models.import_profile import ImportProfile  # noqa: F401
+from platform_core.models.webhook import WebhookDelivery, WebhookEndpoint  # noqa: F401
+from platform_core.models.party import Party, PartyIdentifier, PartyMergeCandidate  # noqa: F401
+from platform_core.models.license_quota import ExportLicenseQuota, LicenseAllocation  # noqa: F401
+from platform_core.models.monitoring import MonitoringSubscription  # noqa: F401
 
 __all__ = [
     "Tenant",
@@ -50,4 +54,12 @@ __all__ = [
     "FtaRate",
     "ImportProfile",
     "UxEvent",
+    "WebhookEndpoint",
+    "WebhookDelivery",
+    "Party",
+    "PartyIdentifier",
+    "PartyMergeCandidate",
+    "ExportLicenseQuota",
+    "LicenseAllocation",
+    "MonitoringSubscription",
 ]

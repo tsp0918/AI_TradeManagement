@@ -1247,6 +1247,7 @@ def edit_product(request: Request, product_id: int, db: Session = Depends(get_db
         except Exception:
             ec_items = []
 
+    import os as _os
     return templates.TemplateResponse(
         request, "product_edit.html",
         {
@@ -1257,6 +1258,7 @@ def edit_product(request: Request, product_id: int, db: Session = Depends(get_db
             "external_ai_summary": external_ai_summary,
             "hs_candidates": hs_candidates,
             "export_control_items": ec_items,
+            "platform_url": _os.getenv("MODULE_PLATFORM_PUBLIC_URL", _os.getenv("MODULE_PLATFORM_URL", "http://localhost:8000")),
         },
     )
 

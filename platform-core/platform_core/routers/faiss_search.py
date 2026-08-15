@@ -350,3 +350,68 @@ def search_layer_e_endpoint(
             full_text=str(r.get("full_text", ""))[:600],
         ))
     return LayerESearchResponse(query=q, top_k=top_k, hits=results)
+
+
+# ── Layer F: 制裁執行事例（Phase 29） ─────────────────────────────────────────
+class LayerFResult(BaseModel):
+    score: float
+    case_id: str
+    source_type: str
+    entity: str
+    action_date: str
+    authority: str
+    risk_level: str
+    penalty_usd: int | None
+    keywords: list[str]
+    related_eccn: list[str]
+    full_text: str
+
+
+class LayerFSearchResponse(BaseModel):
+    query: str
+    top_k: int
+    hits: list[LayerFResult]
+    error: str | None = None
+
+
+@router.get("/search/layer-f", response_model=LayerFSearchResponse)
+def search_layer_f_endpoint(
+    q: str = Query(..., description="制裁事例クエリ（企業名・違反パターン・規制品目等）"),
+    top_k: int = Query(5, ge=1, le=15),
+    source_type: str = Query(None, description="ofac_sdn / bis_denial / bis_civil_penalty / itar_consent / meti_action"),
+) -> LayerFSearchResponse:
+    """FAISS Layer F（制裁執行事例・BIS Denial・ITAR同意令）を検索する。Phase 29。"""
+    try:
+        from platform_core.services.faiss_e5_service import search_layer_f, layer_f_available, preload
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"FAISS service import error: {e}")
+
+    if not layer_f_available():
+        try:
+            preload(layers=frozenset({"f"}))
+        except Exception:
+            pass
+
+    try:
+        hits = search_layer_f(q, top_k=top_k, source_type_filter=source_type or None)
+    except Exception as e:
+        logger.warning("Layer F search failed: %s", e)
+        return LayerFSearchResponse(query=q, top_k=top_k, hits=[], error=str(e))
+
+    results = []
+    for h in hits:
+        r = h.__dict__ if hasattr(h, "__dict__") else {}
+        results.append(LayerFResult(
+            score=float(r.get("score", 0.0)),
+            case_id=str(r.get("case_id", "")),
+            source_type=str(r.get("source_type", "")),
+            entity=str(r.get("entity", "")),
+            action_date=str(r.get("action_date", "")),
+            authority=str(r.get("authority", "")),
+            risk_level=str(r.get("risk_level", "medium")),
+            penalty_usd=r.get("penalty_usd"),
+            keywords=list(r.get("keywords") or []),
+            related_eccn=list(r.get("related_eccn") or []),
+            full_text=str(r.get("full_text", ""))[:600],
+        ))
+    return LayerFSearchResponse(query=q, top_k=top_k, hits=results)

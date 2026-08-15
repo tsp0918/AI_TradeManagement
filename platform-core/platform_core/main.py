@@ -42,16 +42,22 @@ from platform_core.routers.supplier_portal import router as supplier_portal_rout
 from platform_core.routers.export_license import router as export_license_router
 from platform_core.routers.item_version import router as item_version_router
 from platform_core.routers.compliance_lookup import router as compliance_lookup_router
+from platform_core.routers.compliance_assess import router as compliance_assess_router
 from platform_core.routers.transaction_review import router as transaction_review_router
 from platform_core.routers.fta import router as fta_router
 from platform_core.routers.organizations import router as organizations_router
 from platform_core.routers.erp_pull_proxy import router as erp_pull_proxy_router
 from platform_core.routers.ux_events import router as ux_events_router
 from platform_core.routers.minerals import router as minerals_router
+from platform_core.routers.hantei_records import router as hantei_records_router
+from platform_core.routers.webhook_mgmt import router as webhook_mgmt_router
+from platform_core.routers.party import router as party_router
+from platform_core.routers.monitoring import router as monitoring_router
 
 logger = logging.getLogger(__name__)
 _STATIC_DIR = pathlib.Path(__file__).parent / "static"
 _REG_CHECK_INTERVAL = 24 * 3600  # 24時間ごと
+_WEBHOOK_POLL_INTERVAL = 30  # Webhook リトライワーカーのポーリング間隔（秒）
 
 
 async def _regulatory_scheduler() -> None:
@@ -122,18 +128,196 @@ async def _license_alert_scheduler() -> None:
         await asyncio.sleep(_REG_CHECK_INTERVAL)
 
 
+async def _webhook_retry_worker() -> None:
+    """バックグラウンド: 30秒ごとにリトライ対象 Webhook 配信を処理する。"""
+    from platform_core.db.session import AsyncSessionLocal
+    from platform_core.services.webhook import WebhookDispatcher
+
+    await asyncio.sleep(60)  # 起動直後は他のスケジューラーより後に起動
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                count = await WebhookDispatcher.retry_pending(db)
+                if count:
+                    logger.info("WebhookRetryWorker: processed %d deliveries", count)
+        except Exception as exc:
+            logger.warning("WebhookRetryWorker failed: %s", exc)
+        await asyncio.sleep(_WEBHOOK_POLL_INTERVAL)
+
+
+_MONITORING_INTERVAL = 24 * 3600   # 24時間ごとに継続監視を実行
+_MONITORING_SCREENING_URL_ENV = "MODULE_SCREENING_URL"
+
+
+async def _monitoring_worker() -> None:
+    """バックグラウンド: 24時間ごとにアクティブな監視購読を処理する。
+
+    処理フロー:
+    1. monitor_until < today の購読を自動で非アクティブ化
+    2. subject_type='party' / trigger_type='sanction_change' の購読に対して
+       スクリーニングモジュールへ再スクリーニングを依頼
+    3. sanction_status が変化した場合は Webhook で通知（IF-16/IF-23）
+    """
+    import os
+    from datetime import date, datetime, timezone
+    import httpx
+    from sqlalchemy import select, update
+    from platform_core.db.session import AsyncSessionLocal
+    from platform_core.models.monitoring import MonitoringSubscription
+    from platform_core.models.party import Party
+    from platform_core.services.webhook import WebhookDispatcher
+
+    screening_url = os.environ.get(_MONITORING_SCREENING_URL_ENV, "http://localhost:8005")
+
+    await asyncio.sleep(180)  # 他のワーカーより後に起動
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                today = date.today()
+
+                # Step 1: 期限切れ購読を非アクティブ化
+                expired_result = await db.execute(
+                    select(MonitoringSubscription).where(
+                        MonitoringSubscription.is_active.is_(True),
+                        MonitoringSubscription.monitor_until < today,
+                    )
+                )
+                expired_subs = expired_result.scalars().all()
+                if expired_subs:
+                    for s in expired_subs:
+                        s.is_active = False
+                    await db.commit()
+                    logger.info("MonitoringWorker: deactivated %d expired subscriptions", len(expired_subs))
+
+            # Step 2: party / sanction_change 購読のスクリーニング再実行
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(
+                    select(MonitoringSubscription).where(
+                        MonitoringSubscription.is_active.is_(True),
+                        MonitoringSubscription.subject_type == "party",
+                        MonitoringSubscription.trigger_type == "sanction_change",
+                    )
+                )
+                active_subs = result.scalars().all()
+                hits = 0
+                for sub in active_subs:
+                    party = await db.get(Party, sub.subject_id)
+                    if not party:
+                        continue
+                    try:
+                        async with httpx.AsyncClient(timeout=10.0) as client:
+                            resp = await client.post(
+                                f"{screening_url}/api/screen",
+                                json={"name": party.legal_name, "country": party.country_code or ""},
+                            )
+                        if resp.status_code != 200:
+                            continue
+                        data = resp.json()
+                        new_status = data.get("result_status", "clear")
+                    except Exception as exc:
+                        logger.debug("MonitoringWorker: screening call failed for %s: %s", party.id, exc)
+                        continue
+
+                    prev_status = party.sanction_status or "clear"
+                    if new_status != prev_status:
+                        party.sanction_status = new_status
+                        party.last_screened_at = datetime.now(timezone.utc)
+                        await db.flush()
+                        # Webhook 通知（IF-16/IF-23）
+                        try:
+                            await WebhookDispatcher.enqueue(
+                                db,
+                                tenant_id=party.tenant_id,
+                                event_type="party.sanction_status.changed",
+                                payload={
+                                    "party_id": str(party.id),
+                                    "legal_name": party.legal_name,
+                                    "prev_status": prev_status,
+                                    "new_status": new_status,
+                                    "checked_at": datetime.now(timezone.utc).isoformat(),
+                                },
+                            )
+                        except Exception as exc:
+                            logger.warning("MonitoringWorker: webhook enqueue failed: %s", exc)
+                        hits += 1
+
+                if hits:
+                    await db.commit()
+                    logger.info("MonitoringWorker: %d sanction status changes detected", hits)
+                else:
+                    logger.debug("MonitoringWorker: no sanction status changes (%d checked)", len(active_subs))
+
+        except Exception as exc:
+            logger.warning("MonitoringWorker failed: %s", exc)
+        await asyncio.sleep(_MONITORING_INTERVAL)
+
+
+_ALLOC_EXPIRE_INTERVAL = 3600  # 1時間ごとに期限切れ引当を自動解放
+
+
+async def _license_allocation_expiry_worker() -> None:
+    """バックグラウンド: 期限切れになった仮引当（LicenseAllocation）を自動的に解放する。
+
+    valid_until < today の allocated レコードを released に更新する。
+    """
+    from datetime import date, datetime, timezone
+    from sqlalchemy import select, update
+    from platform_core.db.session import AsyncSessionLocal
+    from platform_core.models.license_quota import LicenseAllocation
+
+    await asyncio.sleep(120)
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                today = date.today()
+                result = await db.execute(
+                    select(LicenseAllocation)
+                    .where(LicenseAllocation.status == "allocated")
+                    .where(LicenseAllocation.valid_until < today)
+                )
+                expired = result.scalars().all()
+                if expired:
+                    now = datetime.now(timezone.utc)
+                    for a in expired:
+                        a.status = "expired"
+                        a.released_at = now
+                    await db.commit()
+                    logger.info("LicenseAllocationExpiryWorker: expired %d allocations", len(expired))
+        except Exception as exc:
+            logger.warning("LicenseAllocationExpiryWorker failed: %s", exc)
+        await asyncio.sleep(_ALLOC_EXPIRE_INTERVAL)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 全モジュールを並行起動 (fire-and-forget)
     start_all_modules()
+    # FAISS 全レイヤーをバックグラウンドでプリロード（起動後の初回レイテンシ解消）
+    def _bg_preload():
+        try:
+            from platform_core.services.faiss_e5_service import preload
+            preload(layers=frozenset({"a", "b", "c", "d", "e", "f"}))
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("FAISS preload failed: %s", exc)
+    asyncio.get_event_loop().run_in_executor(None, _bg_preload)
     # 規制動向スケジューラー起動
     _sched_task = asyncio.create_task(_regulatory_scheduler())
     # 輸出許可証期限アラートスケジューラー起動
     _alert_task = asyncio.create_task(_license_alert_scheduler())
+    # Webhook リトライワーカー起動
+    _webhook_task = asyncio.create_task(_webhook_retry_worker())
+    # ライセンス引当期限切れ自動解放ワーカー起動
+    _alloc_expiry_task = asyncio.create_task(_license_allocation_expiry_worker())
+    # 継続モニタリングワーカー起動
+    _monitoring_task = asyncio.create_task(_monitoring_worker())
     yield
     # 終了時: スケジューラー・モジュールサブプロセスを停止
     _sched_task.cancel()
     _alert_task.cancel()
+    _webhook_task.cancel()
+    _alloc_expiry_task.cancel()
+    _monitoring_task.cancel()
     stop_all_modules()
 
 
@@ -175,12 +359,17 @@ def create_app() -> FastAPI:
     app.include_router(export_license_router)
     app.include_router(item_version_router)
     app.include_router(compliance_lookup_router)
+    app.include_router(compliance_assess_router)
     app.include_router(transaction_review_router)
     app.include_router(fta_router)
     app.include_router(organizations_router)
     app.include_router(erp_pull_proxy_router)
     app.include_router(ux_events_router)
     app.include_router(minerals_router)
+    app.include_router(hantei_records_router)
+    app.include_router(webhook_mgmt_router)
+    app.include_router(party_router)
+    app.include_router(monitoring_router)
 
     @app.get("/", include_in_schema=False)
     async def root():
@@ -188,7 +377,23 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["system"])
     async def health():
-        return {"status": "ok", "env": settings.platform_env}
+        try:
+            from platform_core.services.faiss_e5_service import (
+                is_ready, layer_b_available, layer_c_available,
+                layer_d_available, layer_e_available, layer_f_available,
+            )
+            faiss_status = {
+                "a": is_ready(), "b": layer_b_available(),
+                "c": layer_c_available(), "d": layer_d_available(),
+                "e": layer_e_available(), "f": layer_f_available(),
+            }
+        except Exception:
+            faiss_status = {}
+        return {
+            "status": "ok",
+            "env": settings.platform_env,
+            "faiss_layers": faiss_status,
+        }
 
     return app
 

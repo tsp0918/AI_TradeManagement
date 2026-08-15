@@ -495,10 +495,11 @@
               </td>
               <td style="padding:8px 10px; border-bottom:1px solid var(--border);">
                 <div style="font-weight:600; font-size:.85rem;">
-                  {% if item.item_ids %}{{ item.item_ids | join(" / ") }}
-                  {% elif item.item_label %}{{ item.item_label }}
-                  {% else %}rule={{ item.rule_id }}{% endif %}
+                  {{ item.item_label or (item.item_ids | join(" / ")) or ("rule=" ~ item.rule_id) }}
                 </div>
+                {% if item.item_ids and item.item_label and (item.item_ids | join(" / ")) != item.item_label %}
+                <div style="font-size:.7rem; color:#6b7280; font-family:monospace; margin-top:1px;">{{ item.item_ids | join(" / ") }}</div>
+                {% endif %}
                 <div style="font-size:.72rem; color:var(--muted); margin-top:2px;">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
               </td>
               <td style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:center;">
@@ -515,10 +516,11 @@
               </td>
               <td style="padding:8px 10px; border-bottom:1px solid var(--border);">
                 <div style="font-weight:600; font-size:.85rem;">
-                  {% if item.item_ids %}{{ item.item_ids | join(" / ") }}
-                  {% elif item.item_label %}{{ item.item_label }}
-                  {% else %}rule={{ item.rule_id }}{% endif %}
+                  {{ item.item_label or (item.item_ids | join(" / ")) or ("rule=" ~ item.rule_id) }}
                 </div>
+                {% if item.item_ids and item.item_label and (item.item_ids | join(" / ")) != item.item_label %}
+                <div style="font-size:.7rem; color:#6b7280; font-family:monospace; margin-top:1px;">{{ item.item_ids | join(" / ") }}</div>
+                {% endif %}
                 <div style="font-size:.72rem; color:var(--muted); margin-top:2px;">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
               </td>
               <td style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:center;">
@@ -536,10 +538,11 @@
               </td>
               <td style="padding:8px 10px; border-bottom:1px solid var(--border);">
                 <div style="font-weight:600; font-size:.85rem;">
-                  {% if item.item_ids %}{{ item.item_ids | join(" / ") }}
-                  {% elif item.item_label %}{{ item.item_label }}
-                  {% else %}rule={{ item.rule_id }}{% endif %}
+                  {{ item.item_label or (item.item_ids | join(" / ")) or ("rule=" ~ item.rule_id) }}
                 </div>
+                {% if item.item_ids and item.item_label and (item.item_ids | join(" / ")) != item.item_label %}
+                <div style="font-size:.7rem; color:#6b7280; font-family:monospace; margin-top:1px;">{{ item.item_ids | join(" / ") }}</div>
+                {% endif %}
                 <div style="font-size:.72rem; color:var(--muted); margin-top:2px;">{{ item.regime }}{% if item.list_name %} — {{ item.list_name }}{% endif %}</div>
               </td>
               <td style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:center;">
@@ -566,6 +569,56 @@
                   border-radius:8px; margin-bottom:12px;">
         ※ 詳細データを取得できませんでした。ai_validation モジュール（ポート 8011）が起動しているか確認してください。
       </div>
+    {% endif %}
+
+    {# ── Ollama 該非判定履歴（plat_hantei_records） ── #}
+    {% if hantei_records %}
+    <div style="border:1px solid #bfdbfe; border-radius:10px; overflow:hidden; margin-bottom:14px; margin-top:4px;">
+      <div style="background:#eff6ff; padding:6px 12px; border-bottom:1px solid #bfdbfe; display:flex; align-items:center; gap:8px;">
+        <span style="font-size:.78rem; font-weight:700; color:#1e40af;">AI 該非審査（Ollama 判定結果）</span>
+        <span style="font-size:.72rem; color:#6b7280;">計 {{ hantei_records|length }} 件 / source: rnd</span>
+      </div>
+      <table style="width:100%; border-collapse:collapse; font-size:.82rem;">
+        <thead>
+          <tr style="background:#f8fafc;">
+            <th style="padding:6px 10px; text-align:left; font-size:.72rem; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border);">項番 / 規制</th>
+            <th style="padding:6px 10px; text-align:center; font-size:.72rem; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border); width:110px;">判定</th>
+            <th style="padding:6px 10px; text-align:left; font-size:.72rem; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border);">根拠</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rec in hantei_records %}
+          <tr>
+            <td style="padding:7px 10px; border-bottom:1px solid var(--border);">
+              <div style="font-weight:600; font-size:.83rem; color:var(--text);">{{ rec.item_label or rec.item_no }}</div>
+              <div style="font-size:.7rem; color:var(--muted); font-family:monospace; margin-top:1px;">{{ rec.source_type or "" }}</div>
+            </td>
+            <td style="padding:7px 10px; border-bottom:1px solid var(--border); text-align:center;">
+              {% set v = rec.llm_verdict or "" %}
+              {% if v == "APPLICABLE" %}
+                <span style="background:#fef2f2; color:#991b1b; padding:2px 8px; border-radius:999px; font-size:.72rem; font-weight:700;">該当</span>
+                {% if rec.llm_confidence %}
+                <div style="font-size:.68rem; color:#b91c1c; margin-top:2px;">{{ rec.llm_confidence }}</div>
+                {% endif %}
+              {% elif v == "REVIEW_NEEDED" %}
+                <span style="background:#fffbeb; color:#92400e; padding:2px 8px; border-radius:999px; font-size:.72rem; font-weight:700;">要確認</span>
+                {% if rec.llm_confidence %}
+                <div style="font-size:.68rem; color:#b45309; margin-top:2px;">{{ rec.llm_confidence }}</div>
+                {% endif %}
+              {% elif v == "NOT_APPLICABLE" %}
+                <span style="background:#f0fdf4; color:#166534; padding:2px 8px; border-radius:999px; font-size:.72rem; font-weight:700;">非該当</span>
+              {% else %}
+                <span style="background:#f3f4f6; color:#6b7280; padding:2px 8px; border-radius:999px; font-size:.72rem; font-weight:600;">{{ v or "—" }}</span>
+              {% endif %}
+            </td>
+            <td style="padding:7px 10px; border-bottom:1px solid var(--border); max-width:220px;">
+              <div style="font-size:.78rem; color:var(--text); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">{{ rec.llm_reason or rec.notes or "—" }}</div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% endif %}
 
     <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">

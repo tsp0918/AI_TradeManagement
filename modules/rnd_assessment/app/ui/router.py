@@ -31,6 +31,7 @@ import threading
 AI_VALIDATION_BASE      = _os.environ.get("MODULE_AI_VALIDATION_URL",      "http://localhost:8011")
 SCREENING_BASE          = _os.environ.get("MODULE_SCREENING_URL",           "http://localhost:8005")
 AI_CLASSIFICATION_BASE  = _os.environ.get("MODULE_AI_CLASSIFICATION_URL",   "http://localhost:8002")
+PLATFORM_BASE           = _os.environ.get("MODULE_PLATFORM_URL",            "http://localhost:8000")
 
 
 def _register_rnd_product_bg(case_id: str, case_title: str, use_raw: str | None) -> None:
@@ -244,11 +245,13 @@ def case_detail(case_id: str, request: Request, db: Session = Depends(get_db)):
         description=case.description or "",
     )
 
+    import os as _os
     return templates.TemplateResponse(request, "case_detail.html", {
         "case": case,
         "enriched_profiles": enriched_profiles,
         "personnel": personnel,
         "patent_risk": patent_risk,
+        "platform_url": _os.getenv("MODULE_PLATFORM_PUBLIC_URL", _os.getenv("MODULE_PLATFORM_URL", "http://localhost:8000")),
     })
 
 
@@ -672,6 +675,19 @@ def profiles_latest(request: Request, case_id: str, db: Session = Depends(get_db
         except Exception:
             pass
 
+    # plat_hantei_records（R&D 該非審査の Ollama 判定履歴）取得
+    hantei_records: list = []
+    prod_code_for_hantei = f"RND-{case_id}"
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            r = client.get(
+                f"{PLATFORM_BASE}/api/hantei/records/{prod_code_for_hantei}"
+            )
+        if r.status_code == 200:
+            hantei_records = r.json()
+    except Exception:
+        pass
+
     return templates.TemplateResponse(
         request, "profiles_latest.html",
         {
@@ -684,6 +700,7 @@ def profiles_latest(request: Request, case_id: str, db: Session = Depends(get_db
             "can_compare": can_compare,
             "av_two_lists": av_two_lists,
             "product_eval": product_eval,
+            "hantei_records": hantei_records,
         },
     )
 

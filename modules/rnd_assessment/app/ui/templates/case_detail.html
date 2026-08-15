@@ -129,15 +129,29 @@
             {% if prof.ai_validation_transaction_id %}
               {% set risk = prof.ai_validation_risk %}
               {% if risk == "danger" %}
-                <span style="font-size:.78rem; font-weight:600; color:#991b1b;">⚠ 要注意</span>
+                <span style="display:inline-block; background:#fef2f2; color:#991b1b; border:1px solid #fecaca;
+                             padding:2px 9px; border-radius:20px; font-size:.74rem; font-weight:700;">⚠ 規制該当</span>
+                <div style="font-size:.7rem; color:#b91c1c; margin-top:3px;">輸出令該当品目あり</div>
               {% elif risk == "warn" %}
-                <span style="font-size:.78rem; font-weight:600; color:#92400e;">📋 候補あり</span>
+                <span style="display:inline-block; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa;
+                             padding:2px 9px; border-radius:20px; font-size:.74rem; font-weight:700;">📋 要精査</span>
+                <div style="font-size:.7rem; color:#92400e; margin-top:3px;">該当候補品目あり</div>
               {% elif risk == "info" %}
-                <span style="font-size:.78rem; font-weight:600; color:#1d4ed8;">ℹ 参考あり</span>
+                <span style="display:inline-block; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;
+                             padding:2px 9px; border-radius:20px; font-size:.74rem; font-weight:700;">ℹ 参考情報</span>
+                <div style="font-size:.7rem; color:#1d4ed8; margin-top:3px;">特許示唆のみ</div>
               {% else %}
-                <span style="font-size:.78rem; font-weight:600; color:#166534;">✓ 問題なし</span>
+                <span style="display:inline-block; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;
+                             padding:2px 9px; border-radius:20px; font-size:.74rem; font-weight:700;">✓ 問題なし</span>
+                <div style="font-size:.7rem; color:#166534; margin-top:3px;">該当なし</div>
               {% endif %}
-              <div style="font-size:.72rem; color:var(--muted); margin-top:2px;">#{{ prof.ai_validation_transaction_id }}</div>
+              <div style="margin-top:4px;">
+                <a href="/proxy/ai_validation/ui/transactions/{{ prof.ai_validation_transaction_id }}"
+                   target="_blank"
+                   style="font-size:.69rem; color:var(--primary); text-decoration:none;">
+                  TX#{{ prof.ai_validation_transaction_id }} 詳細 →
+                </a>
+              </div>
             {% else %}
               <span style="color:var(--muted); font-size:.8rem;">未実行</span>
             {% endif %}
@@ -250,6 +264,39 @@
     {% endif %}
   </div>
 
+  <!-- ── AI 該非審査（FAISS + Ollama）── -->
+  <div class="card" style="margin-top:28px; border-left:4px solid #2563eb;">
+    <div class="card-title" style="margin-bottom:12px;">
+      <span>🤖</span>
+      <span>AI 該非審査（ECCN / 外為法 — FAISS + Ollama）</span>
+      <button id="rnd-hantei-btn" onclick="runRndHantei()"
+        class="btn btn-sm ml-auto"
+        style="background:#2563eb;color:#fff;border:none;">▶ 該非審査を実行</button>
+    </div>
+    <div id="rnd-hantei-body" class="txt-muted" style="font-size:.83rem;">
+      研究テーマの技術キーワードを元に、Ollama ローカル AI（qwen2.5:7b）が規制の実質的な適用可否を推論します（所要時間：約15〜40秒）。
+    </div>
+    <!-- 引き継ぎ判定履歴（品目管理 / 取引審査 から）-->
+    <div id="rnd-inherited-panel" style="display:none;margin-top:10px;border:1px solid #dbeafe;border-radius:8px;overflow:hidden;">
+      <div style="background:#eff6ff;padding:6px 12px;font-size:.76rem;font-weight:700;color:#1d4ed8;">📂 引き継ぎ判定履歴（共有 DB）</div>
+      <div id="rnd-inherited-body" style="font-size:.76rem;"></div>
+    </div>
+  </div>
+
+  <!-- ── AI 技術管理リスク評価 ── -->
+  <div class="card" style="margin-top:28px; border-left:4px solid #8b5cf6;">
+    <div class="card-title" style="margin-bottom:12px;">
+      <span>🔬</span>
+      <span>AI 技術管理リスク評価（みなし輸出 / ECCN / 外為法）</span>
+      <button id="rnd-risk-btn" onclick="runRndRisk()"
+        class="btn btn-sm ml-auto"
+        style="background:#8b5cf6;color:#fff;border:none;">▶ 評価を実行</button>
+    </div>
+    <div id="rnd-risk-body" class="txt-muted" style="font-size:.83rem;">
+      研究内容・技術キーワードを元に、みなし輸出リスク・輸出規制該当性・先端研究との関連を自動判定します。
+    </div>
+  </div>
+
   <!-- ── アクセス制御・みなし輸出ログ ── -->
   <div style="margin-top:28px;">
     <h3 style="font-size:1rem; font-weight:700; color:var(--text-h); margin-bottom:14px;">🔒 アクセス制御 / みなし輸出ログ</h3>
@@ -281,6 +328,213 @@
   </div>
 
 </div>
+
+<script>
+(function(){
+  var _PLATFORM  = '{{ platform_url }}';
+  var _CASE_ID   = '{{ case.case_id }}';
+  var _PROD_CODE = 'RND-' + _CASE_ID;  // plat_hantei_records の product_code キー
+  var _TITLE     = '{{ (case.title or "") | replace("'", "\\'") }}';
+  var _DESC      = '{{ (case.description or "") | replace("'", "\\'") | truncate(200) }}';
+
+  function _esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+  function pctR(s){ return Math.round((s||0)*100); }
+
+  // ── AI 該非審査 ──────────────────────────────────────────────────────────
+  window.runRndHantei = function(){
+    var btn  = document.getElementById('rnd-hantei-btn');
+    var body = document.getElementById('rnd-hantei-body');
+    btn.disabled=true; btn.textContent='⏳ AI 判定中…';
+    body.innerHTML='<div style="color:#94a3b8;font-size:.82rem;">FAISS Layer A を検索し、Ollama が規制適用可否を推論中（15〜40秒）…</div>';
+
+    var query = (_TITLE + ' ' + _DESC).trim();
+    fetch(_PLATFORM+'/api/compliance/hantei',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({query: query, context:'rd'})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var tiers = d.tiers||{};
+      var critical = tiers.critical||[], review = tiers.review||[];
+      var html = '<div style="font-size:.8rem;color:#6b7280;margin-bottom:10px;">'+_esc(d.llm_summary||'')+'</div>';
+
+      function renderItems(items, color){
+        if(!items.length) return '<div style="color:#9ca3af;font-size:.76rem;padding:4px 0;">該当なし</div>';
+        return items.map(function(it){
+          var badge = it.llm_verdict==='APPLICABLE'
+            ? '<span style="background:#dc2626;color:#fff;border-radius:3px;padding:1px 5px;font-size:.68rem;">APPLICABLE</span>'
+            : '<span style="background:#d97706;color:#fff;border-radius:3px;padding:1px 5px;font-size:.68rem;">REVIEW_NEEDED</span>';
+          return '<div style="padding:6px 10px;border-bottom:1px solid #f3f4f6;">'
+            +'<span style="font-weight:600;color:#374151;">'+_esc(it.item_no)+'</span>'
+            +' '+badge
+            +' <span style="color:#6b7280;font-size:.75rem;">'+_esc(it.item_label||'')+'</span>'
+            +(it.llm_reason?'<div style="color:#6b7280;font-size:.72rem;margin-top:2px;">'+_esc(it.llm_reason.slice(0,120))+'</div>':'')
+            +(it.llm_key_question?'<div style="color:#7c3aed;font-size:.7rem;margin-top:1px;">❓ '+_esc(it.llm_key_question.slice(0,100))+'</div>':'')
+            +'</div>';
+        }).join('');
+      }
+
+      html += '<div style="border:1.5px solid #fca5a5;border-radius:8px;overflow:hidden;margin-bottom:8px;">'
+        +'<div style="background:#fef2f2;padding:7px 12px;font-size:.78rem;font-weight:700;color:#991b1b;">'
+        +'🔴 要精査（controlled） — '+critical.length+'件</div>'
+        +renderItems(critical,'#dc2626')+'</div>';
+
+      if(review.length){
+        html += '<details style="border:1.5px solid #fcd34d;border-radius:8px;overflow:hidden;margin-bottom:8px;">'
+          +'<summary style="background:#fffbeb;padding:7px 12px;font-size:.78rem;font-weight:700;color:#92400e;cursor:pointer;">'
+          +'🟡 要確認（needs_review） — '+review.length+'件</summary>'
+          +renderItems(review,'#d97706')+'</details>';
+      }
+
+      if(critical.length + review.length > 0){
+        html += '<button onclick="saveRndHantei()" style="margin-top:8px;padding:6px 16px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">💾 判定結果を共有 DB に保存</button>';
+        window._rndHanteiData = d;
+      }
+
+      body.innerHTML = html;
+      btn.textContent='🔄 再審査'; btn.disabled=false;
+    })
+    .catch(function(e){
+      body.innerHTML='<div style="color:#ef4444;font-size:.82rem;">失敗: '+e.message+'</div>';
+      btn.textContent='▶ 該非審査を実行'; btn.disabled=false;
+    });
+  };
+
+  // ── 判定結果を plat_hantei_records に保存 ──────────────────────────────
+  window.saveRndHantei = function(){
+    if(!window._rndHanteiData){ return; }
+    var d = window._rndHanteiData;
+    var tiers = d.tiers||{};
+    var allItems = (tiers.critical||[]).concat(tiers.review||[]);
+    if(!allItems.length){ alert('保存対象の判定結果がありません。'); return; }
+
+    var records = allItems.map(function(it){
+      return {
+        product_code:    _PROD_CODE,
+        source_module:   'rnd',
+        rnd_case_id:     _CASE_ID,
+        item_no:         it.item_no||'',
+        item_label:      it.item_label||'',
+        source_type:     it.source_type||'',
+        regulation_text: it.regulation_text||'',
+        llm_verdict:     it.llm_verdict||'',
+        llm_confidence:  it.llm_confidence||'',
+        llm_reason:      it.llm_reason||'',
+        llm_key_question: it.llm_key_question||'',
+        decision:        it.decision||'needs_review',
+        notes:           'R&D AI 該非審査から保存'
+      };
+    });
+
+    fetch(_PLATFORM+'/api/hantei/records',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({records: records})
+    }).then(function(r){ return r.json(); })
+    .then(function(res){
+      alert('✓ '+res.saved+'件の判定結果を共有 DB に保存しました。\n品目管理・取引審査でこの結果を参照できます。');
+      loadRndInherited();
+    }).catch(function(e){
+      alert('保存に失敗しました: '+e.message);
+    });
+  };
+
+  // ── 引き継ぎ判定履歴（他モジュールからの記録）を表示 ──────────────────
+  function loadRndInherited(){
+    fetch(_PLATFORM+'/api/hantei/records/'+encodeURIComponent(_PROD_CODE)+'?limit=20')
+      .then(function(r){ return r.json(); })
+      .then(function(records){
+        var wrap = document.getElementById('rnd-inherited-panel');
+        var body = document.getElementById('rnd-inherited-body');
+        if(!records||!records.length){ wrap.style.display='none'; return; }
+        wrap.style.display='block';
+        var html='<div style="padding:6px 10px;font-size:.74rem;color:#6b7280;">'+records.length+'件の記録</div>';
+        records.forEach(function(r){
+          var badgeC = r.llm_verdict==='APPLICABLE'?'#dc2626':r.llm_verdict==='REVIEW_NEEDED'?'#d97706':'#6b7280';
+          var modLabel = {'rnd':'🧪R&D','classification':'📦品目','validation':'📋取引'}[r.source_module]||r.source_module;
+          html+='<div style="padding:5px 10px;border-bottom:1px solid #f3f4f6;font-size:.76rem;">'
+            +'<span style="font-weight:600;">'+_esc(r.item_no)+'</span>'
+            +' <span style="background:'+badgeC+';color:#fff;border-radius:3px;padding:0 4px;font-size:.68rem;">'+r.llm_verdict+'</span>'
+            +' <span style="background:#e5e7eb;color:#374151;border-radius:3px;padding:0 4px;font-size:.68rem;">'+modLabel+'</span>'
+            +(r.llm_reason?'<div style="color:#6b7280;font-size:.7rem;margin-top:1px;">'+_esc(r.llm_reason.slice(0,100))+'</div>':'')
+            +'</div>';
+        });
+        body.innerHTML=html;
+      }).catch(function(){ document.getElementById('rnd-inherited-panel').style.display='none'; });
+  }
+  loadRndInherited();
+  var _QUERY    = (_TITLE + ' ' + _DESC).trim();
+
+  function pct(s){ return Math.round((s||0)*100); }
+  function clrOf(s){ return s>=0.80?'#dc2626':s>=0.60?'#8b5cf6':s>=0.35?'#eab308':'#22c55e'; }
+  function bar(s){
+    var c=clrOf(s), p=pct(s);
+    return '<span style="display:inline-flex;align-items:center;gap:5px;">'
+      +'<span style="display:inline-block;width:70px;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;">'
+      +'<span style="display:inline-block;width:'+p+'%;height:100%;background:'+c+';"></span></span>'
+      +'<b style="font-size:.76rem;font-family:monospace;color:'+c+';">'+p+'%</b></span>';
+  }
+
+  window.runRndRisk = function(){
+    var btn=document.getElementById('rnd-risk-btn');
+    var body=document.getElementById('rnd-risk-body');
+    btn.disabled=true; btn.textContent='⏳ 判定中…';
+    body.innerHTML='<div style="color:#94a3b8;font-size:.82rem;">CCL/ECCN・外為法・先端研究論文を並列検索中…</div>';
+
+    fetch(_PLATFORM+'/api/compliance/assess',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({query:_QUERY, context:'rd'})
+    })
+    .then(r=>r.json())
+    .then(d=>{
+      var c=d.components||{}; var clr=clrOf(d.overall_risk||0);
+      var label={critical:'🔴 超高リスク',high:'🟠 高リスク',medium:'🟡 中リスク',low:'🟢 低リスク'}[d.risk_level||'']||'';
+
+      var techHits=(c.technology&&c.technology.hits||[]).slice(0,2).map(h=>
+        '<div style="font-size:.72rem;color:#7c3aed;margin-top:2px;">📄 '+(h.title||'').slice(0,60)
+        +(h.year?' ('+h.year+')':'')+(h.eccn_tags&&h.eccn_tags.length?' ['+h.eccn_tags.join('/')+']':'')+' ('+pct(h.score)+'%)</div>'
+      ).join('');
+
+      var regHits=(c.regulation&&c.regulation.hits||[]).slice(0,2).map(h=>
+        '<div style="font-size:.72rem;color:#64748b;margin-top:2px;">→ '+(h.title||h.source_type||'').slice(0,60)+' '+pct(h.score)+'%</div>'
+      ).join('');
+
+      var actHtml=(d.action_required||[]).length
+        ?'<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:8px 10px;margin-top:10px;">'
+          +'<b style="font-size:.74rem;color:#7c3aed;">⚠ 技術管理推奨アクション:</b>'
+          +(d.action_required||[]).map(a=>'<div style="font-size:.78rem;color:#4c1d95;margin-top:2px;">・'+a+'</div>').join('')
+          +'</div>':''
+
+      body.innerHTML=
+        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
+        +'<div style="font-size:1.5rem;font-weight:900;color:'+clr+';">'+pct(d.overall_risk||0)+'%</div>'
+        +'<div><div style="font-weight:800;color:'+clr+';">'+label+'</div>'
+          +'<div style="font-size:.72rem;color:#64748b;">技術管理リスク総合スコア</div></div>'
+        +'</div>'
+        +'<table style="width:100%;border-collapse:collapse;margin-bottom:4px;">'
+        +'<tbody>'
+        +'<tr><td style="padding:4px 8px;font-size:.78rem;font-weight:600;white-space:nowrap;">CCL/ECCN 規制</td>'
+        +'<td style="padding:4px 8px;">'+bar(c.regulation&&c.regulation.score||0)+'</td>'
+        +'<td style="padding:4px 8px;font-size:.75rem;color:#64748b;">'+(c.regulation&&c.regulation.detail||'')+regHits+'</td></tr>'
+        +'<tr><td style="padding:4px 8px;font-size:.78rem;font-weight:600;white-space:nowrap;">外為法</td>'
+        +'<td style="padding:4px 8px;">'+bar(c.fefta&&c.fefta.score||0)+'</td>'
+        +'<td style="padding:4px 8px;font-size:.75rem;color:#64748b;">'+(c.fefta&&c.fefta.detail||'')+'</td></tr>'
+        +'<tr><td style="padding:4px 8px;font-size:.78rem;font-weight:600;white-space:nowrap;">先端技術研究</td>'
+        +'<td style="padding:4px 8px;">'+bar(c.technology&&c.technology.score||0)+'</td>'
+        +'<td style="padding:4px 8px;font-size:.75rem;color:#64748b;">'+(c.technology&&c.technology.detail||'')+techHits+'</td></tr>'
+        +'</tbody></table>'
+        +actHtml;
+      btn.textContent='🔄 再評価'; btn.disabled=false;
+    })
+    .catch(e=>{
+      body.innerHTML='<div style="color:#ef4444;font-size:.82rem;">評価失敗: '+e.message+'</div>';
+      btn.textContent='▶ 評価を実行'; btn.disabled=false;
+    });
+  };
+})();
+</script>
 
 <script>
 (function() {

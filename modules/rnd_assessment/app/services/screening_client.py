@@ -9,6 +9,7 @@ class ScreeningClient:
         self.base_url = base_url or settings.screening_service_base_url
 
     async def submit_screening_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """screening API POST /api/screen を呼び出す。レスポンス: {id: UUID, result_status: str}"""
         url = f"{self.base_url}/api/screen"
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
@@ -16,5 +17,4 @@ class ScreeningClient:
                 r.raise_for_status()
                 return r.json()
         except Exception:
-            # PoCスタブ（transaction_id を必ず返す）
-            return {"transaction_id": -1, "status": "stubbed", "payload_echo": payload}
+            return {"id": None, "result_status": "error"}

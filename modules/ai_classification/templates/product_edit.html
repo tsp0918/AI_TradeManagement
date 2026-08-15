@@ -296,16 +296,16 @@
         {% endif %}
       </div>
 
-      <!-- 用途概要（外部AI判定の入力テキスト）-->
+      <!-- 用途概要（AI法令チェックの入力テキスト）-->
       <div style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:8px; padding:14px 16px; margin-bottom:16px;">
         <form method="post" action="/products/{{ product.id }}/usage-summary">
           <label class="label" style="font-size:.85rem; color:#0369a1; margin-bottom:6px;">
-            📝 用途概要（AI判定テキスト）
+            📝 用途概要（AI法令チェック用テキスト）
           </label>
           <textarea id="usage-summary-field" class="textarea" name="usage_summary" rows="3"
             style="border-color:#bae6fd;"
             placeholder="例: 半導体製造ラインの表面検査工程で使用するレーザー変位センサー（波長650nm）。最終使用地: 台湾TSMC。民間半導体製造専用、軍事転用なし。">{{ product.usage_summary or "" }}</textarea>
-          <p class="help" style="color:#0284c7; margin-top:4px;">工程・装置・性能・最終使用地の4要素を含めると外部AI判定の精度が向上します。この内容が外部AI判定リクエストに使用されます。</p>
+          <p class="help" style="color:#0284c7; margin-top:4px;">工程・装置・性能・最終使用地の4要素を含めると AI 法令チェックの精度が向上します。ページ下部の「🤖 AI 該非審査」に使用されます。</p>
           <div style="margin-top:8px;">
             <button class="btn-action-sm" type="submit">📄 用途概要を保存</button>
           </div>
@@ -323,7 +323,7 @@
             <div class="select is-fullwidth">
               <select name="status" id="ecStatus">
                 <option value="not_evaluated" {% if product.export_control_status == "not_evaluated" or not product.export_control_status %}selected{% endif %}>未評価</option>
-                <option value="non_controlled" {% if product.export_control_status == "non_controlled" %}selected{% endif %}>非該当と推定</option>
+                <option value="non_controlled" {% if product.export_control_status == "non_controlled" %}selected{% endif %}>非該当（確認済）</option>
                 <option value="needs_attention" {% if product.export_control_status == "needs_attention" %}selected{% endif %}>要注意（要確認）</option>
                 <option value="to_be_checked" {% if product.export_control_status == "to_be_checked" %}selected{% endif %}>要確認（情報不足）</option>
                 <option value="controlled" {% if product.export_control_status == "controlled" %}selected{% endif %}>該当（要専門家レビュー）</option>
@@ -340,8 +340,6 @@
         <!-- 判定明細テーブル -->
         <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
           <span class="label" style="margin:0; font-size:.82rem;">判定明細</span>
-          <button type="button" class="btn-transfer" onclick="transferFromAI()"
-                  title="外部AIが保存した候補（スコア順上位・AI根拠なし）を転記。AI根拠付き判定はページ下部の「AI 該非審査」パネルを使用してください。">📋 外部AI候補を参照</button>
           <button type="button" class="btn-action-sm" onclick="addEcRow()">＋ 行を追加</button>
         </div>
 
@@ -368,149 +366,6 @@
         </div>
       </form>
 
-      <!-- 外部AI判定（折りたたみ、クリーンデザイン）-->
-      <details style="margin-top:20px; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden;"
-               {% if product.external_eval_status and product.external_eval_status not in ['', null] %}open{% endif %}>
-        <summary style="padding:12px 16px; cursor:pointer; background:#f9fafb; font-size:.88rem;
-                        font-weight:600; display:flex; align-items:center; gap:10px;
-                        border-bottom:1px solid #e5e7eb;">
-          <span class="summary-arrow">▶</span>
-          <span>🤖 外部AI判定（Webhook連携）</span>
-          <span id="ext-status-badge-summary">
-            {% if product.external_eval_status == "controlled" %}
-              <span class="tag is-danger is-small">controlled</span>
-            {% elif product.external_eval_status == "non_controlled" %}
-              <span class="tag is-success is-light is-small">non_controlled</span>
-            {% elif product.external_eval_status == "needs_review" %}
-              <span class="tag is-warning is-small">needs_review</span>
-            {% elif product.external_eval_status == "running" %}
-              <span class="tag is-link is-light is-small">running</span>
-            {% elif product.external_eval_status == "queued" %}
-              <span class="tag is-light is-small">queued</span>
-            {% elif product.external_eval_status == "error" %}
-              <span class="tag is-danger is-light is-small">error</span>
-            {% else %}
-              <span class="tag is-light is-small">未受信</span>
-            {% endif %}
-          </span>
-          {% if product.external_eval_requested_at %}
-          <span style="font-size:.75rem; color:#9ca3af; font-weight:400;">依頼: {{ product.external_eval_requested_at }}</span>
-          {% endif %}
-        </summary>
-
-        <div style="padding:16px;">
-          <div style="display:grid; grid-template-columns:1fr 200px; gap:16px; align-items:start;">
-
-            <!-- 左: 判定結果サマリー -->
-            <div>
-              {% if product.external_eval_reason %}
-              <div style="background:#f9fafb; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:.85rem;">
-                <strong>理由・コメント:</strong><br>
-                <span style="color:#374151;">{{ product.external_eval_reason }}</span>
-              </div>
-              {% endif %}
-
-              {% if external_ai_summary and external_ai_summary.top %}
-              <div style="background:#f0f7ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 14px; margin-bottom:12px;">
-                <div style="font-size:.78rem; font-weight:700; color:#1e40af; margin-bottom:8px;">📌 根拠（上位ヒット）</div>
-                <div style="display:grid; grid-template-columns:110px 1fr; gap:4px 12px; font-size:.82rem;">
-                  <span style="color:#6b7280;">項番</span>
-                  <span style="font-family:monospace; font-weight:700;">{{ external_ai_summary.top.rule_item_no or "—" }}</span>
-                  <span style="color:#6b7280;">品目名</span>
-                  <span>{{ external_ai_summary.top.rule_title or "—" }}</span>
-                  <span style="color:#6b7280;">類似度スコア</span>
-                  <span>
-                    {% if external_ai_summary.top.match_score is not none %}
-                      {% set score = external_ai_summary.top.match_score %}
-                      <span style="font-weight:700; color:{% if score >= 0.7 %}#16a34a{% elif score >= 0.5 %}#d97706{% else %}#dc2626{% endif %};">
-                        {{ "%.3f"|format(score) }}
-                      </span>
-                    {% else %}—{% endif %}
-                  </span>
-                  <span style="color:#6b7280;">判定</span>
-                  <span style="font-weight:700;">{{ external_ai_summary.top.decision or "—" }}</span>
-                </div>
-                {% if external_ai_summary.top.usage_text %}
-                <div style="margin-top:8px; padding-top:8px; border-top:1px solid #dbeafe; font-size:.78rem; color:#374151;">
-                  <strong>対象用途:</strong> {{ external_ai_summary.top.usage_text }}
-                </div>
-                {% endif %}
-                {% if external_ai_summary.top.matched_tokens %}
-                <div style="margin-top:6px; font-size:.76rem; color:#6b7280;">
-                  一致トークン: {{ external_ai_summary.top.matched_tokens|join(", ") }}
-                </div>
-                {% endif %}
-              </div>
-              {% endif %}
-
-              {% if external_ai_summary and external_ai_summary.followup_questions %}
-              <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:10px 14px; font-size:.82rem;">
-                <strong style="color:#92400e;">💬 次に確認すべき事項（AI提案）:</strong>
-                <ul style="margin:6px 0 0 16px; color:#374151;">
-                  {% for q in external_ai_summary.followup_questions %}
-                  <li>{{ q }}</li>
-                  {% endfor %}
-                </ul>
-              </div>
-              {% elif not (external_ai_summary and external_ai_summary.top) %}
-              <p style="font-size:.82rem; color:#9ca3af; font-style:italic;">
-                まだ判定結果がありません。「外部AIへ判定依頼」を実行してください。
-              </p>
-              {% endif %}
-            </div>
-
-            <!-- 右: アクションボタン -->
-            <div style="display:flex; flex-direction:column; gap:8px;">
-              <form method="post" action="/products/{{ product.id }}/external/request">
-                <button class="btn-action-primary" type="submit" style="width:100%; justify-content:center;">
-                  🚀 外部AIへ判定依頼
-                </button>
-              </form>
-              <button class="btn-action-sm" type="button" onclick="location.reload();" style="width:100%; justify-content:center;">
-                🔄 最新結果を更新
-              </button>
-              {% if product.external_eval_received_at %}
-              <p style="font-size:.73rem; color:#9ca3af; text-align:center;">受信: {{ product.external_eval_received_at }}</p>
-              {% endif %}
-
-              <!-- 手動更新（折りたたみ）-->
-              <details style="margin-top:8px; border:1px solid #e5e7eb; border-radius:6px;">
-                <summary style="padding:6px 10px; cursor:pointer; font-size:.78rem; color:#6b7280; font-weight:600; display:flex; align-items:center; gap:6px;">
-                  <span class="summary-arrow" style="font-size:.6rem;">▶</span>
-                  🔧 手動でステータス更新...
-                </summary>
-                <div style="padding:10px;">
-                  <form method="post" action="/products/{{ product.id }}/external/manual">
-                    <div class="field" style="margin-bottom:8px;">
-                      <div class="select is-small is-fullwidth">
-                        <select name="status">
-                          <option value="" {% if not product.external_eval_status %}selected{% endif %}>（未設定）</option>
-                          <option value="queued"         {% if product.external_eval_status == "queued" %}selected{% endif %}>queued</option>
-                          <option value="running"        {% if product.external_eval_status == "running" %}selected{% endif %}>running</option>
-                          <option value="controlled"     {% if product.external_eval_status == "controlled" %}selected{% endif %}>controlled</option>
-                          <option value="non_controlled" {% if product.external_eval_status == "non_controlled" %}selected{% endif %}>non_controlled</option>
-                          <option value="needs_review"   {% if product.external_eval_status == "needs_review" %}selected{% endif %}>needs_review</option>
-                          <option value="error"          {% if product.external_eval_status == "error" %}selected{% endif %}>error</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div class="field" style="margin-bottom:8px;">
-                      <textarea class="textarea is-small" name="reason" rows="2"
-                                placeholder="理由・コメント">{{ product.external_eval_reason or "" }}</textarea>
-                    </div>
-                    <div class="field" style="margin-bottom:8px;">
-                      <textarea class="textarea is-small" name="payload" rows="4"
-                                placeholder="Webhook payload（JSON）">{{ product.external_eval_payload or "" }}</textarea>
-                    </div>
-                    <button class="btn-action-sm" type="submit" style="width:100%; justify-content:center;">保存</button>
-                  </form>
-                </div>
-              </details>
-            </div>
-
-          </div>
-        </div>
-      </details>
     </div>
 
     <!-- ================================================================
@@ -945,7 +800,6 @@
   // =====================================================================
   (function() {
     const SAVED_ITEMS   = {{ (export_control_items | default([])) | tojson }};
-    const EXT_PAYLOAD   = {{ (product.external_eval_payload or 'null') | tojson }};
     const DECISION_OPTIONS = [
       { value: "",               label: "（未判定）" },
       { value: "controlled",     label: "該当" },
@@ -1059,55 +913,6 @@
 
       return no;
     }
-
-    window.transferFromAI = function() {
-      var payload = null;
-      try { payload = JSON.parse(EXT_PAYLOAD); } catch(e) {}
-      if (!payload) { alert('外部AI判定の結果がまだ保存されていません。先に外部AIへ判定依頼を行ってください。'); return; }
-      var inner = payload;
-      if (payload.payload && typeof payload.payload === 'object') inner = payload.payload;
-      var mm = inner.matrix_matches_top;
-      if (!Array.isArray(mm) || mm.length === 0) { alert('外部AI判定結果に matrix_matches_top が見つかりませんでした。'); return; }
-
-      // スコア順に並べ直し、item_no があるものを優先、上位8件を重複除去
-      var seen = {};
-      var ranked = [];
-      mm.slice().sort(function(a,b){ return (b.match_score||0)-(a.match_score||0); })
-        .forEach(function(m){
-          var ev = (m.evidence && typeof m.evidence === 'object') ? m.evidence : {};
-          var rawNo = ev.rule_item_no || ev.item_no || '';
-          var label = ev.rule_title || ev.item_label || '';
-          var srcType = ev.source_type || '';
-          var snippet = ev.text_snippet || ev.rule_snippet || '';
-          var score = typeof m.match_score === 'number' ? m.match_score : 0;
-          var key = rawNo || label;
-          if(!key || seen[key]) return;
-          seen[key] = true;
-          ranked.push({ rawNo:rawNo, label:label, srcType:srcType, snippet:snippet, score:score });
-        });
-      ranked = ranked.slice(0,8);
-
-      if(ranked.length === 0){
-        alert('外部AI判定の結果に項番情報が含まれていません。\nページ下部の「🤖 AI 該非審査」をご利用ください。'); return;
-      }
-
-      // 候補一覧をダイアログで確認
-      var listText = ranked.map(function(r,i){
-        return (i+1)+'. ['+r.rawNo+'] '+(r.label||'').slice(0,30)+' score='+r.score.toFixed(3);
-      }).join('\n');
-      var msg = '外部AI判定の上位候補（スコア順・重複除去）:\n\n'+listText
-        +'\n\n※ AI根拠付きの精査は「AI 該非審査」パネルをご利用ください。\n\n転記する判定結果を選択:\n[1] 要精査（controlled）\n[2] 要確認（needs_review）\n[3] キャンセル';
-      var choice = window.prompt(msg, '1');
-      if(!choice || choice.trim()==='3'){ return; }
-      var dec = choice.trim()==='2' ? 'needs_review' : 'controlled';
-
-      var rows = ranked.map(function(r){
-        return { rule_item_no: r.rawNo, decision: dec,
-                 comment: (r.label||r.rawNo||'')+'[外部AI]',
-                 recorded_at: '' };
-      });
-      renderRows(rows);
-    };
 
     window.collectItemsJson = function() {
       var now = new Date();
@@ -1705,6 +1510,14 @@
     </div>
   </div>
 
+  <!-- 引き継ぎ判定履歴（R&D / 取引審査 / 過去の品目審査から引き継いだ記録）-->
+  <div id="inherited-hantei-panel" style="display:none;margin-bottom:12px;border:1px solid #dbeafe;border-radius:8px;overflow:hidden;">
+    <div style="background:#eff6ff;padding:8px 12px;font-size:.8rem;font-weight:700;color:#1d4ed8;">
+      📂 引き継ぎ判定履歴（共有 DB）
+    </div>
+    <div id="inherited-hantei-body"></div>
+  </div>
+
   <!-- 5軸リスク評価結果 -->
   <div id="cls-risk-body">
     <div style="color:#94a3b8;font-size:.82rem;">「▶ リスク評価」でECCN・外為法・制裁の5軸評価、「🤖 AI 該非審査」でローカルAIが規制の実質的な適用可否を推論して分類します（所要時間：約10〜30秒）。</div>
@@ -1755,15 +1568,34 @@
       </summary>
       <div id="hantei-t3-body" style="padding:10px 14px;font-size:.8rem;"></div>
     </details>
+
+    <!-- 非該当確認パネル（Ollama が NOT_APPLICABLE と判定した項目） -->
+    <div id="hantei-excl-wrap" style="display:none;margin-top:10px;border:1.5px solid #bbf7d0;border-radius:8px;overflow:hidden;">
+      <div style="background:#f0fdf4;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div>
+          <span style="font-size:.85rem;font-weight:800;color:#166534;">🟢 非該当確認（証跡記録）</span>
+          <span id="hantei-excl-count" style="font-size:.73rem;color:#15803d;margin-left:6px;"></span>
+        </div>
+        <button onclick="confirmAllExcluded()"
+          style="padding:4px 11px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:.76rem;font-weight:700;cursor:pointer;white-space:nowrap;">
+          全件を記録 →
+        </button>
+      </div>
+      <div style="padding:8px 12px 4px;font-size:.73rem;color:#6b7280;border-bottom:1px solid #bbf7d0;">
+        FAISSスコアが閾値以上で検索ヒットしたが、AI（Ollama）が「非該当」と判定した項目です。確認した証跡として判定明細に追加できます。
+      </div>
+      <div id="hantei-excl-body" style="padding:8px 14px;font-size:.8rem;"></div>
+    </div>
   </div>
 </div>
 
 <script>
 (function(){
-  var _PLATFORM = '{{ platform_url }}';
-  var _PROD_DESC = '{{ (product.description or product.name or "") | replace("'", "\\'") }}';
-  var _PROD_ECCN = '{{ (product.eccn or "") }}';
-  var _PROD_HS   = '{{ (product.hs_code or "") }}';
+  var _PLATFORM   = '{{ platform_url }}';
+  var _PROD_CODE  = '{{ product.code or "" }}';
+  var _PROD_DESC  = '{{ (product.description or product.name or "") | replace("'", "\\'") }}';
+  var _PROD_ECCN  = '{{ (product.eccn or "") }}';
+  var _PROD_HS    = '{{ (product.hs_code or "") }}';
 
   // 直近の該非判定候補（転記時に使用）
   var _hanteiData = null;
@@ -1919,6 +1751,7 @@
 
   function _renderHanteiTiers(d){
     var t = d.tiers||{};
+    var excl = d.excluded||[];
     var c1=(t.critical||[]).length, c2=(t.review||[]).length, c3=(t.info||[]).length;
     var aiSummary = d.llm_summary
       ? d.llm_summary
@@ -1932,24 +1765,153 @@
 
     document.getElementById('hantei-t1-wrap').style.opacity = c1===0?'0.55':'1';
     if(c2>0) document.getElementById('hantei-t2-details').open = true;
+
+    // 非該当確認パネル
+    var exclWrap = document.getElementById('hantei-excl-wrap');
+    if(excl.length > 0){
+      document.getElementById('hantei-excl-count').textContent = excl.length+'件（非該当確認待ち）';
+      _renderExcludedBody(excl);
+      exclWrap.style.display = 'block';
+    } else {
+      exclWrap.style.display = 'none';
+    }
   }
 
-  // ── 転記 ─────────────────────────────────────────────────────────────────
+  function _renderExcludedBody(items){
+    var el = document.getElementById('hantei-excl-body');
+    el.innerHTML = items.map(function(it, idx){
+      var reasonHtml = it.llm_reason
+        ? '<div style="font-size:.73rem;color:#6b7280;margin-top:2px;line-height:1.4;">'+_esc(it.llm_reason.slice(0,120))+'</div>' : '';
+      return '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #dcfce7;">'
+        +'<div style="flex:1;">'
+        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+        +'<code style="font-size:.78rem;font-weight:700;color:#1e293b;">'+(it.item_no||'—')+'</code>'
+        +'<span style="font-size:.76rem;color:#374151;">'+(it.item_label&&it.item_label!==it.item_no?_esc(it.item_label):'')+'</span>'
+        +'<span style="background:#f0fdf4;color:#166534;font-size:.68rem;font-weight:700;padding:1px 5px;border-radius:4px;border:1px solid #bbf7d0;">非該当</span>'
+        +'<span style="font-size:.68rem;color:#9ca3af;">'+bar(it.adj_score||0)+'</span>'
+        +'</div>'
+        + reasonHtml
+        +'</div>'
+        +'<button onclick="confirmExcluded(this,'+idx+')" data-idx="'+idx+'"'
+        +' style="flex-shrink:0;padding:3px 10px;background:#f0fdf4;color:#166534;border:1.5px solid #bbf7d0;border-radius:5px;font-size:.73rem;font-weight:600;cursor:pointer;white-space:nowrap;">✓ 記録</button>'
+        +'</div>';
+    }).join('');
+  }
+
+  // ── 転記 & plat_hantei_records 保存 ─────────────────────────────────────
+  function _saveHanteiRecords(items, decision, notes){
+    if(!_PROD_CODE) return;
+    var records = items.map(function(it){
+      return {
+        product_code:     _PROD_CODE,
+        source_module:    'classification',
+        item_no:          it.item_no||'',
+        item_label:       it.item_label||'',
+        source_type:      it.source_type||'',
+        regulation_text:  it.regulation_text||'',
+        llm_verdict:      it.llm_verdict||'',
+        llm_confidence:   it.llm_confidence||'',
+        llm_reason:       it.llm_reason||'',
+        llm_key_question: it.llm_key_question||'',
+        decision:         decision,
+        notes:            notes
+      };
+    });
+    fetch(_PLATFORM+'/api/hantei/records', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({records: records})
+    }).then(function(r){ return r.json(); }).then(function(d){
+      console.log('[hantei] saved '+d.saved+' records');
+    }).catch(function(e){
+      console.warn('[hantei] failed to save records:', e);
+    });
+  }
+
   window.transferHanteiTier = function(tierKey, decision){
-    if(!_hanteiData){ alert('先に「🎯 該非候補を取得」を実行してください。'); return; }
+    if(!_hanteiData){ alert('先に「🤖 AI 該非審査」を実行してください。'); return; }
     var items = (_hanteiData.tiers||{})[tierKey] || [];
     if(items.length===0){ alert('この層には転記対象がありません。'); return; }
-    if(!confirm(items.length+'件を判定明細テーブルに追加転記します。よろしいですか？')){ return; }
+    if(!confirm(items.length+'件を判定明細テーブルに追加転記します。\n判定履歴も共有DBに保存されます。よろしいですか？')){ return; }
     var rows = items.map(function(it){
-      var base = (it.item_label && it.item_label !== it.item_no ? it.item_label : it.item_no||'')
+      var label = (it.item_label && it.item_label !== it.item_no ? it.item_label : it.item_no||'')
         + ' ['+_srcLabel(it.source_type)+']';
       var aiNote = it.llm_reason ? ' AI:'+it.llm_reason.slice(0,60) : '';
-      var comment = base + aiNote;
-      return { rule_item_no: it.item_no||'', decision: decision, comment: comment, recorded_at: '' };
+      return { rule_item_no: it.item_no||'', decision: decision, comment: label+aiNote, recorded_at: '' };
     });
-    // 既存行と結合して転記（重複 item_no は上書き）
     renderRows(rows);
+    _saveHanteiRecords(items, decision, 'AI 該非審査（品目管理）から転記 tier='+tierKey);
   };
+
+  // ── 非該当確認の記録（個別）──────────────────────────────────────────────
+  window.confirmExcluded = function(btn, idx){
+    if(!_hanteiData){ return; }
+    var it = (_hanteiData.excluded||[])[idx];
+    if(!it){ return; }
+    var label = (it.item_label && it.item_label !== it.item_no ? it.item_label : it.item_no||'')
+      + ' ['+_srcLabel(it.source_type)+']';
+    var comment = label + ' ／ 非該当確認済み（AI）' + (it.llm_reason?' AI:'+it.llm_reason.slice(0,60):'');
+    renderRows([{ rule_item_no: it.item_no||'', decision: 'non_controlled', comment: comment, recorded_at: '' }]);
+    _saveHanteiRecords([it], 'non_controlled', '非該当確認済み（品目管理 AI法令チェック）');
+    btn.textContent = '✓ 記録済';
+    btn.disabled = true;
+    btn.style.background = '#dcfce7';
+    btn.style.color = '#166534';
+    btn.style.borderColor = '#86efac';
+  };
+
+  // ── 非該当確認の記録（全件）──────────────────────────────────────────────
+  window.confirmAllExcluded = function(){
+    if(!_hanteiData){ return; }
+    var excl = _hanteiData.excluded||[];
+    if(excl.length===0){ return; }
+    if(!confirm(excl.length+'件を非該当確認済みとして判定明細に追加します。よろしいですか？')){ return; }
+    var rows = excl.map(function(it){
+      var label = (it.item_label && it.item_label !== it.item_no ? it.item_label : it.item_no||'')
+        + ' ['+_srcLabel(it.source_type)+']';
+      return { rule_item_no: it.item_no||'', decision: 'non_controlled',
+               comment: label+' ／ 非該当確認済み（AI）', recorded_at: '' };
+    });
+    renderRows(rows);
+    _saveHanteiRecords(excl, 'non_controlled', '非該当確認済み（品目管理 AI法令チェック）全件');
+    // ボタンを全件済みに
+    document.querySelectorAll('#hantei-excl-body button').forEach(function(b){
+      b.textContent='✓ 記録済'; b.disabled=true;
+      b.style.background='#dcfce7'; b.style.color='#166534'; b.style.borderColor='#86efac';
+    });
+  };
+
+  // ── 引き継ぎ判定履歴パネル（R&D → 品目管理 継承表示）──────────────────────
+  (function loadInheritedHantei(){
+    if(!_PROD_CODE) return;
+    var wrap = document.getElementById('inherited-hantei-panel');
+    if(!wrap) return;
+    fetch(_PLATFORM+'/api/hantei/records/'+encodeURIComponent(_PROD_CODE)+'?limit=20')
+      .then(function(r){ return r.json(); })
+      .then(function(records){
+        if(!records || records.length===0){
+          wrap.style.display='none'; return;
+        }
+        wrap.style.display='block';
+        var html = '<div style="font-size:.76rem;color:#6b7280;margin-bottom:8px;">過去の判定履歴: '+records.length+'件</div>';
+        records.forEach(function(r){
+          var badgeColor = r.llm_verdict==='APPLICABLE'?'#dc2626':r.llm_verdict==='REVIEW_NEEDED'?'#d97706':'#6b7280';
+          var modBadge = {'rnd':'🧪R&D','classification':'📦品目','validation':'📋取引'}[r.source_module]||r.source_module;
+          html += '<div style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-size:.78rem;">'
+            +'<span style="color:#374151;font-weight:600;">'+_esc(r.item_no)+'</span>'
+            +' <span style="color:#6b7280;">'+_esc(r.item_label||'')+'</span>'
+            +' <span style="background:'+badgeColor+';color:#fff;border-radius:3px;padding:1px 5px;font-size:.7rem;">'+r.llm_verdict+'</span>'
+            +' <span style="background:#e5e7eb;color:#374151;border-radius:3px;padding:1px 5px;font-size:.7rem;">'+modBadge+'</span>'
+            +(r.llm_reason?'<div style="color:#6b7280;margin-top:2px;font-size:.72rem;">'+_esc(r.llm_reason.slice(0,100))+'</div>':'')
+            +'</div>';
+        });
+        document.getElementById('inherited-hantei-body').innerHTML = html;
+      }).catch(function(){
+        wrap.style.display='none';
+      });
+  })();
+
+  function _esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 })();
 </script>
 
