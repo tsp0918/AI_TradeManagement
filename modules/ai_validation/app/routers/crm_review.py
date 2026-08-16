@@ -38,20 +38,127 @@ _CRM_SECRET = os.environ.get("CRM_SIGNING_SECRET", "dev-crm-signing-secret-000")
 _SKIP_HMAC = os.environ.get("CRM_SKIP_HMAC", "") == "1"
 _PROV_VALID_DAYS = 30
 _PLATFORM_CORE_URL = os.environ.get("MODULE_PLATFORM_URL", "http://localhost:8000")
+_SCREENING_URL = os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
+
+
+def _run_full_judgment_bg(tx_id: int, counterparty_name: Optional[str] = None) -> None:
+    """CRM 起票後にフル判定パイプラインをバックグラウンド実行する。
+    ① スクリーニング（counterparty_name がある場合）
+    ② AI パイプライン（matrix_match まで）+ 2リスト集計 + ティア判定
+    ③ IF-10: 判定完了を CRM に Webhook 通知
+    """
+    def _run() -> None:
+        import httpx as _httpx
+        from app.services.two_list import compute_two_lists
+        from app.services.tier_determination import determine_tier
+        from app.db.models.transaction import TransactionStatus
+        import datetime as _dt
+
+        db = SessionLocal()
+        try:
+            # ① スクリーニング
+            if counterparty_name:
+                try:
+                    with _httpx.Client(timeout=15.0) as client:
+                        r = client.post(
+                            f"{_SCREENING_URL}/api/screen",
+                            json={"company_name": counterparty_name, "threshold": 0.75},
+                        )
+                    if r.status_code == 200:
+                        data = r.json()
+                        tx = db.get(Transaction, tx_id)
+                        if tx:
+                            tx.screening_result_id = str(data.get("id", ""))
+                            tx.screening_status = data.get("result_status", "error")
+                            db.commit()
+                            _logger.info("auto screening done: tx_id=%d result=%s", tx_id, tx.screening_status)
+                except Exception as exc:
+                    _logger.warning("auto screening failed (non-critical): tx_id=%d exc=%s", tx_id, exc)
+
+            # ② AI パイプライン
+            run_until_matrix_match(db=db, transaction_id=tx_id)
+            _logger.info("auto matrix_match completed: tx_id=%d", tx_id)
+
+            # ③ 2リスト集計 + ティア判定
+            result = compute_two_lists(db=db, transaction_id=tx_id, run_id=None)
+            tx = db.get(Transaction, tx_id)
+            if not tx:
+                return
+
+            tier, req_steps, reason = determine_tier(
+                two_list_result=result,
+                eccn=tx.linked_product_eccn,
+                screening_status=tx.screening_status,
+                destination_country=tx.destination_country,
+            )
+            tx.approval_tier = tier
+            tx.required_steps = req_steps
+            tx.tier_reason = reason
+            tx.tier_determined_at = _dt.datetime.utcnow()
+
+            if tier == 1 and tx.status != TransactionStatus.approved.value:
+                submitted_at = _dt.datetime.utcnow()
+                tx.status = TransactionStatus.approved.value
+                tx.formal_submitted_at = submitted_at
+                if not tx.retention_until:
+                    tx.retention_until = submitted_at + _dt.timedelta(days=365 * 7 + 2)
+                if not tx.judgment_no and tx.case_no:
+                    tx.judgment_no = f"JDG-{tx.case_no}-{submitted_at.strftime('%Y%m%d')}"
+                new_status = "approved"
+            elif tier == 2:
+                if tx.status not in (TransactionStatus.approved.value, TransactionStatus.rejected.value):
+                    tx.status = "in_review"
+                new_status = "in_review"
+            else:
+                if tx.status not in (TransactionStatus.approved.value, TransactionStatus.rejected.value):
+                    tx.status = "requires_review"
+                new_status = "requires_review"
+
+            db.commit()
+            _logger.info("auto tier determined: tx_id=%d tier=%d status=%s", tx_id, tier, new_status)
+
+            # ④ IF-10: 判定完了を CRM に通知（全ティア共通）
+            _notify_crm_judgment_completed(tx, new_status, tier)
+
+        except Exception as exc:
+            _logger.warning("auto full judgment failed: tx_id=%d exc=%s", tx_id, exc)
+        finally:
+            db.close()
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
+def _notify_crm_judgment_completed(tx: Transaction, new_status: str, tier: int) -> None:
+    """IF-10: AI判定完了を platform-core Webhook Dispatcher 経由で CRM に通知する。"""
+    def _post() -> None:
+        try:
+            import httpx as _httpx
+            with _httpx.Client(timeout=5) as client:
+                client.post(
+                    f"{_PLATFORM_CORE_URL}/internal/webhooks/dispatch",
+                    json={
+                        "event_type": "review.judgment.completed",
+                        "payload": {
+                            "case_no": tx.case_no,
+                            "tx_id": tx.id,
+                            "status": new_status,
+                            "tier": tier,
+                            "tier_label": {1: "自動承認", 2: "標準審査", 3: "輸出許可確認"}.get(tier, ""),
+                            "judgment_no": getattr(tx, "judgment_no", None),
+                            "screening_status": tx.screening_status,
+                        },
+                        "target_system": "crm",
+                    },
+                )
+        except Exception as exc:
+            _logger.debug("IF-10 judgment webhook failed (non-critical): %s", exc)
+
+    threading.Thread(target=_post, daemon=True).start()
 
 
 def _run_matrix_match_bg(tx_id: int) -> None:
-    """仮審査・本審査の新規起票後に AI 判定パイプライン（matrix_match まで）をバックグラウンド実行する。"""
-    def _run():
-        db = SessionLocal()
-        try:
-            run_until_matrix_match(db=db, transaction_id=tx_id)
-            _logger.info("auto matrix_match completed: tx_id=%d", tx_id)
-        except Exception as exc:
-            _logger.warning("auto matrix_match failed: tx_id=%d exc=%s", tx_id, exc)
-        finally:
-            db.close()
-    threading.Thread(target=_run, daemon=True).start()
+    """後方互換用: AI パイプラインのみ実行（フル判定は _run_full_judgment_bg を使用）。"""
+    _run_full_judgment_bg(tx_id, counterparty_name=None)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -291,11 +398,12 @@ async def provisional_review(
         review_key_hash=review_key_hash,
     )
     valid_until_dt = datetime.datetime.utcnow() + datetime.timedelta(days=_PROV_VALID_DAYS)
-    _logger.info("IF-01 new provisional created case_no=%s", tx.case_no)
-    _run_matrix_match_bg(tx.id)
+    _logger.info("IF-01 new provisional created case_no=%s tx_id=%d", tx.case_no, tx.id)
+    _run_full_judgment_bg(tx.id, counterparty_name=body.counterparty_name)
 
     resp = {
         "case_no": tx.case_no,
+        "tx_id": tx.id,
         "review_type": "provisional",
         "status": tx.status,
         "agent_judgment_status": None,
@@ -385,14 +493,15 @@ async def formal_review(
 
     smooth_completion = inherited_from is not None
     _logger.info(
-        "IF-02 formal created case_no=%s smooth=%s inherited_from=%s",
-        tx.case_no, smooth_completion, inherited_from,
+        "IF-02 formal created case_no=%s tx_id=%d smooth=%s inherited_from=%s",
+        tx.case_no, tx.id, smooth_completion, inherited_from,
     )
     # 仮審査判定を継承しない場合のみ新規 AI 判定を実行
     if not smooth_completion:
-        _run_matrix_match_bg(tx.id)
+        _run_full_judgment_bg(tx.id, counterparty_name=body.counterparty_name)
     resp = {
         "case_no": tx.case_no,
+        "tx_id": tx.id,
         "review_type": "formal",
         "status": tx.status,
         "agent_judgment_status": None,
@@ -461,6 +570,7 @@ def review_status(
 
     return {
         "case_no": row[1],
+        "tx_id": row[0],
         "review_type": review_type,
         "status": effective_status,
         "is_expired": is_expired,

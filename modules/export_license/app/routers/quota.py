@@ -419,8 +419,18 @@ async def create_allocation(body: AllocationCreateRequest, db: AsyncSession = De
 
     await db.commit()
 
+    # 引当が1件も作成されなかった場合 = 対象許可証が存在しない（ライセンス不要品目）
+    if not created_allocs:
+        return {
+            "allocation_id": None,
+            "status": "not_required",
+            "allocations": [],
+            "valid_until": valid_until.isoformat(),
+            "note": "対象品目のライセンスが存在しないため引当不要と判定しました",
+        }
+
     return {
-        "allocation_id": created_allocs[0][0].allocation_no if created_allocs else None,
+        "allocation_id": created_allocs[0][0].allocation_no,
         "status": "allocated",
         "allocations": [
             {
