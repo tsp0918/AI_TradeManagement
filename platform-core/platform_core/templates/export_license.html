@@ -276,6 +276,8 @@ let _currentId = null;
 (async function init() {
   await loadStats();
   await loadApps();
+  const autoId = new URLSearchParams(location.search).get('id');
+  if (autoId) openDetail(autoId);
 })();
 
 async function loadStats() {
@@ -459,10 +461,10 @@ async function openDetail(id) {
     ${a.notes?`<div style="font-size:.82rem;color:#6b7280;margin-top:6px; white-space:pre-wrap;">備考:\n${esc(a.notes)}</div>`:''}
   `;
 
-  // ボタン表示制御
+  // ボタン表示制御（draft と submitted の両方で承認・却下を許可）
   document.getElementById('btnSubmitApp').style.display = a.status === 'draft' ? '' : 'none';
-  document.getElementById('btnApprove').style.display   = a.status === 'submitted' ? '' : 'none';
-  document.getElementById('btnDeny').style.display      = a.status === 'submitted' ? '' : 'none';
+  document.getElementById('btnApprove').style.display   = ['draft','submitted'].includes(a.status) ? '' : 'none';
+  document.getElementById('btnDeny').style.display      = ['draft','submitted'].includes(a.status) ? '' : 'none';
 
   document.getElementById('detailModal').classList.add('open');
 }
@@ -541,6 +543,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 function updateFormType() {
   // 今後: 種別に応じてフォームフィールドを切替
 }
+
 </script>
 </body>
 </html>

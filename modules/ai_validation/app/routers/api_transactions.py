@@ -631,6 +631,11 @@ def get_transaction_detail(tx_id: int, db: Session = Depends(get_db)) -> Dict[st
         "source_module": tx.source_module,
         "counterparty_name": tx.counterparty_name,
         "linked_product_code": tx.linked_product_code,
+        "linked_product_eccn": getattr(tx, "linked_product_eccn", None),
+        "linked_license_id": getattr(tx, "linked_license_id", None),
+        "linked_license_status": getattr(tx, "linked_license_status", None),
+        "screening_status": getattr(tx, "screening_status", None),
+        "approval_tier": getattr(tx, "approval_tier", None),
         "items": [
             {"item_name": i.item_name, "spec_text": i.spec_text}
             for i in tx.items

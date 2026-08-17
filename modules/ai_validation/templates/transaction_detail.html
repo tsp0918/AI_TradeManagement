@@ -277,7 +277,7 @@ async function createExportLicense(txId) {
     <span style="font-size:1.1rem;">{{ _lic[0] }}</span>
     <span style="font-weight:700; font-size:.9rem; color:{{ _lic[1] }};">輸出許可申請 — {{ _lic[4] }}</span>
     <code style="font-size:.75rem; background:rgba(0,0,0,.06); padding:1px 6px; border-radius:4px; color:{{ _lic[1] }};">{{ tx.linked_license_id[:8] }}…</code>
-    <a href="{{ MODULE_EXPORT_LICENSE_PUBLIC_URL }}/ui/export-licenses" target="_blank"
+    <a href="{{ platform_url }}/ui/export-license?id={{ tx.linked_license_id }}" target="_blank"
        style="margin-left:auto; font-size:.78rem; color:{{ _lic[1] }}; text-decoration:underline;">詳細を見る →</a>
   </div>
 </div>
@@ -1811,6 +1811,264 @@ function renderEuDualUse(j, area) {
 })();
 </script>
 
+<!-- ===== AI 該非審査パネル（品目管理 / R&D からの引き継ぎ + 再検証）===== -->
+<div class="card detail-section" id="tx-hantei-panel" style="border-left:4px solid #2563eb;">
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:1rem;">🤖</span>
+      <span class="card-section-title" style="font-size:.95rem; font-weight:800;">AI 該非審査（引き継ぎ参照 + Ollama 再検証）</span>
+    </div>
+    <button id="tx-hantei-run-btn" onclick="runTxHantei()"
+      style="padding:6px 16px; background:#2563eb; color:#fff; border:none; border-radius:8px;
+             font-size:.82rem; font-weight:700; cursor:pointer;">
+      🤖 該非再審査
+    </button>
+  </div>
+  <!-- 引き継ぎ判定履歴 -->
+  <div id="tx-inherited-panel" style="margin-bottom:12px;">
+    <div style="font-size:.78rem;color:#6b7280;margin-bottom:6px;">品目管理・R&D から引き継いだ判定履歴を取得中…</div>
+  </div>
+  <!-- 再審査結果 -->
+  <div id="tx-hantei-body" style="display:none;"></div>
+</div>
+
+<!-- ===== AI コンプライアンスリスク評価パネル ===== -->
+<div class="card detail-section" id="ai-risk-panel" style="border-left:4px solid #f97316;">
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:1rem;">🛡️</span>
+      <span class="card-section-title" style="font-size:.95rem; font-weight:800;">AI コンプライアンスリスク評価</span>
+    </div>
+    <button id="ai-risk-run-btn" onclick="runAiRiskAssess()"
+      style="padding:6px 16px; background:#f97316; color:#fff; border:none; border-radius:8px;
+             font-size:.82rem; font-weight:700; cursor:pointer;">
+      ▶ 評価を実行
+    </button>
+  </div>
+  <div id="ai-risk-body">
+    <div style="color:var(--muted); font-size:.84rem;">「評価を実行」ボタンで ECCN・制裁・仕向国・外為法・先端技術の5軸リスクを判定します。</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var _PLATFORM_URL  = '{{ platform_url }}';
+  var _TX_ID         = {{ tx.id }};
+  var _TX_PROD_CODE  = '{{ tx.linked_product_code or tx.erp_case_no or "" }}';
+  var _TX_QUERY      = '{{ tx.item_description or tx.title or tx.case_no or "" }}';
+  var _TX_PARTY      = '{{ tx.counterparty_name or "" }}';
+  var _TX_COUNTRY    = '{{ tx.destination_country or "" }}';
+  var _TX_ECCN       = '{{ tx.linked_product_eccn or "" }}';
+
+  function _esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+  // ── 引き継ぎ判定履歴ロード（ページ初期表示）──────────────────────────────
+  (function loadTxInherited(){
+    var wrap = document.getElementById('tx-inherited-panel');
+    if(!_TX_PROD_CODE){ wrap.innerHTML='<div style="font-size:.78rem;color:#9ca3af;">品目コード未紐付けのため引き継ぎ履歴なし</div>'; return; }
+    fetch(_PLATFORM_URL+'/api/hantei/records/'+encodeURIComponent(_TX_PROD_CODE)+'?limit=30')
+      .then(function(r){ return r.json(); })
+      .then(function(records){
+        if(!records||!records.length){
+          wrap.innerHTML='<div style="font-size:.78rem;color:#9ca3af;">引き継ぎ判定履歴なし（品目コード: '+_esc(_TX_PROD_CODE)+'）</div>'; return;
+        }
+        var html='<div style="border:1px solid #dbeafe;border-radius:8px;overflow:hidden;">'
+          +'<div style="background:#eff6ff;padding:7px 12px;font-size:.78rem;font-weight:700;color:#1d4ed8;">📂 引き継ぎ判定履歴: '+records.length+'件（品目: '+_esc(_TX_PROD_CODE)+'）</div>';
+        records.forEach(function(r){
+          var badgeC = r.llm_verdict==='APPLICABLE'?'#dc2626':r.llm_verdict==='REVIEW_NEEDED'?'#d97706':'#6b7280';
+          var modLabel = {'rnd':'🧪R&D','classification':'📦品目','validation':'📋取引'}[r.source_module]||r.source_module;
+          html+='<div style="padding:6px 12px;border-bottom:1px solid #f3f4f6;font-size:.78rem;">'
+            +'<span style="font-weight:600;">'+_esc(r.item_no)+'</span>'
+            +' <span style="background:'+badgeC+';color:#fff;border-radius:3px;padding:1px 5px;font-size:.7rem;">'+r.llm_verdict+'</span>'
+            +' <span style="background:#e5e7eb;color:#374151;border-radius:3px;padding:1px 5px;font-size:.7rem;">'+modLabel+'</span>'
+            +(r.llm_reason?'<div style="color:#6b7280;font-size:.72rem;margin-top:2px;">'+_esc(r.llm_reason.slice(0,120))+'</div>':'')
+            +'</div>';
+        });
+        html+='</div>';
+        wrap.innerHTML=html;
+      }).catch(function(){
+        wrap.innerHTML='<div style="font-size:.78rem;color:#9ca3af;">引き継ぎ履歴の取得に失敗しました</div>';
+      });
+  })();
+
+  // ── AI 該非再審査（Ollama hantei を取引コンテキストで実行）────────────────
+  window.runTxHantei = function(){
+    var btn  = document.getElementById('tx-hantei-run-btn');
+    var body = document.getElementById('tx-hantei-body');
+    btn.disabled=true; btn.textContent='⏳ AI 審査中…';
+    body.style.display='block';
+    body.innerHTML='<div style="color:#94a3b8;font-size:.82rem;">FAISS Layer A 検索 → Ollama 推論中（15〜40秒）…</div>';
+
+    fetch(_PLATFORM_URL+'/api/compliance/hantei',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        query: _TX_QUERY,
+        product_eccn: _TX_ECCN,
+        context: 'transaction'
+      })
+    }).then(function(r){ return r.json(); })
+    .then(function(d){
+      var tiers = d.tiers||{};
+      var critical=tiers.critical||[], review=tiers.review||[];
+      var html='<div style="font-size:.8rem;color:#6b7280;margin-bottom:10px;">'+_esc(d.llm_summary||'')+'</div>';
+
+      function renderItems(items){
+        if(!items.length) return '<div style="color:#9ca3af;font-size:.76rem;padding:4px;">該当なし</div>';
+        return items.map(function(it){
+          var badge=it.llm_verdict==='APPLICABLE'
+            ?'<span style="background:#dc2626;color:#fff;border-radius:3px;padding:1px 5px;font-size:.68rem;">APPLICABLE</span>'
+            :'<span style="background:#d97706;color:#fff;border-radius:3px;padding:1px 5px;font-size:.68rem;">REVIEW_NEEDED</span>';
+          return '<div style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-size:.78rem;">'
+            +'<span style="font-weight:600;">'+_esc(it.item_no)+'</span> '+badge
+            +' <span style="color:#6b7280;">'+_esc(it.item_label||'')+'</span>'
+            +(it.llm_reason?'<div style="color:#6b7280;font-size:.72rem;margin-top:2px;">'+_esc(it.llm_reason.slice(0,120))+'</div>':'')
+            +(it.llm_key_question?'<div style="color:#7c3aed;font-size:.7rem;margin-top:1px;">❓ '+_esc(it.llm_key_question.slice(0,100))+'</div>':'')
+            +'</div>';
+        }).join('');
+      }
+
+      html+='<div style="border:1.5px solid #fca5a5;border-radius:8px;overflow:hidden;margin-bottom:8px;">'
+        +'<div style="background:#fef2f2;padding:7px 12px;font-size:.78rem;font-weight:700;color:#991b1b;">'
+        +'🔴 要精査 — '+critical.length+'件</div>'+renderItems(critical)+'</div>';
+      if(review.length){
+        html+='<details style="border:1.5px solid #fcd34d;border-radius:8px;overflow:hidden;margin-bottom:8px;">'
+          +'<summary style="background:#fffbeb;padding:7px 12px;font-size:.78rem;font-weight:700;color:#92400e;cursor:pointer;">'
+          +'🟡 要確認 — '+review.length+'件</summary>'+renderItems(review)+'</details>';
+      }
+
+      // 取引審査での再検証結果を plat_hantei_records に保存
+      if(_TX_PROD_CODE && (critical.length+review.length)>0){
+        var allItems=critical.concat(review);
+        var records=allItems.map(function(it){
+          return {
+            product_code:    _TX_PROD_CODE,
+            source_module:   'validation',
+            transaction_id:  _TX_ID,
+            item_no:         it.item_no||'',
+            item_label:      it.item_label||'',
+            source_type:     it.source_type||'',
+            regulation_text: it.regulation_text||'',
+            llm_verdict:     it.llm_verdict||'',
+            llm_confidence:  it.llm_confidence||'',
+            llm_reason:      it.llm_reason||'',
+            llm_key_question: it.llm_key_question||'',
+            decision:        it.decision||'needs_review',
+            notes:           '取引審査 #'+_TX_ID+' AI 再検証'
+          };
+        });
+        fetch(_PLATFORM_URL+'/api/hantei/records',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({records:records})
+        }).then(function(r){ return r.json(); }).then(function(res){
+          html+='<div style="margin-top:8px;font-size:.76rem;color:#166534;">✓ '+res.saved+'件の再検証結果を共有 DB に保存しました</div>';
+          body.innerHTML=html;
+        });
+      }
+
+      body.innerHTML=html;
+      btn.textContent='🔄 再審査'; btn.disabled=false;
+    }).catch(function(e){
+      body.innerHTML='<div style="color:#ef4444;font-size:.82rem;">失敗: '+e.message+'</div>';
+      btn.textContent='🤖 該非再審査'; btn.disabled=false;
+    });
+  };
+
+  function riskLabel(level) {
+    return {critical:'🔴 超高リスク', high:'🟠 高リスク', medium:'🟡 中リスク', low:'🟢 低リスク'}[level] || level;
+  }
+  function scoreBar(score) {
+    var pct = Math.round(score * 100);
+    var clr = score>=0.80?'#dc2626':score>=0.60?'#f97316':score>=0.35?'#eab308':'#22c55e';
+    return '<div style="display:flex;align-items:center;gap:6px;">'
+      + '<div style="width:90px;height:7px;background:#e5e7eb;border-radius:4px;overflow:hidden;">'
+      + '<div style="width:'+pct+'%;height:100%;background:'+clr+';border-radius:4px;"></div></div>'
+      + '<span style="font-size:.78rem;font-family:monospace;color:'+clr+';font-weight:700;">'+pct+'%</span>'
+      + '</div>';
+  }
+  function compHtml(label, comp) {
+    var hits = (comp.hits||[]).slice(0,2).map(function(h){
+      return '<div style="font-size:.74rem;color:#64748b;margin-top:3px;">・'
+        + (h.entity||h.title||h.source_type||'').slice(0,60)
+        + (h.text?' — '+h.text.slice(0,80):'')+'</div>';
+    }).join('');
+    return '<tr>'
+      + '<td style="padding:5px 8px;font-size:.8rem;font-weight:600;white-space:nowrap;">'+label+'</td>'
+      + '<td style="padding:5px 8px;">'+scoreBar(comp.score||0)+'</td>'
+      + '<td style="padding:5px 8px;font-size:.78rem;color:#64748b;">'
+      + comp.detail + hits + '</td>'
+      + '</tr>';
+  }
+
+  window.runAiRiskAssess = function() {
+    var btn  = document.getElementById('ai-risk-run-btn');
+    var body = document.getElementById('ai-risk-body');
+    btn.disabled = true;
+    btn.textContent = '⏳ 評価中…';
+    body.innerHTML = '<div style="color:var(--muted);font-size:.84rem;padding:12px 0;">Layer A / D / F + 仕向国 + 外為法 を並列検索中…</div>';
+
+    fetch(_PLATFORM_URL + '/api/compliance/assess', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        query:        _TX_QUERY,
+        counterparty: _TX_PARTY,
+        country:      _TX_COUNTRY,
+        eccn:         _TX_ECCN,
+        context:      'transaction',
+      }),
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      var c   = d.components || {};
+      var clr = d.risk_color || '#6b7280';
+      var html =
+        '<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap;">'
+        + '<div style="font-size:1.8rem;font-weight:900;color:'+clr+';">'+Math.round((d.overall_risk||0)*100)+'%</div>'
+        + '<div>'
+          + '<div style="font-weight:800;font-size:1rem;color:'+clr+';">'+riskLabel(d.risk_level)+'</div>'
+          + '<div style="font-size:.75rem;color:#64748b;">総合コンプライアンスリスクスコア</div>'
+        + '</div>'
+        + '</div>'
+        + '<table style="width:100%;border-collapse:collapse;margin-bottom:12px;">'
+        + '<thead><tr>'
+        + '<th style="padding:5px 8px;text-align:left;font-size:.7rem;color:#94a3b8;border-bottom:1px solid #e5e7eb;">評価軸</th>'
+        + '<th style="padding:5px 8px;text-align:left;font-size:.7rem;color:#94a3b8;border-bottom:1px solid #e5e7eb;">スコア</th>'
+        + '<th style="padding:5px 8px;text-align:left;font-size:.7rem;color:#94a3b8;border-bottom:1px solid #e5e7eb;">根拠・詳細</th>'
+        + '</tr></thead><tbody>'
+        + compHtml('CCL/ECCN 規制',   c.regulation || {})
+        + compHtml('外為法',          c.fefta || {})
+        + compHtml('制裁執行事例',    c.sanctions || {})
+        + compHtml('仕向国リスク',    c.country || {})
+        + compHtml('先端技術論文',    c.technology || {})
+        + '</tbody></table>';
+
+      var actions = d.action_required || [];
+      if (actions.length) {
+        html += '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 12px;">'
+          + '<div style="font-size:.75rem;font-weight:700;color:#c2410c;margin-bottom:6px;">⚠ 推奨アクション</div>'
+          + actions.map(function(a){ return '<div style="font-size:.82rem;color:#7c2d12;margin-bottom:3px;">・'+a+'</div>'; }).join('')
+          + '</div>';
+      }
+      body.innerHTML = html;
+      btn.textContent = '🔄 再評価';
+      btn.disabled = false;
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div style="color:#ef4444;font-size:.84rem;">評価に失敗しました: ' + e.message + '</div>';
+      btn.textContent = '▶ 評価を実行';
+      btn.disabled = false;
+    });
+  };
+
+  // 仕向国が高リスク国の場合は自動実行
+  var highRiskCountries = ['CN','RU','KP','IR','SY','BY','CU'];
+  if (_TX_COUNTRY && highRiskCountries.indexOf(_TX_COUNTRY) >= 0) {
+    window.runAiRiskAssess();
+  }
+})();
+</script>
+
 <!-- ===== Section 6: 実行履歴（折りたたみ） ===== -->
 <details class="card detail-section">
   <summary class="detail-summary">
@@ -2290,6 +2548,36 @@ details[open] > .detail-summary::before { transform: rotate(90deg); }
 
   document.addEventListener('DOMContentLoaded', loadBomContext);
 })();
+</script>
+
+<script>
+async function submitFormalReview() {
+  const btn = document.getElementById('submit-formal-btn');
+  if (!btn || btn.disabled) return;
+  if (!confirm('正式審査へ提出します。ステータスが「審査完了」に変わります。よろしいですか？')) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ 提出中…';
+
+  try {
+    const txId = {{ tx.id }};
+    const r = await fetch(`/decision/${txId}/submit-formal-review`, { method: 'POST' });
+    const d = await r.json();
+    if (r.ok && d.ok) {
+      btn.textContent = '✅ 提出完了';
+      btn.style.background = '#22c55e';
+      setTimeout(() => location.reload(), 800);
+    } else {
+      alert('提出に失敗しました: ' + (d.detail || JSON.stringify(d)));
+      btn.disabled = false;
+      btn.textContent = '📨 正式審査へ提出';
+    }
+  } catch (e) {
+    alert('通信エラー: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '📨 正式審査へ提出';
+  }
+}
 </script>
 
 {% endblock %}
