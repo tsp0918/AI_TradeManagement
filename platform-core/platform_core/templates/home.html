@@ -283,9 +283,13 @@
         document.cookie = `ai_tm_env=${env}; path=/; max-age=86400; SameSite=Lax`;
       }
       _applyEnvUI(env);
-      // iframe をリロード
+      // iframe をリロード（env パラメータを付与してモジュール側に伝達）
       const frame = document.getElementById('module-frame');
-      if (frame && frame.src) frame.src = frame.src;
+      if (frame && frame.src) {
+        let src = frame.src.replace(/([?&])env=[^&]*/g, '').replace(/[?&]$/, '');
+        if (env !== 'production') src += (src.includes('?') ? '&' : '?') + 'env=' + env;
+        frame.src = src;
+      }
     }
 
     // 起動時に保存済み ENV を復元

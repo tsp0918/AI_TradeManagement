@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
-from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan
+from platform_core.module_sdk import AuditMiddleware, EnvCookieMiddleware, ModuleInfo, build_lifespan
 
 from app.core.logging import setup_logging
 from app.api.v1.api import api_router
@@ -89,6 +89,7 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(AuditMiddleware, module_key="rnd_assessment")
+    app.add_middleware(EnvCookieMiddleware)
     app.include_router(api_router, prefix="/api/v1")
     app.include_router(ui_router)
 

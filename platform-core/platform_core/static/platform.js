@@ -152,6 +152,13 @@
    * @param {string} key
    * @param {string} iframeUrl
    */
+  function _withEnv(url) {
+    const env = localStorage.getItem("ai_tm_env") || "production";
+    if (!env || env === "production") return url;
+    const base = url.replace(/([?&])env=[^&]*/g, "").replace(/[?&]$/, "");
+    return base + (base.includes("?") ? "&" : "?") + "env=" + env;
+  }
+
   function selectModule(key, iframeUrl) {
     // active クラスを card に付け替え
     document.querySelectorAll(".module-card").forEach((card) => {
@@ -164,7 +171,7 @@
         frame.style.display   = "block";
         // ローディングオーバーレイを表示
         if (loading) loading.classList.add("visible");
-        frame.src = iframeUrl;
+        frame.src = _withEnv(iframeUrl);
       } else {
         frame.style.display   = "none";
         welcome.style.display = "flex";

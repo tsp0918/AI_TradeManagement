@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from platform_core.auth.router import router as auth_router
 from platform_core.config import settings
 from platform_core.middleware.audit import AuditMiddleware
+from platform_core.middleware.env_cookie import EnvCookieMiddleware
 from platform_core.routers import admin_router
 from platform_core.routers.internal import router as internal_router
 from platform_core.routers.projects import router as projects_router
@@ -337,6 +338,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(AuditMiddleware, module_key="platform-core")
+    app.add_middleware(EnvCookieMiddleware)
 
     # 静的ファイル (CSS / JS)
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")

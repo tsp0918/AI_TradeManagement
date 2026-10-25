@@ -39,7 +39,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
-from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan, health_router
+from platform_core.module_sdk import AuditMiddleware, EnvCookieMiddleware, ModuleInfo, build_lifespan, health_router
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
@@ -166,6 +166,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(AuditMiddleware, module_key="screening")
+    app.add_middleware(EnvCookieMiddleware)
 
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 

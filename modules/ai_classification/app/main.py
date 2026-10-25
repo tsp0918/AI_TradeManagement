@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan, health_router
+from platform_core.module_sdk import AuditMiddleware, EnvCookieMiddleware, ModuleInfo, build_lifespan, health_router
 
 from .routers.products import router as products_router
 from .routers.sds import router as sds_router
@@ -99,6 +99,7 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(AuditMiddleware, module_key="ai_classification")
+    app.add_middleware(EnvCookieMiddleware)
 
     if os.path.isdir("static"):
         app.mount("/static", StaticFiles(directory="static"), name="static")

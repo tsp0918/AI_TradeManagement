@@ -9,7 +9,7 @@ import os
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
-from platform_core.module_sdk import AuditMiddleware, ModuleInfo, build_lifespan, health_router
+from platform_core.module_sdk import AuditMiddleware, EnvCookieMiddleware, ModuleInfo, build_lifespan, health_router
 
 from .routers.export_license import router as export_license_router
 from .routers.quota import router as quota_router
@@ -35,6 +35,7 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(AuditMiddleware, module_key="export_license")
+    app.add_middleware(EnvCookieMiddleware)
 
     app.include_router(health_router)
     app.include_router(export_license_router)
