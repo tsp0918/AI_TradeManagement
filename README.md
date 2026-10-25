@@ -83,7 +83,7 @@ SECRET_KEY=your-secret-key-here
 PLATFORM_ENV=development
 
 # モジュール URL (デフォルトはローカルポート)
-MODULE_AI_VALIDATION_URL=http://localhost:8001
+MODULE_AI_VALIDATION_URL=http://localhost:8011
 MODULE_AI_CLASSIFICATION_URL=http://localhost:8002
 MODULE_RND_ASSESSMENT_URL=http://localhost:8003
 MODULE_PATENT_SEARCH_URL=http://localhost:8004
@@ -118,7 +118,7 @@ PYTHONPATH=modules/ai_validation:platform-core/ \
 以下が自動で起動します:
 - Ollama サーバー (port 11434)
 - platform-core portal (port 8000)
-- 全6モジュール (ports 8001〜8010)
+- 全6モジュール (ports 8000〜8011 ※ai_validationは8011)
 
 ブラウザで → **http://localhost:8000**
 
@@ -153,7 +153,7 @@ PYTHONPATH=platform-core/ .venv/bin/uvicorn platform_core.main:app \
 | モジュール | ポート | 概要 | AI依存 |
 |---|---|---|---|
 | platform-core | 8000 | ポータル・認証・共通API | — |
-| ai_validation | 8001 | AI取引審査 (外為法) | FAISS + sentence-transformers |
+| ai_validation | 8011 | AI取引審査 (外為法) | FAISS + sentence-transformers |
 | ai_classification | 8002 | 品目管理・SDS解析 | Ollama |
 | rnd_assessment | 8003 | R&Dリスク評価 | — |
 | patent_search | 8004 | 特許検索・用途抽出 | Ollama + BigQuery |
@@ -202,7 +202,7 @@ dap                                →  Anthropic Claude API
 | サービス | URL |
 |---|---|
 | platform-core | http://localhost:8000/docs |
-| ai_validation | http://localhost:8001/docs |
+| ai_validation | http://localhost:8011/docs |
 | ai_classification | http://localhost:8002/docs |
 | rnd_assessment | http://localhost:8003/docs |
 | patent_search | http://localhost:8004/docs |
@@ -231,12 +231,12 @@ curl http://localhost:8000/ui/health/screening
 
 ```bash
 # ポート確認
-lsof -i :8001   # ai_validation
+lsof -i :8011   # ai_validation
 lsof -i :8002   # ai_classification
 
 # 手動起動でエラーを確認
 PYTHONPATH=modules/ai_validation:platform-core/ \
-  .venv/bin/uvicorn app.main:app --port 8001 \
+  .venv/bin/uvicorn app.main:app --port 8011 \
   --app-dir modules/ai_validation
 ```
 

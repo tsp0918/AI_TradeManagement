@@ -26,6 +26,9 @@ from app.services.two_list import compute_two_lists
 
 router = APIRouter(prefix="/api/transactions", tags=["api-transactions"])
 
+# IF-09: CRM が送信する /api/deemed-export/events へのエイリアスルーター
+deemed_export_router = APIRouter(prefix="/api/deemed-export", tags=["deemed-export"])
+
 import os as _os
 _logger = logging.getLogger(__name__)
 # ブラウザからのアクション URL → public URL（Cloudflare Tunnel 経由）
@@ -751,6 +754,21 @@ def receive_erp_event(
 
     _logger.info("ERP event received (unhandled type): %s", body.event_type)
     return {"ok": True, "event_type": body.event_type, "case_ref": None}
+
+
+@deemed_export_router.post("/events")
+def receive_deemed_export_event(
+    body: _ErpEventPayload,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """IF-09: みなし輸出イベント受信エンドポイント。
+
+    CRM は POST /api/deemed-export/events を送信する。
+    DEEMED_EXPORT_RISK イベントとして処理し取引審査案件を生成する。
+    """
+    if not body.event_type:
+        body.event_type = "DEEMED_EXPORT_RISK"
+    return _handle_deemed_export_risk_event(body, db)
 
 
 def _handle_origin_change_event(body: _ErpEventPayload, db: Session) -> Dict[str, Any]:

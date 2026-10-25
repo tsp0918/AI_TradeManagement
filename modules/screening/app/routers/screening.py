@@ -22,7 +22,7 @@ import threading
 import uuid
 
 import httpx
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -500,3 +500,107 @@ async def rebuild_index(db: AsyncSession = Depends(get_db)):
 async def index_status():
     """FAISS インデックスの現在のエンティティ数を返す。"""
     return {"ntotal": faiss_service.ntotal()}
+
+
+# ── 受信 Webhook: 制裁リスト更新通知 ──────────────────────────────────────
+
+_SCREENING_WEBHOOK_SECRET = os.environ.get(
+    "SCREENING_WEBHOOK_SECRET",
+    os.environ.get("CRM_SIGNING_SECRET", "dev-crm-signing-secret-000"),
+)
+_SKIP_WEBHOOK_HMAC = os.environ.get("CRM_SKIP_HMAC", "") == "1"
+
+
+def _verify_webhook_signature(request: Request, body: bytes) -> None:
+    """X-Timestamp + X-Signature による HMAC-SHA256 検証。CRM_SKIP_HMAC=1 でバイパス可。"""
+    if _SKIP_WEBHOOK_HMAC:
+        return
+    import hashlib
+    import hmac as _hmac
+    import time
+    ts = request.headers.get("X-Timestamp", "")
+    sig = request.headers.get("X-Signature", "")
+    try:
+        if abs(time.time() - int(ts)) > 300:
+            raise HTTPException(status_code=401, detail="Timestamp expired")
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Missing or invalid X-Timestamp")
+    mac = _hmac.new(
+        _SCREENING_WEBHOOK_SECRET.encode(),
+        f"{ts}.".encode() + body,
+        hashlib.sha256,
+    )
+    expected = f"sha256={mac.hexdigest()}"
+    if not _hmac.compare_digest(expected, sig):
+        raise HTTPException(status_code=401, detail="Invalid HMAC signature")
+
+
+class _SanctionsListUpdatedPayload(BaseModel):
+    source: str                                  # "ofac_sdn" | "bis_entity" | "eu_consolidated" 等
+    updated_at: str
+    affected_company_ids: list[str] | None = None  # 空なら全件再スクリーニング
+    re_screen: bool = True                        # False なら更新受領のみ（再スクリーニングなし）
+
+
+@router.post("/webhooks/sanctions-list-updated", status_code=202)
+async def receive_sanctions_list_updated(
+    request: Request,
+    body: _SanctionsListUpdatedPayload,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """制裁リスト更新通知 Webhook（HMAC-SHA256 検証付き）。
+
+    CRM / 外部システムから制裁リスト更新が通知された際に受信する。
+    affected_company_ids が指定された場合はその取引先のみ、空の場合は全取引先を
+    バックグラウンドで再スクリーニングする（大量件数のため 202 Accepted を即返却）。
+    """
+    raw = await request.body()
+    _verify_webhook_signature(request, raw)
+
+    if not body.re_screen:
+        logger.info("sanctions-list-updated received (re_screen=False): source=%s", body.source)
+        return {"ok": True, "queued": False, "source": body.source}
+
+    affected_ids = body.affected_company_ids or []
+    logger.info(
+        "sanctions-list-updated: source=%s affected=%s queued for re-screening",
+        body.source, len(affected_ids) if affected_ids else "all",
+    )
+
+    async def _rescreen_bg() -> None:
+        from app.services.screening_service import run_screening as _run
+        from app.models.screening import Watchlist as _Wl
+        from app.schemas.screening import ScreenRequest as _SReq
+
+        try:
+            if affected_ids:
+                result = await db.execute(
+                    select(Watchlist).where(
+                        Watchlist.company_id.in_(affected_ids),
+                        Watchlist.is_active == True,  # noqa: E712
+                    )
+                )
+            else:
+                result = await db.execute(
+                    select(Watchlist).where(Watchlist.is_active == True)  # noqa: E712
+                )
+            entities = result.scalars().all()
+            count = 0
+            for ent in entities:
+                try:
+                    await _run(_SReq(name=ent.entity_name), db)
+                    count += 1
+                except Exception as exc:
+                    logger.warning("re-screen failed for %s: %s", ent.entity_name, exc)
+            logger.info("sanctions re-screening complete: %d entities processed", count)
+        except Exception as exc:
+            logger.error("sanctions re-screening background task failed: %s", exc)
+
+    background_tasks.add_task(_rescreen_bg)
+    return {
+        "ok": True,
+        "queued": True,
+        "source": body.source,
+        "affected_count": len(affected_ids) if affected_ids else "all",
+    }

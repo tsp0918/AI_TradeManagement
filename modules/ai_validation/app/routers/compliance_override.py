@@ -11,8 +11,12 @@ Routes:
 from __future__ import annotations
 
 import datetime
+import logging
+import os
+import threading
 from typing import Any, Dict, List, Optional
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 from sqlalchemy import text
@@ -22,6 +26,8 @@ from app.db.deps import get_db
 from app.db.models.transaction import Transaction
 
 router = APIRouter(tags=["compliance-override"])
+_logger = logging.getLogger(__name__)
+_PLATFORM_CORE_URL = os.environ.get("MODULE_PLATFORM_URL", "http://localhost:8000")
 
 _MIN_REASON_LEN = 50  # 理由文字数最低要件
 
@@ -118,7 +124,7 @@ def create_override(
     override_id = result.lastrowid
     db.commit()
 
-    return {
+    resp = {
         "id": override_id,
         "transaction_id": transaction_id,
         "case_no": tx.case_no,
@@ -127,6 +133,46 @@ def create_override(
         "department_head_approval": body.department_head_approval,
         "created_at": datetime.datetime.utcnow().isoformat(),
     }
+
+    # IF-15: override適用を CRM に非同期通知
+    _notify_override_applied(tx.case_no, transaction_id, override_id, body)
+
+    return resp
+
+
+def _notify_override_applied(
+    case_no: str,
+    transaction_id: int,
+    override_id: int,
+    body: "OverrideCreateRequest",
+) -> None:
+    """IF-15: オーバーライド適用を platform-core 経由で CRM に通知する（fire-and-forget）。"""
+    payload = {
+        "case_no": case_no,
+        "transaction_id": transaction_id,
+        "override_id": override_id,
+        "scope": body.scope,
+        "overridden_by": body.overridden_by,
+        "approver_name": body.approver_name,
+        "valid_until": body.valid_until,
+        "department_head_approval": body.department_head_approval,
+    }
+
+    def _post() -> None:
+        try:
+            with httpx.Client(timeout=5) as client:
+                client.post(
+                    f"{_PLATFORM_CORE_URL}/internal/webhooks/dispatch",
+                    json={
+                        "event_type": "override.applied",
+                        "payload": payload,
+                        "target_system": "crm",
+                    },
+                )
+        except Exception as exc:
+            _logger.debug("IF-15 override.applied webhook failed (non-critical): %s", exc)
+
+    threading.Thread(target=_post, daemon=True).start()
 
 
 @router.get("/api/transactions/{transaction_id}/overrides")
