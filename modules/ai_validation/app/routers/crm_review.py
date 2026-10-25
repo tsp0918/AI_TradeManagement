@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 
 from app.db.deps import get_db
 from app.db.models.transaction import Transaction
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, resolve_env
 from app.utils.review_hash import compute_review_key_hash
 from app.services.pipeline.orchestrator import run_until_matrix_match
 from .api_transactions import _make_case_no_crm
@@ -41,7 +41,7 @@ _PLATFORM_CORE_URL = os.environ.get("MODULE_PLATFORM_URL", "http://localhost:800
 _SCREENING_URL = os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
 
 
-def _run_full_judgment_bg(tx_id: int, counterparty_name: Optional[str] = None) -> None:
+def _run_full_judgment_bg(tx_id: int, counterparty_name: Optional[str] = None, env: str = "production") -> None:
     """CRM 起票後にフル判定パイプラインをバックグラウンド実行する。
     ① スクリーニング（counterparty_name がある場合）
     ② AI パイプライン（matrix_match まで）+ 2リスト集計 + ティア判定
@@ -52,9 +52,10 @@ def _run_full_judgment_bg(tx_id: int, counterparty_name: Optional[str] = None) -
         from app.services.two_list import compute_two_lists
         from app.services.tier_determination import determine_tier
         from app.db.models.transaction import TransactionStatus
+        from app.db.session import make_session_local_for_env
         import datetime as _dt
 
-        db = SessionLocal()
+        db = make_session_local_for_env(env)()
         try:
             # ① スクリーニング
             if counterparty_name:
@@ -158,7 +159,7 @@ def _notify_crm_judgment_completed(tx: Transaction, new_status: str, tier: int) 
 
 def _run_matrix_match_bg(tx_id: int) -> None:
     """後方互換用: AI パイプラインのみ実行（フル判定は _run_full_judgment_bg を使用）。"""
-    _run_full_judgment_bg(tx_id, counterparty_name=None)
+    _run_full_judgment_bg(tx_id, counterparty_name=None, env="production")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -399,7 +400,7 @@ async def provisional_review(
     )
     valid_until_dt = datetime.datetime.utcnow() + datetime.timedelta(days=_PROV_VALID_DAYS)
     _logger.info("IF-01 new provisional created case_no=%s tx_id=%d", tx.case_no, tx.id)
-    _run_full_judgment_bg(tx.id, counterparty_name=body.counterparty_name)
+    _run_full_judgment_bg(tx.id, counterparty_name=body.counterparty_name, env=resolve_env(request))
 
     resp = {
         "case_no": tx.case_no,
@@ -498,7 +499,7 @@ async def formal_review(
     )
     # 仮審査判定を継承しない場合のみ新規 AI 判定を実行
     if not smooth_completion:
-        _run_full_judgment_bg(tx.id, counterparty_name=body.counterparty_name)
+        _run_full_judgment_bg(tx.id, counterparty_name=body.counterparty_name, env=resolve_env(request))
     resp = {
         "case_no": tx.case_no,
         "tx_id": tx.id,

@@ -21,6 +21,24 @@
       </select>
     </div>
 
+    <!-- ENV スイッチャー -->
+    <div id="env-switcher" title="環境を切り替える" style="display:flex;align-items:center;gap:6px;margin-left:8px;">
+      <span id="env-badge" style="
+        font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;
+        background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;
+        white-space:nowrap;cursor:pointer;user-select:none;
+      " onclick="document.getElementById('env-select').style.display=document.getElementById('env-select').style.display==='none'?'block':'none'">
+        🟢 本番
+      </span>
+      <select id="env-select" onchange="switchEnv(this.value)" style="
+        display:none;font-size:.78rem;padding:2px 6px;border-radius:6px;
+        border:1px solid #d1d5db;background:#fff;cursor:pointer;
+      ">
+        <option value="production">🟢 本番</option>
+        <option value="e2e_test">🧪 E2Eテスト</option>
+      </select>
+    </div>
+
     <button id="panel-toggle-btn" class="panel-toggle-btn" title="チートシート / AIコーチ (Ctrl+/)">
       <span class="panel-toggle-icon">?</span>
     </button>
@@ -217,6 +235,64 @@
       return orgId ? { 'X-Organization-Id': orgId, ...extra } : { ...extra };
     }
 
+    // ── ENV スイッチャー ─────────────────────────────────────────────
+    const ENV_KEY = 'ai_tm_env';
+    const ENV_LABELS = { production: '🟢 本番', e2e_test: '🧪 E2Eテスト' };
+    const ENV_STYLES = {
+      production: 'background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;',
+      e2e_test:   'background:#fef3c7;color:#92400e;border:1px solid #fbbf24;',
+    };
+
+    function _currentEnv() {
+      return localStorage.getItem(ENV_KEY) || 'production';
+    }
+
+    function _applyEnvUI(env) {
+      const badge = document.getElementById('env-badge');
+      const sel   = document.getElementById('env-select');
+      if (badge) {
+        badge.textContent = ENV_LABELS[env] || env;
+        badge.style.cssText = `font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;
+          white-space:nowrap;cursor:pointer;user-select:none;${ENV_STYLES[env] || ''}`;
+      }
+      if (sel) { sel.value = env; sel.style.display = 'none'; }
+      // E2Eテスト時はオレンジバナーを表示
+      let banner = document.getElementById('env-banner');
+      if (env !== 'production') {
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'env-banner';
+          banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;' +
+            'background:#f59e0b;color:#fff;font-size:.78rem;font-weight:700;' +
+            'text-align:center;padding:3px 0;pointer-events:none;';
+          document.body.prepend(banner);
+        }
+        banner.textContent = '🧪 E2Eテスト環境で動作中 — 本番データには影響しません';
+      } else {
+        if (banner) banner.remove();
+      }
+    }
+
+    function switchEnv(env) {
+      if (!['production', 'e2e_test'].includes(env)) return;
+      localStorage.setItem(ENV_KEY, env);
+      // クッキーを設定（サーバー側サーバーレンダリング用）
+      if (env === 'production') {
+        document.cookie = 'ai_tm_env=; path=/; max-age=0; SameSite=Lax';
+      } else {
+        document.cookie = `ai_tm_env=${env}; path=/; max-age=86400; SameSite=Lax`;
+      }
+      _applyEnvUI(env);
+      // iframe をリロード
+      const frame = document.getElementById('module-frame');
+      if (frame && frame.src) frame.src = frame.src;
+    }
+
+    // 起動時に保存済み ENV を復元
+    document.addEventListener('DOMContentLoaded', () => {
+      _applyEnvUI(_currentEnv());
+    });
+
     // platform.js の fetch をインターセプトして org ヘッダーを自動挿入
     (function() {
       const _orig = window.fetch;
@@ -224,6 +300,11 @@
         const orgId = localStorage.getItem(ORG_KEY);
         if (orgId) {
           init.headers = { 'X-Organization-Id': orgId, ...(init.headers || {}) };
+        }
+        // ENV ヘッダーも付与（orgId と必ずマージする）
+        const env = localStorage.getItem(ENV_KEY) || 'production';
+        if (env !== 'production') {
+          init.headers = { 'X-AI-TM-Env': env, ...(init.headers || {}) };
         }
         return _orig(input, init);
       };

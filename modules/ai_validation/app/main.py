@@ -290,6 +290,37 @@ async def _ensure_columns() -> None:
         conn.commit()
 
 
+async def _ensure_columns_for_env(env: str) -> None:
+    """e2e_test など特定環境のDB に同じスキーマを適用する。"""
+    from app.db.session import _db_url_for_env, _make_engine
+    url = _db_url_for_env(env)
+    eng = _make_engine(url)
+    import asyncio
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _run_ensure_columns_sync, eng)
+
+
+def _run_ensure_columns_sync(engine_obj) -> None:
+    """同期版 _ensure_columns をエンジンオブジェクト直接指定で実行。"""
+    from sqlalchemy import inspect as sa_inspect, text
+    with engine_obj.connect() as conn:
+        insp = sa_inspect(engine_obj)
+        # transactions テーブルが無ければ作成
+        if not insp.has_table("transactions"):
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    case_no VARCHAR(64) UNIQUE,
+                    title VARCHAR(256),
+                    status VARCHAR(32) DEFAULT 'draft',
+                    source_module VARCHAR(32) DEFAULT 'erp',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.commit()
+
+
 async def _preload_faiss_model() -> None:
     """
     e5-large モデルと Layer A/B FAISS インデックスを起動時にプリロードする。
@@ -390,6 +421,8 @@ async def _erp_deminimis_poller() -> None:
 async def _on_startup() -> None:
     import asyncio
     await _ensure_columns()
+    # e2e テスト用 DB も同じスキーマで初期化
+    await _ensure_columns_for_env("e2e_test")
     await _preload_faiss_model()
     asyncio.ensure_future(_erp_deminimis_poller())
 

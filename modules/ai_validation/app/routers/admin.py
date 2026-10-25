@@ -192,3 +192,37 @@ async def admin_settings_save(
     if errors:
         return _render_settings(request, db, error=" / ".join(errors))
     return _render_settings(request, db, message="設定を保存しました。")
+
+
+# ── E2Eテスト環境リセット ──────────────────────────────────────────
+
+@router.delete("/api/env/{env}/reset")
+def reset_env(env: str):
+    """テスト環境のSQLite DBを削除して再初期化する（e2e_test のみ許可）。"""
+    from pathlib import Path
+    from app.db.session import _db_url_for_env, _make_engine, _engine_cache
+    import sqlalchemy
+
+    if env not in ("e2e_test",):
+        raise HTTPException(status_code=400, detail="Only e2e_test environment can be reset")
+
+    url = _db_url_for_env(env)
+    db_path = Path(url.replace("sqlite:///", ""))
+
+    # エンジンキャッシュをクリア
+    if url in _engine_cache:
+        try:
+            _engine_cache[url].dispose()
+        except Exception:
+            pass
+        del _engine_cache[url]
+
+    # DBファイルを削除
+    if db_path.exists():
+        db_path.unlink()
+    wal = Path(str(db_path) + "-wal")
+    shm = Path(str(db_path) + "-shm")
+    if wal.exists(): wal.unlink()
+    if shm.exists(): shm.unlink()
+
+    return {"ok": True, "env": env, "message": f"{env} 環境をリセットしました"}
