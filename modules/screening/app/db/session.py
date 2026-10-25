@@ -35,7 +35,9 @@ AsyncSessionLocal = async_sessionmaker(
 
 async def get_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
     """FastAPI 依存注入用の DB セッション。X-AI-TM-Env / ai_tm_env cookie でDB切り替え。"""
-    env = request.headers.get("X-AI-TM-Env", "") or request.cookies.get("ai_tm_env", "production")
+    env = (request.query_params.get("env", "")
+           or request.headers.get("X-AI-TM-Env", "")
+           or request.cookies.get("ai_tm_env", "production"))
     if env not in _ALLOWED_ENVS:
         env = "production"
     url = _BASE_URL if env == "production" else _BASE_URL.replace("/platform_db", "/platform_db_e2e")

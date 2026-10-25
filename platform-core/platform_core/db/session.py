@@ -58,7 +58,9 @@ SyncSessionLocal = sessionmaker(bind=_sync_engine, autoflush=False, autocommit=F
 
 async def get_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
     """FastAPI 依存注入用のDBセッション。X-AI-TM-Env ヘッダーまたは ai_tm_env cookie でDB切り替え。"""
-    env = request.headers.get("X-AI-TM-Env", "") or request.cookies.get("ai_tm_env", "production")
+    env = (request.query_params.get("env", "")
+           or request.headers.get("X-AI-TM-Env", "")
+           or request.cookies.get("ai_tm_env", "production"))
     if env not in _ALLOWED_ENVS:
         env = "production"
     url = _pg_url_for_env(env, settings.platform_database_url)

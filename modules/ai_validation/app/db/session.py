@@ -52,8 +52,10 @@ def _db_url_for_env(env: str) -> str:
 
 
 def resolve_env(request: Request) -> str:
-    """リクエストから環境を解決する。ヘッダー優先、次にcookie。"""
-    env = request.headers.get("X-AI-TM-Env", "")
+    """リクエストから環境を解決する。クエリパラメータ > ヘッダー > cookie。"""
+    env = request.query_params.get("env", "")
+    if not env:
+        env = request.headers.get("X-AI-TM-Env", "")
     if not env:
         env = request.cookies.get("ai_tm_env", "production")
     return env if env in _ALLOWED_ENVS else "production"
