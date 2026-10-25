@@ -65,6 +65,11 @@ async def _init_db() -> None:
                     ))
         conn.commit()
 
+    # E2E テスト用 DB も同じスキーマで初期化
+    from app.db.session import _make_engine, _url_for_env
+    _e2e_engine = _make_engine(_url_for_env("e2e_test"))
+    Base.metadata.create_all(bind=_e2e_engine)
+
 
 MODULE = ModuleInfo(
     key="rnd_assessment",

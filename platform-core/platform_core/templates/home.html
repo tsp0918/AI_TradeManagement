@@ -256,45 +256,41 @@
           white-space:nowrap;cursor:pointer;user-select:none;${ENV_STYLES[env] || ''}`;
       }
       if (sel) { sel.value = env; sel.style.display = 'none'; }
-      // E2Eテスト時はオレンジバナーを表示
-      let banner = document.getElementById('env-banner');
-      if (env !== 'production') {
-        if (!banner) {
-          banner = document.createElement('div');
-          banner.id = 'env-banner';
-          banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;' +
-            'background:#f59e0b;color:#fff;font-size:.78rem;font-weight:700;' +
-            'text-align:center;padding:3px 0;pointer-events:none;';
-          document.body.prepend(banner);
-        }
-        banner.textContent = '🧪 E2Eテスト環境で動作中 — 本番データには影響しません';
-      } else {
-        if (banner) banner.remove();
-      }
     }
 
     function switchEnv(env) {
       if (!['production', 'e2e_test'].includes(env)) return;
       localStorage.setItem(ENV_KEY, env);
-      // クッキーを設定（サーバー側サーバーレンダリング用）
       if (env === 'production') {
         document.cookie = 'ai_tm_env=; path=/; max-age=0; SameSite=Lax';
       } else {
         document.cookie = `ai_tm_env=${env}; path=/; max-age=86400; SameSite=Lax`;
       }
       _applyEnvUI(env);
-      // iframe をリロード（env パラメータを付与してモジュール側に伝達）
-      const frame = document.getElementById('module-frame');
-      if (frame && frame.src) {
-        let src = frame.src.replace(/([?&])env=[^&]*/g, '').replace(/[?&]$/, '');
-        if (env !== 'production') src += (src.includes('?') ? '&' : '?') + 'env=' + env;
-        frame.src = src;
-      }
+      _reloadFrameWithEnv(env);
     }
 
-    // 起動時に保存済み ENV を復元
+    // iframe を env パラメータ付きでリロードする（アクティブボタンのベースURLを使用）
+    function _reloadFrameWithEnv(env) {
+      const frame = document.getElementById('module-frame');
+      if (!frame) return;
+      // frame.src は内部ナビ後に変わるため、アクティブモジュールの data-iframe-url を使う
+      const activeBtn = document.querySelector('.module-card.active .module-main-btn');
+      let baseUrl = activeBtn
+        ? activeBtn.dataset.iframeUrl
+        : frame.src.replace(/([?&])env=[^&]*/g, '').replace(/[?&]$/, '');
+      baseUrl = baseUrl.replace(/([?&])env=[^&]*/g, '').replace(/[?&]$/, '');
+      if (env !== 'production') {
+        baseUrl += (baseUrl.includes('?') ? '&' : '?') + 'env=' + env;
+      }
+      frame.src = baseUrl;
+    }
+
+    // 起動時に保存済み ENV を復元（E2Eモードなら iframe も再ロード）
     document.addEventListener('DOMContentLoaded', () => {
-      _applyEnvUI(_currentEnv());
+      const env = _currentEnv();
+      _applyEnvUI(env);
+      if (env !== 'production') _reloadFrameWithEnv(env);
     });
 
     // platform.js の fetch をインターセプトして org ヘッダーを自動挿入

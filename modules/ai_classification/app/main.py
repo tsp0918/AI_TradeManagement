@@ -77,6 +77,12 @@ async def _ensure_columns() -> None:
                 Base.metadata.tables["product_country_profiles"]
             ])
 
+    # E2E テスト用 DB も同じスキーマで初期化
+    from .database import _make_engine, _url_for_env, Base as _Base
+    import app.models as _models  # noqa — モデル登録
+    _e2e_engine = _make_engine(_url_for_env("e2e_test"))
+    _Base.metadata.create_all(_e2e_engine)
+
 
 MODULE = ModuleInfo(
     key="ai_classification",

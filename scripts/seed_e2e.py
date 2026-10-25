@@ -359,6 +359,148 @@ def seed_sqlite(reset: bool) -> None:
 
 
 # ════════════════════════════════════════════════════════
+#  SQLite シード（ai_classification products_e2e.db）
+# ════════════════════════════════════════════════════════
+
+def seed_sqlite_classification(reset: bool) -> None:
+    """ai_classification は PostgreSQL (platform_db_e2e) を使用する。"""
+    import os
+    from sqlalchemy import create_engine, text
+
+    pg_url = os.environ.get(
+        "CLASSIFICATION_DATABASE_URL",
+        "postgresql+psycopg2://platform_user:platform_pass@localhost:5432/platform_db",
+    )
+    # E2E DB に切り替え
+    import re
+    e2e_url = re.sub(r'/([^/?#]+)(\?.*)?$', lambda m: f'/{m.group(1)}_e2e{m.group(2) or ""}', pg_url)
+    engine = create_engine(e2e_url)
+
+    conn = engine.connect()
+    if reset:
+        print("  [classification] 既存 E2E 品目をリセット中...")
+        conn.execute(text("DELETE FROM products WHERE code LIKE 'E2E-%'"))
+        conn.commit()
+
+    products = [
+        ("E2E-ITEM-001", "[E2E] 汎用センサー",      "E2E テスト用汎用センサーモジュール",         "8543.70", "EAR99"),
+        ("E2E-ITEM-002", "[E2E] GaN パワーデバイス", "E2E テスト用 GaN 半導体デバイス（規制品）", "8541.10", "3A001.a"),
+        ("E2E-ITEM-003", "[E2E] 半導体製造技術",     "E2E テスト用半導体製造技術移転ケース",       None,      "3E001"),
+        ("E2E-ITEM-004", "[E2E] 工業用化学品",       "E2E テスト用工業化学品",                    "2806.10", "EAR99"),
+        ("E2E-ITEM-005", "[E2E] 精密機械部品",       "E2E テスト用精密部品",                      "8483.10", "EAR99"),
+    ]
+    print("  [classification] 品目 5 件投入...")
+    for code, name, desc, hs, eccn in products:
+        conn.execute(text("""
+            INSERT INTO products (code, name, description, hs_code, eccn,
+              export_control_status, source, is_unconfirmed)
+            VALUES (:code, :name, :desc, :hs, :eccn, 'pending', 'manual', false)
+            ON CONFLICT (code) DO UPDATE SET
+              name=EXCLUDED.name, description=EXCLUDED.description,
+              hs_code=EXCLUDED.hs_code, eccn=EXCLUDED.eccn
+        """), {"code": code, "name": name, "desc": desc, "hs": hs, "eccn": eccn})
+    conn.commit()
+    conn.close()
+    engine.dispose()
+    print("  [classification] 完了")
+
+
+# ════════════════════════════════════════════════════════
+#  SQLite シード（rnd_assessment rd_risk_app_e2e.db）
+# ════════════════════════════════════════════════════════
+
+def seed_sqlite_rnd(reset: bool) -> None:
+    from sqlalchemy import create_engine, text, MetaData, Table, Column, String, Text, DateTime, JSON, Integer
+
+    db_path = ROOT / "modules" / "rnd_assessment" / "rd_risk_app_e2e.db"
+    engine = create_engine(
+        f"sqlite:///{db_path}",
+        connect_args={"check_same_thread": False},
+    )
+
+    # テーブル定義（最小限）
+    meta = MetaData()
+    Table("rd_cases", meta,
+        Column("case_id", String, primary_key=True),
+        Column("tenant_id", String, nullable=False),
+        Column("external_project_id", String),
+        Column("title", String, nullable=False),
+        Column("description", Text),
+        Column("status", String, nullable=False, default="draft"),
+        Column("tech_sensitivity", String, nullable=False, default="public"),
+        Column("access_org_ids", JSON),
+        Column("created_by_user_id", String),
+        Column("created_at", DateTime),
+        Column("updated_at", DateTime),
+    )
+    Table("personnel", meta,
+        Column("personnel_id", String, primary_key=True),
+        Column("case_id", String),
+        Column("tenant_id", String),
+        Column("name", String, nullable=False),
+        Column("role", String),
+        Column("affiliation", String),
+        Column("nationality", String(2)),
+    )
+    meta.create_all(engine)
+
+    conn = engine.connect()
+    if reset:
+        print("  [rnd] 既存 E2E データをリセット中...")
+        conn.execute(text("DELETE FROM personnel WHERE personnel_id LIKE 'e2e%'"))
+        conn.execute(text("DELETE FROM rd_cases WHERE case_id LIKE 'e2e%'"))
+        conn.commit()
+
+    print("  [rnd] R&D案件 3 件投入...")
+    cases = [
+        ("e2e-rd-case-001", TENANT_DEFAULT,
+         "[E2E] 化合物半導体研究プロジェクト",
+         "GaN パワーデバイス向け研究開発案件（みなし輸出対象）",
+         "active", "controlled"),
+        ("e2e-rd-case-002", TENANT_DEFAULT,
+         "[E2E] AI 画像認識アルゴリズム開発",
+         "デュアルユース技術の可能性あり — E2E テスト用",
+         "under_review", "restricted"),
+        ("e2e-rd-case-003", TENANT_DEFAULT,
+         "[E2E] 新材料研究（非規制）",
+         "EAR99 相当の非規制研究開発プロジェクト",
+         "draft", "public"),
+    ]
+    for case_id, tenant_id, title, desc, status, sensitivity in cases:
+        conn.execute(text("""
+            INSERT OR REPLACE INTO rd_cases
+              (case_id, tenant_id, title, description, status, tech_sensitivity, created_at, updated_at)
+            VALUES (:cid, :tid, :title, :desc, :status, :sens, :now, :now)
+        """), {"cid": case_id, "tid": tenant_id, "title": title,
+               "desc": desc, "status": status, "sens": sensitivity, "now": NOW})
+
+    print("  [rnd] 研究者 4 件投入...")
+    personnel_rows = [
+        ("e2e-person-001", "e2e-rd-case-001", TENANT_DEFAULT,
+         "E2E 研究者 田中 太郎", "researcher", "E2E テスト研究所", "JP"),
+        ("e2e-person-002", "e2e-rd-case-001", TENANT_DEFAULT,
+         "E2E Research Dr. Zhang Wei", "researcher", "E2E Test Institute CN", "CN"),
+        ("e2e-person-003", "e2e-rd-case-002", TENANT_DEFAULT,
+         "E2E Contractor Ivan Petrov", "contractor", "E2E Outsource RU", "RU"),
+        ("e2e-person-004", "e2e-rd-case-003", TENANT_DEFAULT,
+         "E2E 研究者 鈴木 花子", "employee", "AI Trade Management R&D", "JP"),
+    ]
+    for pid, cid, tid, name, role, affil, nat in personnel_rows:
+        conn.execute(text("""
+            INSERT OR REPLACE INTO personnel
+              (personnel_id, case_id, tenant_id, name, role, affiliation, nationality,
+               dual_employment_flag, created_at, updated_at)
+            VALUES (:pid, :cid, :tid, :name, :role, :affil, :nat, 0, :now, :now)
+        """), {"pid": pid, "cid": cid, "tid": tid, "name": name,
+               "role": role, "affil": affil, "nat": nat, "now": NOW})
+
+    conn.commit()
+    conn.close()
+    engine.dispose()
+    print("  [rnd] 完了")
+
+
+# ════════════════════════════════════════════════════════
 #  メイン
 # ════════════════════════════════════════════════════════
 
@@ -372,11 +514,17 @@ def main() -> None:
     print(f"  reset={args.reset}")
     print(f"{'='*55}\n")
 
-    print("[1/2] PostgreSQL (platform_db_e2e) ...")
+    print("[1/4] PostgreSQL (platform_db_e2e) ...")
     seed_postgres(args.reset)
 
-    print("\n[2/2] SQLite (app_e2e.db) ...")
+    print("\n[2/4] SQLite ai_validation (app_e2e.db) ...")
     seed_sqlite(args.reset)
+
+    print("\n[3/4] PostgreSQL ai_classification (platform_db_e2e) ...")
+    seed_sqlite_classification(args.reset)
+
+    print("\n[4/4] SQLite rnd_assessment (rd_risk_app_e2e.db) ...")
+    seed_sqlite_rnd(args.reset)
 
     print(f"\n{'='*55}")
     print("  完了！  E2E 環境に切り替えてご確認ください。")
