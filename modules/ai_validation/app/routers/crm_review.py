@@ -42,9 +42,18 @@ _SKIP_HMAC = os.environ.get("CRM_SKIP_HMAC", "") == "1"
 _PROV_VALID_DAYS = 30
 _PLATFORM_CORE_URL = os.environ.get("MODULE_PLATFORM_URL", "http://localhost:8000")
 _SCREENING_URL = os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
+_DEFAULT_TENANT_ID = os.environ.get("DEFAULT_TENANT_ID", "")
+
+# AI_TM tier → CRM ReviewCaseStatus 変換マップ
+_CRM_STATUS_BY_TIER = {1: "clear", 2: "needs_review", 3: "needs_review"}
 
 
-def _run_full_judgment_bg(tx_id: int, counterparty_name: Optional[str] = None, env: str = "production") -> None:
+def _run_full_judgment_bg(
+    tx_id: int,
+    counterparty_name: Optional[str] = None,
+    env: str = "production",
+    tenant_id: Optional[str] = None,
+) -> None:
     """CRM 起票後にフル判定パイプラインをバックグラウンド実行する。
     ① スクリーニング（counterparty_name がある場合）
     ② AI パイプライン（matrix_match まで）+ 2リスト集計 + ティア判定
@@ -122,7 +131,15 @@ def _run_full_judgment_bg(tx_id: int, counterparty_name: Optional[str] = None, e
             _logger.info("auto tier determined: tx_id=%d tier=%d status=%s", tx_id, tier, new_status)
 
             # ④ IF-10: 判定完了を CRM に通知（全ティア共通）
-            _notify_crm_judgment_completed(tx, new_status, tier)
+            rev_row = db.execute(
+                text("SELECT revision FROM transactions WHERE id = :i"), {"i": tx.id}
+            ).fetchone()
+            stored_rev = (rev_row[0] or 0) if rev_row else 0
+            _notify_crm_judgment_completed(
+                tx, new_status, tier,
+                revision=stored_rev + 1,
+                tenant_id=tenant_id or _DEFAULT_TENANT_ID or None,
+            )
 
         except Exception as exc:
             _logger.warning("auto full judgment failed: tx_id=%d exc=%s", tx_id, exc)
@@ -132,8 +149,20 @@ def _run_full_judgment_bg(tx_id: int, counterparty_name: Optional[str] = None, e
     threading.Thread(target=_run, daemon=True).start()
 
 
-def _notify_crm_judgment_completed(tx: Transaction, new_status: str, tier: int) -> None:
+def _notify_crm_judgment_completed(
+    tx: Transaction,
+    new_status: str,
+    tier: int,
+    *,
+    revision: int = 1,
+    tenant_id: Optional[str] = None,
+) -> None:
     """IF-10: AI判定完了を platform-core Webhook Dispatcher 経由で CRM に通知する。"""
+    crm_status = (
+        "hit" if getattr(tx, "screening_status", None) == "hit"
+        else _CRM_STATUS_BY_TIER.get(tier, "needs_review")
+    )
+
     def _post() -> None:
         try:
             import httpx as _httpx
@@ -142,14 +171,20 @@ def _notify_crm_judgment_completed(tx: Transaction, new_status: str, tier: int) 
                     f"{_PLATFORM_CORE_URL}/internal/webhooks/dispatch",
                     json={
                         "event_type": "review.judgment.completed",
+                        "tenant_id": tenant_id,
                         "payload": {
+                            "event_id": f"{tx.case_no}:{revision}",
                             "case_no": tx.case_no,
-                            "tx_id": tx.id,
-                            "status": new_status,
-                            "tier": tier,
-                            "tier_label": {1: "自動承認", 2: "標準審査", 3: "輸出許可確認"}.get(tier, ""),
-                            "judgment_no": getattr(tx, "judgment_no", None),
-                            "screening_status": tx.screening_status,
+                            "revision": revision,
+                            "status": crm_status,
+                            "detail": {
+                                "tier": tier,
+                                "tier_label": {1: "自動承認", 2: "標準審査", 3: "輸出許可確認"}.get(tier, ""),
+                                "aitm_status": new_status,
+                                "tx_id": tx.id,
+                                "judgment_no": getattr(tx, "judgment_no", None),
+                                "screening_status": tx.screening_status,
+                            },
                         },
                         "target_system": "crm",
                     },
@@ -186,10 +221,15 @@ def _verify_crm_signature(request: Request, body: bytes) -> None:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# CRM Webhook 通知（IF-15: review.status_changed）
+# CRM Webhook 通知（review.provisional.created / review.formal.created）
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _notify_crm_webhook(event_type: str, payload: Dict[str, Any]) -> None:
+def _notify_crm_webhook(
+    event_type: str,
+    payload: Dict[str, Any],
+    *,
+    tenant_id: Optional[str] = None,
+) -> None:
     """platform-core の /internal/webhooks/dispatch 経由で CRM に非同期通知する。
     fire-and-forget（失敗しても審査フローは止めない）。
     """
@@ -201,6 +241,7 @@ def _notify_crm_webhook(event_type: str, payload: Dict[str, Any]) -> None:
                     f"{_PLATFORM_CORE_URL}/internal/webhooks/dispatch",
                     json={
                         "event_type": event_type,
+                        "tenant_id": tenant_id,
                         "payload": payload,
                         "target_system": "crm",
                     },
@@ -362,7 +403,7 @@ def _create_crm_tx(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# IF-01: 仮審査起票
+# CRM 仮審査起票（引き継ぎ書: IF-03a 相当）
 # ──────────────────────────────────────────────────────────────────────────────
 
 @router.post("/provisional-review", status_code=201)
@@ -383,7 +424,7 @@ async def provisional_review(
     existing = _find_valid_provisional(db, review_key_hash)
     if existing:
         _logger.info(
-            "IF-01 hash match — reuse provisional case_no=%s", existing["case_no"]
+            "provisional hash match — reuse provisional case_no=%s", existing["case_no"]
         )
         return {
             "case_no": existing["case_no"],
@@ -402,8 +443,14 @@ async def provisional_review(
         review_key_hash=review_key_hash,
     )
     valid_until_dt = datetime.datetime.utcnow() + datetime.timedelta(days=_PROV_VALID_DAYS)
-    _logger.info("IF-01 new provisional created case_no=%s tx_id=%d", tx.case_no, tx.id)
-    _run_full_judgment_bg(tx.id, counterparty_name=body.counterparty_name, env=resolve_env(request))
+    _logger.info("provisional review created created case_no=%s tx_id=%d", tx.case_no, tx.id)
+    tenant_id = request.headers.get("X-Tenant-Id") or _DEFAULT_TENANT_ID or None
+    _run_full_judgment_bg(
+        tx.id,
+        counterparty_name=body.counterparty_name,
+        env=resolve_env(request),
+        tenant_id=tenant_id,
+    )
 
     resp = {
         "case_no": tx.case_no,
@@ -421,12 +468,12 @@ async def provisional_review(
         "review_key_hash": review_key_hash,
         "valid_until": valid_until_dt.isoformat(),
         "status": tx.status,
-    })
+    }, tenant_id=tenant_id)
     return resp
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# IF-02: 本審査起票
+# CRM 本審査起票（引き継ぎ書: IF-03b 相当）
 # ──────────────────────────────────────────────────────────────────────────────
 
 @router.post("/formal-review", status_code=201)
@@ -497,12 +544,18 @@ async def formal_review(
 
     smooth_completion = inherited_from is not None
     _logger.info(
-        "IF-02 formal created case_no=%s tx_id=%d smooth=%s inherited_from=%s",
+        "formal review created case_no=%s tx_id=%d smooth=%s inherited_from=%s",
         tx.case_no, tx.id, smooth_completion, inherited_from,
     )
     # 仮審査判定を継承しない場合のみ新規 AI 判定を実行
+    tenant_id = request.headers.get("X-Tenant-Id") or _DEFAULT_TENANT_ID or None
     if not smooth_completion:
-        _run_full_judgment_bg(tx.id, counterparty_name=body.counterparty_name, env=resolve_env(request))
+        _run_full_judgment_bg(
+            tx.id,
+            counterparty_name=body.counterparty_name,
+            env=resolve_env(request),
+            tenant_id=tenant_id,
+        )
     resp = {
         "case_no": tx.case_no,
         "tx_id": tx.id,
@@ -522,12 +575,12 @@ async def formal_review(
         "inherited_from": inherited_from,
         "review_key_hash": review_key_hash,
         "status": tx.status,
-    })
+    }, tenant_id=tenant_id)
     return resp
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# IF-03: 審査ステータス照会
+# CRM 審査ステータス照会（引き継ぎ書: IF-03c 相当）
 # ──────────────────────────────────────────────────────────────────────────────
 
 @router.get("/review-status/{case_no}")
@@ -535,7 +588,7 @@ def review_status(
     case_no: str,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    """CRM からの審査ステータス照会（IF-03）。
+    """CRM からの審査ステータス照会。
 
     仮審査・本審査いずれの case_no でも参照可能。
     valid_until を超えた仮審査は expired_provisional を返す。

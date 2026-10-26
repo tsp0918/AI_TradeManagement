@@ -27,6 +27,8 @@ class WebhookEndpoint(PlatformBase):
     )  # 'crm' | 'erp'
     url: Mapped[str] = mapped_column(Text, nullable=False)
     signing_secret: Mapped[str] = mapped_column(String(256), nullable=False)
+    # event_type: NULL = ワイルドカード（全イベント）、値あり = そのイベント専用エンドポイント
+    event_type: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

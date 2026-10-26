@@ -13,7 +13,11 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
+import hashlib
+import hmac as _hmac_mod
+import time as _time_mod
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -735,6 +739,101 @@ class _ErpEventPayload(BaseModel):
     recommendation: Optional[str] = None
 
 
+class CrmDeemedExportEvent(BaseModel):
+    """IF-09: CRM → AI_TM みなし輸出リスクイベント（crm_mvp/services/deemed_export.py 送信仕様）。"""
+    event_type: str  # technical_document_shared | sample_provided | technical_meeting | facility_tour
+    crm_engagement_id: Optional[str] = None
+    crm_source_id: Optional[str] = None
+    counterparty: Optional[Dict[str, Any]] = None
+    occurred_at: Optional[str] = None
+
+
+_CRM_DE_SKIP_HMAC = _os.environ.get("CRM_SKIP_HMAC", "") == "1"
+_CRM_DE_SECRET = _os.environ.get("CRM_SIGNING_SECRET", "dev-crm-signing-secret-000")
+
+_CRM_EVENT_RISK = {
+    "technical_document_shared": "HIGH",
+    "sample_provided": "HIGH",
+    "technical_meeting": "MEDIUM",
+    "facility_tour": "MEDIUM",
+}
+_CRM_EVENT_LABEL = {
+    "technical_document_shared": "技術資料共有",
+    "sample_provided": "サンプル提供",
+    "technical_meeting": "技術会議",
+    "facility_tour": "施設見学",
+}
+
+
+def _verify_crm_deemed_export_signature(request: Request, body: bytes) -> None:
+    if _CRM_DE_SKIP_HMAC:
+        return
+    ts = request.headers.get("X-Timestamp", "")
+    sig = request.headers.get("X-Signature", "")
+    try:
+        if abs(_time_mod.time() - int(ts)) > 300:
+            raise HTTPException(status_code=401, detail="Timestamp expired")
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Missing or invalid X-Timestamp")
+    mac = _hmac_mod.new(_CRM_DE_SECRET.encode(), f"{ts}.".encode() + body, hashlib.sha256)
+    if not _hmac_mod.compare_digest(f"sha256={mac.hexdigest()}", sig):
+        raise HTTPException(status_code=401, detail="Invalid HMAC signature")
+
+
+def _handle_crm_deemed_export_event(body: CrmDeemedExportEvent, db: Session) -> Dict[str, Any]:
+    """IF-09: CRM 起点のみなし輸出リスクイベントから取引審査案件を生成する。"""
+    cp = body.counterparty or {}
+    party_name = cp.get("legal_name") or cp.get("erp_bp_code") or "不明"
+    aitm_party_id = cp.get("aitm_party_id")
+    crm_account_id = cp.get("crm_account_id")
+    country = cp.get("country", "")
+
+    risk = _CRM_EVENT_RISK.get(body.event_type, "HIGH")
+    label = _CRM_EVENT_LABEL.get(body.event_type, body.event_type)
+
+    title = f"[みなし輸出リスク {risk}] {label} — {party_name}"
+    usage_text = (
+        f"CRM みなし輸出リスクイベント ({body.event_type})\n"
+        f"エンゲージメント: {body.crm_engagement_id or '不明'}\n"
+        f"取引先: {party_name} (country={country})\n"
+        f"aitm_party_id: {aitm_party_id or '未紐付け'}\n"
+        f"発生日時: {body.occurred_at or '不明'}\n"
+        f"リスクレベル: {risk}"
+    )
+    tx = Transaction(
+        title=title,
+        case_no=_generate_case_no(db),
+        status="draft",
+        source_module="crm",
+        erp_case_no=f"CRM-DE-{body.crm_engagement_id or 'UNKNOWN'}",
+        counterparty_name=party_name,
+        destination_country=country,
+        end_user_name=aitm_party_id or crm_account_id,
+    )
+    db.add(tx)
+    db.flush()
+    db.add(UsageRequirement(
+        transaction_id=tx.id,
+        transaction_item_id=None,
+        source="crm",
+        text=usage_text,
+        risk_tags=["deemed_export", body.event_type.replace("_", "-")],
+        created_by="crm",
+    ))
+    db.commit()
+    _logger.info(
+        "IF-09 CRM deemed-export: event_type=%s party=%s case=%s",
+        body.event_type, party_name, tx.case_no,
+    )
+    return {
+        "ok": True,
+        "event_type": body.event_type,
+        "case_ref": tx.case_no,
+        "transaction_id": tx.id,
+        "message": f"みなし輸出審査案件を作成しました: {tx.case_no}",
+    }
+
+
 @router.post("/events")
 def receive_erp_event(
     body: _ErpEventPayload,
@@ -757,18 +856,19 @@ def receive_erp_event(
 
 
 @deemed_export_router.post("/events")
-def receive_deemed_export_event(
-    body: _ErpEventPayload,
+async def receive_deemed_export_event(
+    request: Request,
+    body: CrmDeemedExportEvent,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    """IF-09: みなし輸出イベント受信エンドポイント。
+    """IF-09: CRM → AI_TM みなし輸出リスクイベント受信。
 
-    CRM は POST /api/deemed-export/events を送信する。
-    DEEMED_EXPORT_RISK イベントとして処理し取引審査案件を生成する。
+    CRM は POST /api/deemed-export/events を HMAC 署名付きで送信する。
+    counterparty フィールドから取引先を解決し審査案件を生成する。
     """
-    if not body.event_type:
-        body.event_type = "DEEMED_EXPORT_RISK"
-    return _handle_deemed_export_risk_event(body, db)
+    raw = await request.body()
+    _verify_crm_deemed_export_signature(request, raw)
+    return _handle_crm_deemed_export_event(body, db)
 
 
 def _handle_origin_change_event(body: _ErpEventPayload, db: Session) -> Dict[str, Any]:

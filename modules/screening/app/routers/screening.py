@@ -509,41 +509,35 @@ async def index_status():
     return {"ntotal": faiss_service.ntotal()}
 
 
-# ── IF-12: 制裁リスト更新完了を CRM に通知（AI_TM → CRM 方向）──────────────
+# ── IF-12: 制裁リスト同期完了を CRM に通知（AI_TM → CRM 方向）──────────────
+# B案: 同期完了のみを通知。影響アカウント特定は別途 screening.alert (IF-11) で行う。
 
-_CRM_WEBHOOK_URL = os.environ.get("CRM_WEBHOOK_URL", "")
-_CRM_SIGNING_SECRET = os.environ.get("CRM_SIGNING_SECRET", "dev-crm-signing-secret-000")
+_PLATFORM_URL = os.environ.get("MODULE_PLATFORM_URL", "http://localhost:8000")
+_DEFAULT_TENANT_ID = os.environ.get("DEFAULT_TENANT_ID", "")
 
 
 def _notify_crm_sanctions_updated(source: str, entry_count: int) -> None:
     """IF-12: 制裁リスト同期完了を platform-core Webhook Dispatcher 経由で CRM に通知する（fire-and-forget）。"""
-    import json as _json
-    import time as _time
+    from datetime import datetime, timezone
 
     def _post() -> None:
         try:
-            import hashlib
-            import hmac as _hmac
-            from datetime import datetime, timezone
             payload = {
                 "source": source,
                 "entry_count": entry_count,
                 "synced_at": datetime.now(timezone.utc).isoformat(),
             }
-            body = _json.dumps(payload).encode()
-            ts = str(int(_time.time()))
-            mac = _hmac.new(_CRM_SIGNING_SECRET.encode(), f"{ts}.".encode() + body, hashlib.sha256)
             with httpx.Client(timeout=5) as client:
                 client.post(
-                    f"{os.environ.get('MODULE_PLATFORM_URL', 'http://localhost:8000')}/internal/webhooks/dispatch",
+                    f"{_PLATFORM_URL}/internal/webhooks/dispatch",
                     json={
-                        "event_type": "sanctions.list.updated",
+                        "event_type": "sanctions.sync.completed",
+                        "tenant_id": _DEFAULT_TENANT_ID or None,
                         "payload": payload,
                         "target_system": "crm",
                     },
-                    headers={"X-Timestamp": ts, "X-Signature": f"sha256={mac.hexdigest()}"},
                 )
         except Exception as exc:
-            logger.debug("IF-12 sanctions.list.updated webhook failed (non-critical): %s", exc)
+            logger.debug("IF-12 sanctions.sync.completed webhook failed (non-critical): %s", exc)
 
     threading.Thread(target=_post, daemon=True).start()

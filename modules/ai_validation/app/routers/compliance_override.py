@@ -28,6 +28,7 @@ from app.db.models.transaction import Transaction
 router = APIRouter(tags=["compliance-override"])
 _logger = logging.getLogger(__name__)
 _PLATFORM_CORE_URL = os.environ.get("MODULE_PLATFORM_URL", "http://localhost:8000")
+_DEFAULT_TENANT_ID = os.environ.get("DEFAULT_TENANT_ID", "")
 
 _MIN_REASON_LEN = 50  # 理由文字数最低要件
 
@@ -147,7 +148,9 @@ def _notify_override_applied(
     body: "OverrideCreateRequest",
 ) -> None:
     """IF-15: オーバーライド適用を platform-core 経由で CRM に通知する（fire-and-forget）。"""
+    event_id = f"{case_no}:override:{override_id}"
     payload = {
+        "event_id": event_id,
         "case_no": case_no,
         "transaction_id": transaction_id,
         "override_id": override_id,
@@ -157,6 +160,7 @@ def _notify_override_applied(
         "valid_until": body.valid_until,
         "department_head_approval": body.department_head_approval,
     }
+    tenant_id = _DEFAULT_TENANT_ID or None
 
     def _post() -> None:
         try:
@@ -165,6 +169,7 @@ def _notify_override_applied(
                     f"{_PLATFORM_CORE_URL}/internal/webhooks/dispatch",
                     json={
                         "event_type": "override.applied",
+                        "tenant_id": tenant_id,
                         "payload": payload,
                         "target_system": "crm",
                     },

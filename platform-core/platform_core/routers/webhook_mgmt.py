@@ -38,6 +38,7 @@ class EndpointCreate(BaseModel):
     target_system: str  # 'crm' | 'erp'
     url: str
     signing_secret: str
+    event_type: str | None = None  # NULL = ワイルドカード
 
 
 class DispatchRequest(BaseModel):
@@ -84,6 +85,7 @@ async def create_endpoint(
         target_system=body.target_system,
         url=body.url,
         signing_secret=body.signing_secret,
+        event_type=body.event_type,
     )
     db.add(ep)
     await db.commit()

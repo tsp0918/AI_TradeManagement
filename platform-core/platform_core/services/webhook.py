@@ -22,7 +22,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from platform_core.auth.hmac import sign_payload
@@ -127,8 +127,8 @@ class WebhookDispatcher:
 
         Args:
             db:            AsyncSession（呼び出し元のセッションを使用）
-            tenant_id:     対象テナントの UUID
-            event_type:    イベント種別（例: 'review.status_changed'）
+            tenant_id:     対象テナントの UUID（None の場合はグローバルエンドポイントを探す）
+            event_type:    イベント種別（例: 'review.judgment.completed'）
             payload:       送信するペイロード dict
             target_system: 送信先システム（'crm' | 'erp'）
 
@@ -136,18 +136,39 @@ class WebhookDispatcher:
             作成した WebhookDelivery の UUID、または エンドポイント未設定なら None
         """
         if not tenant_id:
-            return None
+            logger.warning(
+                "Webhook tenant_id is None — falling back to global endpoint "
+                "(event_type=%s target=%s)",
+                event_type, target_system,
+            )
 
-        endpoint = await db.scalar(
-            select(WebhookEndpoint).where(
-                WebhookEndpoint.tenant_id == tenant_id,
-                WebhookEndpoint.target_system == target_system,
-                WebhookEndpoint.is_active == True,  # noqa: E712
-            ).limit(1)
-        )
+        def _endpoint_query(tid):
+            # event_type 完全一致を優先、NULL(ワイルドカード) を fallback
+            return (
+                select(WebhookEndpoint)
+                .where(
+                    WebhookEndpoint.tenant_id == tid,
+                    WebhookEndpoint.target_system == target_system,
+                    WebhookEndpoint.is_active == True,  # noqa: E712
+                    or_(
+                        WebhookEndpoint.event_type == event_type,
+                        WebhookEndpoint.event_type.is_(None),
+                    ),
+                )
+                .order_by(WebhookEndpoint.event_type.isnot(None).desc())
+                .limit(1)
+            )
+
+        endpoint = await db.scalar(_endpoint_query(tenant_id))
+
+        if not endpoint and tenant_id is not None:
+            # テナント指定があっても一致なし → グローバル(tenant_id=NULL)で再試行
+            endpoint = await db.scalar(_endpoint_query(None))
+
         if not endpoint:
             logger.debug(
-                "No active webhook endpoint for tenant=%s system=%s", tenant_id, target_system
+                "No active webhook endpoint: tenant=%s system=%s event=%s",
+                tenant_id, target_system, event_type,
             )
             return None
 
