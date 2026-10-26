@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import random
 import threading
 import time
@@ -26,6 +27,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from platform_core.auth.hmac import sign_payload
 from platform_core.models.webhook import WebhookDelivery, WebhookEndpoint
+
+# CRM へのアウトバウンド Webhook に付与する Bearer トークン
+# CRM 側の Authorization: Bearer <token> 検証に対応する
+_CRM_OUTBOUND_BEARER = os.environ.get("CRM_OUTBOUND_BEARER", "")
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +50,14 @@ def _compute_next_retry(attempt_count: int) -> datetime:
 
 def _build_headers(body: bytes, signing_secret: str) -> dict[str, str]:
     ts = str(int(time.time()))
-    return {
+    headers = {
         "Content-Type": "application/json",
         "X-Timestamp": ts,
         "X-Signature": sign_payload(body, signing_secret, ts),
     }
+    if _CRM_OUTBOUND_BEARER:
+        headers["Authorization"] = f"Bearer {_CRM_OUTBOUND_BEARER}"
+    return headers
 
 
 def _deliver_sync(
