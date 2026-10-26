@@ -136,7 +136,10 @@ def create_override(
     }
 
     # IF-15: override適用を CRM に非同期通知
-    _notify_override_applied(tx.case_no, transaction_id, override_id, body)
+    _notify_override_applied(
+        tx.case_no, transaction_id, override_id, body,
+        tenant_id=tx.org_id or _DEFAULT_TENANT_ID or None,
+    )
 
     return resp
 
@@ -146,6 +149,8 @@ def _notify_override_applied(
     transaction_id: int,
     override_id: int,
     body: "OverrideCreateRequest",
+    *,
+    tenant_id: Optional[str] = None,
 ) -> None:
     """IF-15: オーバーライド適用を platform-core 経由で CRM に通知する（fire-and-forget）。"""
     event_id = f"{case_no}:override:{override_id}"
@@ -160,7 +165,6 @@ def _notify_override_applied(
         "valid_until": body.valid_until,
         "department_head_approval": body.department_head_approval,
     }
-    tenant_id = _DEFAULT_TENANT_ID or None
 
     def _post() -> None:
         try:

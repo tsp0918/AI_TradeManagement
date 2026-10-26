@@ -157,7 +157,7 @@ async def _monitoring_worker() -> None:
     1. monitor_until < today の購読を自動で非アクティブ化
     2. subject_type='party' / trigger_type='sanction_change' の購読に対して
        スクリーニングモジュールへ再スクリーニングを依頼
-    3. sanction_status が変化した場合は Webhook で通知（IF-16/IF-23）
+    3. sanction_status が変化した場合は Webhook で通知（IF-11 相当：取引先の制裁ステータス変化。IF-16 の contract_end トリガは未実装）
     """
     import os
     from datetime import date, datetime, timezone
@@ -209,9 +209,13 @@ async def _monitoring_worker() -> None:
                         async with httpx.AsyncClient(timeout=10.0) as client:
                             resp = await client.post(
                                 f"{screening_url}/api/screen",
-                                json={"name": party.legal_name, "country": party.country_code or ""},
+                                json={"company_name": party.legal_name, "country": party.country_code or None},
                             )
                         if resp.status_code != 200:
+                            logger.warning(
+                                "MonitoringWorker: screening returned %s for party=%s: %s",
+                                resp.status_code, party.id, resp.text[:200],
+                            )
                             continue
                         data = resp.json()
                         new_status = data.get("result_status", "clear")
@@ -224,7 +228,7 @@ async def _monitoring_worker() -> None:
                         party.sanction_status = new_status
                         party.last_screened_at = datetime.now(timezone.utc)
                         await db.flush()
-                        # Webhook 通知（IF-16/IF-23）
+                        # Webhook 通知（IF-11 相当）
                         try:
                             await WebhookDispatcher.enqueue(
                                 db,

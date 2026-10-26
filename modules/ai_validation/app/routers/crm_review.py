@@ -134,10 +134,15 @@ def _run_full_judgment_bg(
             rev_row = db.execute(
                 text("SELECT revision FROM transactions WHERE id = :i"), {"i": tx.id}
             ).fetchone()
-            stored_rev = (rev_row[0] or 0) if rev_row else 0
+            new_rev = ((rev_row[0] or 0) if rev_row else 0) + 1
+            db.execute(
+                text("UPDATE transactions SET revision = :r WHERE id = :i"),
+                {"r": new_rev, "i": tx.id},
+            )
+            db.commit()
             _notify_crm_judgment_completed(
                 tx, new_status, tier,
-                revision=stored_rev + 1,
+                revision=new_rev,
                 tenant_id=tenant_id or _DEFAULT_TENANT_ID or None,
             )
 
@@ -339,6 +344,7 @@ def _create_crm_tx(
     review_key_hash: str,
     parent_case_no: Optional[str] = None,
     inherited_from: Optional[str] = None,
+    tenant_id: Optional[str] = None,
 ) -> Transaction:
     case_no = _make_case_no_crm(review_type)
     tx = Transaction(
@@ -348,6 +354,7 @@ def _create_crm_tx(
         counterparty_name=body.counterparty_name,
         destination_country=body.destination_country,
         source_module="crm",
+        org_id=tenant_id,
     )
     if body.products:
         tx.linked_product_code = body.products[0].product_code
@@ -436,15 +443,16 @@ async def provisional_review(
             "review_key_hash": review_key_hash,
         }
 
+    tenant_id = request.headers.get("X-Tenant-Id") or _DEFAULT_TENANT_ID or None
     tx = _create_crm_tx(
         db,
         review_type="provisional",
         body=body,
         review_key_hash=review_key_hash,
+        tenant_id=tenant_id,
     )
     valid_until_dt = datetime.datetime.utcnow() + datetime.timedelta(days=_PROV_VALID_DAYS)
-    _logger.info("provisional review created created case_no=%s tx_id=%d", tx.case_no, tx.id)
-    tenant_id = request.headers.get("X-Tenant-Id") or _DEFAULT_TENANT_ID or None
+    _logger.info("provisional review created case_no=%s tx_id=%d", tx.case_no, tx.id)
     _run_full_judgment_bg(
         tx.id,
         counterparty_name=body.counterparty_name,
@@ -533,6 +541,7 @@ async def formal_review(
             inherited_from = existing["case_no"]
             provisional_info = existing
 
+    tenant_id = request.headers.get("X-Tenant-Id") or _DEFAULT_TENANT_ID or None
     tx = _create_crm_tx(
         db,
         review_type="formal",
@@ -540,6 +549,7 @@ async def formal_review(
         review_key_hash=review_key_hash,
         parent_case_no=body.parent_case_no or (provisional_info["case_no"] if provisional_info else None),
         inherited_from=inherited_from,
+        tenant_id=tenant_id,
     )
 
     smooth_completion = inherited_from is not None
@@ -548,7 +558,6 @@ async def formal_review(
         tx.case_no, tx.id, smooth_completion, inherited_from,
     )
     # 仮審査判定を継承しない場合のみ新規 AI 判定を実行
-    tenant_id = request.headers.get("X-Tenant-Id") or _DEFAULT_TENANT_ID or None
     if not smooth_completion:
         _run_full_judgment_bg(
             tx.id,

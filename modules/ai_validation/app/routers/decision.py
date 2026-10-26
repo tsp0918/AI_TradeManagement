@@ -41,7 +41,12 @@ def _notify_crm_status_changed(tx: Transaction, new_status: str) -> None:
             with httpx.Client(timeout=5) as client:
                 client.post(
                     f"{_PLATFORM_BASE}/internal/webhooks/dispatch",
-                    json={"event_type": "review.status_changed", "payload": payload, "target_system": "crm"},
+                    json={
+                        "event_type": "review.status_changed",
+                        "tenant_id": getattr(tx, "org_id", None) or _os.environ.get("DEFAULT_TENANT_ID") or None,
+                        "payload": payload,
+                        "target_system": "crm",
+                    },
                 )
         except Exception as exc:
             _logger_dec.debug("CRM status_changed webhook failed (non-critical): %s", exc)

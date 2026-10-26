@@ -166,8 +166,8 @@ class WebhookDispatcher:
             endpoint = await db.scalar(_endpoint_query(None))
 
         if not endpoint:
-            logger.debug(
-                "No active webhook endpoint: tenant=%s system=%s event=%s",
+            logger.warning(
+                "No active webhook endpoint: tenant=%s system=%s event=%s — delivery dropped",
                 tenant_id, target_system, event_type,
             )
             return None
