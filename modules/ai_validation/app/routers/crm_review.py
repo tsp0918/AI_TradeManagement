@@ -1,8 +1,11 @@
 """CRM 連携 2段階審査エンドポイント。
 
-IF-01  POST /api/crm/provisional-review    — 仮審査起票（30日有効・ハッシュ一致で再利用）
-IF-02  POST /api/crm/formal-review         — 本審査起票（仮審査継承チェック付き）
-IF-03  GET  /api/crm/review-status/{case_no} — 審査ステータス照会
+  POST /api/crm/provisional-review    — 仮審査起票（30日有効・ハッシュ一致で再利用）
+  POST /api/crm/formal-review         — 本審査起票（仮審査継承チェック付き）
+  GET  /api/crm/review-status/{case_no} — 審査ステータス照会
+
+NOTE: IF 番号は CRM_連携引き継ぎ書.md を権威ソースとする。
+      本ファイル内の IF-01〜03 表記は引き継ぎ書と番号体系が異なる可能性があるため参照しないこと。
 
 認証: HMAC-SHA256 (X-Timestamp + X-Signature ヘッダー)
       開発環境は CRM_SKIP_HMAC=1 でバイパス可能
@@ -585,68 +588,3 @@ def review_status(
         "crm_engagement_id": row[11],
     }
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# 受信 Webhook: CRM → AI_TM
-# ──────────────────────────────────────────────────────────────────────────────
-
-class _ComplianceJudgmentPayload(BaseModel):
-    case_no: str
-    judgment: str                       # "approved" | "rejected" | "pending"
-    reason: Optional[str] = None
-    crm_reviewer: Optional[str] = None
-    crm_reviewed_at: Optional[str] = None
-
-
-_VALID_JUDGMENTS = {"approved", "rejected", "pending", "conditional_approved"}
-
-
-@router.post("/webhooks/compliance-judgment", status_code=200)
-async def receive_compliance_judgment(
-    request: Request,
-    body: _ComplianceJudgmentPayload,
-    db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    """CRM からのコンプライアンス最終判定通知（HMAC-SHA256 検証済み）。
-
-    CRM 側で最終判定（approved / rejected）が確定した際に AI_TM へ通知する。
-    該当取引のステータスを更新し、判定理由をメモとして記録する。
-    """
-    raw = await request.body()
-    _verify_crm_signature(request, raw)
-
-    if body.judgment not in _VALID_JUDGMENTS:
-        raise HTTPException(
-            status_code=422,
-            detail=f"judgment は {_VALID_JUDGMENTS} のいずれかを指定してください",
-        )
-
-    tx = db.execute(
-        text("SELECT id, status FROM transactions WHERE case_no = :cn LIMIT 1"),
-        {"cn": body.case_no},
-    ).fetchone()
-
-    if tx is None:
-        raise HTTPException(status_code=404, detail=f"案件が見つかりません: {body.case_no}")
-
-    new_status = {"approved": "approved", "conditional_approved": "approved",
-                  "rejected": "rejected", "pending": "pending"}.get(body.judgment, "pending")
-
-    db.execute(
-        text(
-            "UPDATE transactions SET status = :status, updated_at = :now WHERE case_no = :cn"
-        ),
-        {"status": new_status, "now": datetime.datetime.utcnow().isoformat(), "cn": body.case_no},
-    )
-    db.commit()
-
-    _logger.info(
-        "compliance-judgment received: case_no=%s judgment=%s prev_status=%s",
-        body.case_no, body.judgment, tx[1],
-    )
-    return {
-        "ok": True,
-        "case_no": body.case_no,
-        "previous_status": tx[1],
-        "new_status": new_status,
-    }

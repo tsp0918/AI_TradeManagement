@@ -481,6 +481,13 @@ async def sync_sanctions(
     result_stats["total_inserted"] = len(new_entries)
     result_stats["faiss_ntotal"]   = faiss_service.ntotal()
     logger.info("sync-sanctions complete: %s", result_stats)
+
+    # IF-12: 制裁リスト更新完了を CRM に通知（AI_TM → CRM 方向）
+    _notify_crm_sanctions_updated(
+        source=sources,
+        entry_count=len(new_entries),
+    )
+
     return result_stats
 
 
@@ -502,105 +509,41 @@ async def index_status():
     return {"ntotal": faiss_service.ntotal()}
 
 
-# ── 受信 Webhook: 制裁リスト更新通知 ──────────────────────────────────────
+# ── IF-12: 制裁リスト更新完了を CRM に通知（AI_TM → CRM 方向）──────────────
 
-_SCREENING_WEBHOOK_SECRET = os.environ.get(
-    "SCREENING_WEBHOOK_SECRET",
-    os.environ.get("CRM_SIGNING_SECRET", "dev-crm-signing-secret-000"),
-)
-_SKIP_WEBHOOK_HMAC = os.environ.get("CRM_SKIP_HMAC", "") == "1"
+_CRM_WEBHOOK_URL = os.environ.get("CRM_WEBHOOK_URL", "")
+_CRM_SIGNING_SECRET = os.environ.get("CRM_SIGNING_SECRET", "dev-crm-signing-secret-000")
 
 
-def _verify_webhook_signature(request: Request, body: bytes) -> None:
-    """X-Timestamp + X-Signature による HMAC-SHA256 検証。CRM_SKIP_HMAC=1 でバイパス可。"""
-    if _SKIP_WEBHOOK_HMAC:
-        return
-    import hashlib
-    import hmac as _hmac
-    import time
-    ts = request.headers.get("X-Timestamp", "")
-    sig = request.headers.get("X-Signature", "")
-    try:
-        if abs(time.time() - int(ts)) > 300:
-            raise HTTPException(status_code=401, detail="Timestamp expired")
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=401, detail="Missing or invalid X-Timestamp")
-    mac = _hmac.new(
-        _SCREENING_WEBHOOK_SECRET.encode(),
-        f"{ts}.".encode() + body,
-        hashlib.sha256,
-    )
-    expected = f"sha256={mac.hexdigest()}"
-    if not _hmac.compare_digest(expected, sig):
-        raise HTTPException(status_code=401, detail="Invalid HMAC signature")
+def _notify_crm_sanctions_updated(source: str, entry_count: int) -> None:
+    """IF-12: 制裁リスト同期完了を platform-core Webhook Dispatcher 経由で CRM に通知する（fire-and-forget）。"""
+    import json as _json
+    import time as _time
 
-
-class _SanctionsListUpdatedPayload(BaseModel):
-    source: str                                  # "ofac_sdn" | "bis_entity" | "eu_consolidated" 等
-    updated_at: str
-    affected_company_ids: list[str] | None = None  # 空なら全件再スクリーニング
-    re_screen: bool = True                        # False なら更新受領のみ（再スクリーニングなし）
-
-
-@router.post("/webhooks/sanctions-list-updated", status_code=202)
-async def receive_sanctions_list_updated(
-    request: Request,
-    body: _SanctionsListUpdatedPayload,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    """制裁リスト更新通知 Webhook（HMAC-SHA256 検証付き）。
-
-    CRM / 外部システムから制裁リスト更新が通知された際に受信する。
-    affected_company_ids が指定された場合はその取引先のみ、空の場合は全取引先を
-    バックグラウンドで再スクリーニングする（大量件数のため 202 Accepted を即返却）。
-    """
-    raw = await request.body()
-    _verify_webhook_signature(request, raw)
-
-    if not body.re_screen:
-        logger.info("sanctions-list-updated received (re_screen=False): source=%s", body.source)
-        return {"ok": True, "queued": False, "source": body.source}
-
-    affected_ids = body.affected_company_ids or []
-    logger.info(
-        "sanctions-list-updated: source=%s affected=%s queued for re-screening",
-        body.source, len(affected_ids) if affected_ids else "all",
-    )
-
-    async def _rescreen_bg() -> None:
-        from app.services.screening_service import run_screening as _run
-        from app.models.screening import Watchlist as _Wl
-        from app.schemas.screening import ScreenRequest as _SReq
-
+    def _post() -> None:
         try:
-            if affected_ids:
-                result = await db.execute(
-                    select(Watchlist).where(
-                        Watchlist.company_id.in_(affected_ids),
-                        Watchlist.is_active == True,  # noqa: E712
-                    )
+            import hashlib
+            import hmac as _hmac
+            from datetime import datetime, timezone
+            payload = {
+                "source": source,
+                "entry_count": entry_count,
+                "synced_at": datetime.now(timezone.utc).isoformat(),
+            }
+            body = _json.dumps(payload).encode()
+            ts = str(int(_time.time()))
+            mac = _hmac.new(_CRM_SIGNING_SECRET.encode(), f"{ts}.".encode() + body, hashlib.sha256)
+            with httpx.Client(timeout=5) as client:
+                client.post(
+                    f"{os.environ.get('MODULE_PLATFORM_URL', 'http://localhost:8000')}/internal/webhooks/dispatch",
+                    json={
+                        "event_type": "sanctions.list.updated",
+                        "payload": payload,
+                        "target_system": "crm",
+                    },
+                    headers={"X-Timestamp": ts, "X-Signature": f"sha256={mac.hexdigest()}"},
                 )
-            else:
-                result = await db.execute(
-                    select(Watchlist).where(Watchlist.is_active == True)  # noqa: E712
-                )
-            entities = result.scalars().all()
-            count = 0
-            for ent in entities:
-                try:
-                    await _run(_SReq(name=ent.entity_name), db)
-                    count += 1
-                except Exception as exc:
-                    logger.warning("re-screen failed for %s: %s", ent.entity_name, exc)
-            logger.info("sanctions re-screening complete: %d entities processed", count)
         except Exception as exc:
-            logger.error("sanctions re-screening background task failed: %s", exc)
+            logger.debug("IF-12 sanctions.list.updated webhook failed (non-critical): %s", exc)
 
-    background_tasks.add_task(_rescreen_bg)
-    return {
-        "ok": True,
-        "queued": True,
-        "source": body.source,
-        "affected_count": len(affected_ids) if affected_ids else "all",
-    }
+    threading.Thread(target=_post, daemon=True).start()
