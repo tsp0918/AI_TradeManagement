@@ -182,8 +182,11 @@ class WebhookDispatcher:
         db.add(delivery)
         await db.flush()
         delivery_id = delivery.id
+        # _deliver_sync は別セッションで delivery 行を参照するため、
+        # スレッド起動前にコミットして行を確実に可視化する
+        await db.commit()
 
-        # 即時配信（fire-and-forget）— commit は呼び出し元が責任を持つ
+        # 即時配信（fire-and-forget）
         url = endpoint.url
         secret = endpoint.signing_secret
         threading.Thread(

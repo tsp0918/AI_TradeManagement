@@ -80,6 +80,18 @@ async def create_endpoint(
     db: AsyncSession = Depends(get_db),
     _current_user=Depends(get_current_user),
 ):
+    existing = await db.scalar(
+        select(WebhookEndpoint).where(
+            WebhookEndpoint.tenant_id == body.tenant_id,
+            WebhookEndpoint.target_system == body.target_system,
+            WebhookEndpoint.event_type == body.event_type,
+            WebhookEndpoint.url == body.url,
+            WebhookEndpoint.is_active == True,  # noqa: E712
+        ).limit(1)
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Endpoint already exists")
+
     ep = WebhookEndpoint(
         tenant_id=body.tenant_id,
         target_system=body.target_system,

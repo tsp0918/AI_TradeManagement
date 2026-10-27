@@ -35,6 +35,7 @@ def _notify_crm_status_changed(tx: Transaction, new_status: str) -> None:
     case_no = tx.case_no
     judgment_no = getattr(tx, "judgment_no", None)
     tier = getattr(tx, "approval_tier", None)
+    screening_status = getattr(tx, "screening_status", None)
     tenant_id = getattr(tx, "org_id", None) or _DEFAULT_TENANT_ID
 
     def _post() -> None:
@@ -55,15 +56,26 @@ def _notify_crm_status_changed(tx: Transaction, new_status: str) -> None:
                 )
                 db.commit()
 
-            crm_status = _CRM_STATUS_BY_TIER.get(tier, "needs_review")
+            if screening_status == "hit":
+                crm_status = "hit"
+            elif new_status == "approved":
+                crm_status = "clear"
+            else:
+                crm_status = _CRM_STATUS_BY_TIER.get(tier, "needs_review")
+
             payload = {
                 "event_id": f"{case_no}:{new_rev}",
-                "event_type": "review.judgment.completed",
                 "case_no": case_no,
                 "revision": new_rev,
                 "status": crm_status,
-                "judgment_no": judgment_no,
-                "review_type": None,
+                "detail": {
+                    "tier": tier,
+                    "tier_label": {1: "自動承認", 2: "標準審査", 3: "輸出許可確認"}.get(tier, ""),
+                    "aitm_status": new_status,
+                    "tx_id": tx_id,
+                    "judgment_no": judgment_no,
+                    "screening_status": screening_status,
+                },
             }
             with httpx.Client(timeout=5) as client:
                 client.post(
