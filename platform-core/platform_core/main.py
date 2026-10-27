@@ -147,122 +147,16 @@ async def _webhook_retry_worker() -> None:
 
 
 _MONITORING_INTERVAL = 24 * 3600   # 24時間ごとに継続監視を実行
-_MONITORING_SCREENING_URL_ENV = "MODULE_SCREENING_URL"
 
 
 async def _monitoring_worker() -> None:
-    """バックグラウンド: 24時間ごとにアクティブな監視購読を処理する。
-
-    処理フロー:
-    1. monitor_until < today の購読を自動で非アクティブ化
-    2. subject_type='party' / trigger_type='sanction_change' の購読に対して
-       スクリーニングモジュールへ再スクリーニングを依頼
-    3. sanction_status が変化した場合は Webhook で通知（IF-11 相当：取引先の制裁ステータス変化。IF-16 の contract_end トリガは未実装）
-    """
-    import os
-    from datetime import date, datetime, timezone
-    import httpx
-    from sqlalchemy import select, update
-    from platform_core.db.session import AsyncSessionLocal
-    from platform_core.models.monitoring import MonitoringSubscription
-    from platform_core.models.party import Party
-    from platform_core.services.webhook import WebhookDispatcher
-
-    screening_url = os.environ.get(_MONITORING_SCREENING_URL_ENV, "http://localhost:8005")
+    """バックグラウンド: 24時間ごとにアクティブな監視購読を処理する。（IF-11）"""
+    from platform_core.routers.monitoring import run_monitoring_once
 
     await asyncio.sleep(180)  # 他のワーカーより後に起動
     while True:
         try:
-            async with AsyncSessionLocal() as db:
-                today = date.today()
-
-                # Step 1: 期限切れ購読を非アクティブ化
-                expired_result = await db.execute(
-                    select(MonitoringSubscription).where(
-                        MonitoringSubscription.is_active.is_(True),
-                        MonitoringSubscription.monitor_until < today,
-                    )
-                )
-                expired_subs = expired_result.scalars().all()
-                if expired_subs:
-                    for s in expired_subs:
-                        s.is_active = False
-                    await db.commit()
-                    logger.info("MonitoringWorker: deactivated %d expired subscriptions", len(expired_subs))
-
-            # Step 2: party / sanction_change 購読のスクリーニング再実行
-            async with AsyncSessionLocal() as db:
-                result = await db.execute(
-                    select(MonitoringSubscription).where(
-                        MonitoringSubscription.is_active.is_(True),
-                        MonitoringSubscription.subject_type == "party",
-                        MonitoringSubscription.trigger_type == "sanction_change",
-                    )
-                )
-                active_subs = result.scalars().all()
-                hits = 0
-                for sub in active_subs:
-                    party = await db.get(Party, sub.subject_id)
-                    if not party:
-                        continue
-                    try:
-                        async with httpx.AsyncClient(timeout=10.0) as client:
-                            resp = await client.post(
-                                f"{screening_url}/api/screen",
-                                json={"company_name": party.legal_name, "country": party.country_code or None},
-                            )
-                        if resp.status_code != 200:
-                            logger.warning(
-                                "MonitoringWorker: screening returned %s for party=%s: %s",
-                                resp.status_code, party.id, resp.text[:200],
-                            )
-                            continue
-                        data = resp.json()
-                        new_status = data.get("result_status", "clear")
-                    except Exception as exc:
-                        logger.debug("MonitoringWorker: screening call failed for %s: %s", party.id, exc)
-                        continue
-
-                    prev_status = party.sanction_status or "clear"
-                    if new_status != prev_status:
-                        party.sanction_status = new_status
-                        party.last_screened_at = datetime.now(timezone.utc)
-                        await db.flush()
-                        _OUTCOME_BY_STATUS = {
-                            "match": "hit",
-                            "possible_match": "needs_review",
-                            "clear": "clear",
-                        }
-                        # Webhook 通知（IF-11 相当）
-                        try:
-                            await WebhookDispatcher.enqueue(
-                                db,
-                                tenant_id=party.tenant_id,
-                                event_type="screening.alert",
-                                payload={
-                                    "event_id": f"party-alert:{party.id}:{new_status}",
-                                    "event_type": "screening.alert",
-                                    "aitm_party_id": str(party.id),
-                                    "check_type": "sanctions",
-                                    "outcome": _OUTCOME_BY_STATUS.get(new_status, "unknown"),
-                                    "detail": {
-                                        "prev_status": prev_status,
-                                        "new_status": new_status,
-                                        "legal_name": party.legal_name,
-                                        "checked_at": datetime.now(timezone.utc).isoformat(),
-                                    },
-                                },
-                            )
-                        except Exception as exc:
-                            logger.warning("MonitoringWorker: webhook enqueue failed: %s", exc)
-                        hits += 1
-
-                if hits:
-                    await db.commit()
-                    logger.info("MonitoringWorker: %d sanction status changes detected", hits)
-                else:
-                    logger.debug("MonitoringWorker: no sanction status changes (%d checked)", len(active_subs))
-
+            await run_monitoring_once()
         except Exception as exc:
             logger.warning("MonitoringWorker failed: %s", exc)
         await asyncio.sleep(_MONITORING_INTERVAL)
