@@ -17,10 +17,14 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy.exc import IntegrityError
+
 from platform_core.db.session import get_db
 from platform_core.models.monitoring import MonitoringSubscription
 from platform_core.models.party import Party, PartyIdentifier, PartyMergeCandidate
+from platform_core.models.tenant import Tenant
 from platform_core.services.party_resolver import resolve_or_create
+from platform_core.services.webhook import WebhookDispatcher
 
 router = APIRouter(prefix="/api/parties", tags=["party-registry"])
 
@@ -77,6 +81,17 @@ async def resolve_party(
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     """外部システムの取引先を plat_party に名寄せして party_id を返す。"""
+    if body.tenant_id is not None:
+        tenant = await db.get(Tenant, body.tenant_id)
+        if tenant is None:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"tenant_id={body.tenant_id} は plat_tenant に存在しません。"
+                    "POST /api/organizations で先にテナントを登録してください。"
+                ),
+            )
+
     party = await resolve_or_create(
         db,
         legal_name=body.legal_name,
@@ -210,7 +225,31 @@ async def accept_merge_candidate(
     if party_b:
         await db.delete(party_b)
 
+    # party.linked: CRM 由来 identifier があれば CRM に通知
+    id_result2 = await db.execute(
+        select(PartyIdentifier).where(PartyIdentifier.party_id == candidate.party_a_id)
+    )
+    idents = {i.system: i.external_id for i in id_result2.scalars().all()}
+    crm_account_id = idents.get("crm")
+    erp_bp_code = idents.get("erp")
+    party_a = await db.get(Party, candidate.party_a_id)
+
     await db.commit()
+
+    if crm_account_id and party_a:
+        await WebhookDispatcher.enqueue(
+            db,
+            tenant_id=party_a.tenant_id,
+            event_type="party.linked",
+            payload={
+                "event_id": f"party-linked:{candidate.party_a_id}:{erp_bp_code or '-'}",
+                "event_type": "party.linked",
+                "crm_account_id": crm_account_id,
+                "aitm_party_id": str(candidate.party_a_id),
+                "erp_bp_code": erp_bp_code,
+            },
+            target_system="crm",
+        )
     return {"result": "merged", "surviving_party_id": str(candidate.party_a_id)}
 
 

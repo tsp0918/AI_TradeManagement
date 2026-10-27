@@ -37,12 +37,20 @@ from .api_transactions import _make_case_no_crm
 router = APIRouter(prefix="/api/crm", tags=["crm-review"])
 _logger = logging.getLogger(__name__)
 
-_CRM_SECRET = os.environ.get("CRM_SIGNING_SECRET", "dev-crm-signing-secret-000")
+_CRM_SECRET_DEFAULT = "dev-crm-signing-secret-000"
+
+_CRM_SECRET = os.environ.get("CRM_SIGNING_SECRET", _CRM_SECRET_DEFAULT)
 _SKIP_HMAC = os.environ.get("CRM_SKIP_HMAC", "") == "1"
 _PROV_VALID_DAYS = 30
 _PLATFORM_CORE_URL = os.environ.get("MODULE_PLATFORM_URL", "http://localhost:8000")
 _SCREENING_URL = os.environ.get("MODULE_SCREENING_URL", "http://localhost:8005")
 _DEFAULT_TENANT_ID = os.environ.get("DEFAULT_TENANT_ID", "")
+
+if _CRM_SECRET == _CRM_SECRET_DEFAULT and not _SKIP_HMAC:
+    _logger.warning(
+        "CRM_SIGNING_SECRET が未設定のため開発用の既定値で HMAC 検証します。"
+        "CRM 側の AITM_REVIEW_SECRET と値が一致していない場合、全リクエストが 401 になります。"
+    )
 
 # AI_TM tier → CRM ReviewCaseStatus 変換マップ
 _CRM_STATUS_BY_TIER = {1: "clear", 2: "needs_review", 3: "needs_review"}
@@ -222,39 +230,14 @@ def _verify_crm_signature(request: Request, body: bytes) -> None:
     mac = _hmac.new(_CRM_SECRET.encode(), f"{ts}.".encode() + body, hashlib.sha256)
     expected = f"sha256={mac.hexdigest()}"
     if not _hmac.compare_digest(expected, sig):
-        raise HTTPException(status_code=401, detail="Invalid HMAC signature")
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# CRM Webhook 通知（review.provisional.created / review.formal.created）
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _notify_crm_webhook(
-    event_type: str,
-    payload: Dict[str, Any],
-    *,
-    tenant_id: Optional[str] = None,
-) -> None:
-    """platform-core の /internal/webhooks/dispatch 経由で CRM に非同期通知する。
-    fire-and-forget（失敗しても審査フローは止めない）。
-    """
-    def _post() -> None:
-        try:
-            import httpx
-            with httpx.Client(timeout=5) as client:
-                client.post(
-                    f"{_PLATFORM_CORE_URL}/internal/webhooks/dispatch",
-                    json={
-                        "event_type": event_type,
-                        "tenant_id": tenant_id,
-                        "payload": payload,
-                        "target_system": "crm",
-                    },
-                )
-        except Exception as exc:
-            _logger.debug("CRM webhook dispatch failed (non-critical): %s", exc)
-
-    threading.Thread(target=_post, daemon=True).start()
+        raise HTTPException(
+            status_code=401,
+            detail=(
+                "Invalid HMAC signature "
+                "(AI_TM 側: CRM_SIGNING_SECRET で検証 / CRM 側: AITM_REVIEW_SECRET で署名。"
+                "両者の値が一致しているか確認してください)"
+            ),
+        )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -470,13 +453,6 @@ async def provisional_review(
         "created": True,
         "review_key_hash": review_key_hash,
     }
-    _notify_crm_webhook("review.provisional.created", {
-        "case_no": tx.case_no,
-        "crm_quote_id": body.crm_quote_id,
-        "review_key_hash": review_key_hash,
-        "valid_until": valid_until_dt.isoformat(),
-        "status": tx.status,
-    }, tenant_id=tenant_id)
     return resp
 
 
@@ -577,14 +553,6 @@ async def formal_review(
         "provisional_judgment": provisional_info.get("agent_judgment_status") if provisional_info else None,
         "review_key_hash": review_key_hash,
     }
-    _notify_crm_webhook("review.formal.created", {
-        "case_no": tx.case_no,
-        "crm_contract_id": body.crm_contract_id,
-        "smooth_completion": smooth_completion,
-        "inherited_from": inherited_from,
-        "review_key_hash": review_key_hash,
-        "status": tx.status,
-    }, tenant_id=tenant_id)
     return resp
 
 

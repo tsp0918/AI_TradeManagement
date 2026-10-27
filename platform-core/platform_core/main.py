@@ -228,18 +228,29 @@ async def _monitoring_worker() -> None:
                         party.sanction_status = new_status
                         party.last_screened_at = datetime.now(timezone.utc)
                         await db.flush()
+                        _OUTCOME_BY_STATUS = {
+                            "match": "hit",
+                            "possible_match": "needs_review",
+                            "clear": "clear",
+                        }
                         # Webhook 通知（IF-11 相当）
                         try:
                             await WebhookDispatcher.enqueue(
                                 db,
                                 tenant_id=party.tenant_id,
-                                event_type="party.sanction_status.changed",
+                                event_type="screening.alert",
                                 payload={
-                                    "party_id": str(party.id),
-                                    "legal_name": party.legal_name,
-                                    "prev_status": prev_status,
-                                    "new_status": new_status,
-                                    "checked_at": datetime.now(timezone.utc).isoformat(),
+                                    "event_id": f"party-alert:{party.id}:{new_status}",
+                                    "event_type": "screening.alert",
+                                    "aitm_party_id": str(party.id),
+                                    "check_type": "sanctions",
+                                    "outcome": _OUTCOME_BY_STATUS.get(new_status, "unknown"),
+                                    "detail": {
+                                        "prev_status": prev_status,
+                                        "new_status": new_status,
+                                        "legal_name": party.legal_name,
+                                        "checked_at": datetime.now(timezone.utc).isoformat(),
+                                    },
                                 },
                             )
                         except Exception as exc:

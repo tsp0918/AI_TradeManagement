@@ -20,36 +20,63 @@ _ERP_WEBHOOK_URL = _os.environ.get("ERP_WEBHOOK_URL", "http://localhost:8888/gts
 _ERP_WEBHOOK_BEARER = _os.environ.get("ERP_WEBHOOK_BEARER", "dev-erp-integration-key")
 _logger_dec = _logging.getLogger(__name__)
 
+_CRM_STATUS_BY_TIER = {1: "clear", 2: "needs_review", 3: "needs_review"}
+
 router = APIRouter(prefix="/decision", tags=["decision"])
 
 
 def _notify_crm_status_changed(tx: Transaction, new_status: str) -> None:
-    """CRM 由来案件の status 変更を platform-core Webhook Dispatcher 経由で CRM に通知する。
+    """CRM 由来案件の judgment 完了を platform-core Webhook Dispatcher 経由で CRM に通知する。
     fire-and-forget スレッドで実行（失敗しても審査フローは止めない）。
     """
     _PLATFORM_BASE = _os.environ.get("MODULE_PLATFORM_URL", "http://localhost:8000")
+    _DEFAULT_TENANT_ID = _os.environ.get("DEFAULT_TENANT_ID")
+    tx_id = tx.id
+    case_no = tx.case_no
+    judgment_no = getattr(tx, "judgment_no", None)
+    tier = getattr(tx, "approval_tier", None)
+    tenant_id = getattr(tx, "org_id", None) or _DEFAULT_TENANT_ID
 
     def _post() -> None:
         try:
+            from app.db.session import SessionLocal
+            from sqlalchemy import text as _text
             import httpx
+
+            with SessionLocal() as db:
+                row = db.execute(
+                    _text("SELECT revision FROM transactions WHERE id = :id"), {"id": tx_id}
+                ).fetchone()
+                current_rev = (row[0] or 0) if row else 0
+                new_rev = current_rev + 1
+                db.execute(
+                    _text("UPDATE transactions SET revision = :r WHERE id = :id"),
+                    {"r": new_rev, "id": tx_id},
+                )
+                db.commit()
+
+            crm_status = _CRM_STATUS_BY_TIER.get(tier, "needs_review")
             payload = {
-                "case_no": tx.case_no,
-                "status": new_status,
-                "judgment_no": getattr(tx, "judgment_no", None),
-                "review_type": None,  # SQLite 非ORM列。DB照会コストを避けるため省略
+                "event_id": f"{case_no}:{new_rev}",
+                "event_type": "review.judgment.completed",
+                "case_no": case_no,
+                "revision": new_rev,
+                "status": crm_status,
+                "judgment_no": judgment_no,
+                "review_type": None,
             }
             with httpx.Client(timeout=5) as client:
                 client.post(
                     f"{_PLATFORM_BASE}/internal/webhooks/dispatch",
                     json={
-                        "event_type": "review.status_changed",
-                        "tenant_id": getattr(tx, "org_id", None) or _os.environ.get("DEFAULT_TENANT_ID") or None,
+                        "event_type": "review.judgment.completed",
+                        "tenant_id": str(tenant_id) if tenant_id else None,
                         "payload": payload,
                         "target_system": "crm",
                     },
                 )
         except Exception as exc:
-            _logger_dec.debug("CRM status_changed webhook failed (non-critical): %s", exc)
+            _logger_dec.debug("CRM judgment.completed webhook failed (non-critical): %s", exc)
 
     threading.Thread(target=_post, daemon=True).start()
 

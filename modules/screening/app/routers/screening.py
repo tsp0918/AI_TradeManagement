@@ -522,10 +522,12 @@ def _notify_crm_sanctions_updated(source: str, entry_count: int) -> None:
 
     def _post() -> None:
         try:
+            synced_at_iso = datetime.now(timezone.utc).isoformat()
             payload = {
+                "event_id": f"sanctions-sync:{source}:{synced_at_iso}",
                 "source": source,
                 "entry_count": entry_count,
-                "synced_at": datetime.now(timezone.utc).isoformat(),
+                "synced_at": synced_at_iso,
             }
             with httpx.Client(timeout=5) as client:
                 client.post(

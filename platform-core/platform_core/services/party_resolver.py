@@ -20,6 +20,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from platform_core.models.party import Party, PartyIdentifier, PartyMergeCandidate
+from platform_core.services.webhook import WebhookDispatcher
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,29 @@ async def resolve_or_create(
             legal_name, best_party.id, best_score,
         )
         await _upsert_identifier(db, best_party.id, source_system, external_id)
+
+        # party.linked: CRM 由来の identifier が揃った時点で通知
+        id_rows = await db.execute(
+            select(PartyIdentifier).where(PartyIdentifier.party_id == best_party.id)
+        )
+        idents = {i.system: i.external_id for i in id_rows.scalars().all()}
+        crm_account_id = idents.get("crm")
+        erp_bp_code = idents.get("erp")
+        if crm_account_id:
+            await WebhookDispatcher.enqueue(
+                db,
+                tenant_id=best_party.tenant_id,
+                event_type="party.linked",
+                payload={
+                    "event_id": f"party-linked:{best_party.id}:{erp_bp_code or '-'}",
+                    "event_type": "party.linked",
+                    "crm_account_id": crm_account_id,
+                    "aitm_party_id": str(best_party.id),
+                    "erp_bp_code": erp_bp_code,
+                },
+                target_system="crm",
+            )
+
         return best_party
 
     new_party = await _create_party(db, legal_name, country_code, party_type, tenant_id,

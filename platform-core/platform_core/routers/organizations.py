@@ -13,6 +13,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,6 +42,7 @@ class OrgOut(BaseModel):
 
 
 class OrgCreate(BaseModel):
+    id: uuid.UUID | None = None  # 外部システムのテナントIDを引き継ぐ場合に指定。省略時はサーバ採番
     name: str = Field(..., min_length=1, max_length=255)
     slug: str = Field(..., min_length=1, max_length=100, pattern=r'^[a-z0-9_-]+$')
     country_code: str | None = Field(None, min_length=2, max_length=2)
@@ -123,10 +125,17 @@ async def create_organization(
         if not parent:
             raise HTTPException(status_code=404, detail="親拠点が見つかりません")
 
-    tenant = Tenant(**body.model_dump())
-    db.add(tenant)
-    await db.commit()
-    await db.refresh(tenant)
+    try:
+        tenant = Tenant(**body.model_dump(exclude_none=True))
+        db.add(tenant)
+        await db.commit()
+        await db.refresh(tenant)
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"テナント作成に失敗しました（重複または制約違反）: {exc.orig}",
+        )
     return OrgOut.model_validate(tenant)
 
 
