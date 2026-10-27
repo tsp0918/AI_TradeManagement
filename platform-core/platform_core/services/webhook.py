@@ -48,15 +48,16 @@ def _compute_next_retry(attempt_count: int) -> datetime:
     return datetime.now(tz=timezone.utc) + timedelta(seconds=delay)
 
 
-def _build_headers(body: bytes, signing_secret: str) -> dict[str, str]:
+def _build_headers(body: bytes, signing_secret: str, bearer: str | None = None) -> dict[str, str]:
     ts = str(int(time.time()))
     headers = {
         "Content-Type": "application/json",
         "X-Timestamp": ts,
         "X-Signature": sign_payload(body, signing_secret, ts),
     }
-    if _CRM_OUTBOUND_BEARER:
-        headers["Authorization"] = f"Bearer {_CRM_OUTBOUND_BEARER}"
+    token = bearer or _CRM_OUTBOUND_BEARER
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     return headers
 
 
@@ -65,6 +66,7 @@ def _deliver_sync(
     url: str,
     signing_secret: str,
     payload: dict,
+    bearer: str | None = None,
 ) -> None:
     """同期 HTTP 配信（threading.Thread の中で実行される）。
 
@@ -73,7 +75,7 @@ def _deliver_sync(
     from platform_core.db.session import SyncSessionLocal
 
     body = json.dumps(payload, ensure_ascii=False).encode()
-    headers = _build_headers(body, signing_secret)
+    headers = _build_headers(body, signing_secret, bearer)
 
     try:
         with httpx.Client(timeout=15) as client:
@@ -189,9 +191,10 @@ class WebhookDispatcher:
         # 即時配信（fire-and-forget）
         url = endpoint.url
         secret = endpoint.signing_secret
+        bearer = endpoint.bearer
         threading.Thread(
             target=_deliver_sync,
-            args=(delivery_id, url, secret, payload),
+            args=(delivery_id, url, secret, payload, bearer),
             daemon=True,
         ).start()
 
@@ -218,7 +221,7 @@ class WebhookDispatcher:
         for delivery, endpoint in rows:
             threading.Thread(
                 target=_deliver_sync,
-                args=(delivery.id, endpoint.url, endpoint.signing_secret, delivery.payload),
+                args=(delivery.id, endpoint.url, endpoint.signing_secret, delivery.payload, endpoint.bearer),
                 daemon=True,
             ).start()
         return len(rows)

@@ -38,6 +38,7 @@ class EndpointCreate(BaseModel):
     target_system: str  # 'crm' | 'erp'
     url: str
     signing_secret: str
+    bearer: str | None = None       # チャネル別 Authorization: Bearer トークン
     event_type: str | None = None  # NULL = ワイルドカード
 
 
@@ -97,6 +98,7 @@ async def create_endpoint(
         target_system=body.target_system,
         url=body.url,
         signing_secret=body.signing_secret,
+        bearer=body.bearer,
         event_type=body.event_type,
     )
     db.add(ep)
@@ -177,7 +179,7 @@ async def resend_delivery(
     import threading
     threading.Thread(
         target=_deliver_sync,
-        args=(delivery.id, endpoint.url, endpoint.signing_secret, delivery.payload),
+        args=(delivery.id, endpoint.url, endpoint.signing_secret, delivery.payload, endpoint.bearer),
         daemon=True,
     ).start()
 
