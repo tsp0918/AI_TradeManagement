@@ -32,6 +32,17 @@ from platform_core.models.regulatory_change import RegulatoryChange
 
 router = APIRouter(prefix="/ui", tags=["ui"])
 
+# 起動時に一度だけ解決してキャッシュ
+try:
+    _GIT_SHA = subprocess.check_output(
+        ["git", "rev-parse", "--short", "HEAD"],
+        cwd=str(_pathlib.Path(__file__).parents[2]),
+        text=True, timeout=2,
+    ).strip()
+except Exception:
+    _GIT_SHA = os.environ.get("GIT_SHA", "unknown")
+_STARTED_AT = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+
 _TEMPLATES_DIR = _pathlib.Path(__file__).parent.parent / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
@@ -544,7 +555,12 @@ async def all_module_health():
 
     results = await asyncio.gather(*[_check(t) for t in targets])
     online = sum(1 for r in results if r["status"] == "online")
-    return {"modules": results, "online": online, "total": len(results)}
+    return {
+        "modules": results,
+        "online": online,
+        "total": len(results),
+        "platform_core": {"git_sha": _GIT_SHA, "started_at": _STARTED_AT},
+    }
 
 
 @router.get("/health/{module_key}", include_in_schema=False)
